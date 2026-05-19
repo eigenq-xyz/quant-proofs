@@ -41,7 +41,6 @@ htmlcov/
 # Lean
 lean/.lake/
 lean/build/
-lean/lake-manifest.json
 
 # JupyterBook
 docs/_build/
