@@ -8,7 +8,7 @@ WRDS, etc.).
 import numpy as np
 from numpy.random import Generator
 
-from hedge_engine.backtest.data_types import PricePath
+from verified_options_backtest.backtest.data_types import PricePath
 
 
 def simulate_gbm(

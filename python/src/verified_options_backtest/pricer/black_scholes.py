@@ -13,7 +13,7 @@ from typing import Literal
 
 from scipy.stats import norm
 
-from hedge_engine.pricer.conventions import to_bp
+from verified_options_backtest.pricer.conventions import to_bp
 
 OptionType = Literal["call", "put"]
 

@@ -72,7 +72,7 @@ jobs:
       - name: Run type checking
         run: |
           cd python
-          uv run mypy src/hedge_engine
+          uv run mypy src/verified_options_backtest
 
       - name: Run linting
         run: |

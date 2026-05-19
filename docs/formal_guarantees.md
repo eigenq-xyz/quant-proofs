@@ -9,7 +9,7 @@ The following states **cannot occur** in any run of the engine. They are exclude
 the type system and proven invariants, not by runtime checks.
 
 | What cannot happen | Enforced by |
-|--------------------|-------------|
+| --- | --- |
 | Portfolio with incorrect value | `value_valid` proof field on `Portfolio` |
 | Position with non-positive price | `markPrice_pos` proof field on `Position` |
 | Trade with negative fee | `fee_nonneg` proof field on `Trade` |
@@ -20,27 +20,40 @@ the type system and proven invariants, not by runtime checks.
 
 ## Theorems Proven
 
-### Accounting Kernel (`Invariants.lean`)
+### Accounting Kernel (`Invariants.lean`) — 12 theorems
 
 | Theorem | Economic meaning |
-|---------|-----------------|
+| --- | --- |
 | `valueIdentity` | Portfolio value = cash + Σ(qty × mark price), always. No hidden value can accumulate. |
+| `mk'_value` | Smart constructor `Portfolio.mk'` computes PV correctly. |
+| `empty_value` | Empty portfolio value = cash (zero positions). |
+| `position_value_def` | Position value = quantity × mark price, by definition. |
+| `pricesPositive` | Mark prices > 0; enforced by `markPrice_pos` proof field on `Position`. |
+| `feeNonNegative` | Fees ≥ 0; enforced by `fee_nonneg` proof field on `Trade`. |
+| `cashUpdateCorrect` | Every dollar spent on a trade flows through the cash balance. Proved `rfl`. |
+| `quantityConservation` | Shares cannot appear from thin air or silently vanish after a trade. |
 | `valueUpdateFormula` | ΔPV = pre-trade qty × (exec price − mark) − fee. The exact change from any trade. |
 | `selfFinancing` | Trading at the mark price changes PV only by the fee (no free money). |
-| `quantityConservation` | Shares cannot appear from thin air or silently vanish after a trade. |
-| `cashUpdateCorrect` | Every dollar spent on a trade flows through the cash balance. Proved `rfl`. |
+| `empty_wellFormed` | Empty portfolio is well-formed (no ghost positions). |
 | `applyTrade_wellFormed` | No zero-quantity ghost positions can exist after any trade sequence. |
 
-### Options Layer (`OptionInvariants.lean`)
+### Options Layer (`OptionInvariants.lean`) — 14 theorems
 
 | Theorem | Economic meaning |
-|---------|-----------------|
+| --- | --- |
 | `callPayoff_nonneg` | A call holder never owes money at expiry (right but not obligation). |
 | `putPayoff_nonneg` | A put holder never owes money at expiry (right but not obligation). |
+| `optionPayoff_nonneg` | Option payoff is always ≥ 0 regardless of kind. |
 | `callPayoff_itm` | When S > K: call payoff = S − K exactly. |
 | `callPayoff_otm` | When S ≤ K: call payoff = 0 exactly. |
+| `putPayoff_itm` | When S < K: put payoff = K − S exactly. |
+| `putPayoff_otm` | When S ≥ K: put payoff = 0 exactly. |
 | `integerPayoffDifference` | Call payoff − put payoff = S − K (pure integer identity; not continuous-time put-call parity). |
+| `abandonPosition_portfolioValue` | OTM expiry reduces PV by the position's mark value. |
+| `abandonPosition_cash_unchanged` | OTM expiry does not touch the cash balance. |
+| `abandonPosition_wellFormed` | Abandonment preserves well-formedness of the portfolio. |
 | `settlement_cash_itm` | ITM settlement credits exactly qty × payoff, with no over/underpayment. |
+| `settlement_position_closed` | ITM settlement reduces position quantity to zero. |
 | `settlement_value_formula` | **Crown jewel.** ΔPV = qty × (payoff − mark), for both ITM and OTM paths unified. |
 
 ## The Crown Jewel: `settlement_value_formula`

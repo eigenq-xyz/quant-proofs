@@ -1,4 +1,4 @@
-# Pre-commit hooks for option-hedge-engine
+# Pre-commit hooks for verified-options-backtest
 # Install: uv pip install pre-commit && pre-commit install
 # Run manually: pre-commit run --all-files
 

@@ -29,7 +29,9 @@ def find_lean_prefix() -> Path:
         )
         return Path(result.stdout.strip())
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        sys.exit(f"ERROR: could not find Lean toolchain — is `lean` on PATH? ({e})")
+        sys.exit(
+            f"ERROR: could not find Lean toolchain — is `lean` on PATH? ({e})"
+        )
 
 
 def find_lake_ir(repo_root: Path) -> Path:
@@ -37,7 +39,8 @@ def find_lake_ir(repo_root: Path) -> Path:
     ir_dir = repo_root / "lean" / ".lake" / "build" / "ir" / "OptionHedge"
     if not ir_dir.is_dir():
         sys.exit(
-            f"ERROR: Lake IR directory not found at {ir_dir}\n" "Run `cd lean && lake build` first."
+            f"ERROR: Lake IR directory not found at {ir_dir}\n"
+            "Run `cd lean && lake build` first."
         )
     return ir_dir
 
@@ -52,20 +55,29 @@ def main() -> None:
     lean_lib_dir = str(lean_prefix / "lib" / "lean")
 
     # Lean C source files to compile alongside the Cython extension.
-    # Only Basic and Accounting are needed — proofs (Invariants) and tests
-    # are not required at runtime.
+    # Basic, Options, and Accounting are all needed at runtime — Options is
+    # imported by Accounting, so its initializer must be in the .so.
+    # Proofs (Invariants, OptionInvariants) and tests are pure Prop / #eval
+    # and are not required at runtime.
     lean_c_sources = [
         str(ir_dir / "Basic.c"),
+        str(ir_dir / "Options.c"),
         str(ir_dir / "Accounting.c"),
     ]
     for src in lean_c_sources:
         if not os.path.isfile(src):
             sys.exit(f"ERROR: expected Lake-generated C file not found: {src}")
 
-    pyx_file = str(Path(__file__).parent / "src" / "hedge_engine" / "ffi" / "lean_ffi.pyx")
+    pyx_file = str(
+        Path(__file__).parent
+        / "src"
+        / "verified_options_backtest"
+        / "ffi"
+        / "lean_ffi.pyx"
+    )
 
     extension = Extension(
-        name="hedge_engine.ffi.lean_ffi",
+        name="verified_options_backtest.ffi.lean_ffi",
         sources=[pyx_file] + lean_c_sources,
         include_dirs=[lean_include],
         library_dirs=[lean_lib_dir],
@@ -78,7 +90,7 @@ def main() -> None:
     )
 
     setup(
-        name="hedge-engine-ffi",
+        name="verified-options-backtest-ffi",
         ext_modules=cythonize(
             [extension],
             compiler_directives={

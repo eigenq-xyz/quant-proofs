@@ -4,20 +4,20 @@ import pytest
 
 # Import the package first so __init__.py pre-loads libuv (required by the
 # Lean runtime) before we attempt to import the compiled extension directly.
-import hedge_engine.ffi as _ffi_pkg  # noqa: F401
+import verified_options_backtest.ffi as _ffi_pkg  # noqa: F401
 
 # Detect whether a functional compiled Cython extension is available.
 # Checking importability alone is not sufficient — a stale .so may exist but
 # lack symbols from the current kernel version.  We require portfolio_value to be
 # present as a minimum signal that the extension is up to date.
 try:
-    import hedge_engine.ffi.lean_ffi as _lean_ffi_ext
+    import verified_options_backtest.ffi.lean_ffi as _lean_ffi_ext
 
     HAS_LEAN_FFI = hasattr(_lean_ffi_ext, "portfolio_value")
 except ImportError:
     HAS_LEAN_FFI = False
 
-from hedge_engine.ffi import (
+from verified_options_backtest.ffi import (
     apply_trade,
     get_position,
     initialize_lean,
@@ -214,14 +214,17 @@ def test_apply_trade_self_financing():
 def test_portfolio_value_via_lean_ffi():
     """Verify that portfolio_value is routed through the compiled Lean kernel.
 
-    When the Cython extension is present, hedge_engine.ffi imports from it
+    When the Cython extension is present, verified_options_backtest.ffi imports from it
     rather than the pure-Python stubs. This test confirms we are exercising
     the real Lean FFI path.
     """
-    import hedge_engine.ffi as ffi_mod
+    import verified_options_backtest.ffi as ffi_mod
 
     # The portfolio_value function should come from the Cython extension, not stubs.
-    assert ffi_mod.portfolio_value.__module__ == "hedge_engine.ffi.lean_ffi", (
+    assert (
+        ffi_mod.portfolio_value.__module__
+        == "verified_options_backtest.ffi.lean_ffi"
+    ), (
         "portfolio_value is not from the Cython extension — pure-Python stubs may still be active"
     )
     # Functional check: same answer as stubs for a simple case.

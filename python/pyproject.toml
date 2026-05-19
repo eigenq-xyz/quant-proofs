@@ -1,5 +1,5 @@
 [project]
-name = "hedge-engine"
+name = "verified-options-backtest"
 version = "0.1.0"
 description = "Formally verified options portfolio hedging and backtesting engine"
 readme = "README.md"
@@ -34,7 +34,7 @@ docs = [
 ]
 
 [project.scripts]
-hedge-engine = "hedge_engine.cli:main"
+verified-options-backtest = "verified_options_backtest.cli:main"
 
 [build-system]
 requires = ["hatchling", "cython>=3.0.0"]
@@ -94,10 +94,10 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
-addopts = "-v --cov=hedge_engine --cov-report=term-missing"
+addopts = "-v --cov=verified_options_backtest --cov-report=term-missing"
 
 [tool.coverage.run]
-source = ["src/hedge_engine"]
+source = ["src/verified_options_backtest"]
 omit = ["*/tests/*", "*/test_*.py"]
 
 [tool.coverage.report]

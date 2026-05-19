@@ -1,7 +1,7 @@
 import Lake
 open Lake DSL
 
-package «option-hedge-engine» where
+package «verified-options-backtest» where
   version := v!"0.1.0"
   keywords := #["formal verification", "options", "finance"]
   leanOptions := #[

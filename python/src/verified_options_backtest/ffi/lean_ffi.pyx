@@ -71,7 +71,7 @@ cdef extern from *:
     extern void lean_initialize_runtime_module(void);
 
     // Lean module initialiser — must be called before any hedge_* function.
-    extern lean_object* initialize_option_x2dhedge_x2dengine_OptionHedge_Accounting(
+    extern lean_object* initialize_verified_x2doptions_x2dbacktest_OptionHedge_Accounting(
         uint8_t builtin);
 
     // FFI exports from OptionHedge.Accounting
@@ -86,7 +86,7 @@ cdef extern from *:
     extern lean_object* hedge_settle_option(lean_object*, lean_object*, lean_object*);
     """
     void lean_initialize_runtime_module()
-    lean_object* initialize_option_x2dhedge_x2dengine_OptionHedge_Accounting(
+    lean_object* initialize_verified_x2doptions_x2dbacktest_OptionHedge_Accounting(
         uint8_t builtin)
     lean_object* hedge_position_value(lean_object* pos)
     lean_object* hedge_sum_position_values(lean_object* portfolio)
@@ -262,7 +262,7 @@ def initialize_lean():
     """
     lean_initialize_runtime_module()
     cdef lean_object* res = \
-        initialize_option_x2dhedge_x2dengine_OptionHedge_Accounting(1)
+        initialize_verified_x2doptions_x2dbacktest_OptionHedge_Accounting(1)
     if lean_io_result_is_error(res):
         lean_dec(res)
         raise RuntimeError("Failed to initialise Lean OptionHedge.Accounting module")

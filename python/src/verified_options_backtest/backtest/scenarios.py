@@ -14,7 +14,7 @@ These paths are deterministic and independent of any simulator; the
 backtest results are reproducible without a random seed.
 """
 
-from hedge_engine.backtest.data_types import PricePath
+from verified_options_backtest.backtest.data_types import PricePath
 
 # Hull Table 19.2 week-by-week underlying prices (21 values: week 0..20)
 # Source: Hull "Options, Futures, and Other Derivatives" 9th Global ed., Table 19.2

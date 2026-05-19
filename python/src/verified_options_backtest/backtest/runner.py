@@ -39,11 +39,14 @@ At expiry the option is settled via the Lean verified accounting layer.
 from dataclasses import dataclass, field
 from typing import Literal, Protocol
 
-from hedge_engine.backtest.audit import StepCertificate, verify_step
-from hedge_engine.backtest.data_types import PricePath
-from hedge_engine.ffi import apply_trade, settle_option
-from hedge_engine.pricer.black_scholes import bs_greeks, bs_price
-from hedge_engine.pricer.conventions import from_bp, to_bp
+from verified_options_backtest.backtest.audit import (
+    StepCertificate,
+    verify_step,
+)
+from verified_options_backtest.backtest.data_types import PricePath
+from verified_options_backtest.ffi import apply_trade, settle_option
+from verified_options_backtest.pricer.black_scholes import bs_greeks, bs_price
+from verified_options_backtest.pricer.conventions import from_bp, to_bp
 
 # Asset identifiers used inside the verified accounting layer
 _OPT_ID = "CALL"

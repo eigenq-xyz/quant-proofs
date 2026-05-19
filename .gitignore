@@ -4,7 +4,7 @@ IMG_8062.png
 # Python
 __pycache__/
 # Cython-generated C (build artifact, not hand-written)
-python/src/hedge_engine/ffi/lean_ffi.c
+python/src/verified_options_backtest/ffi/lean_ffi.c
 *.py[cod]
 *$py.class
 *.so

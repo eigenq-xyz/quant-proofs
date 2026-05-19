@@ -7,9 +7,12 @@ session is not active (no credentials in environment).
 import pytest
 from pydantic import ValidationError
 
-from hedge_engine.backtest.data_types import PricePath
-from hedge_engine.etl.data_types import OptionSnapshot, UnderlyingSnapshot
-from hedge_engine.etl.wrds_loader import price_path_from_snapshots
+from verified_options_backtest.backtest.data_types import PricePath
+from verified_options_backtest.etl.data_types import (
+    OptionSnapshot,
+    UnderlyingSnapshot,
+)
+from verified_options_backtest.etl.wrds_loader import price_path_from_snapshots
 
 
 class TestUnderlyingSnapshot:
@@ -150,7 +153,9 @@ class TestWRDSLoader:
     def test_underlying_from_df(self, pd: "object") -> None:
         import pandas  # type: ignore[import-untyped]
 
-        from hedge_engine.etl.wrds_loader import underlying_snapshots_from_df
+        from verified_options_backtest.etl.wrds_loader import (
+            underlying_snapshots_from_df,
+        )
 
         df = pandas.DataFrame(
             {
@@ -167,7 +172,9 @@ class TestWRDSLoader:
     def test_option_from_df(self, pd: "object") -> None:
         import pandas  # type: ignore[import-untyped]
 
-        from hedge_engine.etl.wrds_loader import option_snapshots_from_df
+        from verified_options_backtest.etl.wrds_loader import (
+            option_snapshots_from_df,
+        )
 
         df = pandas.DataFrame(
             {
@@ -189,7 +196,7 @@ class TestWRDSLoader:
         """optionmetrics loader populates underlying_price from spotprice column."""
         import pandas  # type: ignore[import-untyped]
 
-        from hedge_engine.etl.wrds_loader import (
+        from verified_options_backtest.etl.wrds_loader import (
             optionmetrics_option_snapshots_from_df,
         )
 
@@ -217,7 +224,7 @@ class TestWRDSLoader:
         """underlying_price is None when spotprice column is absent."""
         import pandas  # type: ignore[import-untyped]
 
-        from hedge_engine.etl.wrds_loader import (
+        from verified_options_backtest.etl.wrds_loader import (
             optionmetrics_option_snapshots_from_df,
         )
 
@@ -241,7 +248,7 @@ class TestWRDSLoader:
         """Rows with ask < bid are silently skipped."""
         import pandas  # type: ignore[import-untyped]
 
-        from hedge_engine.etl.wrds_loader import (
+        from verified_options_backtest.etl.wrds_loader import (
             optionmetrics_option_snapshots_from_df,
         )
 

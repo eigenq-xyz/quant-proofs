@@ -2,9 +2,9 @@
 
 **Purpose**: Document all identified risks, mitigation strategies, and decision rationale. Consult with professors/practitioners before major pivots.
 
-**Last Updated**: 2026-01-18
+**Last Updated**: 2026-05-09
 **Review Cadence**: Every milestone completion
-**Status**: Work in Progress (v0.2-nav)
+**Status**: Work in Progress (v0.4)
 
 ---
 
@@ -132,6 +132,11 @@
 
 **Severity**: 🟠 High (schedule risk)
 
+**Status**: ✅ Resolved (v0.4). 26 theorems proved across `Invariants.lean` (12) and
+`OptionInvariants.lean` (14), zero `sorry`, zero `axiom`. The hardest theorem was
+`settlement_value_formula` (unifies ITM/OTM expiry into a single statement); proved in
+v0.4 without external consultation using `omega` + `simp`.
+
 **Mitigation Strategy** ✅ DECIDED:
 - **Prioritization**: Prove simple invariants first (NAV identity, conservation)
 - **Defer complex proofs**: Self-financing requires field theory; defer to later milestones
@@ -140,7 +145,7 @@
 - **Expert consultation**: Budget time to ask on Lean Zulip or engage theorem-proving consultant
 - **Incremental approach**: Prove special cases first (e.g., single-asset portfolio), generalize later
 
-**Implementation**: v0.3-trades (simple), v0.11-release (final audit)
+**Implementation**: v0.3-trades (simple), v0.4 (all accounting + options theorems)
 
 **Monitoring**:
 - Track `axiom` count in CI
@@ -189,14 +194,17 @@
 
 **Severity**: 🟢 Low (reference issue, not system risk)
 
+**Status**: ✅ Mitigated (v0.4). Pricer matches Hull Ex 15.6 reference vectors within `abs=0.01`
+on price and `abs=0.001` on delta. See `tests/test_pricer.py` for the reference test suite.
+
 **Mitigation Strategy** ✅ DECIDED:
 - **Use as sanity check only**: DG400a is not ground truth, just a reference
-- **Document divergences**: Track known differences in `book/architecture/pricer_validation.md`
+- **Document divergences**: Track known differences in `docs/architecture/pricer_validation.md`
 - **Analytical benchmarks**: Test against known solutions (European call put-call parity, ATM straddle)
 - **Multiple references**: Compare to QuantLib, OptionMetrics formulas
 - **Tolerance**: Allow 1% difference from DG spreadsheets (document when exceeded)
 
-**Implementation**: v0.7-pricer
+**Implementation**: v0.4 (pricer validated against Hull/DerivaGem)
 
 **Testing Strategy**:
 - Unit tests: Black-Scholes matches analytical solutions (ATM, ITM, OTM)
@@ -335,6 +343,10 @@
 
 **Severity**: 🔴 Critical (security/compliance)
 
+**Status**: ✅ Mitigated (v0.4). git-crypt unlock procedure is operational. Encrypted data files
+(`fred_treasury.enc`, `wrds_sp500.enc`, `wrds_spx_options.enc`, `wrds_vix.enc`) and unencrypted
+CSV/Parquet files are versioned in the repo. Key handoff uses secure channel only.
+
 **Mitigation Strategy** ✅ DECIDED:
 - **Never commit key**: Add to `.gitignore` and `data/.gitignore`
   - Pattern: `*.key`, `*.pem`, `secrets.*`
@@ -368,6 +380,35 @@
 
 ---
 
+## R13: Lean Black-Scholes Proof Complexity (v0.5+)
+
+**Risk**: Formalizing Black-Scholes pricing in Lean requires Mathlib real analysis that may
+be substantially harder than the integer-arithmetic accounting proofs already completed.
+
+**Severity**: 🟠 High (schedule risk for v0.5+)
+
+**Mitigation Strategy**:
+
+- **v0.5 target**: `binomial_replication_cost` theorem (single-period, integer arithmetic).
+  Scope is narrow enough to avoid continuous-time Mathlib dependencies.
+- **v0.6+ target**: Multi-period GBM convergence theorem. This requires Mathlib-level real
+  analysis (measure theory, stochastic processes) and may stall if Mathlib coverage is
+  insufficient.
+- **Escape hatch**: Leave pricing in Python (unverified) and verify only accounting layer.
+  This is the current v0.4 state; shipping v0.5+ proofs is a research stretch goal.
+
+**Implementation**: v0.5 (binomial), v0.6+ (continuous-time, if feasible)
+
+**Open Questions** 🤔:
+
+- Does Mathlib 4 have sufficient stochastic process coverage for GBM convergence? → Audit before v0.6
+- Should v0.5 scope the binomial theorem to a single step or multi-step? → Single step first
+
+**Fallback**: Ship v0.5 with `binomial_replication_cost` only; leave GBM theorem as aspirational
+pending Mathlib progress.
+
+---
+
 ## Summary Risk Matrix
 
 | ID | Risk | Severity | Status | Milestone |
@@ -376,9 +417,9 @@
 | R2 | Schema drift | 🟡 Medium | ✅ Mitigated | v0.6-verifier |
 | R3 | JSON parsing | 🟡 Medium | ✅ Mitigated | v0.6-verifier |
 | R4 | Float tolerances | 🟡 Medium | ✅ Mitigated | v0.6, v0.7 |
-| R5 | Proof difficulty | 🟠 High | 🔄 Monitoring | v0.3, v0.11 |
+| R5 | Proof difficulty | 🟠 High | ✅ Resolved | v0.4 |
 | R6 | Verification perf | 🟡 Medium | 🔄 Monitoring | v0.10-backtest |
-| R7 | DG mismatch | 🟢 Low | ✅ Accepted | v0.7-pricer |
+| R7 | DG mismatch | 🟢 Low | ✅ Mitigated | v0.4 |
 | R8 | CI timeout | 🟢 Low | ✅ Mitigated | v0.6-verifier |
 | R9 | Docs timeout | 🟢 Low | ✅ Mitigated | v0.11-release |
 | R10 | uv lock drift | 🟡 Medium | ✅ Mitigated | v0.1, v0.6 |

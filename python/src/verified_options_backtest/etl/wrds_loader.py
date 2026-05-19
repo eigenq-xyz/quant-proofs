@@ -9,8 +9,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from hedge_engine.backtest.data_types import PricePath
-from hedge_engine.etl.data_types import OptionSnapshot, UnderlyingSnapshot
+from verified_options_backtest.backtest.data_types import PricePath
+from verified_options_backtest.etl.data_types import (
+    OptionSnapshot,
+    UnderlyingSnapshot,
+)
 
 if TYPE_CHECKING:  # avoid hard runtime dependency on pandas
     import pandas as pd

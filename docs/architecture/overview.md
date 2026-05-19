@@ -8,7 +8,7 @@
 
 - **Lean**: Accounting kernel + formal proofs (pure functions, data-source agnostic)
 - **Python**: Black-Scholes pricing, GBM simulation, backtest runner, ETL, certificates
-- **Cython FFI**: Bridge between the two (Python stubs used until the Cython extension is built)
+- **Cython FFI**: Bridge between the two (compiled Lean → C → Cython → Python)
 
 ## System Diagram
 
@@ -19,7 +19,7 @@ Python (ETL, simulation, backtest runner)
     ├─ simulate_gbm          (seeded GBM path generator)
     ├─ run_delta_hedge        (source-agnostic backtest runner)
     │
-    └─▶ Lean kernel (via Python stubs / Cython FFI)
+    └─▶ Lean kernel (via compiled Cython FFI)
             │
             ├─ hedge_apply_trade      (applyTrade + valueUpdateFormula)
             ├─ hedge_settle_option    (applySettlement + settlement_value_formula)
@@ -50,20 +50,21 @@ and the integer is the only thing that crosses into the Lean kernel. Lean never 
 
 ## FFI Boundary
 
-```python
-# Python stubs (python/src/hedge_engine/ffi/__init__.py)
-# Mirror Lean's @[export hedge_*] functions exactly
+The Cython extension `verified_options_backtest/ffi/lean_ffi.pyx` is the live FFI path.
+It loads `libleanrt` + `libuv`, manages Lean's deterministic reference counting, and wraps
+each `@[export hedge_*]` symbol. Key functions exposed to Python:
 
-def apply_trade(cash, positions, asset_id, delta_quantity, execution_price, fee)
+```python
+# python/src/verified_options_backtest/ffi/__init__.py  (imports from lean_ffi.so)
+
+apply_trade(cash, positions, asset_id, delta_quantity, execution_price, fee)
     # returns: {"cash": int, "positions": list[dict], "portfolio_value": int}
 
-def settle_option(cash, positions, option_asset_id, option_kind, strike_bp, spot_bp)
+settle_option(cash, positions, option_asset_id, option_kind, strike_bp, spot_bp)
     # returns: {"cash": int, "positions": list[dict], "portfolio_value": int}
 ```
 
-The Cython extension (`ffi/lean_ffi.pyx`) calls the compiled Lean C symbols directly.
-Until the Cython extension is built, the pure-Python stubs replicate the same logic
-(but do not execute through the proven Lean kernel at runtime).
+All values are basis-point integers (×10,000). Lean never receives floats.
 
 ## Step Certificates
 
@@ -99,7 +100,7 @@ the kernel.
 
 ## Key Design Decisions
 
-See [DECISIONS.md](https://github.com/eigenq-xyz/options-hedge-engine/blob/main/DECISIONS.md) for full ADR documentation:
+See [DECISIONS.md](https://github.com/eigenq-xyz/verified-options-backtest/blob/main/DECISIONS.md) for full ADR documentation:
 
 - **ADR-000**: Lean for accounting, Python for ETL, data-source agnostic kernel
 - **ADR-001**: Scaled integer arithmetic (basis points) instead of floats or rationals

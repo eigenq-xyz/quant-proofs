@@ -152,8 +152,8 @@ link_args = [
 
 extensions = [
     Extension(
-        "hedge_engine.ffi.lean_ffi",
-        sources=["src/hedge_engine/ffi/lean_ffi.pyx"],
+        "verified_options_backtest.ffi.lean_ffi",
+        sources=["src/verified_options_backtest/ffi/lean_ffi.pyx"],
         include_dirs=[str(LEAN_INCLUDE)],
         library_dirs=library_dirs,
         libraries=libraries,

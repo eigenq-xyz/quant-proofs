@@ -78,7 +78,7 @@ secid→ticker mapping, spot-price join, ATM ±3% filter, 20 to 40 day expiry
 filter, and a strike×1000 sanity check.
 
 ```bash
-cd /path/to/options-hedge-engine
+cd /path/to/verified-options-backtest
 uv run python scripts/wrds_csv_to_parquet.py
 ```
 

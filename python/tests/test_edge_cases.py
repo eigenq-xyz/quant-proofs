@@ -14,11 +14,11 @@ import math
 
 import pytest
 
-from hedge_engine.backtest.data_types import PricePath
-from hedge_engine.backtest.runner import run_delta_hedge
-from hedge_engine.ffi import apply_trade
-from hedge_engine.pricer.black_scholes import bs_greeks
-from hedge_engine.pricer.conventions import to_bp
+from verified_options_backtest.backtest.data_types import PricePath
+from verified_options_backtest.backtest.runner import run_delta_hedge
+from verified_options_backtest.ffi import apply_trade
+from verified_options_backtest.pricer.black_scholes import bs_greeks
+from verified_options_backtest.pricer.conventions import to_bp
 
 # ── Shared fixtures ────────────────────────────────────────────────────────
 

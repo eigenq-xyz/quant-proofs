@@ -9,7 +9,7 @@ Place the three WRDS CSV downloads in the data/ directory:
   data/optionmetrics_asset_prices.csv         -- Security Prices (daily close)
 
 Then run:
-    cd /path/to/options-hedge-engine
+    cd /path/to/verified-options-backtest
     uv run python scripts/wrds_csv_to_parquet.py
 
 Output: data/portfolio_atm_options.parquet

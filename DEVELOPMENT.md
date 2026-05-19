@@ -1,6 +1,6 @@
 # Development Guide
 
-Deep technical reference for Options Hedge Engine development.
+Deep technical reference for verified-options-backtest development.
 
 ---
 
@@ -9,11 +9,12 @@ Deep technical reference for Options Hedge Engine development.
 1. [Makefile Reference](#makefile-reference)
 2. [Lean Project Structure](#lean-project-structure)
 3. [Python Package Architecture](#python-package-architecture)
-4. [Certificate Schema Evolution](#certificate-schema-evolution)
-5. [Adding New Invariants](#adding-new-invariants)
-6. [CI Pipeline Details](#ci-pipeline-details)
-7. [Performance Profiling](#performance-profiling)
-8. [ADR Template](#adr-template)
+4. [Numeric Precision Pattern](#numeric-precision-pattern)
+5. [Certificate Schema Evolution](#certificate-schema-evolution)
+6. [Adding New Invariants](#adding-new-invariants)
+7. [CI Pipeline Details](#ci-pipeline-details)
+8. [Performance Profiling](#performance-profiling)
+9. [ADR Template](#adr-template)
 
 ---
 
@@ -24,7 +25,7 @@ Deep technical reference for Options Hedge Engine development.
 All targets orchestrate operations across `lean/` and `python/` subdirectories.
 
 | Target | Description | Dependencies |
-|--------|-------------|--------------|
+| --- | --- | --- |
 | `make help` | Show available targets | None |
 | `make setup` | Install Lean + Python deps | elan, uv |
 | `make build` | Compile proofs + Python pkg | setup |
@@ -33,31 +34,24 @@ All targets orchestrate operations across `lean/` and `python/` subdirectories.
 | `make clean` | Remove build artifacts | None |
 | `make docs-build` | Build JupyterBook | setup |
 | `make docs-serve` | Serve docs on :8000 | docs-build |
-| `make integration` | Run Python → Lean test | build |
-| `make dev-lean` | Open Lean in VSCode | None |
-| `make dev-python` | Activate Python shell | setup |
+| `make integration` | Run cross-language test | build |
 | `make watch-lean` | Auto-rebuild Lean | setup |
 | `make ci-local` | Simulate CI with `act` | act installed |
-
-**Shortcuts:**
-- `make l` → `cd lean && lake build`
-- `make p` → `cd python && uv run pytest`
-- `make d` → `make docs-serve`
 
 ### Lean Makefile (`lean/Makefile`)
 
 | Target | Command | Notes |
-|--------|---------|-------|
+| --- | --- | --- |
 | `setup` | Install elan | Downloads Lean toolchain |
 | `build` | `lake build` | Compiles all Lean files |
-| `test` | `lake test` | Runs test suites |
+| `test` | `lake build OptionHedge.Tests.UnitTests` | Runs test suites |
 | `clean` | `lake clean` | Removes build/ |
 | `watch` | `lake build --watch` | Continuous compilation |
 
 ### Python Makefile (`python/Makefile`)
 
 | Target | Command | Notes |
-|--------|---------|-------|
+| --- | --- | --- |
 | `setup` | `uv sync` | Installs from uv.lock |
 | `build` | `uv build` | Creates wheel/sdist |
 | `test` | `uv run pytest` | With coverage |
@@ -70,292 +64,176 @@ All targets orchestrate operations across `lean/` and `python/` subdirectories.
 
 ## Lean Project Structure
 
-### Directory Layout
+### Lean Directory Layout
 
-```
+```text
 lean/
 ├── lakefile.lean          # Lake build configuration
-├── lean-toolchain         # Lean version (e.g., leanprover/lean4:v4.X.0)
+├── lean-toolchain         # Lean version pin (v4.27.0-rc1)
 ├── Makefile               # Lean-specific targets
-├── OptionHedge/
-│   ├── Basic.lean         # Core types: Portfolio, Position, Asset
-│   ├── Lifecycle.lean     # Option expiry, exercise, rolls, mark-to-market
-│   ├── Accounting.lean    # calcNAV, applyTrade, accrueInterest
-│   ├── Invariants.lean    # Theorem statements (all invariants)
-│   ├── Proofs/            # Individual proofs for each invariant
-│   │   ├── NAVIdentity.lean
-│   │   ├── SelfFinancing.lean
-│   │   ├── Conservation.lean
-│   │   ├── CashCorrectness.lean
-│   │   ├── TimeMonotonicity.lean
-│   │   ├── DomainConstraints.lean
-│   │   └── DeterministicReplay.lean
-│   └── Certificate/       # JSON certificate handling
-│       ├── Schema.lean    # Certificate structure definition
-│       ├── Parser.lean    # JSON → Lean types
-│       └── Verifier.lean  # Main verification entry point
-└── Tests/
-    ├── UnitTests.lean     # Basic test cases
-    └── IntegrationFixtures.lean  # Test data for integration
+└── OptionHedge/
+    ├── Basic.lean         # AssetId, Position (markPrice_pos), Portfolio (value_valid),
+    │                      # Trade (executionPrice_pos, fee_nonneg), applyTrade
+    ├── Accounting.lean    # @[export hedge_*] FFI symbols only
+    ├── Invariants.lean    # 12 accounting theorems (valueIdentity → applyTrade_wellFormed)
+    ├── Options.lean       # OptionKind, EuropeanOption (strike_pos), payoff functions,
+    │                      # settlement dispatcher
+    ├── OptionInvariants.lean  # 14 option theorems (callPayoff_nonneg → settlement_value_formula)
+    └── Tests/
+        └── UnitTests.lean # Concrete native_decide examples
 ```
 
-### Lake Build System
+### lakefile.lean Structure
 
-**lakefile.lean** structure:
 ```lean
 import Lake
 open Lake DSL
 
-package optionHedge {
+package «verified-options-backtest» where
   -- Package configuration
-}
 
-lean_lib OptionHedge {
-  -- Library configuration
-}
-
-lean_exe verify_certs {
-  root := `OptionHedge.Certificate.Verifier
-  -- CLI executable for certificate verification
-}
+lean_lib OptionHedge where
+  -- Library: all OptionHedge.* modules
 
 @[default_target]
 lean_lib OptionHedge
 ```
 
-### Numeric Type Design
-
-**Scaled Integer Approach:**
-```lean
--- Represent $123.4567 as 1234567 basis points (×10,000)
-structure Price where
-  basisPoints : Int
-  deriving Repr, BEq
-
-def Price.fromDecimal (intPart : Int) (fracPart : Nat) : Price :=
-  ⟨intPart * 10000 + fracPart⟩
-
-def Price.add (a b : Price) : Price :=
-  ⟨a.basisPoints + b.basisPoints⟩
-
-def Price.mul (a b : Price) : Price :=
-  -- Careful: (a × 10⁴) × (b × 10⁴) = result × 10⁸
-  ⟨(a.basisPoints * b.basisPoints) / 10000⟩
-
-theorem Price.add_assoc (a b c : Price) :
-  Price.add (Price.add a b) c = Price.add a (Price.add b c) := by
-  simp [Price.add]
-  ring
-```
+The `OptionHedge` namespace is the module hierarchy name (not the package name). All imports
+use `import OptionHedge.Basic`, `import OptionHedge.Invariants`, etc.
 
 ### Proof Workflow
 
-1. **Define theorem** in `Invariants.lean`:
+Proofs live inline in `Invariants.lean` and `OptionInvariants.lean` — there is no separate
+`Proofs/` directory. The workflow is:
+
+1. **State theorem** in `Invariants.lean`:
+
    ```lean
-   theorem navIdentity (p : Portfolio) :
-     calcNAV p = p.cash + (sumPositionValues p.positions) := by
-     sorry  -- Placeholder
+   theorem valueIdentity (p : Portfolio) :
+       p.portfolioValue = p.cash + sumPositionValues p.positions :=
+     p.value_valid
    ```
 
-2. **Implement proof** in `Proofs/NAVIdentity.lean`:
+2. **Prove inline** using `rfl` / `simp` / `omega` / `native_decide` as appropriate.
+   `rfl` suffices when the equality is definitional; `omega` handles linear integer
+   arithmetic; `simp` with lemmas for list operations.
+
+3. **Add concrete test** to `Tests/UnitTests.lean`:
+
    ```lean
-   import OptionHedge.Invariants
    import OptionHedge.Accounting
-
-   theorem navIdentity (p : Portfolio) :
-     calcNAV p = p.cash + (sumPositionValues p.positions) := by
-     unfold calcNAV sumPositionValues
-     simp [List.foldl]
-     -- Detailed proof steps...
+   example : some_computable_expression = expected := by native_decide
    ```
 
-3. **Import proof** back in `Invariants.lean`:
-   ```lean
-   import OptionHedge.Proofs.NAVIdentity
-   -- Theorem now proven
-   ```
+The zero-`sorry` invariant is enforced by CI: `lake build` fails if any `sorry` is present.
 
 ---
 
 ## Python Package Architecture
 
-### Directory Layout
+### Python Directory Layout
 
-```
+```text
 python/
-├── pyproject.toml         # Project metadata + dependencies
-├── uv.lock                # Locked dependency versions
-├── .python-version        # Python version (3.12)
-├── Makefile               # Python-specific targets
+├── pyproject.toml              # Project metadata + dependencies
+├── uv.lock                     # Locked dependency versions
+├── .python-version             # Python version (3.12)
+├── Makefile                    # Python-specific targets
+├── setup_ffi.py                # Cython extension build script
 ├── src/
-│   └── hedge_engine/
+│   └── verified_options_backtest/
 │       ├── __init__.py
-│       ├── ffi/               # Cython FFI to Lean kernel
-│       │   ├── __init__.py    # Python stubs (fallback)
-│       │   └── lean_ffi.pyx   # Cython declarations
-│       ├── etl/               # Data loading (v0.4)
-│       │   ├── wrds_loader.py
-│       │   ├── fred_loader.py
-│       │   ├── data_validator.py
-│       │   └── synthetic.py   # Synthetic test data
-│       ├── certificate/       # Certificate emission (v0.5)
-│       │   ├── schema.py      # Pydantic models
-│       │   └── emitter.py     # Serialize to JSON
-│       ├── pricer/            # BSM pricing (v0.7)
-│       │   ├── black_scholes.py
-│       │   ├── implied_vol.py
-│       │   └── vol_surface.py
-│       ├── lifecycle/         # Option lifecycle (v0.8)
-│       │   ├── expiry.py
-│       │   ├── roll.py
-│       │   └── mark_to_market.py
-│       ├── optimizer/         # LP/QP hedging (v0.9)
-│       │   ├── hedger.py      # cvxpy LP/QP solver
-│       │   ├── cvar.py        # CVaR computation
-│       │   ├── rebalance.py   # Rebalancing triggers
-│       │   └── margin.py      # Margin estimation
-│       ├── backtest/          # Backtest loop (v0.10)
-│       │   ├── engine.py
-│       │   ├── config.py
-│       │   └── results.py
-│       └── cli.py             # CLI entry point (v0.11)
-├── tests/
-│   ├── conftest.py        # pytest fixtures
-│   ├── test_numeric.py    # Cross-validate with Lean
-│   ├── test_accounting.py
-│   ├── test_pricer.py
-│   ├── test_certificate.py
-│   └── fixtures/
-│       └── tiny_cert_stream.json  # 3-step test scenario
-└── scripts/
-    └── emit_test_certs.py # Generate test certificates
+│       ├── pricer/
+│       │   ├── black_scholes.py   # bs_price, bs_greeks (scipy)
+│       │   └── conventions.py     # to_bp, from_bp
+│       ├── etl/
+│       │   ├── wrds_loader.py     # WRDS OptionMetrics CSV → DataFrame
+│       │   └── data_types.py      # Pydantic models for raw data
+│       ├── simulator/
+│       │   └── gbm.py             # Seeded GBM path generator
+│       ├── backtest/
+│       │   ├── runner.py          # HedgingStrategy Protocol, SingleLegStrategy,
+│       │   │                      # PortfolioStrategy, run_delta_hedge
+│       │   ├── audit.py           # StepCertificate dataclass + emission
+│       │   ├── data_types.py      # BacktestResult, HedgeStep
+│       │   └── scenarios.py       # Hull 19.2/19.3 reference scenarios
+│       └── ffi/
+│           ├── lean_ffi.pyx       # Cython declarations against Lean C headers
+│           └── __init__.py        # Loads compiled lean_ffi.so; re-exports apply_trade,
+│                                  # settle_option, portfolio_value
+└── tests/
+    ├── conftest.py            # pytest fixtures
+    ├── test_ffi.py            # FFI round-trip tests
+    ├── test_pricer.py         # BS price/greeks vs. reference vectors
+    ├── test_backtest.py       # Hull 19.2 replication, real-data, holdout
+    ├── test_audit.py          # StepCertificate emission
+    ├── test_etl.py            # WRDS CSV loading + filtering
+    └── test_edge_cases.py     # Boundary conditions
 ```
 
-### pyproject.toml Structure
+### Cython FFI
 
-```toml
-[project]
-name = "hedge-engine"
-version = "0.1.0"
-requires-python = ">=3.12"
-dependencies = [
-    "pydantic>=2.0",
-    "numpy>=1.24",
-    "scipy>=1.11",
-    "cvxpy>=1.4",
-    "click>=8.0",
-]
+The Cython extension `lean_ffi.pyx` is compiled and live — there is no Python stub fallback.
+It wraps the `@[export hedge_*]` symbols compiled from Lean via `libleanrt` and `libuv`.
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "mypy>=1.5",
-    "ruff>=0.1",
-    "ipython>=8.0",
-]
-docs = [
-    "jupyter-book>=0.15",
-    "matplotlib>=3.7",
-    "seaborn>=0.12",
-]
+Build the extension:
 
-[tool.ruff]
-line-length = 100
-target-version = "py312"
-
-[tool.mypy]
-python_version = "3.12"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "--cov=hedge_engine --cov-report=term-missing"
+```bash
+cd python
+uv run python setup_ffi.py build_ext --inplace
 ```
 
-### Numeric Precision Pattern
+The compiled `lean_ffi.so` lands in `src/verified_options_backtest/ffi/`. CI builds Lean
+first (`make build-lean`), then the Cython extension, then runs Python tests.
+
+---
+
+## Numeric Precision Pattern
+
+All monetary values use **basis points** (×10,000) as `Int`. Floats are computed in Python
+(BS pricing, Greeks) and converted at the FFI boundary.
 
 ```python
-from decimal import Decimal, getcontext
+# verified_options_backtest/pricer/conventions.py
+def to_bp(value: float) -> int:
+    """Convert a dollar float to basis-point integer (×10,000)."""
+    return round(value * 10_000)
 
-# Set high precision globally
-getcontext().prec = 28
+def from_bp(value: int) -> float:
+    """Convert a basis-point integer back to a dollar float."""
+    return value / 10_000
+```
 
-class Price:
-    """Represents monetary amount with exact decimal precision.
+The FFI functions only accept and return `int` (basis points). Lean never receives floats.
 
-    Internally stores as Decimal. Converts to/from Lean's basis points.
-    """
+```python
+from verified_options_backtest.pricer.conventions import to_bp, from_bp
+from verified_options_backtest.ffi import apply_trade
 
-    def __init__(self, value: Decimal | str | int) -> None:
-        if isinstance(value, int):
-            # From Lean: basis points
-            self.value = Decimal(value) / 10000
-        else:
-            self.value = Decimal(str(value))
-
-    def to_lean_int(self) -> int:
-        """Convert to basis points for Lean interop."""
-        return int(self.value * 10000)
-
-    def __add__(self, other: "Price") -> "Price":
-        return Price(self.value + other.value)
-
-    def __str__(self) -> str:
-        return f"{self.value:.4f}"  # Always 4 decimals
+result = apply_trade(
+    cash=to_bp(100_000.00),
+    positions=[],
+    asset_id="SPY",
+    delta_quantity=100,
+    execution_price=to_bp(450.25),
+    fee=to_bp(1.00),
+)
+nav = from_bp(result["portfolio_value"])  # back to dollars
 ```
 
 ---
 
 ## Certificate Schema Evolution
 
-### Versioning Strategy
+*Planned for v0.5+. See ADR-002 in [DECISIONS.md](DECISIONS.md).*
 
-**Schema Version Format**: `major.minor` (e.g., "1.0", "1.1", "2.0")
+The v0.4 backtester uses an in-process `StepCertificate` Python dataclass
+(`backtest/audit.py`) rather than JSON certificates. Cross-language JSON certificate
+interchange with a Lean-side verifier is the planned v0.5 feature.
 
-- **Major bump** (1.0 → 2.0): Breaking changes (field removal, type change)
-- **Minor bump** (1.0 → 1.1): Backward-compatible additions (new optional fields)
-
-### Schema Change Workflow
-
-1. **Propose change** in GitHub Issue/Discussion
-2. **Update Python schema** (`certificate/schema.py`):
-   ```python
-   class CertificateV1_1(BaseModel):
-       version: str = "1.1"  # Increment version
-       new_field: Optional[str] = None  # Add new field
-       # ... existing fields
-   ```
-
-3. **Update Lean schema** (`Certificate/Schema.lean`):
-   ```lean
-   structure Certificate where
-     version : String
-     newField : Option String  -- Match Python
-     -- ... existing fields
-   ```
-
-4. **Update parser** (`Certificate/Parser.lean`)
-5. **Add migration test** (v1.0 → v1.1 compatibility)
-6. **Update docs** (`book/architecture/certificate_flow.md`)
-7. **Increment milestone** if breaking change
-
-### Backward Compatibility
-
-```python
-def parse_certificate(data: dict) -> Certificate:
-    """Parse certificate with version detection."""
-    version = data.get("version", "1.0")
-
-    if version == "1.0":
-        return CertificateV1_0.model_validate(data)
-    elif version == "1.1":
-        return CertificateV1_1.model_validate(data)
-    else:
-        raise ValueError(f"Unsupported schema version: {version}")
-```
+When JSON certificates ship, versioning will follow `major.minor` (e.g., "1.0", "1.1").
+Major bumps are breaking; minor bumps add optional fields only.
 
 ---
 
@@ -365,240 +243,125 @@ Complete workflow for adding a new formally verified invariant.
 
 ### Step 1: Document Rationale
 
-Add to [RISKS.md](RISKS.md) or [DECISIONS.md](DECISIONS.md):
-```markdown
-## Why This Invariant Matters
-
-**Property**: Fee Non-Negativity
-**Rationale**: Ensures no negative fees (would imply system paying trader)
-**Impact**: Critical for accounting correctness
-```
+Add to [DECISIONS.md](DECISIONS.md) or a comment in `Invariants.lean` explaining why
+the invariant matters and what economic property it captures.
 
 ### Step 2: Define Lean Theorem
 
-In `OptionHedge/Invariants.lean`:
+In `OptionHedge/Invariants.lean` (or `OptionInvariants.lean` for options-specific theorems):
+
 ```lean
 /-- All transaction fees must be non-negative -/
-theorem fees_non_negative (t : Trade) : t.fee ≥ 0 := by
-  sorry  -- Placeholder for now
+theorem feeNonNegative (t : Trade) : 0 ≤ t.fee :=
+  t.fee_nonneg
 ```
 
-### Step 3: Implement Proof
+### Step 3: Implement Proof Inline
 
-Create `OptionHedge/Proofs/FeeNonNegativity.lean`:
+The proof lives immediately after the theorem statement. Use `omega` for linear integer
+goals, `simp` for definitional unfolding, `rfl` when the goal is definitionally equal,
+and `cases` for algebraic decomposition.
+
 ```lean
-import OptionHedge.Invariants
-import OptionHedge.Basic
-
-theorem fees_non_negative (t : Trade) : t.fee ≥ 0 := by
-  cases t with
-  | mk asset delta price fee =>
-    -- fee is constructed from Nat, so always ≥ 0
-    exact Nat.zero_le fee
+theorem cashUpdateCorrect (p : Portfolio) (t : Trade) :
+    (applyTrade p t).cash = p.cash - t.executionPrice * t.deltaQuantity - t.fee := by
+  simp [applyTrade]
 ```
 
-### Step 4: Add to Verifier
+### Step 4: Add Concrete Test
 
-In `OptionHedge/Certificate/Verifier.lean`:
+In `Tests/UnitTests.lean`:
+
 ```lean
-def checkFeeNonNegativity (cert : Certificate) : Bool :=
-  cert.action.trades.all (fun t => t.fee ≥ 0)
+import OptionHedge.Accounting
 
-def verifyCertificate (cert : Certificate) : VerificationResult :=
-  let checks := [
-    ("NAV Identity", checkNAVIdentity cert),
-    ("Fee Non-Negativity", checkFeeNonNegativity cert),  -- Add here
-    -- ... other checks
-  ]
-  combineResults checks
+-- Verify at a concrete input via native_decide
+example : (some concrete expression) = expected_value := by native_decide
 ```
 
 ### Step 5: Test in Python
 
-In `tests/test_invariants.py`:
+If the invariant has a Python-observable consequence, add a test in `tests/test_ffi.py`
+or `tests/test_backtest.py`:
+
 ```python
-def test_fee_non_negativity():
-    """Fees must always be non-negative."""
-    trade = Trade(asset_id="SPY", delta=100, price=400.0, fee=-1.0)
-    cert = emit_certificate(portfolio, [trade])
-
-    # Should fail verification
-    result = verify_with_lean(cert)
-    assert not result.success
-    assert "Fee Non-Negativity" in result.failures
-```
-
-### Step 6: Document
-
-Create `book/invariants/fee_non_negativity.ipynb`:
-```markdown
-# Fee Non-Negativity Invariant
-
-## Mathematical Definition
-
-$$\forall t \in \text{Trades} : t.\text{fee} \geq 0$$
-
-## Rationale
-
-Transaction fees represent costs to the trader...
-
-## Proof Sketch
-
-[LaTeX proof steps]
-
-## Code Implementation
-
-[Show Lean proof]
-[Show Python validation]
+def test_fee_nonneg_enforced():
+    """Lean kernel refuses negative fees at the type level."""
+    # The proof field fee_nonneg on Trade makes this a compile-time guarantee;
+    # the FFI accepts only valid (non-negative) fee values.
+    result = apply_trade(cash=to_bp(10_000), positions=[], asset_id="SPY",
+                         delta_quantity=1, execution_price=to_bp(100), fee=to_bp(0))
+    assert result["portfolio_value"] >= 0
 ```
 
 ---
 
 ## CI Pipeline Details
 
-### GitHub Actions Workflows
+Refer to the actual workflow files in `.github/workflows/` for authoritative YAML.
+The workflows in summary:
 
-#### 1. Lean Build (`.github/workflows/lean.yml`)
+**`.github/workflows/lean.yml`** — runs on every push. Installs elan, caches
+`~/.elan` and `lean/build` by `lakefile.lean` hash, runs `lake build`. Any `sorry`
+causes a compile error (CI fails automatically). Checks `grep -r "sorry" lean/OptionHedge`
+count is zero.
 
-```yaml
-on: [push, pull_request]
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Lean
-        run: |
-          curl -sSfL https://github.com/leanprover/elan/releases/download/v3.0.0/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
-          ./elan-init -y --default-toolchain none
-      - name: Cache Lake
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.elan
-            lean/build
-          key: lean-${{ hashFiles('lean/lakefile.lean') }}
-      - name: Build Proofs
-        run: cd lean && make build
-      - name: Check for Axioms
-        run: |
-          count=$(grep -r "axiom" lean/OptionHedge --exclude-dir=build | wc -l)
-          echo "Axiom count: $count"
-          # Fail if count increases (track in GitHub env)
-```
+**`.github/workflows/python.yml`** — runs on every push. Installs uv, builds the Lean
+library and Cython extension, then runs `uv run pytest --cov=verified_options_backtest
+--cov-fail-under=80` and `uv run mypy src/verified_options_backtest`. Matrix covers
+`ubuntu-latest` and `macos-latest`.
 
-#### 2. Python Tests (`.github/workflows/python.yml`)
-
-```yaml
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-      - name: Run Tests
-        run: cd python && make test
-      - name: Check Coverage
-        run: cd python && uv run pytest --cov-fail-under=80
-```
-
-#### 3. Integration (`.github/workflows/integration.yml`)
-
-```yaml
-on: [push, pull_request]
-needs: [lean-build, python-test]
-jobs:
-  integrate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup
-        run: make setup
-      - name: Run Integration
-        run: make integration
-      - name: Upload Artifacts
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: failed-certs
-          path: /tmp/certs.json
-```
+**`.github/workflows/docs.yml`** — runs on pushes to `main`. Builds JupyterBook
+(`make docs-build`) and deploys to GitHub Pages.
 
 ### Local CI Simulation
 
 ```bash
 # Install act (GitHub Actions local runner)
 brew install act  # macOS
-# or: curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
 
 # Run specific job
 act -j lean-build
 
 # Run all jobs
 act
-
-# Use different Docker image
-act -P ubuntu-latest=catthehacker/ubuntu:act-latest
 ```
 
 ---
 
 ## Performance Profiling
 
-### Lean Verifier Profiling
-
-```bash
-# Profile certificate verification
-cd lean
-lake exe verify_certs /path/to/certs.json --profile
-
-# Output shows time per function
-# Optimize hotspots (likely JSON parsing or arithmetic)
-```
-
 ### Python Profiling
 
 ```python
-# tests/test_performance.py
 import cProfile
 import pstats
-from hedge_engine.backtest import run_backtest
+from verified_options_backtest.backtest.runner import run_delta_hedge
+from verified_options_backtest.backtest.scenarios import hull_192_path, HULL_192_K
 
-def test_backtest_performance():
+def profile_backtest():
     profiler = cProfile.Profile()
     profiler.enable()
-
-    run_backtest(days=100)
-
+    run_delta_hedge(path=hull_192_path(), K=HULL_192_K, r=0.05,
+                    sigma=0.20, n_contracts=1)
     profiler.disable()
     stats = pstats.Stats(profiler)
-    stats.sort_stats('cumtime')
-    stats.print_stats(20)  # Top 20 functions
+    stats.sort_stats("cumtime")
+    stats.print_stats(20)
 ```
 
 ```bash
-# Run profiling
-uv run pytest tests/test_performance.py -v -s
-
-# Use line_profiler for detailed analysis
-uv add kernprof
-uv run kernprof -l -v script.py
+uv run python -c "from tests.test_performance import profile_backtest; profile_backtest()"
 ```
 
 ### Benchmark Targets
 
-| Component | Target | Current | Status |
-|-----------|--------|---------|--------|
-| Lean verify (1 cert) | <10ms | TBD | 🟡 |
-| Python cert emit | <1ms | TBD | 🟡 |
-| Backtest (100 steps) | <10s | TBD | 🟡 |
-| BS pricing (1 option) | <0.1ms | TBD | 🟡 |
-| LP solve (10 assets) | <100ms | TBD | 🟡 |
+| Component | Target | Notes |
+| --- | --- | --- |
+| FFI call (`apply_trade`) | < 1 ms | Profile in v0.6 |
+| BS pricing (1 option) | < 0.1 ms | Already fast via scipy |
+| Backtest (20 weekly steps) | < 1 s | Hull 19.2 scale |
+| Full GBM run (500 paths × 20 steps) | < 60 s | Monte Carlo convergence test |
 
 ---
 
@@ -609,52 +372,23 @@ For new architectural decisions, add to [DECISIONS.md](DECISIONS.md):
 ```markdown
 ## ADR-XXX: [Title]
 
-**Status**: ✅ Accepted / 🔄 Proposed / ❌ Rejected
-**Date**: YYYY-MM-DD
-**Deciders**: [Names/roles]
-**Consulted**: [Experts/references]
+**Status:** ✅ Accepted / 🔄 Proposed / ❌ Rejected
+**Date:** YYYY-MM-DD
+**Implementation:** vX.Y
 
-### Context
+**Context:** [One-paragraph description of the problem and constraints.]
 
-[Describe the problem and constraints]
+**Decision:** [Describe the chosen solution.]
 
-### Decision
-
-[Describe the chosen solution]
-
-### Rationale
+**Rationale:**
 
 1. [Reason 1]
 2. [Reason 2]
-3. [Reason 3]
 
-### Consequences
+**Alternatives:**
 
-**Positive**:
-- [Benefit 1]
-- [Benefit 2]
-
-**Negative**:
-- [Drawback 1]
-- [Drawback 2]
-
-**Neutral**:
-- [Trade-off 1]
-
-### Alternatives Considered
-
-1. **[Alternative 1]**: [Why rejected]
-2. **[Alternative 2]**: [Why rejected]
-
-### Consultation Points
-
-- [Question for experts]
-- [Area requiring validation]
-
-### References
-
-- [Link 1]
-- [Link 2]
+- [Alternative A]: [Why rejected]
+- [Alternative B]: [Why rejected]
 ```
 
 ---
@@ -664,13 +398,15 @@ For new architectural decisions, add to [DECISIONS.md](DECISIONS.md):
 ### Lean Debugging
 
 ```lean
--- Add trace messages
-#check myFunction  -- Show type
-#eval myFunction arg  -- Evaluate
+-- Show type of expression
+#check applyTrade
 
--- Use sorry with comments
+-- Evaluate at concrete inputs
+#eval applyTrade somePortfolio someTrade
+
+-- Use sorry during exploration, replace before committing
 theorem myTheorem : ... := by
-  sorry  -- TODO: Prove using induction on positions
+  sorry  -- TODO: prove using omega after unfolding applyTrade
 ```
 
 ### Python Debugging
@@ -680,11 +416,11 @@ theorem myTheorem : ... := by
 import ipdb; ipdb.set_trace()
 
 # Or use pytest with pdb
-pytest --pdb  # Drop into debugger on failure
+# pytest --pdb  # Drop into debugger on failure
 
-# Print with rich
-from rich import print as rprint
-rprint(portfolio)  # Pretty-printed output
+# Inspect basis-point values
+from verified_options_backtest.pricer.conventions import from_bp
+print(from_bp(result["portfolio_value"]))
 ```
 
 ---
@@ -698,4 +434,4 @@ rprint(portfolio)  # Pretty-printed output
 
 ---
 
-**Last Updated**: 2026-02-16 (v0.2-nav)
+**Last Updated:** 2026-05-09 (v0.4)

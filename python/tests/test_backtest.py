@@ -24,14 +24,14 @@ from typing import Any
 
 import pytest
 
-from hedge_engine.backtest.data_types import PricePath
-from hedge_engine.backtest.runner import (
+from verified_options_backtest.backtest.data_types import PricePath
+from verified_options_backtest.backtest.runner import (
     DeltaHedgeResult,
     OptionLeg,
     run_delta_hedge,
     run_portfolio_hedge,
 )
-from hedge_engine.backtest.scenarios import (
+from verified_options_backtest.backtest.scenarios import (
     HULL_192_COST_TOLERANCE,
     HULL_192_EXPECTED_COST,
     HULL_192_K,
@@ -51,8 +51,8 @@ from hedge_engine.backtest.scenarios import (
     hull_192_path,
     hull_193_path,
 )
-from hedge_engine.pricer.black_scholes import bs_greeks, bs_price
-from hedge_engine.simulator.gbm import simulate_gbm
+from verified_options_backtest.pricer.black_scholes import bs_greeks, bs_price
+from verified_options_backtest.simulator.gbm import simulate_gbm
 
 # ── MC convergence parameters ─────────────────────────────────────────────
 _MC_S0 = 49.0
@@ -542,7 +542,7 @@ class TestPortfolioHedge:
         )
         assert result.total_hedging_cost > 0, "Expected positive hedging cost"
         # Cost must be less than total premium received (call + put at S₀=49, K=50)
-        from hedge_engine.pricer.black_scholes import bs_price
+        from verified_options_backtest.pricer.black_scholes import bs_price
 
         path = hull_192_path()
         S0 = path.prices[0]
@@ -686,7 +686,7 @@ class TestRealDataBacktest:
         import numpy as np  # type: ignore[import-untyped]
         import pandas as pd  # type: ignore[import-untyped]
 
-        from hedge_engine.etl.wrds_loader import (
+        from verified_options_backtest.etl.wrds_loader import (
             optionmetrics_option_snapshots_from_df,
         )
 
@@ -805,7 +805,7 @@ class TestHoldoutValidation:
         """
         import pandas as pd  # type: ignore[import-untyped]
 
-        from hedge_engine.etl.wrds_loader import (
+        from verified_options_backtest.etl.wrds_loader import (
             optionmetrics_option_snapshots_from_df,
         )
 

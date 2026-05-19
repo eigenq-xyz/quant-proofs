@@ -1,23 +1,26 @@
 # Contributing Guide
 
-Welcome to the Options Hedge Engine project. This guide covers development setup, workflow, and conventions.
+Welcome to verified-options-backtest. This guide covers development setup, workflow, and conventions.
 
 ---
 
 ## Prerequisites
 
 **Required:**
+
 - **macOS or Linux** (Windows users: WSL 2 required)
 - **Git** (version control)
 - **Make** (build orchestration)
 - **uv** (Python package manager): Install with `curl -LsSf https://astral.sh/uv/install.sh | sh`
 
 **Installed by `make setup`:**
+
 - **Lean 4** via elan (Lean toolchain manager)
 - **Python 3.12** via uv
 - **Python dependencies** (pytest, ruff, mypy, jupyterbook, etc.)
 
 **Optional:**
+
 - **direnv**: Auto-activate Python venv when entering project directory (`brew install direnv`)
 
 ---
@@ -26,8 +29,8 @@ Welcome to the Options Hedge Engine project. This guide covers development setup
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/eigenq-xyz/options-hedge-engine.git
-cd options-hedge-engine
+git clone https://github.com/eigenq-xyz/verified-options-backtest.git
+cd verified-options-backtest
 
 # 2. Install all dependencies
 make setup
@@ -61,19 +64,20 @@ cd lean
 lake build
 
 # Run tests
-lake test
+lake build OptionHedge.Tests.UnitTests
 
 # Watch mode (rebuild on file changes)
-make watch
+lake build --watch
 
-# Check for axioms (should be zero in completed milestones)
-grep -r "axiom" OptionHedge/
+# Check for sorry (must be zero)
+grep -r "sorry" OptionHedge/
 
 # Open in VSCode with Lean 4 extension
 code .
 ```
 
 **Lean Tips:**
+
 - Install **Lean 4 VSCode extension**: `ms-vscode.lean4`
 - Proofs show live feedback in editor
 - Use `sorry` as placeholder during development, replace with actual proof
@@ -91,10 +95,10 @@ uv sync
 uv run pytest
 
 # Run tests with coverage
-uv run pytest --cov=hedge_engine --cov-report=term-missing
+uv run pytest --cov=verified_options_backtest --cov-report=term-missing
 
 # Type checking
-uv run mypy src/
+uv run mypy src/verified_options_backtest
 
 # Linting
 uv run ruff check src/ tests/
@@ -107,7 +111,8 @@ uv run ipython
 ```
 
 **Python Tips:**
-- Use `Decimal` for all financial calculations (never `float` for money)
+
+- Use basis-point integers for all values crossing the FFI boundary (never floats)
 - Add type hints to all functions
 - Write tests for new features (`tests/test_*.py`)
 - Follow existing code style (enforced by ruff)
@@ -120,15 +125,10 @@ make docs-build
 
 # Build and serve locally (http://localhost:8000)
 make docs-serve
-
-# Execute notebooks (for caching outputs)
-cd python
-uv run jupyter-book build ../book --execute
 ```
 
 **Documentation Tips:**
-- Add docstrings to all public functions/classes
-- Create notebooks for new features in `book/examples/`
+
 - Document architectural decisions in [DECISIONS.md](DECISIONS.md)
 - Update [RISKS.md](RISKS.md) if new risks identified
 
@@ -137,12 +137,6 @@ uv run jupyter-book build ../book --execute
 ```bash
 # Run full integration test
 make integration
-
-# Manually test certificate pipeline
-cd python
-uv run python scripts/emit_test_certs.py > /tmp/certs.json
-cd ../lean
-lake exe verify_certs /tmp/certs.json
 ```
 
 ---
@@ -152,62 +146,49 @@ lake exe verify_certs /tmp/certs.json
 ### Lean
 
 ```lean
--- Module naming: PascalCase
--- OptionHedge/Numeric.lean, OptionHedge/Accounting.lean
+-- Module naming: PascalCase under OptionHedge.*
+-- OptionHedge/Basic.lean, OptionHedge/Invariants.lean
 
 -- Structure names: PascalCase
 structure Portfolio where
   cash : Int
   positions : List Position
+  portfolioValue : Int
+  value_valid : portfolioValue = cash + sumPositionValues positions
 
 -- Function names: camelCase
-def calcNAV (p : Portfolio) : Int := ...
+def applyTrade (p : Portfolio) (t : Trade) : Portfolio := ...
 
 -- Theorem names: camelCase with descriptive suffix
-theorem navIdentityHolds (p : Portfolio) : ... := by ...
+theorem valueUpdateFormula (p : Portfolio) (t : Trade) : ... := by ...
 
--- Comments: Explain why, not what
--- Use docstrings for public API
-/-- Calculate net asset value of portfolio.
-    NAV = cash + Σ(position.quantity × position.mark_price) -/
-def calcNAV ...
+-- Proofs live inline in Invariants.lean / OptionInvariants.lean
+-- Use rfl / simp / omega / native_decide where possible
 ```
 
 ### Python
 
 ```python
-# Follow PEP 8
-# Use type hints everywhere
-# Docstrings in Google style
+# Follow PEP 8, use type hints everywhere
+# All monetary values crossing the FFI boundary are basis-point integers
 
-from decimal import Decimal
-from typing import List
+from verified_options_backtest.pricer.conventions import to_bp, from_bp
+from verified_options_backtest.ffi import apply_trade
 
-class Portfolio:
-    """Represents portfolio state at a point in time.
-
-    Attributes:
-        cash: Cash balance in account (Decimal for precision)
-        positions: List of open positions
-    """
-
-    def __init__(self, cash: Decimal, positions: List[Position]) -> None:
-        self.cash = cash
-        self.positions = positions
-
-    def calc_nav(self) -> Decimal:
-        """Calculate net asset value.
-
-        Returns:
-            Total portfolio value (cash + position values)
-        """
-        position_value = sum(p.quantity * p.mark_price for p in self.positions)
-        return self.cash + position_value
+result = apply_trade(
+    cash=to_bp(100_000.0),
+    positions=[],
+    asset_id="SPY",
+    delta_quantity=100,
+    execution_price=to_bp(450.25),
+    fee=to_bp(1.0),
+)
+print(from_bp(result["portfolio_value"]))
 ```
 
 ### Git Commit Messages
 
-```
+```text
 [tag] Brief summary (50 chars)
 
 - Detailed explanation if needed
@@ -215,10 +196,10 @@ class Portfolio:
 - Reference issues: Fixes #123
 
 Examples:
-[v0.2] Implement Price type with scaled integer arithmetic
-[v0.3] Prove NAV identity theorem
-[docs] Add numeric precision policy documentation
-[fix] Handle edge case in certificate parser
+[v0.4] Prove settlement_value_formula (ITM/OTM unified)
+[v0.5] Add binomial_replication_cost theorem
+[docs] Rewrite CONTRIBUTING to reflect v0.4 layout
+[fix] Handle edge case in bs_greeks near expiry
 ```
 
 ---
@@ -243,30 +224,25 @@ make integration # Integration test passes
 ### Writing Tests
 
 **Python:**
-```python
-# tests/test_accounting.py
-from decimal import Decimal
-from hedge_engine.accounting import Portfolio, calc_nav
 
-def test_nav_calculation():
-    """NAV equals cash plus position values."""
-    portfolio = Portfolio(
-        cash=Decimal("1000.00"),
-        positions=[
-            Position("SPY", Decimal("10"), Decimal("400.00")),  # 10 shares @ $400
-        ]
-    )
-    expected = Decimal("5000.00")  # 1000 + 10*400
-    assert calc_nav(portfolio) == expected
+```python
+# tests/test_pricer.py
+from verified_options_backtest.pricer.black_scholes import bs_price
+
+def test_bs_price_hull_ex15_6():
+    """Matches Hull Example 15.6 reference vector."""
+    price = bs_price(S=42.0, K=40.0, T=0.5, r=0.10, sigma=0.20, option_type="call")
+    assert abs(price - 4.76) < 0.01
 ```
 
 **Lean:**
+
 ```lean
 -- Tests/UnitTests.lean
 import OptionHedge.Accounting
 
--- Simple test case
-example : Price.add ⟨100⟩ ⟨200⟩ = ⟨300⟩ := rfl
+-- Concrete computation test via native_decide
+example : hedge_portfolio_value 500_000 [] = 500_000 := by native_decide
 ```
 
 ---
@@ -275,25 +251,16 @@ example : Price.add ⟨100⟩ ⟨200⟩ = ⟨300⟩ := rfl
 
 ### Adding a New Invariant
 
-1. **Document in RISKS.md**: Why is this invariant important?
-2. **Define theorem in Lean** (`OptionHedge/Invariants.lean`)
-3. **Implement proof** (`OptionHedge/Proofs/NewInvariant.lean`)
-4. **Add to verifier** (`OptionHedge/Certificate/Verifier.lean`)
-5. **Test in Python** (`tests/test_invariants.py`)
-6. **Document in notebook** (`book/invariants/new_invariant.ipynb`)
-
-### Adding a New Certificate Field
-
-1. **Update Python schema** (`python/src/hedge_engine/certificate/schema.py`)
-2. **Update Lean schema** (`lean/OptionHedge/Certificate/Schema.lean`)
-3. **Update parser** (`lean/OptionHedge/Certificate/Parser.lean`)
-4. **Increment schema version** if breaking change
-5. **Add tests** for new field in both languages
-6. **Update docs** (`book/architecture/certificate_flow.md`)
+1. **Document in DECISIONS.md**: Why is this invariant important?
+2. **Define theorem in Lean** (`OptionHedge/Invariants.lean` or `OptionInvariants.lean`)
+3. **Implement proof inline** (use `rfl`/`simp`/`omega`/`native_decide` where possible)
+4. **Add concrete example** to `Tests/UnitTests.lean`
+5. **Test in Python** if the invariant has a Python-observable effect
 
 ### Updating Dependencies
 
 **Python:**
+
 ```bash
 cd python
 # Add new dependency
@@ -307,6 +274,7 @@ git add uv.lock && git commit -m "[deps] Update Python dependencies"
 ```
 
 **Lean:**
+
 ```bash
 cd lean
 # Update Lean toolchain
@@ -323,26 +291,30 @@ git add lake-manifest.json && git commit -m "[deps] Update Lean dependencies"
 ### Lean Issues
 
 **Problem**: `lake build` fails with "unknown package"
+
 ```bash
 # Solution: Update dependencies
 cd lean && lake update
 ```
 
 **Problem**: Proofs compile slowly
+
 ```bash
 # Solution: Increase parallelism
 lake build -j 8  # Use 8 cores
 ```
 
 **Problem**: VSCode Lean extension not working
+
 ```bash
 # Solution: Restart Lean server
-Cmd+Shift+P → "Lean 4: Restart Server"
+# Cmd+Shift+P → "Lean 4: Restart Server"
 ```
 
 ### Python Issues
 
 **Problem**: `uv sync` fails
+
 ```bash
 # Solution: Clear cache and retry
 uv cache clean
@@ -350,6 +322,7 @@ uv sync
 ```
 
 **Problem**: Import errors in tests
+
 ```bash
 # Solution: Install package in editable mode
 cd python
@@ -357,22 +330,25 @@ uv pip install -e .
 ```
 
 **Problem**: `make docs-serve` fails
+
 ```bash
 # Solution: Clean build and retry
-rm -rf book/_build
+rm -rf docs/_build
 make docs-build
 ```
 
 ### Data Access
 
-**Problem**: Need decryption key for data/
-```
+**Problem**: Need decryption key for `data/`
+
+```text
 # Solution: Request from project maintainer
 # Send GPG public key or Signal contact
 # Key will be provided via secure channel only
 ```
 
 **Problem**: git-crypt not installed
+
 ```bash
 # macOS
 brew install git-crypt
@@ -387,38 +363,18 @@ sudo apt install git-crypt
 
 GitHub Actions runs on every push:
 
-1. **Lean Build** (`.github/workflows/lean.yml`)
-   - Compiles all proofs
-   - Checks for `axiom` usage
-   - Runs Lean tests
-
-2. **Python Tests** (`.github/workflows/python.yml`)
-   - Linting (ruff)
-   - Type checking (mypy)
-   - Unit tests with coverage
-
-3. **Integration** (`.github/workflows/integration.yml`)
-   - Runs after Lean + Python pass
-   - Python emits certificates → Lean verifies
-
-4. **Documentation** (`.github/workflows/docs.yml`)
-   - Builds JupyterBook
-   - Deploys to GitHub Pages (main branch only)
-
-**Local CI Simulation** (requires `act`):
-```bash
-brew install act
-make ci-local
-```
+1. **Lean Build** (`.github/workflows/lean.yml`) — compiles all proofs, checks for `sorry`
+2. **Python Tests** (`.github/workflows/python.yml`) — lint, typecheck, unit tests with coverage
+3. **Documentation** (`.github/workflows/docs.yml`) — builds JupyterBook, deploys to Pages (main only)
 
 ---
 
 ## Getting Help
 
-- **Questions**: Open a [Discussion](https://github.com/eigenq-xyz/options-hedge-engine/discussions)
-- **Bugs**: Open an [Issue](https://github.com/eigenq-xyz/options-hedge-engine/issues)
+- **Questions**: Open a [Discussion](https://github.com/eigenq-xyz/verified-options-backtest/discussions)
+- **Bugs**: Open an [Issue](https://github.com/eigenq-xyz/verified-options-backtest/issues)
 - **Lean help**: [Lean Zulip](https://leanprover.zulipchat.com/)
-- **Python help**: Check [DEVELOPMENT.md](DEVELOPMENT.md) for detailed technical info
+- **Technical detail**: See [DEVELOPMENT.md](DEVELOPMENT.md)
 
 ---
 
