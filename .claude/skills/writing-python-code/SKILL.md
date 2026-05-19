@@ -152,12 +152,20 @@ hook does not pass.
 
 Hooks installed:
 - `ruff` — linting (E, F, I, UP rule sets) and formatting
-- `mypy` — `--strict` type checking
+- `mypy` — `--strict` type checking (uses `repo: local` + `uv run` so the
+  project venv supplies all stubs and typed dependencies — same flags as CI)
 
 Run hooks manually at any time:
 ```
 uv run pre-commit run --all-files
 ```
+
+**Fixing mypy errors:** Fix the actual type error. Do **not** add
+`[[tool.mypy.overrides]]` blocks or `ignore_missing_imports = true` to paper
+over failures. If a third-party dependency lacks stubs, add a `py.typed` marker
+to the package (if it is internal to this monorepo) or add a narrow
+`# type: ignore[import-untyped]` comment at the import site with a one-line
+explanation — never a blanket project-wide suppression.
 
 ### Pre-commit checklist
 
