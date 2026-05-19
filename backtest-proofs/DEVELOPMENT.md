@@ -238,14 +238,14 @@ nav = from_bp(result["portfolio_value"])  # back to dollars
 
 ## Certificate Schema Evolution
 
-*Planned for v0.5+. See ADR-002 in [DECISIONS.md](DECISIONS.md).*
-
 The v0.4 backtester uses an in-process `StepCertificate` Python dataclass
-(`backtest/audit.py`) rather than JSON certificates. Cross-language JSON certificate
-interchange with a Lean-side verifier is the planned v0.5 feature.
+(`backtest/audit.py`). Cross-language JSON certificate interchange with a Lean-side
+verifier was originally planned for a future version; it is no longer on the
+backtest-proofs roadmap (pricing-theorem work has migrated to `options-proofs`).
 
-When JSON certificates ship, versioning will follow `major.minor` (e.g., "1.0", "1.1").
-Major bumps are breaking; minor bumps add optional fields only.
+If JSON certificates are ever added, versioning should follow `major.minor` ("1.0", "1.1").
+Major bumps are breaking; minor bumps add optional fields only. See ADR-002 in
+[DECISIONS.md](DECISIONS.md) for the original design rationale.
 
 ---
 
@@ -370,7 +370,7 @@ uv run python -c "from tests.test_performance import profile_backtest; profile_b
 
 | Component | Target | Notes |
 | --- | --- | --- |
-| FFI call (`apply_trade`) | < 1 ms | Profile in v0.6 |
+| FFI call (`apply_trade`) | < 1 ms | Profile before stress-run work |
 | BS pricing (1 option) | < 0.1 ms | Already fast via scipy |
 | Backtest (20 weekly steps) | < 1 s | Hull 19.2 scale |
 | Full GBM run (500 paths × 20 steps) | < 60 s | Monte Carlo convergence test |
@@ -446,4 +446,4 @@ print(from_bp(result["portfolio_value"]))
 
 ---
 
-**Last Updated:** 2026-05-19 (v0.5)
+**Last Updated:** 2026-05-19 (v0.4)

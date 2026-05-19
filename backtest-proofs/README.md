@@ -33,9 +33,10 @@ The following invariants are proved as Lean 4 theorems — not tested, *proved*.
 | Cython FFI bridge (Lean → C → Python) | ✅ Complete |
 | Python/Cython backtesting execution layer | ✅ Complete |
 | Delta-hedging strategy (single-leg + portfolio) | ✅ Complete |
-| Black-Scholes pricing formalization in Lean | 🔧 In progress (currently Python only) |
-| Greeks (delta, gamma) as Lean 4 theorems | 📋 Planned |
-| Multi-period GBM convergence theorem | 📋 Planned (requires Mathlib real analysis) |
+| P&L attribution identity (Γ/Θ decomposition per path) | 📋 Credibility lever 1 |
+| Leland (1985) rehedge-frequency variance sweep | 📋 Credibility lever 2 |
+| QuantLib A-B price-path comparison (1 bp threshold) | 📋 Credibility lever 3 |
+| March 2020 VIX stress run on WRDS OptionMetrics data | 📋 Credibility lever 4 |
 
 ## What is not verified
 
@@ -126,16 +127,23 @@ A unit test checks one input. A Lean proof checks all inputs. For accounting inv
 
 This matters as AI-generated trading code becomes common. A model that produces plausible-looking results can still contain an accounting error that compounds silently over months. Machine-checked proofs eliminate this class of error entirely. The project also explores a development pattern in which the human reviews theorem statements while the AI produces implementations that must discharge them ([docs/human_ai.md](docs/human_ai.md)).
 
-## Roadmap
+## Credibility roadmap
 
-- **v0.4** — Discrete delta-hedging backtest + Python stack
-- **v0.5** — Extract shared `quant-core` library; add `Settlement.lean` + `SettlementInvariants.lean`; 18 BacktestProofs theorems + 8 QuantCore theorems (current)
-- **v0.6** — `binomial_replication_cost` theorem: single-period replication cost = risk-neutral price (integer arithmetic)
-- **v0.7+** — Multi-period GBM convergence theorem (Mathlib-level real analysis)
+The Lean accounting kernel is complete at v0.4 (26 theorems, zero `sorry`). The remaining
+work is empirical: showing the engine produces correct *numbers*, not just formally
+consistent accounting. Four credibility levers, ordered by effort:
+
+1. **P&L attribution identity** — `P&L ≈ ½·Γ·(ΔS)² − Θ·Δt + residual` on a GBM path; fastest catch of any hidden accounting bug.
+2. **Leland (1985) rehedge-frequency sweep** — `Var(P&L) ∝ Γ²·S²·σ²·Δt`; replicate Leland's Table II across daily/hourly/15-min frequencies. JupyterBook exhibit.
+3. **QuantLib A-B comparison** — 5–10 benchmark scenarios through both engines; agree within 1 bp. Differentiator: same numbers + formal proof.
+4. **March 2020 VIX stress run** — run on WRDS OptionMetrics data through the fastest VIX spike on record; confirm invariants never fail, `settlement_value_formula` holds every bar.
+
+See `PLAN-backtest-credibility.md` for execution schedule and "victory" definition.
 
 ## References
 
 - Hull, *Options, Futures, and Other Derivatives*, 9th Global ed. (2014), Tables 19.2 and 19.3
+- [Leland (1985)](https://doi.org/10.1111/j.1540-6261.1985.tb02383.x), *JF* 40(4): option pricing and replication with transaction costs
 - [Bertsimas, Kogan & Lo (2000)](https://doi.org/10.1016/S0304-405X(99)00048-6), *JFE* 55(2): discrete hedging variance
 - [Carr & Madan (1998)](https://ssrn.com/abstract=1691942): realized P&L decomposition via dollar gamma
 - [de Moura & Ullrich (2021)](https://doi.org/10.1007/978-3-030-79876-5_37): Lean 4 theorem prover

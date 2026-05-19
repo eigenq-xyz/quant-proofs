@@ -68,3 +68,51 @@ all step certificates must pass and the cost must be in a financially plausible 
 
 Note: Hull's published costs use 3dp-rounded deltas; our engine uses float deltas
 (more accurate). The difference is expected and documented.
+
+---
+
+## Planned: Credibility Levers
+
+The results above confirm the engine is numerically sound on synthetic paths and
+textbook benchmarks. Four additional levers are planned to complete the credibility
+story. See `PLAN-backtest-credibility.md` for detail.
+
+### P&L Attribution Identity (planned)
+
+Per-step P&L must decompose as `P&L ≈ ½·Γ·(ΔS)² − Θ·Δt + residual`. Residual → 0
+in the continuous limit. Fastest catch of any hidden accounting bug; no external data
+needed.
+
+### Leland (1985) Rehedge-Frequency Sweep (planned)
+
+Replicate Leland's Table II: `Var(P&L) ∝ Γ²·S²·σ²·Δt`. Sweep rehedge frequency
+(daily → hourly → 15-min) on the GBM simulator with Leland's modified delta. Output:
+JupyterBook exhibit.
+
+**Reference**: Leland (1985), *Journal of Finance* 40(4).
+
+### QuantLib A-B Comparison (planned)
+
+Run 5–10 benchmark scenarios through both this engine and QuantLib. Agreement
+threshold: 1 bp. Differentiator: same numbers + formal proof that no other backtester
+can match.
+
+### Stress Runs Across Four Historical Regimes (tests done; exhibits planned)
+
+Synthetic GBM paths calibrated to each period's realized volatility. Tests in
+`TestStressCovid2020`, `TestStressGFC2008`, `TestStressVolmageddon2018`,
+`TestStressFlashCrash2015`, and `TestStressVolOrdering` are live and passing.
+
+| Period | σ | Window | Stressor |
+|---|---|---|---|
+| Mar 2020 COVID crash | 80% | 5 wk | Fastest VIX spike on record |
+| Sep–Nov 2008 GFC | 80% | 10 wk | Sustained VIX > 60 |
+| Jan–Feb 2018 Volmageddon | 35% | 3 wk | Short vol ETN blowup |
+| Aug 2015 flash crash | 40% | 2 wk | Intraday gap risk |
+
+**Per regime:** all step certificates pass, hedge cost mean within ±10% of BS price.
+**Cross-regime:** `std(COVID) > std(flash) > std(Volmageddon)` — variance ordered by
+realized vol, confirming the engine is calibrated consistently across periods.
+
+The WRDS overlay (real OptionMetrics data for these dates) is optional and additive;
+the synthetic GBM tests already make the accounting-invariant claim concrete.

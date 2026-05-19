@@ -42,12 +42,14 @@ make test    # Lean proofs + Python tests
 - **Formal Guarantees**: the theorems proven and the states made impossible by construction
 - **Validation**: DerivaGem reference vectors, Monte Carlo convergence, BKL variance scaling, Carr-Madan decomposition
 - **Delta-Hedging Demo**: Hull Table 19.2 replication with live step certificates and a deliberately broken example
+- **Credibility Exhibits** *(planned)*: Leland (1985) rehedge-frequency sweep, QuantLib A-B comparison, March 2020 VIX stress run — see `PLAN-backtest-credibility.md`
 - **Architecture**: Lean kernel, Python, and Cython FFI
 - **Human-AI Collaboration**: how Lean acts as a development scaffold constraining AI-generated code
 
 ## References
 
 - Hull, *Options, Futures, and Other Derivatives*, 9th Global ed. (2014), Tables 19.2, 19.3
+- [Leland (1985)](https://doi.org/10.1111/j.1540-6261.1985.tb02383.x), *JF* 40(4): option pricing and replication with transaction costs
 - [Bertsimas, Kogan & Lo (2000)](https://doi.org/10.1016/S0304-405X(99)00048-6), *JFE* 55(2): discrete hedging variance
 - [Carr & Madan (1998)](https://ssrn.com/abstract=1691942): realized P&L decomposition via dollar gamma
 - [de Moura & Ullrich (2021)](https://doi.org/10.1007/978-3-030-79876-5_37): Lean 4 theorem prover and programming language

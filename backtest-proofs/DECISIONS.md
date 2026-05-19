@@ -130,9 +130,9 @@ FFI boundary: pass integers (basis points), never floats.
 
 ## ADR-002: JSON Certificates with String-Encoded Decimals
 
-**Status:** ✅ Accepted (cross-language verifier, future)
+**Status:** ❌ Abandoned — Lean-side verifier not being built
 **Date:** 2026-01-18
-**Implementation:** Planned for Lean-side verifier (v0.5+)
+**Implementation:** N/A. Kept as a record of the design considered and why we chose in-process Python `StepCertificate` instead.
 
 **v0.4 update:** The current backtester uses an in-process `StepCertificate` Python
 dataclass (`backtest/audit.py`) rather than JSON certificates. Cross-language JSON
@@ -168,9 +168,9 @@ Lean parses strings to `Int` (multiply by 10^precision).
 
 ## ADR-003: Epsilon-Tolerance Verification (1 Basis Point)
 
-**Status:** ✅ Accepted (subject to revision)
+**Status:** ❌ Abandoned — Lean-side verifier not being built
 **Date:** 2026-01-18
-**Implementation:** Planned for Lean-side verifier (v0.6+)
+**Implementation:** N/A. The in-process `StepCertificate` uses exact integer equality; no epsilon is needed.
 
 **v0.4 update:** The Python-level verifier uses exact integer comparison
 (`invariant_holds = delta_pv == expected_delta_pv`). The parameterised epsilon
@@ -324,6 +324,9 @@ These are portfolio-specific and do not belong in the shared library.
 
 ## Future ADRs (Pending)
 
-- ADR-008: Certificate Versioning Scheme — v0.6
-- ADR-009: Optimizer Certificate Detail Level — v0.9
-- ADR-010: Data Encryption Strategy — v0.10
+The accounting kernel is complete at v0.4. Future ADRs will cover credibility and
+validation work rather than proof extensions:
+
+- ADR-008: QuantLib A-B comparison methodology — credibility lever 3
+- ADR-009: WRDS stress-run data pipeline — credibility lever 4
+- ADR-010: Data Encryption Strategy (git-crypt key rotation)

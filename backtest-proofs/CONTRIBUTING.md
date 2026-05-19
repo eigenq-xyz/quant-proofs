@@ -200,7 +200,7 @@ print(from_bp(result["portfolio_value"]))
 
 Examples:
 [v0.4] Prove settlement_value_formula (ITM/OTM unified)
-[v0.5] Add binomial_replication_cost theorem
+[credibility] Add Leland 1985 rehedge-frequency sweep notebook
 [docs] Rewrite CONTRIBUTING to reflect v0.4 layout
 [fix] Handle edge case in bs_greeks near expiry
 ```

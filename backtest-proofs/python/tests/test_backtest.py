@@ -991,3 +991,355 @@ class TestHoldoutValidation:
             f"Holdout median {out_med:.3f} < 0.5× in-sample {in_med:.3f}. "
             f"Holdout vol far below in-sample vol."
         )
+
+
+# ---------------------------------------------------------------------------
+# Stress regime tests — real WRDS OptionMetrics data
+# ---------------------------------------------------------------------------
+# Four historical stress windows, each using actual observed option prices
+# and underlying paths from OptionMetrics.  Per-series implied vol from the
+# first observation is used as sigma (no look-ahead).
+#
+# Data files required (same schema as portfolio_atm_options.parquet):
+#   data/portfolio_atm_options.parquet  — 2019-2024, covers COVID 2020
+#   data/stress_gfc_2008.parquet        — 2008-09-01 to 2008-12-31
+#   data/stress_volm_2018.parquet       — 2017-12-01 to 2018-04-30
+#   data/stress_flash_2015.parquet      — 2015-07-01 to 2015-10-31
+#
+# See docs/wrds_data_download.md for download instructions.
+# Tests are skipped gracefully when the data file is absent.
+# ---------------------------------------------------------------------------
+
+# Period-specific approximate risk-free rates
+_R_COVID_2020 = 0.0025   # Fed cut to ~0 % by Mar 15, 2020; average ≈ 0.25 %
+_R_GFC_2008 = 0.01       # Fed funds fell 2 % → 0.25 % during window
+_R_VOLM_2018 = 0.015     # Fed funds ~1.5 % early 2018
+_R_FLASH_2015 = 0.005    # near-zero rates, pre-liftoff
+
+_STRESS_MIN_SERIES = 5   # minimum qualifying option series to run assertions
+
+_DATA_ROOT = Path(__file__).parent.parent.parent / "data"
+
+
+def _run_stress_window(
+    df: "Any",
+    date_start: str,
+    date_end: str,
+    r: float,
+    label: str,
+) -> tuple[list[float], int]:
+    """Filter ``df`` to ``[date_start, date_end]`` and backtest every call series.
+
+    Returns ``(ratios, n_series)`` where ``ratios`` is cost/premium per series
+    and ``n_series`` is the count of qualifying series.  Every step certificate
+    is asserted to pass inline — a failure surfaces the series and date range.
+    """
+    import pandas as pd
+
+    from backtest_proofs.etl.wrds_loader import (
+        optionmetrics_option_snapshots_from_df,
+    )
+
+    mask = (pd.to_datetime(df["date"]) >= date_start) & (
+        pd.to_datetime(df["date"]) <= date_end
+    )
+    window = df[mask]
+
+    ratios: list[float] = []
+    for (_ticker, _expiry, strike, cp), group in window.groupby(_SERIES_KEYS):
+        if cp != "call":
+            continue
+        group = group.sort_values("date")
+        if len(group) < 5:
+            continue
+        snaps = optionmetrics_option_snapshots_from_df(group)
+        if not snaps or any(s.underlying_price is None for s in snaps):
+            continue
+        first = snaps[0]
+        und_prices = [s.underlying_price for s in snaps]  # type: ignore[misc]
+        times = [
+            (pd.Timestamp(s.date) - pd.Timestamp(first.date)).days / 365.0
+            for s in snaps
+        ]
+        path = PricePath(times=times, prices=und_prices)
+        if path.times[-1] <= 0:
+            continue
+        result = run_delta_hedge(
+            path=path,
+            K=float(strike),
+            r=r,
+            sigma=first.implied_vol,
+            n_contracts=1,
+        )
+        failures = [c for c in result.certificates if not c.invariant_holds]
+        assert failures == [], (
+            f"{label}: {len(failures)} certificate(s) failed for "
+            f"ticker={_ticker} strike={strike} expiry={_expiry}"
+        )
+        premium = bs_price(
+            S=und_prices[0],
+            K=float(strike),
+            T=path.times[-1],
+            r=r,
+            sigma=first.implied_vol,
+            option_type="call",
+        ).value
+        if premium > 0:
+            ratios.append(result.total_hedging_cost / premium)
+
+    return ratios, len(ratios)
+
+
+class TestStressCovid2020:
+    """March 2020 COVID crash — real WRDS OptionMetrics data.
+
+    Date window: 2020-02-19 to 2020-03-23 (VIX 15 → 80, SPY −34 % in 23 days).
+    Filtered from the existing portfolio_atm_options.parquet (2019–2024).
+    Per-series implied vol at inception used as sigma; no look-ahead.
+
+    Primary claim: all step certificates pass on real extreme paths — the Lean
+    accounting invariants hold by construction regardless of vol level.
+    Secondary: cost/premium distribution is above 1.0 (realized > implied;
+    documented variance risk premium reversal during tail events).
+    """
+
+    _DATE_START = "2020-02-19"
+    _DATE_END = "2020-03-23"
+
+    def _data_available(self) -> bool:
+        try:
+            import pandas  # noqa: F401
+
+            return (_DATA_ROOT / "portfolio_atm_options.parquet").exists()
+        except ImportError:
+            return False
+
+    def _load(self) -> "Any":
+        import pandas as pd
+
+        return pd.read_parquet(_DATA_ROOT / "portfolio_atm_options.parquet")
+
+    def test_data_file_skips_gracefully(self) -> None:
+        if self._data_available():
+            pytest.skip("Data present — run stress tests instead")
+
+    def test_all_certificates_pass(self) -> None:
+        """All step certificates pass on real COVID crash price paths."""
+        if not self._data_available():
+            pytest.skip("portfolio_atm_options.parquet not present")
+        ratios, n = _run_stress_window(
+            self._load(), self._DATE_START, self._DATE_END,
+            _R_COVID_2020, "COVID-2020",
+        )
+        assert n >= _STRESS_MIN_SERIES, (
+            f"Only {n} qualifying series in COVID window — check data coverage"
+        )
+
+    def test_cost_premium_above_one(self) -> None:
+        """Median cost/premium > 1.0: realized vol exceeded implied during crash.
+
+        During COVID, implied vols at inception (Feb 19) drastically understated
+        the subsequent realized vol.  Delta-hedgers who wrote calls at pre-crash
+        implied vols experienced large losses — cost/premium >> 1.0 is expected
+        and is the empirically honest result.
+        """
+        if not self._data_available():
+            pytest.skip("portfolio_atm_options.parquet not present")
+        ratios, n = _run_stress_window(
+            self._load(), self._DATE_START, self._DATE_END,
+            _R_COVID_2020, "COVID-2020",
+        )
+        assert n >= _STRESS_MIN_SERIES
+        import numpy as np
+
+        median_ratio = float(np.median(ratios))
+        assert median_ratio > 1.0, (
+            f"Expected cost/premium > 1.0 during COVID crash; got {median_ratio:.3f}. "
+            f"If < 1.0, implied vol at inception already exceeded realized — investigate."
+        )
+
+
+class TestStressGFC2008:
+    """Sep–Nov 2008 GFC — real WRDS OptionMetrics data.
+
+    Date window: 2008-09-15 to 2008-11-21 (Lehman filing to vol normalization).
+    VIX peaked above 80; SPY fell ~45 % over 10 weeks.  Sustained high vol,
+    vol surface inversion — qualitatively different from the 2020 spike.
+    Data file: data/stress_gfc_2008.parquet (see wrds_data_download.md).
+    """
+
+    _DATA_FILE = _DATA_ROOT / "stress_gfc_2008.parquet"
+    _DATE_START = "2008-09-15"
+    _DATE_END = "2008-11-21"
+
+    def _data_available(self) -> bool:
+        try:
+            import pandas  # noqa: F401
+
+            return self._DATA_FILE.exists()
+        except ImportError:
+            return False
+
+    def test_data_file_skips_gracefully(self) -> None:
+        if self._data_available():
+            pytest.skip("Data present — run stress tests instead")
+
+    def test_all_certificates_pass(self) -> None:
+        """All step certificates pass on real GFC price paths."""
+        if not self._data_available():
+            pytest.skip("stress_gfc_2008.parquet not present")
+        import pandas as pd
+
+        ratios, n = _run_stress_window(
+            pd.read_parquet(self._DATA_FILE),
+            self._DATE_START, self._DATE_END,
+            _R_GFC_2008, "GFC-2008",
+        )
+        assert n >= _STRESS_MIN_SERIES, (
+            f"Only {n} qualifying series in GFC window — check data coverage"
+        )
+
+    def test_cost_premium_above_one(self) -> None:
+        """Median cost/premium > 1.0: realized vol far exceeded implied during GFC."""
+        if not self._data_available():
+            pytest.skip("stress_gfc_2008.parquet not present")
+        import numpy as np
+        import pandas as pd
+
+        ratios, n = _run_stress_window(
+            pd.read_parquet(self._DATA_FILE),
+            self._DATE_START, self._DATE_END,
+            _R_GFC_2008, "GFC-2008",
+        )
+        assert n >= _STRESS_MIN_SERIES
+        assert float(np.median(ratios)) > 1.0, (
+            f"Expected cost/premium > 1.0 during GFC; got {float(np.median(ratios)):.3f}"
+        )
+
+
+class TestStressVolmageddon2018:
+    """Jan–Feb 2018 Volmageddon — real WRDS OptionMetrics data.
+
+    Date window: 2018-01-22 to 2018-02-16 (run-up and immediate aftermath).
+    VIX spiked from 10 to 37 intraday on Feb 5; XIV ETN collapsed.
+    Stressor is sharpness and positioning unwind, not sustained vol level.
+    Data file: data/stress_volm_2018.parquet (see wrds_data_download.md).
+    """
+
+    _DATA_FILE = _DATA_ROOT / "stress_volm_2018.parquet"
+    _DATE_START = "2018-01-22"
+    _DATE_END = "2018-02-16"
+
+    def _data_available(self) -> bool:
+        try:
+            import pandas  # noqa: F401
+
+            return self._DATA_FILE.exists()
+        except ImportError:
+            return False
+
+    def test_data_file_skips_gracefully(self) -> None:
+        if self._data_available():
+            pytest.skip("Data present — run stress tests instead")
+
+    def test_all_certificates_pass(self) -> None:
+        """All step certificates pass through the Volmageddon spike."""
+        if not self._data_available():
+            pytest.skip("stress_volm_2018.parquet not present")
+        import pandas as pd
+
+        ratios, n = _run_stress_window(
+            pd.read_parquet(self._DATA_FILE),
+            self._DATE_START, self._DATE_END,
+            _R_VOLM_2018, "Volmageddon-2018",
+        )
+        assert n >= _STRESS_MIN_SERIES, (
+            f"Only {n} qualifying series in Volmageddon window — check data coverage"
+        )
+
+    def test_cost_premium_plausible(self) -> None:
+        """Cost/premium in a plausible range for a sharp-spike window [0.8, 5.0].
+
+        Volmageddon was brief; options with earlier expirations may show
+        cost/premium near 1.0, while those that straddle the spike date will
+        show substantially elevated ratios.  The range is wider than normal
+        to accommodate both cases.
+        """
+        if not self._data_available():
+            pytest.skip("stress_volm_2018.parquet not present")
+        import numpy as np
+        import pandas as pd
+
+        ratios, n = _run_stress_window(
+            pd.read_parquet(self._DATA_FILE),
+            self._DATE_START, self._DATE_END,
+            _R_VOLM_2018, "Volmageddon-2018",
+        )
+        assert n >= _STRESS_MIN_SERIES
+        median_ratio = float(np.median(ratios))
+        assert 0.8 <= median_ratio <= 5.0, (
+            f"Median cost/premium {median_ratio:.3f} outside plausible range "
+            f"[0.8, 5.0] for Volmageddon window"
+        )
+
+
+class TestStressFlashCrash2015:
+    """Aug 2015 flash crash — real WRDS OptionMetrics data.
+
+    Date window: 2015-08-17 to 2015-08-28 (pre-crash week + crash + partial recovery).
+    SPY opened down ~7 % on Aug 24 due to ETF pricing failures; VIX touched 53.
+    Stressor is intraday gap risk — OptionMetrics records daily closing prices,
+    so the intraday gap appears as an overnight gap in the observed price path.
+    Data file: data/stress_flash_2015.parquet (see wrds_data_download.md).
+    """
+
+    _DATA_FILE = _DATA_ROOT / "stress_flash_2015.parquet"
+    _DATE_START = "2015-08-17"
+    _DATE_END = "2015-08-28"
+
+    def _data_available(self) -> bool:
+        try:
+            import pandas  # noqa: F401
+
+            return self._DATA_FILE.exists()
+        except ImportError:
+            return False
+
+    def test_data_file_skips_gracefully(self) -> None:
+        if self._data_available():
+            pytest.skip("Data present — run stress tests instead")
+
+    def test_all_certificates_pass(self) -> None:
+        """All step certificates pass through the Aug 2015 flash crash gap."""
+        if not self._data_available():
+            pytest.skip("stress_flash_2015.parquet not present")
+        import pandas as pd
+
+        ratios, n = _run_stress_window(
+            pd.read_parquet(self._DATA_FILE),
+            self._DATE_START, self._DATE_END,
+            _R_FLASH_2015, "FlashCrash-2015",
+        )
+        assert n >= _STRESS_MIN_SERIES, (
+            f"Only {n} qualifying series in flash crash window — "
+            f"window is only ~8 trading days; widen date range if needed"
+        )
+
+    def test_cost_premium_plausible(self) -> None:
+        """Cost/premium in a plausible range for a gap-risk window [0.8, 5.0]."""
+        if not self._data_available():
+            pytest.skip("stress_flash_2015.parquet not present")
+        import numpy as np
+        import pandas as pd
+
+        ratios, n = _run_stress_window(
+            pd.read_parquet(self._DATA_FILE),
+            self._DATE_START, self._DATE_END,
+            _R_FLASH_2015, "FlashCrash-2015",
+        )
+        assert n >= _STRESS_MIN_SERIES
+        median_ratio = float(np.median(ratios))
+        assert 0.8 <= median_ratio <= 5.0, (
+            f"Median cost/premium {median_ratio:.3f} outside plausible range "
+            f"[0.8, 5.0] for flash crash window"
+        )
