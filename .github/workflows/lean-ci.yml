@@ -6,14 +6,14 @@ on:
     paths:
       - 'backtest-proofs/lean/**'
       - 'ftap-proofs/**'
-      - 'binomial-proofs/**'
+      - 'options-proofs/**'
       - 'mortgage-proofs/lean/**'
   pull_request:
     branches: [main]
     paths:
       - 'backtest-proofs/lean/**'
       - 'ftap-proofs/**'
-      - 'binomial-proofs/**'
+      - 'options-proofs/**'
       - 'mortgage-proofs/lean/**'
 
 concurrency:
@@ -33,8 +33,8 @@ jobs:
             lean-dir: backtest-proofs/lean
           - subdir: ftap-proofs
             lean-dir: ftap-proofs
-          - subdir: binomial-proofs
-            lean-dir: binomial-proofs
+          - subdir: options-proofs
+            lean-dir: options-proofs
           - subdir: mortgage-proofs
             lean-dir: mortgage-proofs/lean
 

@@ -1,4 +1,4 @@
-# binomial-proofs
+# options-proofs
 
 Lean 4 proof of put-call parity via the Cox-Ross-Rubinstein binomial model.
 
@@ -19,7 +19,7 @@ Implementation begins once the FTAP proof exposes a stable interface for the no-
 ```bash
 # ftap-proofs must be built first
 cd ftap-proofs && lake exe cache get && lake build
-cd ../binomial-proofs && lake build
+cd ../options-proofs && lake build
 ```
 
 ## References

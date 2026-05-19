@@ -18,7 +18,7 @@ Lean 4 formalization of the discrete Fundamental Theorem of Asset Pricing (Harri
 
 Status: in progress (Summer 2026).
 
-### binomial-proofs
+### options-proofs
 
 Lean 4 proof of put-call parity via the Cox-Ross-Rubinstein binomial model. The CRR model is a finite-state market where the FTAP from `ftap-proofs` applies, giving an explicit risk-neutral measure; put-call parity is a corollary.
 
