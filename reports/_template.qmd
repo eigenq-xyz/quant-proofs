@@ -1,0 +1,204 @@
+---
+title: "Paper Title: A Concrete Subtitle Stating the Result"
+subtitle: "verified-<project> — eigenq-xyz research series"
+author:
+  - name: Author Name
+    affiliation: eigenq-xyz
+    email: name@example.org
+date: today
+date-format: long
+abstract: |
+  One paragraph, 150–250 words. State the question, the method, the
+  formalization claim ("we prove X in Lean 4, machine-checked, zero `sorry`"),
+  the empirical sample (window, universe, source), and the single number that
+  most concisely conveys the result (e.g., "the parity deviation averages
+  3.7 bps with a 95th percentile of 11.2 bps over 2010–2024"). End with a
+  one-sentence statement of scope and limitation.
+keywords:
+  - quantitative finance
+  - formal verification
+  - Lean 4
+jel:
+  - G12
+  - G13
+  - C63
+---
+
+# Introduction
+
+State the question the paper answers in the first sentence. State the answer
+in the second. The remaining paragraphs of the introduction should accomplish,
+in this order:
+
+1. **Why now**: the practitioner motivation. What goes wrong in current
+   practice that this paper addresses?
+2. **What we do**: a one-paragraph summary of the formalization and the
+   empirical exercise.
+3. **What is new**: an explicit contribution statement. Distinguish from the
+   nearest prior work in one sentence each.
+4. **Roadmap**: one sentence per remaining section.
+
+Cite sparingly here; full literature review belongs in Section 2 or the
+appendix if it would otherwise disrupt the introduction.
+
+# Setup {#sec-setup}
+
+State the model primitives, notation, and assumptions formally enough that
+the theorems in Section 3 can be parsed without ambiguity. Match the
+notation used in the Lean 4 source where it does not conflict with
+finance-standard symbols.
+
+::: {#def-primitive}
+**(Model primitive.)** Define the key objects of the paper here. For
+example, a finite filtered probability space $(\Omega, \Filt, \{\Filt_t\}_{t=0}^T, \Prob)$
+with $|\Omega| < \infty$.
+:::
+
+State each non-trivial assumption as a numbered display, not buried in prose:
+
+> **Assumption A1 (No frictions).** Trading is costless and instantaneous.
+
+Cross-reference the Lean source file where this assumption is encoded.
+
+# Main Results {#sec-results}
+
+Present theorems in informal-then-formal pairs. Lead with intuition; follow
+with the precise statement.
+
+::: {#thm-headline}
+**(Headline result.)** Under Assumptions A1–A3, the quantity $X$ satisfies
+$$
+  X = f(\text{observable inputs}) \quad \text{$\Prob$-a.s.}
+$$
+:::
+
+*Proof sketch.* One paragraph of intuition. The full proof is machine-checked
+in Lean 4; see Section [-@sec-formalization].
+
+Repeat for any subsidiary theorems. Each formal statement is paired with
+the Lean theorem name in Section [-@sec-formalization].
+
+# Formalization {#sec-formalization}
+
+This section is **mandatory** for every paper in the eigenq-xyz series. It
+documents which mathematical claims are machine-checked, which are not,
+and where to find the artifacts.
+
+## Lean 4 artifacts {#sec-artifacts}
+
+The formal development lives in [`<project>-proofs/`](https://github.com/eigenq-xyz/quant-proofs).
+The following table maps paper-level theorems to their Lean 4 names:
+
+| Paper        | Lean theorem                                | File                                      |
+|--------------|----------------------------------------------|-------------------------------------------|
+| @thm-headline | `ProjectProofs.Section.headline_result`     | `<project>-proofs/Section.lean`           |
+
+::: {.callout-note title="Formalization claim"}
+At commit `<short-sha>`, `lake build` succeeds for `<project>-proofs` and
+`grep -rn sorry --include="*.lean"` returns no matches in the proof tree.
+Reproduce with the `verify-lean` skill or `make verify-lean`.
+:::
+
+## Scope of formalization
+
+State plainly what is and is not formalized:
+
+- **Formalized.** Each theorem in Section [-@sec-results] is proven from the
+  assumptions in Section [-@sec-setup] without any axiom beyond mathlib.
+- **Not formalized.** Floating-point execution in the Python layer, data
+  ingestion, and the statistical claims in Section [-@sec-robustness] are
+  not formal theorems; they are property-tested (`verify-property`) and
+  empirically tested (`verify-empirical`) but rely on numerical
+  approximations.
+
+# Empirical Setup {#sec-data}
+
+State the data sources, sample window, universe, and any filters with the
+specificity required for a third party to reproduce the result.
+
+| Field          | Value                                                          |
+|----------------|----------------------------------------------------------------|
+| Source         | <name and version, e.g., FRED series DGS3MO retrieved 2026-05-19> |
+| Sample window  | YYYY-MM-DD to YYYY-MM-DD                                       |
+| Universe       | <e.g., S&P 500 constituents at month-end>                      |
+| Frequency      | <daily / monthly>                                              |
+| Filters        | <list each filter and the number of observations dropped>      |
+| N observations | <final sample size after filters>                              |
+
+Document licensed-data dependencies separately and never commit raw licensed
+data; see the `sourcing-financial-data` skill.
+
+# Results {#sec-empirical}
+
+Lead with the **headline figure**. State the result in the figure caption
+in plain English. Discuss the figure before introducing tables.
+
+![Headline figure caption. Source: <data source>. Sample: YYYY–YYYY.](../<project>-proofs/results/figures/headline.pdf){#fig-headline width=80%}
+
+Follow with secondary figures and tables. Every empirical claim should be
+traceable to either `<project>-proofs/results/<artifact>.json` (numbers)
+or `<project>-proofs/results/figures/<artifact>.pdf` (figures).
+
+# Robustness {#sec-robustness}
+
+This section is **mandatory** for every paper. The eigenq-xyz house style
+inverts the conventional robustness convention: rather than running more
+specifications to argue the result is not a fluke, the Formalization
+section establishes the mathematical content; this section asks where the
+empirical implementation of that content holds and where it breaks.
+
+Cover at least:
+
+1. **Sample-period sensitivity.** Re-estimate on sub-periods (pre-2008,
+   2008–2010 crisis, 2010–2020, 2020–2022 COVID, 2022–present). Report
+   point estimates with standard errors for each.
+2. **Regime conditioning.** Condition on a stress regime (e.g., VIX
+   quintiles, NBER recessions). State explicitly where the empirical
+   result weakens or reverses.
+3. **Data source A/B.** Where the empirical claim depends on a data
+   source choice (e.g., daily close vs. mid-quote), report the result
+   under both sources.
+4. **Specification alternatives.** Where modeling choices are made
+   (e.g., interpolation method, day-count convention), report the result
+   under at least one alternative.
+
+Honest reporting: if the result weakens or reverses anywhere, report it
+here, not in the appendix. State the dollar / bps magnitude of the
+worst-case deviation, not just a $p$-value.
+
+# Discussion {#sec-discussion}
+
+Cover, in order of importance:
+
+1. What the formalization does and does not guarantee about the empirical
+   numbers reported.
+2. The scope of generalization: does the result extend beyond the universe
+   and sample tested?
+3. Two or three concrete extensions a follow-up paper could attempt.
+
+Keep this section short. Don't restate results; don't write a generic
+"further research" paragraph.
+
+# Appendix {.appendix}
+
+## A. Full proofs
+
+Where a proof is short, include it here. Where the proof is long and
+machine-checked, point to the Lean 4 source file with a permalink and
+state the principal lemmas used.
+
+## B. Additional tables and figures
+
+Tables and figures cut from the body for length, but useful for a
+referee or replication attempt.
+
+## C. Replication
+
+```bash
+git clone https://github.com/eigenq-xyz/quant-proofs
+cd quant-proofs/<project>-proofs
+make verify       # runs Levels 1–5 of the verification pyramid
+```
+
+State exactly which `make` target reproduces each table and figure
+in the body.

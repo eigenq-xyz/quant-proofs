@@ -1,0 +1,47 @@
+% eigenq research paper preamble — shared across all reports/<project>.qmd
+%
+% Required TeX packages (install via tlmgr if rendering locally):
+%   amsmath, amssymb, amsthm, mathtools, bm, booktabs, microtype,
+%   biblatex, csquotes, hyperref, cleveref, enumitem, siunitx, minted
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{siunitx}
+\usepackage{cleveref}
+
+% Number theorem-likes within sections, share a counter so numbering is contiguous.
+% Quarto's native theorem callouts use these counters automatically.
+\numberwithin{equation}{section}
+\numberwithin{figure}{section}
+\numberwithin{table}{section}
+
+% Probability / finance shorthand.
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Filt}{\mathcal{F}}
+\newcommand{\indep}{\perp\!\!\!\perp}
+\newcommand{\indic}[1]{\mathbf{1}_{\{#1\}}}
+\newcommand{\eqdist}{\stackrel{d}{=}}
+\newcommand{\eqas}{\stackrel{\text{a.s.}}{=}}
+\renewcommand{\Pr}{\mathbb{P}}
+
+% Visual style for the standardized "Formalization" callout — referenced from
+% template.qmd as `::: {.callout-note title="Formalization"}`.
+\usepackage{tcolorbox}
+\tcbuselibrary{breakable, skins}
+
+% Title block styling consistent with AQR / JFE working-paper aesthetic.
+\setkomafont{title}{\bfseries\Large}
+\setkomafont{author}{\normalsize}
+\setkomafont{date}{\small\itshape}
+\setkomafont{section}{\bfseries\large}
+\setkomafont{subsection}{\bfseries\normalsize}
