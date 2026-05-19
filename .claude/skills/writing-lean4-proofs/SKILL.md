@@ -4,7 +4,7 @@ description: >
   Lean 4 proof style and idioms following mathlib conventions.
   Use when writing or reviewing Lean 4 proofs, choosing tactics,
   naming theorems, or writing proof docstrings. Also use when
-  adding a new theorem to BacktestProofs, FtapProofs, BinomialProofs,
+  adding a new theorem to BacktestProofs, FtapProofs, OptionsProofs,
   or MortgageProofs.
 paths:
   - "**/*.lean"

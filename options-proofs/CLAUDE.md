@@ -17,9 +17,9 @@ giving an explicit risk-neutral measure. Put-call parity is a corollary.
 
 ## Architecture
 
-Single Lean library `BinomialProofs`. Submodules to be added under `BinomialProofs/` as the
-formalization develops (e.g., `BinomialProofs.Tree`, `BinomialProofs.RiskNeutral`,
-`BinomialProofs.PutCallParity`).
+Single Lean library `OptionsProofs`. Submodules to be added under `OptionsProofs/` as the
+formalization develops (e.g., `OptionsProofs.Tree`, `OptionsProofs.RiskNeutral`,
+`OptionsProofs.PutCallParity`).
 
 ## Dependencies
 

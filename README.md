@@ -8,7 +8,7 @@ Formally verified quantitative finance — Lean 4 proofs of correctness paired w
 |---------|--------|---------------|
 | [`backtest-proofs/`](backtest-proofs/) | v0.4 — 26 theorems, zero `sorry` | Options delta-hedging accounting: portfolio value identity, self-financing, settlement value formula |
 | [`ftap-proofs/`](ftap-proofs/) | Skeleton — in progress | Discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981): arbitrage-free ↔ equivalent martingale measure exists |
-| [`binomial-proofs/`](binomial-proofs/) | Skeleton — in progress (depends on ftap-proofs) | Put-call parity via Cox-Ross-Rubinstein binomial model |
+| [`options-proofs/`](options-proofs/) | Skeleton — in progress (depends on ftap-proofs) | Put-call parity via Cox-Ross-Rubinstein binomial model |
 | [`mortgage-proofs/`](mortgage-proofs/) | Active — Lean 4 invariant checking | LangGraph multi-agent mortgage pipeline with formally verified routing invariants |
 
 ## Why formal verification for quant finance?
@@ -19,7 +19,7 @@ Backtesting bugs, settlement errors, and compliance violations share a common ro
 
 ## Structure
 
-Each subdir is an independent project with its own Lake/Python build and its own CLAUDE.md. They share a common namespace convention: `BacktestProofs`, `FtapProofs`, `BinomialProofs`, `MortgageProofs`.
+Each subdir is an independent project with its own Lake/Python build and its own CLAUDE.md. They share a common namespace convention: `BacktestProofs`, `FtapProofs`, `OptionsProofs`, `MortgageProofs`.
 
 ## License
 

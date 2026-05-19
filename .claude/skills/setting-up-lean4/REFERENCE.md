@@ -143,7 +143,7 @@ lake update && lake exe cache get && lake build
 |--------|--------------------------|-----------------------------|
 | `backtest-proofs/` | `backtest-proofs/lean/lakefile.toml` | `BacktestProofs` |
 | `ftap-proofs/` | `ftap-proofs/lakefile.toml` | `FtapProofs` |
-| `binomial-proofs/` | `binomial-proofs/lakefile.toml` | `BinomialProofs` |
+| `options-proofs/` | `options-proofs/lakefile.toml` | `OptionsProofs` |
 | `mortgage-proofs/` | `mortgage-proofs/lakefile.toml` | `MortgageProofs` |
 
 Always `cd` to the directory containing `lakefile.toml` before running `lake` commands.

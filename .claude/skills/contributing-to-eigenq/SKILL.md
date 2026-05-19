@@ -3,7 +3,7 @@ name: contributing-to-eigenq
 description: >
   PR workflow, branch conventions, testing requirements, and mathlib upstream process
   for the quant-proofs monorepo. Use before opening a PR, when setting up a branch,
-  or when preparing ftap-proofs or binomial-proofs for a mathlib contribution.
+  or when preparing ftap-proofs or options-proofs for a mathlib contribution.
 paths:
   - "**/*"
 ---
@@ -28,7 +28,7 @@ Examples:
 feat/backtest-proofs/cython-ffi-export
 fix/mortgage-proofs/compliance-agent-nil-trace
 proof/ftap-proofs/noArbitrageMartingale
-proof/binomial-proofs/putCallParity
+proof/options-proofs/putCallParity
 mathlib/ftap-proofs/Mathlib.Finance.NoArbitrage
 ```
 
@@ -47,8 +47,8 @@ Before opening a PR — and before requesting review — verify every item:
   ```
   (An empty result is required. `-- sorry` comments in docs are fine; actual `sorry` terms
   are not.)
-- [ ] If `binomial-proofs/` is changed, also build `ftap-proofs/` — the dependency goes
-  `binomial-proofs → ftap-proofs`, so `ftap-proofs` must still build cleanly.
+- [ ] If `options-proofs/` is changed, also build `ftap-proofs/` — the dependency goes
+  `options-proofs → ftap-proofs`, so `ftap-proofs` must still build cleanly.
 - [ ] New theorems have `-- Proof sketch:` comments explaining the high-level argument.
 
 ### Python / Cython
@@ -71,7 +71,7 @@ a pure Python change), but keep the headers so reviewers can scan quickly.
 ## Summary
 
 - One-sentence description of what changed and why.
-- Any subdir-level dependency implications (e.g., "bumps FtapProofs API; binomial-proofs
+- Any subdir-level dependency implications (e.g., "bumps FtapProofs API; options-proofs
   updated in tandem").
 
 ## Proof sketch (Lean PRs only)
@@ -93,7 +93,7 @@ High-level argument for the main theorem(s) introduced or modified:
 
 ## Mathlib upstream process
 
-When a proof in `ftap-proofs/` or `binomial-proofs/` is ready for mathlib:
+When a proof in `ftap-proofs/` or `options-proofs/` is ready for mathlib:
 
 ### Namespace requirements
 
@@ -111,7 +111,7 @@ Lean 4 identifiers must conform to mathlib style:
 
 1. **Create a `mathlib/<subdir>/<module-name>` branch** from the current `main`.
 2. **Restructure the namespace.** Move from `FtapProofs.X` to `Mathlib.Finance.X` (or
-   agreed parent). Update all imports in `binomial-proofs/` accordingly.
+   agreed parent). Update all imports in `options-proofs/` accordingly.
 3. **Strip non-mathlib dependencies.** The submitted file must import only from `Mathlib`
    and `Std`. Remove any local utility lemmas that duplicate existing mathlib lemmas —
    search `Mathlib` first.
@@ -129,7 +129,7 @@ Lean 4 identifiers must conform to mathlib style:
 Do not open the mathlib PR until:
 - `lake build` is clean on the `mathlib/` branch with zero `sorry`.
 - The proof has been stable on `main` for at least one week (no further edits anticipated).
-- The `binomial-proofs/` dependency on the FTAP result has been tested post-namespace-change.
+- The `options-proofs/` dependency on the FTAP result has been tested post-namespace-change.
 
 ## Commit standards
 

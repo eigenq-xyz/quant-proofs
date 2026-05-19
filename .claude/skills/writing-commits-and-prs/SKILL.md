@@ -137,7 +137,7 @@ Use lowercase kebab-case for `<description>`, camelCase for `<leanIdentifier>`.
 ## Summary
 
 - <What changed and why — one or two bullets.>
-- <Any cross-subdir implications, e.g., "binomial-proofs updated to match new FtapProofs API".>
+- <Any cross-subdir implications, e.g., "options-proofs updated to match new FtapProofs API".>
 
 ## Proof sketch (Lean PRs only)
 
@@ -153,7 +153,7 @@ Use lowercase kebab-case for `<description>`, camelCase for `<leanIdentifier>`.
 - [ ] `pytest` passes (if Python changed)
 - [ ] `mypy --strict <subdir>/src/` clean (if Python changed)
 - [ ] `lake exe verify-trace` passes on sample trace (mortgage-proofs only)
-- [ ] Dependent subdir still builds (if ftap-proofs changed, also build binomial-proofs)
+- [ ] Dependent subdir still builds (if ftap-proofs changed, also build options-proofs)
 ```
 
 ## Review checklist

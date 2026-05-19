@@ -1,7 +1,7 @@
 import Lake
 open Lake DSL
 
-package «binomial-proofs» where
+package «options-proofs» where
   version := v!"0.0.1"
   keywords := #["formal verification", "binomial model", "options", "put-call parity", "mathlib"]
   leanOptions := #[
@@ -13,4 +13,4 @@ require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git" @ "master"
 
 @[default_target]
-lean_lib BinomialProofs
+lean_lib OptionsProofs

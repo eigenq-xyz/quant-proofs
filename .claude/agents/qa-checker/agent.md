@@ -17,7 +17,7 @@ You are the QA checker for the quant-proofs monorepo. Run a complete quality pas
 
 ### 1. Sorry check (all Lean subdirs)
 ```bash
-grep -rn sorry --include="*.lean" backtest-proofs/ ftap-proofs/ binomial-proofs/ mortgage-proofs/
+grep -rn sorry --include="*.lean" backtest-proofs/ ftap-proofs/ options-proofs/ mortgage-proofs/
 ```
 Any sorry is a BLOCKING failure on main.
 

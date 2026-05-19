@@ -8,7 +8,7 @@ Monorepo for formally verified quantitative finance. Lean 4 proofs + Python/Cyth
 |-----|------|-------|------|
 | `backtest-proofs/` | Options delta-hedging backtester with Lean 4 accounting kernel | `cd backtest-proofs/lean && lake build` | `cd backtest-proofs/python && pytest` |
 | `ftap-proofs/` | Discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981) | `cd ftap-proofs && lake build` | `grep -rn sorry --include="*.lean" ftap-proofs/` |
-| `binomial-proofs/` | Put-call parity via Cox-Ross-Rubinstein binomial model | `cd binomial-proofs && lake build` | same |
+| `options-proofs/` | Put-call parity via Cox-Ross-Rubinstein binomial model | `cd options-proofs && lake build` | same |
 | `mortgage-proofs/` | LangGraph multi-agent mortgage pipeline + Lean 4 invariant checking | `cd mortgage-proofs && lake build` | `cd mortgage-proofs && pytest` |
 
 Each subdir has its own CLAUDE.md with architecture details. Read that before working in a subdir.
