@@ -159,59 +159,6 @@ B's diff on GitHub is now clean against main, showing only B's actual changes.
 
 ### Document the dependency in the PR description
 
-In PR B's description, add explicitly:
-
-```
-> **Depends on #A — merge that first.** This branch was cut from
-> `feat/backtest-proofs/new-invariant`. After #A merges, rebase this
-> branch onto main before merging.
-```
-
-Use "blocked by" or "depends on" — not "related to". It signals merge order.
-
-### Merge strategy: squash and merge, one at a time
-
-Use **squash and merge** for every PR. Each PR becomes one commit on main; the
-history stays linear. Never merge two dependent PRs simultaneously — merge A,
-pull main locally, rebase B, then merge B.
-
-### Recovering from parallel PRs that conflict
-
-If two parallel PRs already exist and conflict:
-1. Merge the more foundational one first (squash and merge)
-2. `git fetch origin && git rebase origin/main` on the other branch
-3. Resolve conflicts during the rebase
-4. `git push --force-with-lease` to update the PR
-5. Merge the rebased PR
-
-## PR sequencing and dependency management
-
-**PRs must be sequential, not parallel, when they share files or build on each other.**
-Opening two PRs that both touch the same file creates a race: whichever merges second
-will have conflicts or silently overwrite the other's changes. Sequence instead.
-
-### Express the dependency through branch structure
-
-Branch the dependent PR off the dependency's branch — not off main:
-
-```bash
-# PR A: foundational change
-git checkout main && git checkout -b feat/backtest-proofs/new-invariant
-
-# PR B: builds on A — branch off A, not off main
-git checkout feat/backtest-proofs/new-invariant
-git checkout -b feat/backtest-proofs/ffi-export-for-invariant
-```
-
-When PR A merges to main, rebase B onto main and force-push:
-```bash
-git fetch origin && git rebase origin/main
-git push --force-with-lease
-```
-B's diff on GitHub is now clean against main, showing only B's actual changes.
-
-### Document the dependency in the PR description
-
 ```markdown
 > **Depends on #N — merge that first.** This branch was cut from
 > `feat/backtest-proofs/new-invariant`. After #N merges, rebase this
@@ -220,20 +167,26 @@ B's diff on GitHub is now clean against main, showing only B's actual changes.
 
 Use "depends on" or "blocked by" — not "related to". It signals merge order.
 
-### Merge strategy: squash and merge, one at a time
+### Merge strategy
 
-Use **squash and merge** for every PR. Each PR becomes one commit on main; the
-history stays linear. Never merge two dependent PRs simultaneously — merge A,
-pull main locally, rebase B, then merge B.
+**Use a merge commit** (`gh pr merge --merge`) when the branch has clean,
+meaningful commits worth preserving in history. This is the default.
+
+**Use squash and merge** (`gh pr merge --squash`) only when:
+- The branch has WIP / fixup commits that would clutter history, or
+- You rebased to resolve conflicts and the rebased commits are noisy
+
+Never merge two dependent PRs simultaneously — merge A, pull main locally,
+rebase B, then merge B.
 
 ### Recovering from parallel PRs that conflict
 
 If two parallel PRs already exist and conflict:
-1. Merge the more foundational one first (squash and merge)
+1. Merge the more foundational one first
 2. `git fetch origin && git rebase origin/main` on the other branch
 3. Resolve conflicts during the rebase
 4. `git push --force-with-lease` to update the PR
-5. Merge the rebased PR
+5. Merge the rebased PR (squash if the rebase added noise, merge commit otherwise)
 
 ## GitHub workflow rules
 

@@ -145,6 +145,11 @@ Branch dependent PRs off the dependency's branch (not main) so the diff stays
 clean. After the dependency merges, rebase this branch onto main and force-push
 before merging. See `/contributing-to-eigenq` for the full sequencing workflow.
 
+**Merge strategy:** use a merge commit (`gh pr merge --merge`) by default —
+it preserves the branch's individual commits in history. Use squash
+(`gh pr merge --squash`) only for branches with WIP/fixup commits or when
+rebasing to resolve conflicts produced noisy commits.
+
 ### Description template
 
 ```markdown
