@@ -20,6 +20,21 @@ the type system and proven invariants, not by runtime checks.
 
 ## Theorems Proven
 
+### Shared Option Primitives (`QuantCore.OptionInvariants`) — 8 theorems
+
+These theorems live in `quant-core/` and are imported by both `backtest-proofs` and `options-proofs`.
+
+| Theorem | Economic meaning |
+| --- | --- |
+| `callPayoff_nonneg` | A call holder never owes money at expiry (right but not obligation). |
+| `putPayoff_nonneg` | A put holder never owes money at expiry (right but not obligation). |
+| `optionPayoff_nonneg` | Option payoff is always ≥ 0 regardless of kind or moneyness. |
+| `callPayoff_itm` | When S > K: call payoff = S − K exactly. |
+| `callPayoff_otm` | When S ≤ K: call payoff = 0 exactly. |
+| `putPayoff_itm` | When S < K: put payoff = K − S exactly. |
+| `putPayoff_otm` | When S ≥ K: put payoff = 0 exactly. |
+| `integerPayoffDifference` | Call payoff − put payoff = S − K (pure integer identity; not continuous-time put-call parity). |
+
 ### Accounting Kernel (`Invariants.lean`) — 12 theorems
 
 | Theorem | Economic meaning |
@@ -37,18 +52,10 @@ the type system and proven invariants, not by runtime checks.
 | `empty_wellFormed` | Empty portfolio is well-formed (no ghost positions). |
 | `applyTrade_wellFormed` | No zero-quantity ghost positions can exist after any trade sequence. |
 
-### Options Layer (`OptionInvariants.lean`) — 14 theorems
+### Settlement Layer (`SettlementInvariants.lean`) — 6 theorems
 
 | Theorem | Economic meaning |
 | --- | --- |
-| `callPayoff_nonneg` | A call holder never owes money at expiry (right but not obligation). |
-| `putPayoff_nonneg` | A put holder never owes money at expiry (right but not obligation). |
-| `optionPayoff_nonneg` | Option payoff is always ≥ 0 regardless of kind. |
-| `callPayoff_itm` | When S > K: call payoff = S − K exactly. |
-| `callPayoff_otm` | When S ≤ K: call payoff = 0 exactly. |
-| `putPayoff_itm` | When S < K: put payoff = K − S exactly. |
-| `putPayoff_otm` | When S ≥ K: put payoff = 0 exactly. |
-| `integerPayoffDifference` | Call payoff − put payoff = S − K (pure integer identity; not continuous-time put-call parity). |
 | `abandonPosition_portfolioValue` | OTM expiry reduces PV by the position's mark value. |
 | `abandonPosition_cash_unchanged` | OTM expiry does not touch the cash balance. |
 | `abandonPosition_wellFormed` | Abandonment preserves well-formedness of the portfolio. |
@@ -62,7 +69,7 @@ the type system and proven invariants, not by runtime checks.
 theorem settlement_value_formula (p : Portfolio) (opt : EuropeanOption)
     (pos : Position) (hPos : p.getPosition opt.assetId = some pos)
     (spot : Int) :
-    (applySettlement p opt (opt.settle spot pos.quantity)).portfolioValue =
+    (applySettlement p opt (settleEuropeanOption opt spot pos.quantity)).portfolioValue =
       p.portfolioValue + pos.quantity * (optionPayoff opt spot - pos.markPrice)
 ```
 

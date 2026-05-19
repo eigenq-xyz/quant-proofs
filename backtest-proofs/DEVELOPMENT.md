@@ -67,18 +67,27 @@ All targets orchestrate operations across `lean/` and `python/` subdirectories.
 ### Lean Directory Layout
 
 ```text
+# quant-core (shared library — built first as a path dependency)
+quant-core/lean/
+├── lean-toolchain         # Lean version pin (v4.30.0-rc2)
+└── QuantCore/
+    ├── Option.lean        # AssetId (alias), OptionKind, EuropeanOption (strike_pos),
+    │                      # callPayoff, putPayoff, optionPayoff
+    └── OptionInvariants.lean  # 8 payoff theorems (callPayoff_nonneg → integerPayoffDifference)
+
+# backtest-proofs (imports quant-core)
 lean/
-├── lakefile.lean          # Lake build configuration
-├── lean-toolchain         # Lean version pin (v4.27.0-rc1)
+├── lakefile.lean          # Lake build configuration (require «quant-core»)
+├── lean-toolchain         # Lean version pin (v4.30.0-rc2)
 ├── Makefile               # Lean-specific targets
 └── BacktestProofs/
-    ├── Basic.lean         # AssetId, Position (markPrice_pos), Portfolio (value_valid),
+    ├── Basic.lean         # AssetId (re-export), Position (markPrice_pos), Portfolio (value_valid),
     │                      # Trade (executionPrice_pos, fee_nonneg), applyTrade
     ├── Accounting.lean    # @[export hedge_*] FFI symbols only
     ├── Invariants.lean    # 12 accounting theorems (valueIdentity → applyTrade_wellFormed)
-    ├── Options.lean       # OptionKind, EuropeanOption (strike_pos), payoff functions,
-    │                      # settlement dispatcher
-    ├── OptionInvariants.lean  # 14 option theorems (callPayoff_nonneg → settlement_value_formula)
+    ├── Settlement.lean    # Trade.settlementITM, Portfolio.abandonPosition,
+    │                      # settleEuropeanOption, applySettlement
+    ├── SettlementInvariants.lean  # 6 settlement theorems (abandonPosition_* → settlement_value_formula)
     └── Tests/
         └── UnitTests.lean # Concrete native_decide examples
 ```
@@ -92,28 +101,31 @@ open Lake DSL
 package «backtest-proofs» where
   -- Package configuration
 
-lean_lib BacktestProofs where
-  -- Library: all BacktestProofs.* modules
+require «quant-core» from "../../quant-core/lean"   -- shared option types
 
 @[default_target]
-lean_lib BacktestProofs
+lean_lib BacktestProofs where
+  globs := #[.submodules `BacktestProofs]
 ```
 
 The `BacktestProofs` namespace is the module hierarchy name (not the package name). All imports
-use `import BacktestProofs.Basic`, `import BacktestProofs.Invariants`, etc.
+use `import BacktestProofs.Basic`, `import BacktestProofs.Settlement`, etc. Shared types
+come from `import QuantCore.Option`.
 
 ### Proof Workflow
 
-Proofs live inline in `Invariants.lean` and `OptionInvariants.lean` — there is no separate
+Proofs live inline in `Invariants.lean` and `SettlementInvariants.lean` — there is no separate
 `Proofs/` directory. The workflow is:
 
-1. **State theorem** in `Invariants.lean`:
+1. **State theorem** in `Invariants.lean` (accounting) or `SettlementInvariants.lean` (settlement):
 
    ```lean
    theorem valueIdentity (p : Portfolio) :
        p.portfolioValue = p.cash + sumPositionValues p.positions :=
      p.value_valid
    ```
+
+   Payoff-only theorems (non-negativity, ITM/OTM) belong in `quant-core/lean/QuantCore/OptionInvariants.lean`.
 
 2. **Prove inline** using `rfl` / `simp` / `omega` / `native_decide` as appropriate.
    `rfl` suffices when the equality is definitional; `omega` handles linear integer
@@ -226,14 +238,14 @@ nav = from_bp(result["portfolio_value"])  # back to dollars
 
 ## Certificate Schema Evolution
 
-*Planned for v0.5+. See ADR-002 in [DECISIONS.md](DECISIONS.md).*
-
 The v0.4 backtester uses an in-process `StepCertificate` Python dataclass
-(`backtest/audit.py`) rather than JSON certificates. Cross-language JSON certificate
-interchange with a Lean-side verifier is the planned v0.5 feature.
+(`backtest/audit.py`). Cross-language JSON certificate interchange with a Lean-side
+verifier was originally planned for a future version; it is no longer on the
+backtest-proofs roadmap (pricing-theorem work has migrated to `options-proofs`).
 
-When JSON certificates ship, versioning will follow `major.minor` (e.g., "1.0", "1.1").
-Major bumps are breaking; minor bumps add optional fields only.
+If JSON certificates are ever added, versioning should follow `major.minor` ("1.0", "1.1").
+Major bumps are breaking; minor bumps add optional fields only. See ADR-002 in
+[DECISIONS.md](DECISIONS.md) for the original design rationale.
 
 ---
 
@@ -358,7 +370,7 @@ uv run python -c "from tests.test_performance import profile_backtest; profile_b
 
 | Component | Target | Notes |
 | --- | --- | --- |
-| FFI call (`apply_trade`) | < 1 ms | Profile in v0.6 |
+| FFI call (`apply_trade`) | < 1 ms | Profile before stress-run work |
 | BS pricing (1 option) | < 0.1 ms | Already fast via scipy |
 | Backtest (20 weekly steps) | < 1 s | Hull 19.2 scale |
 | Full GBM run (500 paths × 20 steps) | < 60 s | Monte Carlo convergence test |
@@ -434,4 +446,4 @@ print(from_bp(result["portfolio_value"]))
 
 ---
 
-**Last Updated:** 2026-05-09 (v0.4)
+**Last Updated:** 2026-05-19 (v0.4)

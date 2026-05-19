@@ -116,6 +116,35 @@ A passing holdout test means the engine generalises across vol regimes
 
 ---
 
+## Stress regime downloads
+
+Three historical stress windows fall outside the 2019–2024 range of
+`portfolio_atm_options.parquet` and require separate downloads.  Follow
+Steps 1–5 above for each, using the date ranges and output filenames below.
+The COVID 2020 window is already covered by the main parquet file.
+
+| Period | Date range | Output file |
+|---|---|---|
+| Sep–Nov 2008 GFC | 2008-09-01 to 2008-12-31 | `data/stress_gfc_2008.parquet` |
+| Jan–Feb 2018 Volmageddon | 2017-12-01 to 2018-04-30 | `data/stress_volm_2018.parquet` |
+| Aug 2015 flash crash | 2015-07-01 to 2015-10-31 | `data/stress_flash_2015.parquet` |
+
+Use the same five tickers (SPY, QQQ, AAPL, MSFT, JPM) and the same eight
+variables as the main download.  Pass the output filename to
+`scripts/wrds_csv_to_parquet.py` via `--output`:
+
+```bash
+uv run python scripts/wrds_csv_to_parquet.py \
+    --options ~/Downloads/opprcd_gfc.csv \
+    --spots  ~/Downloads/secprd_gfc.csv \
+    --output data/stress_gfc_2008.parquet
+```
+
+Once each file is present, `TestStressGFC2008`, `TestStressVolmageddon2018`,
+and `TestStressFlashCrash2015` activate automatically.
+
+---
+
 ## Notes
 
 - `strike_price` in OptionMetrics is in dollars. If the script prints

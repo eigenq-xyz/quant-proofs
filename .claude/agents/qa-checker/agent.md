@@ -4,9 +4,9 @@ description: >
   Full QA pass: builds, tests, sorry check, type check, and doc cross-references.
   Use before a release, before pushing a significant PR, or when something feels off.
 skills:
-  - reviewing-code-quality
-  - reviewing-documentation
-  - verifying-proof-workflow
+  - review-code-quality
+  - review-documentation
+  - verify-proof-workflow
 model: sonnet
 maxTurns: 25
 ---

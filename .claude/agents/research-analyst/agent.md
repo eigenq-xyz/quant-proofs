@@ -5,8 +5,8 @@ description: >
   Use when designing a new study, sourcing data, evaluating a backtest design,
   or connecting empirical results to formal proofs.
 skills:
-  - sourcing-financial-data
-  - conducting-quant-research
+  - source-financial-data
+  - conduct-quant-research
 disallowedTools: Edit, Write, NotebookEdit
 model: sonnet
 maxTurns: 20

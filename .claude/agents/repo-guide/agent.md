@@ -6,7 +6,7 @@ description: >
   when you're not sure where something belongs or how a change in one project affects
   another. Read-only — never edits files.
 skills:
-  - onboarding-to-eigenq
+  - onboard-to-eigenq
 disallowedTools: Edit, Write, NotebookEdit
 model: sonnet
 maxTurns: 10

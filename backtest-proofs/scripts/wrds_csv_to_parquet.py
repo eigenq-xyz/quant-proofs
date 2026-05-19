@@ -1,27 +1,33 @@
 """Convert WRDS OptionMetrics CSV exports to the engine's parquet schema.
 
-Usage
------
-Place the three WRDS CSV downloads in the data/ directory:
+Usage — main dataset (2019–2024)
+---------------------------------
+Place the three WRDS CSV downloads in the data/ directory and run:
 
-  data/optionmetrics_secid_ticker_cusip.csv   -- Security Names
-  data/optionmetrics_tickers_options_data.csv -- Option Price
-  data/optionmetrics_asset_prices.csv         -- Security Prices (daily close)
-
-Then run:
     cd /path/to/backtest-proofs
     uv run python scripts/wrds_csv_to_parquet.py
 
 Output: data/portfolio_atm_options.parquet
+
+Usage — stress period downloads
+---------------------------------
+Pass explicit paths for the CSVs and a custom output file:
+
+    uv run python scripts/wrds_csv_to_parquet.py \\
+        --secnmd ~/Downloads/secnmd_gfc.csv \\
+        --options ~/Downloads/opprcd_gfc.csv \\
+        --spots   ~/Downloads/secprd_gfc.csv \\
+        --output  data/stress_gfc_2008.parquet
 """
 
+import argparse
 from pathlib import Path
 
 import pandas as pd
 
 _DATA = Path(__file__).parent.parent / "data"
 
-# ── Input files (WRDS CSV exports) ──────────────────────────────────────
+# ── Default input files (WRDS CSV exports, main 2019–2024 dataset) ──────
 SECNMD_CSV = _DATA / "optionmetrics_secid_ticker_cusip.csv"
 OPPRCD_CSV = _DATA / "optionmetrics_tickers_options_data.csv"
 SECPRD_CSV = _DATA / "optionmetrics_asset_prices.csv"
@@ -117,23 +123,57 @@ def load_and_clean(
     return df.reset_index(drop=True)
 
 
+def _parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument(
+        "--secnmd",
+        type=Path,
+        default=SECNMD_CSV,
+        help="Security Names CSV (default: data/optionmetrics_secid_ticker_cusip.csv)",
+    )
+    p.add_argument(
+        "--options",
+        type=Path,
+        default=OPPRCD_CSV,
+        help="Option Price CSV (default: data/optionmetrics_tickers_options_data.csv)",
+    )
+    p.add_argument(
+        "--spots",
+        type=Path,
+        default=SECPRD_CSV,
+        help="Security Prices CSV (default: data/optionmetrics_asset_prices.csv)",
+    )
+    p.add_argument(
+        "--output",
+        type=Path,
+        default=OUT_FILE,
+        help="Output parquet path (default: data/portfolio_atm_options.parquet)",
+    )
+    return p.parse_args()
+
+
 def main() -> None:
-    """Build data/portfolio_atm_options.parquet from WRDS CSV exports."""
-    for path in (SECNMD_CSV, OPPRCD_CSV, SECPRD_CSV):
+    """Build a parquet file from WRDS OptionMetrics CSV exports."""
+    args = _parse_args()
+    secnmd, opprcd, secprd, out = (
+        args.secnmd, args.options, args.spots, args.output
+    )
+
+    for path in (secnmd, opprcd, secprd):
         if not path.exists():
             raise FileNotFoundError(f"Required file not found: {path}")
 
     print("Building secid map ...")
-    secid_map = build_secid_map(SECNMD_CSV)
+    secid_map = build_secid_map(secnmd)
     missing = TARGET_TICKERS - set(secid_map.values())
     if missing:
         print(f"WARNING: these tickers were not found in secnmd: {missing}")
 
     print("Loading security prices ...")
-    spot_df = load_security_prices(SECPRD_CSV, secid_map)
+    spot_df = load_security_prices(secprd, secid_map)
 
     print("Loading and filtering option data ...")
-    df = load_and_clean(OPPRCD_CSV, secid_map, spot_df)
+    df = load_and_clean(opprcd, secid_map, spot_df)
 
     summary = df.groupby("underlying_ticker").agg(
         rows=("date", "count"),
@@ -145,9 +185,9 @@ def main() -> None:
     print(summary.to_string())
     print(f"\nTotal rows: {len(df):,}")
 
-    OUT_FILE.parent.mkdir(exist_ok=True)
-    df.to_parquet(OUT_FILE, index=False)
-    print(f"\nSaved -> {OUT_FILE}")
+    out.parent.mkdir(exist_ok=True)
+    df.to_parquet(out, index=False)
+    print(f"\nSaved -> {out}")
 
 
 if __name__ == "__main__":

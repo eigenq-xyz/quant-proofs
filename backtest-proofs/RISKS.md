@@ -42,91 +42,7 @@
 
 ---
 
-## R2: Interface Churn (Lean ↔ Python Schema Drift)
-
-**Risk**: Lean types evolve independently from Python Pydantic models, breaking integration.
-
-**Severity**: 🟡 Medium (slows development)
-
-**Mitigation Strategy** ✅ DECIDED:
-- **Version field** in JSON schema (`"version": "1.0"`)
-- **Schema sync test**: Roundtrip test (Python serialize → Lean parse → verify types)
-- **Code generation** (future): Meta-program to generate Pydantic from Lean (or vice versa)
-  - Script: `scripts/generate_pydantic_from_lean.py` (v0.7+)
-- **Property tests**: Hypothesis tests comparing Lean/Python accounting outputs
-- **Monorepo benefit**: Both in same repo, easier to keep in sync
-
-**Implementation**: v0.5-certs (schema), v0.6-verifier (sync tests)
-
-**Monitoring**:
-- CI fails if schema version mismatch detected
-- Integration test exercises full schema
-
-**Open Questions** 🤔:
-- Should we generate Python from Lean, or Lean from Python? → Lean is source of truth (formal spec)
-- Use external schema DSL (Protocol Buffers, JSON Schema)? → Adds complexity, defer to v0.7
-
-**Fallback**: Manual sync with strict review process + automated tests
-
----
-
-## R3: JSON Parsing Complexity in Lean
-
-**Risk**: Lean's JSON support is verbose; parsing nested structures is error-prone.
-
-**Severity**: 🟡 Medium (development friction)
-
-**Mitigation Strategy** ✅ DECIDED:
-- **Incremental complexity**: Start with flat schema (v0.5), add nesting in v0.6+
-- **Helper functions**: Write reusable JSON parsers in `Certificate/Parser.lean`
-- **Validation layer**: Parse to unvalidated types, then validate separately
-- **Future optimization**: If JSON proves unwieldy, consider MessagePack or Cap'n Proto
-  - Benchmark required: >1000 certs/sec throughput
-
-**Implementation**: v0.6-verifier
-
-**Resources**:
-- Use `Lean.Json` from Lean 4 core
-- Pattern: `Json.getObj? >>= (·.get? "field") >>= Json.getInt?`
-
-**Open Questions** 🤔:
-- Should we use Lean meta-programming to derive JSON parsers? → Explore in v0.6
-- Performance target: Can Lean verify 100 certs/sec? → Profile in v0.11
-
-**Fallback**: Binary format (msgpack) if JSON latency >100ms per cert
-
----
-
-## R4: Numerical Tolerances (Float ↔ Decimal Conversion)
-
-**Risk**: Conversion between pricer `float` and accounting `Decimal` introduces precision loss.
-
-**Severity**: 🟡 Medium (affects invariant checking)
-
-**Mitigation Strategy** ✅ DECIDED:
-- **Tolerance parameter**: Lean verifier accepts `epsilon : Rat` (default: 0.0001 = 1bp)
-- **Documented precision**: All certificates include `"precision_decimals": 4` field
-- **Conversion rules**:
-  - `float` → `Decimal`: Use `Decimal(str(round(float_val, 6)))` (6 decimals, then round to 4)
-  - `Decimal` → Lean `Int`: Multiply by 10,000, round to nearest integer
-- **Proof**: Prove invariants hold within ε (e.g., `|NAV_calc - NAV_cert| < ε`)
-- **Test suite**: Include edge cases (very small/large numbers, near-zero differences)
-
-**Implementation**: v0.6-verifier (tolerance), v0.7-pricer (conversion)
-
-**Monitoring**:
-- Log all tolerance violations in certificates
-- Alert if >1% of steps exceed ε/2
-
-**Open Questions** 🤔:
-- Should epsilon vary by invariant? (e.g., stricter for cash, looser for Greeks) → Consult practitioners
-- How to handle accumulation of errors over long backtests? → May need periodic "reset" with exact recomputation
-
-**Fallback**: If tolerance violations common, switch pricer to `Decimal` (accept performance hit)
-
----
-
-## R5: Lean Proof Difficulty Underestimation
+## R2: Lean Proof Difficulty Underestimation
 
 **Risk**: Invariants assumed "easy" require deep Mathlib expertise, blocking progress.
 
@@ -159,36 +75,7 @@ v0.4 without external consultation using `omega` + `simp`.
 
 ---
 
-## R6: Performance - Lean Verification Latency
-
-**Risk**: Verifying each certificate takes seconds, making backtest infeasibly slow.
-
-**Severity**: 🟡 Medium (usability)
-
-**Mitigation Strategy** ✅ DECIDED:
-- **Batch verification**: Verify 100 certs at once (single Lean process)
-- **Compiled executable**: Build optimized binary (`lake build --release`)
-- **Async verification**: Verify timestep t-1 while Python computes timestep t
-- **Profiling**: Use Lean's `--profile` flag to identify bottlenecks in v0.11
-- **Sampling**: For 10k-step backtests, verify every 10th step in dev (full verify in CI)
-- **Performance target**: <10ms per certificate (100 certs/sec)
-
-**Implementation**: v0.10-backtest (profiling and optimization)
-
-**Benchmark Plan** (v0.11):
-1. Measure baseline: single cert verification time
-2. Test batching: 10, 100, 1000 certs
-3. Identify hotspots: JSON parsing vs. invariant checking
-
-**Open Questions** 🤔:
-- Should we use Lean FFI (call Lean from Python directly)? → Reduces serialization overhead, but complex
-- Can we parallelize verification? → Explore Lean's `Task` API
-
-**Fallback**: If <10ms infeasible, verify only critical steps (trade execution, expiry) + sample others
-
----
-
-## R7: DerivaGem Reference Mismatch
+## R3: DerivaGem Reference Mismatch
 
 **Risk**: Spreadsheet pricing differs from Python Black-Scholes due to undocumented quirks.
 
@@ -219,36 +106,7 @@ on price and `abs=0.001` on delta. See `tests/test_pricer.py` for the reference 
 
 ---
 
-## R8: CI Timeout on Large Integration Tests
-
-**Risk**: Full backtest emits 10k certs; CI times out (GitHub Actions: 6hr limit).
-
-**Severity**: 🟢 Low (process issue)
-
-**Mitigation Strategy** ✅ DECIDED:
-- **Tiny fixture in CI**: ≤10 certs for fast feedback (<1 min total)
-  - Fixture: `tests/fixtures/tiny_cert_stream.json`
-- **Nightly job**: Separate workflow for full backtest (100-1000 certs)
-  - Workflow: `.github/workflows/nightly.yml` (future)
-- **Sampling in CI**: Verify every 100th cert for medium-sized tests
-- **Caching**: Cache Lean build artifacts (`~/.elan`, `build/`)
-
-**Implementation**: v0.6-verifier
-
-**CI Strategy**:
-- PR checks: Tiny fixture (fast feedback)
-- Main branch: Medium fixture (100 certs)
-- Nightly/weekly: Full backtest
-
-**Open Questions** 🤔:
-- Use GitHub Actions large runners for faster CI? → Cost-benefit analysis needed
-- Self-hosted runners? → Security concerns, defer unless critical
-
-**Fallback**: Run full tests locally before release (manual verification)
-
----
-
-## R9: JupyterBook Execution Timeout
+## R4: JupyterBook Execution Timeout
 
 **Risk**: Notebooks with large backtests time out during `jupyter-book build`.
 
@@ -262,7 +120,7 @@ on price and `abs=0.001` on delta. See `tests/test_pricer.py` for the reference 
 - **Smaller datasets**: Use 20-step backtests in docs, not 1000-step
 - **Pre-execution**: For expensive notebooks, run `make docs-execute` locally before commit
 
-**Implementation**: v0.5-certs (config), v0.11-release (notebooks)
+**Implementation**: v0.4 (config set); pre-execute credibility exhibit notebooks before commit
 
 **Workflow**:
 1. Develop notebook interactively
@@ -280,7 +138,7 @@ on price and `abs=0.001` on delta. See `tests/test_pricer.py` for the reference 
 
 ---
 
-## R10: uv Lock File Drift (Cross-Platform)
+## R5: uv Lock File Drift (Cross-Platform)
 
 **Risk**: Team members on Linux/macOS/Windows get different dependency versions.
 
@@ -294,7 +152,7 @@ on price and `abs=0.001` on delta. See `tests/test_pricer.py` for the reference 
 - **Lockfile in git**: Commit `uv.lock`
 - **Regular updates**: `uv lock --upgrade` monthly (scheduled PR)
 
-**Implementation**: v0.1-scaffold (lockfile), v0.6-verifier (CI matrix)
+**Implementation**: v0.1-scaffold (lockfile and CI matrix)
 
 **Testing**:
 - CI runs on all platforms
@@ -308,7 +166,7 @@ on price and `abs=0.001` on delta. See `tests/test_pricer.py` for the reference 
 
 ---
 
-## R11: Makefile Portability (Windows)
+## R6: Makefile Portability (Windows)
 
 **Risk**: The Makefile does not function on Windows without WSL/Cygwin.
 
@@ -337,7 +195,7 @@ on price and `abs=0.001` on delta. See `tests/test_pricer.py` for the reference 
 
 ---
 
-## R12: Data Decryption Key Management
+## R7: Data Decryption Key Management
 
 **Risk**: Decryption key for `data/` leaks via commit history or CI logs.
 
@@ -380,32 +238,25 @@ CSV/Parquet files are versioned in the repo. Key handoff uses secure channel onl
 
 ---
 
-## R13: Lean Black-Scholes Proof Complexity (v0.5+)
+## R8: Empirical Credibility Work Scope Creep
 
-**Risk**: Formalizing Black-Scholes pricing in Lean requires Mathlib real analysis that may
-be substantially harder than the integer-arithmetic accounting proofs already completed.
+**Risk**: The four credibility levers (P&L attribution, Leland sweep, QuantLib A-B, stress run)
+each require external tools or data that may be harder to acquire or validate than expected.
 
-**Severity**: 🟠 High (schedule risk for v0.5+)
+**Severity**: 🟡 Medium (schedule risk for credibility work)
+
+**Status**: Open. Accounting kernel is complete (v0.4); credibility levers are the remaining
+open work. See `PLAN-backtest-credibility.md` for the execution schedule.
 
 **Mitigation Strategy**:
 
-- **v0.5 target**: `binomial_replication_cost` theorem (single-period, integer arithmetic).
-  Scope is narrow enough to avoid continuous-time Mathlib dependencies.
-- **v0.6+ target**: Multi-period GBM convergence theorem. This requires Mathlib-level real
-  analysis (measure theory, stochastic processes) and may stall if Mathlib coverage is
-  insufficient.
-- **Escape hatch**: Leave pricing in Python (unverified) and verify only accounting layer.
-  This is the current v0.4 state; shipping v0.5+ proofs is a research stretch goal.
+- **Lever 1 (P&L attribution)**: No external data needed; runs on GBM. Low risk.
+- **Lever 2 (Leland 1985)**: Requires only the GBM simulator, already present. Low risk.
+- **Lever 3 (QuantLib A-B)**: Requires installing QuantLib Python. Medium risk (build friction on macOS).
+- **Lever 4 (WRDS stress run)**: Requires WRDS OptionMetrics access and git-crypt unlock. High risk (data dependency).
 
-**Implementation**: v0.5 (binomial), v0.6+ (continuous-time, if feasible)
-
-**Open Questions** 🤔:
-
-- Does Mathlib 4 have sufficient stochastic process coverage for GBM convergence? → Audit before v0.6
-- Should v0.5 scope the binomial theorem to a single step or multi-step? → Single step first
-
-**Fallback**: Ship v0.5 with `binomial_replication_cost` only; leave GBM theorem as aspirational
-pending Mathlib progress.
+**Fallback**: Ship Levers 1–3 as the JupyterBook exhibits if WRDS data is unavailable.
+Lever 4 can be a deferred proof-of-concept once data access is confirmed.
 
 ---
 
@@ -414,19 +265,15 @@ pending Mathlib progress.
 | ID | Risk | Severity | Status | Milestone |
 |----|------|----------|--------|-----------|
 | R1 | Decimal precision | 🔴 Critical | ✅ Mitigated | v0.2-nav |
-| R2 | Schema drift | 🟡 Medium | ✅ Mitigated | v0.6-verifier |
-| R3 | JSON parsing | 🟡 Medium | ✅ Mitigated | v0.6-verifier |
-| R4 | Float tolerances | 🟡 Medium | ✅ Mitigated | v0.6, v0.7 |
-| R5 | Proof difficulty | 🟠 High | ✅ Resolved | v0.4 |
-| R6 | Verification perf | 🟡 Medium | 🔄 Monitoring | v0.10-backtest |
-| R7 | DG mismatch | 🟢 Low | ✅ Mitigated | v0.4 |
-| R8 | CI timeout | 🟢 Low | ✅ Mitigated | v0.6-verifier |
-| R9 | Docs timeout | 🟢 Low | ✅ Mitigated | v0.11-release |
-| R10 | uv lock drift | 🟡 Medium | ✅ Mitigated | v0.1, v0.6 |
-| R11 | Windows Make | 🟡 Medium | ✅ Mitigated | v0.1-scaffold |
-| R12 | Key leak | 🔴 Critical | ✅ Mitigated | v0.1, v0.4 |
+| R2 | Proof difficulty | 🟠 High | ✅ Resolved | v0.4 |
+| R3 | DG mismatch | 🟢 Low | ✅ Mitigated | v0.4 |
+| R4 | Docs timeout | 🟢 Low | ✅ Mitigated | v0.4 |
+| R5 | uv lock drift | 🟡 Medium | ✅ Mitigated | v0.1-scaffold |
+| R6 | Windows Make | 🟡 Medium | ✅ Mitigated | v0.1-scaffold |
+| R7 | Key leak | 🔴 Critical | ✅ Mitigated | v0.1, v0.4 |
+| R8 | Credibility lever scope creep | 🟡 Medium | 🔄 Open | credibility plan |
 
-**Review Schedule**: Update after each milestone; full review before v1.0.
+**Review Schedule**: Update after each credibility lever ships; full review before publishing exhibits.
 
 ---
 

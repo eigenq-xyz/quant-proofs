@@ -130,9 +130,9 @@ FFI boundary: pass integers (basis points), never floats.
 
 ## ADR-002: JSON Certificates with String-Encoded Decimals
 
-**Status:** ✅ Accepted (cross-language verifier, future)
+**Status:** ❌ Abandoned — Lean-side verifier not being built
 **Date:** 2026-01-18
-**Implementation:** Planned for Lean-side verifier (v0.5+)
+**Implementation:** N/A. Kept as a record of the design considered and why we chose in-process Python `StepCertificate` instead.
 
 **v0.4 update:** The current backtester uses an in-process `StepCertificate` Python
 dataclass (`backtest/audit.py`) rather than JSON certificates. Cross-language JSON
@@ -168,9 +168,9 @@ Lean parses strings to `Int` (multiply by 10^precision).
 
 ## ADR-003: Epsilon-Tolerance Verification (1 Basis Point)
 
-**Status:** ✅ Accepted (subject to revision)
+**Status:** ❌ Abandoned — Lean-side verifier not being built
 **Date:** 2026-01-18
-**Implementation:** Planned for Lean-side verifier (v0.6+)
+**Implementation:** N/A. The in-process `StepCertificate` uses exact integer equality; no epsilon is needed.
 
 **v0.4 update:** The Python-level verifier uses exact integer comparison
 (`invariant_holds = delta_pv == expected_delta_pv`). The parameterised epsilon
@@ -275,8 +275,58 @@ layer. Alternatives were CFFI (C Foreign Function Interface) and ctypes.
 
 ---
 
+## ADR-007: Extract QuantCore Shared Library
+
+**Status:** ✅ Accepted
+**Date:** 2026-05-19
+**Implementation:** v0.5
+
+**Context:** `backtest-proofs` and `options-proofs` both needed `EuropeanOption`, `OptionKind`,
+`callPayoff`, `putPayoff`, and the 8 payoff theorems. Prior to v0.5 these lived in
+`backtest-proofs/lean/BacktestProofs/Options.lean` and `OptionInvariants.lean`. As
+`options-proofs` began to develop, duplication became unavoidable.
+
+**Decision:** Extract a `quant-core/` subdir (Lean 4 `QuantCore` namespace; Python `quant_core`
+package) as the canonical home for types and theorems that are independent of any specific
+backtester or pipeline.
+
+- `quant-core/lean/QuantCore/Option.lean` — types, payoff functions
+- `quant-core/lean/QuantCore/OptionInvariants.lean` — 8 payoff theorems
+- `quant-core/python/` — `bs_price`, `bs_greeks`, `PricePath`, `simulate_gbm`
+
+`backtest-proofs` and `options-proofs` declare `require «quant-core» from "..."` (path
+dependency) in their lakefiles. Python packages declare `quant-core` as a path dependency
+in `pyproject.toml`.
+
+`backtest-proofs` retains all settlement logic: `Settlement.lean` (functions) and
+`SettlementInvariants.lean` (6 theorems including the crown-jewel `settlement_value_formula`).
+These are portfolio-specific and do not belong in the shared library.
+
+**Rationale:**
+
+1. Single definition: `EuropeanOption` has one canonical type, not two that can drift apart.
+2. Enables `options-proofs` to build on proven payoff theorems without re-proving them.
+3. Cleanly separates "option math" (QuantCore) from "portfolio accounting" (BacktestProofs).
+4. Python side mirrors the Lean structure: `quant_core.pricer` / `.simulator` have no
+   backtester dependencies, so they can be tested in isolation without building Cython.
+
+**Consequences (positive):**
+
+- Zero duplication: payoff theorems proved once, imported everywhere.
+- `options-proofs` starts with 8 proven lemmas for free.
+- `quant-core` Python tests run on Ubuntu (no FFI); `backtest-proofs` tests remain macOS-only.
+
+**Consequences (negative):**
+
+- Path dependency means both subdirs must be present on disk; a standalone `lake build`
+  of `backtest-proofs` requires `quant-core/lean/` to exist at `../../quant-core/lean`.
+- CI matrix grows: one more Lean job, one more Python job.
+
 ## Future ADRs (Pending)
 
-- ADR-007: Certificate Versioning Scheme — v0.5
-- ADR-008: Optimizer Certificate Detail Level — v0.9
-- ADR-009: Data Encryption Strategy — v0.10
+The accounting kernel is complete at v0.4. Future ADRs will cover credibility and
+validation work rather than proof extensions:
+
+- ADR-008: QuantLib A-B comparison methodology — credibility lever 3
+- ADR-009: WRDS stress-run data pipeline — credibility lever 4
+- ADR-010: Data Encryption Strategy (git-crypt key rotation)

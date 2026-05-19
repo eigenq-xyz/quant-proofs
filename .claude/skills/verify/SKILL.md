@@ -46,7 +46,7 @@ and re-run from that level — do not skip ahead.
 ## Pre-merge minimum
 
 Before opening any PR: Levels 1 and 2 must pass. For PRs that touch data or
-results: Levels 1–4. For PRs targeting mathlib: Levels 1–2 plus `/lean-style-check`.
+results: Levels 1–4. For PRs targeting mathlib: Levels 1–2 plus `/check-lean-style`.
 
 ## On failure
 

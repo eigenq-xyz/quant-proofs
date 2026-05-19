@@ -22,7 +22,7 @@ The following invariants are proved as Lean 4 theorems — not tested, *proved*.
 | Self-financing | Trading at the mark price changes PV only by the fee | `selfFinancing` |
 | Settlement | At expiry ΔPV = qty × (payoff − mark), unifying ITM and OTM | `settlement_value_formula` |
 
-26 theorems total across [`Invariants.lean`](lean/BacktestProofs/Invariants.lean) (12) and [`OptionInvariants.lean`](lean/BacktestProofs/OptionInvariants.lean) (14). See [docs/formal_guarantees.md](docs/formal_guarantees.md) for the full list.
+18 theorems in BacktestProofs ([`Invariants.lean`](lean/BacktestProofs/Invariants.lean) (12) and [`SettlementInvariants.lean`](lean/BacktestProofs/SettlementInvariants.lean) (6)) plus 8 payoff theorems in QuantCore. 26 total across the dependency graph. See [docs/formal_guarantees.md](docs/formal_guarantees.md) for the full list.
 
 ## Status
 
@@ -33,9 +33,10 @@ The following invariants are proved as Lean 4 theorems — not tested, *proved*.
 | Cython FFI bridge (Lean → C → Python) | ✅ Complete |
 | Python/Cython backtesting execution layer | ✅ Complete |
 | Delta-hedging strategy (single-leg + portfolio) | ✅ Complete |
-| Black-Scholes pricing formalization in Lean | 🔧 In progress (currently Python only) |
-| Greeks (delta, gamma) as Lean 4 theorems | 📋 Planned |
-| Multi-period GBM convergence theorem | 📋 Planned (requires Mathlib real analysis) |
+| P&L attribution identity (Γ/Θ decomposition per path) | 📋 Credibility lever 1 |
+| Leland (1985) rehedge-frequency variance sweep | 📋 Credibility lever 2 |
+| QuantLib A-B price-path comparison (1 bp threshold) | 📋 Credibility lever 3 |
+| March 2020 VIX stress run on WRDS OptionMetrics data | 📋 Credibility lever 4 |
 
 ## What is not verified
 
@@ -53,32 +54,36 @@ Numerical results that confirm the engine behaves correctly on externally verifi
 ## Repository structure
 
 ```text
+quant-core/lean/QuantCore/           # Shared option types (imported by backtest-proofs)
+├── Option.lean                      # EuropeanOption, callPayoff, putPayoff, optionPayoff
+└── OptionInvariants.lean            # 8 payoff theorems
+
 backtest-proofs/
 ├── lean/
 │   ├── lakefile.lean
 │   └── BacktestProofs/
-│       ├── Basic.lean              # Portfolio, Position, Trade
-│       ├── Accounting.lean         # @[export hedge_*] FFI exports
-│       ├── Invariants.lean         # accounting theorems
-│       ├── Options.lean            # EuropeanOption, payoffs
-│       ├── OptionInvariants.lean   # settlement theorems
+│       ├── Basic.lean               # Portfolio, Position, Trade
+│       ├── Accounting.lean          # @[export hedge_*] FFI exports
+│       ├── Invariants.lean          # 12 accounting theorems
+│       ├── Settlement.lean          # Settlement functions (ITM trade / OTM abandon)
+│       ├── SettlementInvariants.lean # 6 settlement theorems
 │       └── Tests/UnitTests.lean
 ├── python/
 │   ├── pyproject.toml
 │   └── src/backtest_proofs/
-│       ├── pricer/                 # Black-Scholes + Greeks
-│       ├── etl/                    # WRDS OptionMetrics loaders
-│       ├── simulator/              # seeded GBM
-│       ├── backtest/               # delta-hedge runner, certificates
-│       └── ffi/                    # compiled Cython bridge to Lean
-├── docs/                           # JupyterBook → GitHub Pages
-├── notebooks/                      # delta_hedge_demo.ipynb
-└── data/                           # WRDS / FRED (git-crypt)
+│       ├── pricer/                  # Re-exports quant_core.pricer (Black-Scholes + Greeks)
+│       ├── etl/                     # WRDS OptionMetrics loaders
+│       ├── simulator/               # Re-exports quant_core.simulator (GBM)
+│       ├── backtest/                # delta-hedge runner, certificates
+│       └── ffi/                     # compiled Cython bridge to Lean
+├── docs/                            # JupyterBook → GitHub Pages
+├── notebooks/                       # delta_hedge_demo.ipynb
+└── data/                            # WRDS / FRED (git-crypt)
 ```
 
 ## Prerequisites
 
-- Lean 4 v4.27.0-rc1 (installed via `elan` by `make setup`)
+- Lean 4 v4.30.0-rc2 (installed via `elan` by `make setup`)
 - Python 3.12+ (managed by `uv`)
 - Make
 
@@ -122,15 +127,23 @@ A unit test checks one input. A Lean proof checks all inputs. For accounting inv
 
 This matters as AI-generated trading code becomes common. A model that produces plausible-looking results can still contain an accounting error that compounds silently over months. Machine-checked proofs eliminate this class of error entirely. The project also explores a development pattern in which the human reviews theorem statements while the AI produces implementations that must discharge them ([docs/human_ai.md](docs/human_ai.md)).
 
-## Roadmap
+## Credibility roadmap
 
-- **v0.4** — Discrete delta-hedging backtest + Python stack (current)
-- **v0.5** — `binomial_replication_cost` theorem: single-period replication cost = risk-neutral price (integer arithmetic)
-- **v0.6+** — Multi-period GBM convergence theorem (Mathlib-level real analysis)
+The Lean accounting kernel is complete at v0.4 (26 theorems, zero `sorry`). The remaining
+work is empirical: showing the engine produces correct *numbers*, not just formally
+consistent accounting. Four credibility levers, ordered by effort:
+
+1. **P&L attribution identity** — `P&L ≈ ½·Γ·(ΔS)² − Θ·Δt + residual` on a GBM path; fastest catch of any hidden accounting bug.
+2. **Leland (1985) rehedge-frequency sweep** — `Var(P&L) ∝ Γ²·S²·σ²·Δt`; replicate Leland's Table II across daily/hourly/15-min frequencies. JupyterBook exhibit.
+3. **QuantLib A-B comparison** — 5–10 benchmark scenarios through both engines; agree within 1 bp. Differentiator: same numbers + formal proof.
+4. **March 2020 VIX stress run** — run on WRDS OptionMetrics data through the fastest VIX spike on record; confirm invariants never fail, `settlement_value_formula` holds every bar.
+
+See `PLAN-backtest-credibility.md` for execution schedule and "victory" definition.
 
 ## References
 
 - Hull, *Options, Futures, and Other Derivatives*, 9th Global ed. (2014), Tables 19.2 and 19.3
+- [Leland (1985)](https://doi.org/10.1111/j.1540-6261.1985.tb02383.x), *JF* 40(4): option pricing and replication with transaction costs
 - [Bertsimas, Kogan & Lo (2000)](https://doi.org/10.1016/S0304-405X(99)00048-6), *JFE* 55(2): discrete hedging variance
 - [Carr & Madan (1998)](https://ssrn.com/abstract=1691942): realized P&L decomposition via dollar gamma
 - [de Moura & Ullrich (2021)](https://doi.org/10.1007/978-3-030-79876-5_37): Lean 4 theorem prover

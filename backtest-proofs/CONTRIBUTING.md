@@ -147,7 +147,8 @@ make integration
 
 ```lean
 -- Module naming: PascalCase under BacktestProofs.*
--- BacktestProofs/Basic.lean, BacktestProofs/Invariants.lean
+-- BacktestProofs/Basic.lean, BacktestProofs/Invariants.lean, BacktestProofs/Settlement.lean
+-- Shared types: QuantCore/Option.lean, QuantCore/OptionInvariants.lean
 
 -- Structure names: PascalCase
 structure Portfolio where
@@ -162,7 +163,9 @@ def applyTrade (p : Portfolio) (t : Trade) : Portfolio := ...
 -- Theorem names: camelCase with descriptive suffix
 theorem valueUpdateFormula (p : Portfolio) (t : Trade) : ... := by ...
 
--- Proofs live inline in Invariants.lean / OptionInvariants.lean
+-- Accounting proofs: Invariants.lean
+-- Settlement proofs: SettlementInvariants.lean
+-- Payoff proofs: quant-core QuantCore/OptionInvariants.lean
 -- Use rfl / simp / omega / native_decide where possible
 ```
 
@@ -197,7 +200,7 @@ print(from_bp(result["portfolio_value"]))
 
 Examples:
 [v0.4] Prove settlement_value_formula (ITM/OTM unified)
-[v0.5] Add binomial_replication_cost theorem
+[credibility] Add Leland 1985 rehedge-frequency sweep notebook
 [docs] Rewrite CONTRIBUTING to reflect v0.4 layout
 [fix] Handle edge case in bs_greeks near expiry
 ```
@@ -226,13 +229,14 @@ make integration # Integration test passes
 **Python:**
 
 ```python
-# tests/test_pricer.py
-from backtest_proofs.pricer.black_scholes import bs_price
+# Pricer tests live in quant-core/python/tests/test_pricer.py
+# backtest_proofs.pricer re-exports from quant_core.pricer for convenience
+from quant_core.pricer.black_scholes import bs_price
 
 def test_bs_price_hull_ex15_6():
     """Matches Hull Example 15.6 reference vector."""
-    price = bs_price(S=42.0, K=40.0, T=0.5, r=0.10, sigma=0.20, option_type="call")
-    assert abs(price - 4.76) < 0.01
+    result = bs_price(S=42.0, K=40.0, T=0.5, r=0.10, sigma=0.20, option_type="call")
+    assert abs(result.value - 4.76) < 0.01
 ```
 
 **Lean:**
@@ -252,7 +256,10 @@ example : hedge_portfolio_value 500_000 [] = 500_000 := by native_decide
 ### Adding a New Invariant
 
 1. **Document in DECISIONS.md**: Why is this invariant important?
-2. **Define theorem in Lean** (`BacktestProofs/Invariants.lean` or `OptionInvariants.lean`)
+2. **Decide where it lives:**
+   - Pure payoff property (non-negativity, ITM/OTM) → `quant-core/lean/QuantCore/OptionInvariants.lean`
+   - Portfolio accounting → `BacktestProofs/Invariants.lean`
+   - Settlement logic → `BacktestProofs/SettlementInvariants.lean`
 3. **Implement proof inline** (use `rfl`/`simp`/`omega`/`native_decide` where possible)
 4. **Add concrete example** to `Tests/UnitTests.lean`
 5. **Test in Python** if the invariant has a Python-observable effect

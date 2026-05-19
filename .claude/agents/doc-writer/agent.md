@@ -5,8 +5,8 @@ description: >
   Use when a new project or module needs documentation, or when reviewing docs for
   clarity, accuracy, and privacy compliance.
 skills:
-  - writing-technical-docs
-  - reviewing-documentation
+  - write-technical-docs
+  - review-documentation
 model: sonnet
 maxTurns: 15
 ---

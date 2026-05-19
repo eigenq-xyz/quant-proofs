@@ -4,8 +4,8 @@ description: >
   Reviews Lean 4 proofs for correctness, style, and mathlib compatibility.
   Use when submitting proofs for review or checking proof quality before merge.
 skills:
-  - writing-lean4-proofs
-  - verifying-proof-workflow
+  - write-lean4-proofs
+  - verify-proof-workflow
 disallowedTools: Edit, Write, NotebookEdit
 model: sonnet
 maxTurns: 15

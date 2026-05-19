@@ -18,13 +18,13 @@ Each subdir has its own CLAUDE.md with architecture details. Read that before wo
 
 - Zero `sorry` on main. No exceptions.
 - `mypy --strict` clean on all Python in `src/`.
-- Licensed data (OptionMetrics/WRDS, Polygon paid) never committed. See `/sourcing-financial-data`.
+- Licensed data (OptionMetrics/WRDS, Polygon paid) never committed. See `/source-financial-data`.
 - No private content: no GPA, grades, target firm names in strategy context, resume paths, or application timelines.
 
 ## Skills and agents
 
-Run `/onboarding-to-eigenq` for the full codebase briefing.
-Run `/writing-lean4-proofs` or `/writing-python-code` before writing code.
+Run `/onboard-to-eigenq` for the full codebase briefing.
+Run `/write-lean4-proofs` or `/write-python-code` before writing code.
 
 ## Why this repo exists
 
