@@ -47,12 +47,14 @@ jobs:
             | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
-      - name: Cache Lean toolchain and packages
+      # Cache only .lake (not ~/.elan) — toolchain re-downloads in ~30s but
+      # keeping ~/.elan out of the cache avoids blowing the 10 GB repo limit
+      # across 5 parallel jobs each storing a full mathlib OLean set.
+      - name: Cache Lake packages
         id: lean-cache
         uses: actions/cache@v4
         with:
           path: |
-            ~/.elan
             ${{ matrix.lean-dir }}/.lake
             ${{ matrix.dep-lake }}
           key: lean-${{ matrix.subdir }}-${{ runner.os }}-${{ hashFiles(format('{0}/lake-manifest.json', matrix.lean-dir)) }}
