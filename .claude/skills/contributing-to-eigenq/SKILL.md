@@ -131,6 +131,29 @@ Do not open the mathlib PR until:
 - The proof has been stable on `main` for at least one week (no further edits anticipated).
 - The `options-proofs/` dependency on the FTAP result has been tested post-namespace-change.
 
+## GitHub workflow rules
+
+**Never push directly to a protected branch.** All changes go through a PR, regardless
+of how small. The repo's `PreToolUse` hook enforces this automatically by querying the
+GitHub API for protected branches before any push; the same rule applies when working
+manually.
+
+**Use draft PRs for work in progress.** If a branch isn't ready for review — sorry
+still present, tests failing, proof incomplete — open it as a draft:
+```bash
+gh pr create --draft --title "proof/ftap-proofs/noArbitrageEMM" --body "..."
+```
+This signals intent without triggering review requests. Convert to ready when the
+pre-merge checklist is fully green.
+
+**Reviewer etiquette:**
+- Respond to every review comment, even with just "done" or "won't fix, because...".
+- Use GitHub's "Resolve conversation" only after the fix is pushed — not to dismiss.
+- For blocking concerns, push a fix and re-request review; don't merge over a BLOCKING
+  comment.
+- Prefer GitHub's suggestion feature for one-line reviewer edits; it makes the
+  diff reviewable.
+
 ## Commit standards
 
 See `/writing-commits-and-prs` for the full commit message format. Summary:

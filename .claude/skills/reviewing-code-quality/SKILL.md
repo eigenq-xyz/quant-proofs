@@ -117,6 +117,10 @@ A PR is ready to merge only when all applicable items are **Pass**.
   Pydantic `Field` defaults).
 - [ ] No `os.system()` calls (use `subprocess.run(check=True)`).
 - [ ] No `import *`.
+- [ ] No magic numeric literals in arithmetic expressions or function calls. Every
+  bare integer or float with domain meaning (prices, fees, tenors, basis-point
+  factors) must be a named constant or use `to_bp`/`from_bp`. Pay extra attention
+  near FFI call sites where a wrong unit is a silent correctness failure.
 
 ---
 

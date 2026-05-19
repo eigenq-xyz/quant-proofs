@@ -177,3 +177,43 @@ yourself. Use `capture_output=True` unless you explicitly want output to stream
 to the terminal.
 
 ruff rule: `S605` (os.system with shell=True).
+
+---
+
+## 7. Magic numeric literals
+
+**Why it's prohibited:** A bare number carries no semantic meaning. `502500` is
+opaque; `to_bp(50.25)` documents the unit and makes the conversion explicit. This is
+especially critical in this codebase where basis-point integers cross the Lean FFI
+boundary — a wrong unit silently produces incorrect results that no type checker can
+catch.
+
+```python
+# Bad — what does 10_000 mean? Basis-point factor? Days? A fee cap?
+position_value = quantity * 10_000
+if fee > 50:
+    raise ValueError("fee too high")
+```
+
+```python
+# Good — use the project's conversion helpers or named constants
+from backtest_proofs.pricer.conventions import to_bp, from_bp
+
+BP_FACTOR = 10_000           # module-level constant with a name
+MAX_FEE_BPS = to_bp(0.005)  # 0.5% fee cap, explicit conversion
+
+position_value = quantity * BP_FACTOR
+if fee > MAX_FEE_BPS:
+    raise ValueError(
+        f"fee {from_bp(fee):.4f} exceeds cap {from_bp(MAX_FEE_BPS):.4f}"
+    )
+```
+
+Rules:
+- Domain constants go at module level with `ALL_CAPS` names.
+- Use `to_bp` / `from_bp` at every float↔int conversion; never multiply by `10_000`
+  inline.
+- Named keyword arguments are preferred over positional literals in function calls.
+
+No automatic ruff rule — must be caught in review. Pay extra attention near FFI
+call sites.
