@@ -22,7 +22,7 @@ The following invariants are proved as Lean 4 theorems — not tested, *proved*.
 | Self-financing | Trading at the mark price changes PV only by the fee | `selfFinancing` |
 | Settlement | At expiry ΔPV = qty × (payoff − mark), unifying ITM and OTM | `settlement_value_formula` |
 
-26 theorems total across [`Invariants.lean`](lean/BacktestProofs/Invariants.lean) (12) and [`OptionInvariants.lean`](lean/BacktestProofs/OptionInvariants.lean) (14). See [docs/formal_guarantees.md](docs/formal_guarantees.md) for the full list.
+18 theorems in BacktestProofs ([`Invariants.lean`](lean/BacktestProofs/Invariants.lean) (12) and [`SettlementInvariants.lean`](lean/BacktestProofs/SettlementInvariants.lean) (6)) plus 8 payoff theorems in QuantCore. 26 total across the dependency graph. See [docs/formal_guarantees.md](docs/formal_guarantees.md) for the full list.
 
 ## Status
 
@@ -53,32 +53,36 @@ Numerical results that confirm the engine behaves correctly on externally verifi
 ## Repository structure
 
 ```text
+quant-core/lean/QuantCore/           # Shared option types (imported by backtest-proofs)
+├── Option.lean                      # EuropeanOption, callPayoff, putPayoff, optionPayoff
+└── OptionInvariants.lean            # 8 payoff theorems
+
 backtest-proofs/
 ├── lean/
 │   ├── lakefile.lean
 │   └── BacktestProofs/
-│       ├── Basic.lean              # Portfolio, Position, Trade
-│       ├── Accounting.lean         # @[export hedge_*] FFI exports
-│       ├── Invariants.lean         # accounting theorems
-│       ├── Options.lean            # EuropeanOption, payoffs
-│       ├── OptionInvariants.lean   # settlement theorems
+│       ├── Basic.lean               # Portfolio, Position, Trade
+│       ├── Accounting.lean          # @[export hedge_*] FFI exports
+│       ├── Invariants.lean          # 12 accounting theorems
+│       ├── Settlement.lean          # Settlement functions (ITM trade / OTM abandon)
+│       ├── SettlementInvariants.lean # 6 settlement theorems
 │       └── Tests/UnitTests.lean
 ├── python/
 │   ├── pyproject.toml
 │   └── src/backtest_proofs/
-│       ├── pricer/                 # Black-Scholes + Greeks
-│       ├── etl/                    # WRDS OptionMetrics loaders
-│       ├── simulator/              # seeded GBM
-│       ├── backtest/               # delta-hedge runner, certificates
-│       └── ffi/                    # compiled Cython bridge to Lean
-├── docs/                           # JupyterBook → GitHub Pages
-├── notebooks/                      # delta_hedge_demo.ipynb
-└── data/                           # WRDS / FRED (git-crypt)
+│       ├── pricer/                  # Re-exports quant_core.pricer (Black-Scholes + Greeks)
+│       ├── etl/                     # WRDS OptionMetrics loaders
+│       ├── simulator/               # Re-exports quant_core.simulator (GBM)
+│       ├── backtest/                # delta-hedge runner, certificates
+│       └── ffi/                     # compiled Cython bridge to Lean
+├── docs/                            # JupyterBook → GitHub Pages
+├── notebooks/                       # delta_hedge_demo.ipynb
+└── data/                            # WRDS / FRED (git-crypt)
 ```
 
 ## Prerequisites
 
-- Lean 4 v4.27.0-rc1 (installed via `elan` by `make setup`)
+- Lean 4 v4.30.0-rc2 (installed via `elan` by `make setup`)
 - Python 3.12+ (managed by `uv`)
 - Make
 
@@ -124,9 +128,10 @@ This matters as AI-generated trading code becomes common. A model that produces 
 
 ## Roadmap
 
-- **v0.4** — Discrete delta-hedging backtest + Python stack (current)
-- **v0.5** — `binomial_replication_cost` theorem: single-period replication cost = risk-neutral price (integer arithmetic)
-- **v0.6+** — Multi-period GBM convergence theorem (Mathlib-level real analysis)
+- **v0.4** — Discrete delta-hedging backtest + Python stack
+- **v0.5** — Extract shared `quant-core` library; add `Settlement.lean` + `SettlementInvariants.lean`; 18 BacktestProofs theorems + 8 QuantCore theorems (current)
+- **v0.6** — `binomial_replication_cost` theorem: single-period replication cost = risk-neutral price (integer arithmetic)
+- **v0.7+** — Multi-period GBM convergence theorem (Mathlib-level real analysis)
 
 ## References
 

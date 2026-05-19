@@ -1,6 +1,6 @@
 # Architecture Overview
 
-**Current version**: v0.4-backtest
+**Current version**: v0.5-quant-core
 
 ## Core Principle
 
@@ -13,10 +13,14 @@
 ## System Diagram
 
 ```text
+quant_core (Python: Black-Scholes, GBM, PricePath)
+    │
+    └─▶ backtest_proofs.pricer / .simulator  (thin re-exports)
+
 Python (ETL, simulation, backtest runner)
     │
-    ├─ bs_price / bs_greeks  (scipy — float → int via to_bp)
-    ├─ simulate_gbm          (seeded GBM path generator)
+    ├─ bs_price / bs_greeks  (via quant_core — float → int via to_bp)
+    ├─ simulate_gbm          (via quant_core — seeded GBM path generator)
     ├─ run_delta_hedge        (source-agnostic backtest runner)
     │
     └─▶ Lean kernel (via compiled Cython FFI)
@@ -29,11 +33,16 @@ Python (ETL, simulation, backtest runner)
 ## Lean Module Dependency Graph
 
 ```text
-Basic.lean          — Portfolio, Position, Trade, AssetId
-    └─▶ Accounting.lean     — FFI exports (hedge_*)
-    └─▶ Invariants.lean     — all accounting theorems
-    └─▶ Options.lean        — EuropeanOption, payoff functions
-            └─▶ OptionInvariants.lean — settlement theorems
+quant-core/lean/QuantCore/
+    Option.lean             — EuropeanOption, AssetId, callPayoff, putPayoff, optionPayoff
+    OptionInvariants.lean   — 8 payoff theorems
+        │
+        └─▶ backtest-proofs/lean/BacktestProofs/
+                Basic.lean              — Portfolio, Position, Trade (imports QuantCore.Option)
+                    └─▶ Accounting.lean         — FFI exports (hedge_*)
+                    └─▶ Invariants.lean         — 12 accounting theorems
+                    └─▶ Settlement.lean          — settlementITM, abandonPosition, applySettlement
+                            └─▶ SettlementInvariants.lean — 6 settlement theorems
 ```
 
 ## Numeric Precision

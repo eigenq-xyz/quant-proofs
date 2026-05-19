@@ -6,9 +6,13 @@ The organizing principle: before trusting a numerical result, prove the accounti
 
 ## Projects
 
+### quant-core
+
+Shared pricing primitives used by `backtest-proofs` and `options-proofs`. Provides the canonical `EuropeanOption` type (with `strike_pos` invariant), payoff functions, and 8 machine-checked theorems covering payoff non-negativity, ITM/OTM characterization, and the integer payoff identity `callPayoff − putPayoff = spot − strike`. The Python side provides Black-Scholes pricing, Greeks, and the `PricePath` / GBM simulator — all without any backtester dependency.
+
 ### backtest-proofs
 
-Options delta-hedging backtester with a Lean 4 accounting kernel. The kernel (26 theorems, zero `sorry`) proves portfolio value identity, self-financing, and settlement-value formulae. Python calls the kernel via Cython FFI; the accounting layer cannot silently mis-report results regardless of strategy complexity.
+Options delta-hedging backtester with a Lean 4 accounting kernel. 18 BacktestProofs theorems plus 8 from QuantCore, zero `sorry`. Proves portfolio value identity, self-financing, and `settlement_value_formula` (ΔPV = qty × (payoff − mark), unifying ITM and OTM expiry). Python calls the kernel via Cython FFI; the accounting layer cannot silently mis-report results regardless of strategy complexity.
 
 See the [full documentation](https://eigenq-xyz.github.io/quant-proofs/backtest-proofs/intro.html) including formal guarantees, validation, and architecture.
 
@@ -20,9 +24,9 @@ Status: in progress (Summer 2026).
 
 ### options-proofs
 
-Lean 4 proof of put-call parity via the Cox-Ross-Rubinstein binomial model. The CRR model is a finite-state market where the FTAP from `ftap-proofs` applies, giving an explicit risk-neutral measure; put-call parity is a corollary.
+Lean 4 proof of put-call parity via the Cox-Ross-Rubinstein binomial model. Imports `quant-core` for shared option types and payoff theorems; the CRR pricing theorems build directly on `QuantCore.Option` and `QuantCore.OptionInvariants`. The FTAP connection (risk-neutral measure → put-call parity) depends on `ftap-proofs`.
 
-Status: in progress (Summer 2026), depends on `ftap-proofs`.
+Status: in progress (Summer 2026), depends on `quant-core` (active) and `ftap-proofs` (planned).
 
 ### mortgage-proofs
 

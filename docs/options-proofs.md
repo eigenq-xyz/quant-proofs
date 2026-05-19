@@ -14,12 +14,16 @@ The proof route: the CRR binomial model is a finite-state, discrete-time market.
 
 Implementation begins once the FTAP proof exposes a stable interface for the no-arbitrage condition and the EMM.
 
+## Dependencies
+
+- `quant-core` — `EuropeanOption` types, payoff functions, and 8 payoff theorems (active path dependency; Lake builds it automatically).
+- `ftap-proofs` — risk-neutral measure and no-arbitrage condition (planned; not yet wired).
+
 ## Building
 
 ```bash
-# ftap-proofs must be built first
-cd ftap-proofs && lake exe cache get && lake build
-cd ../options-proofs && lake build
+# quant-core is a path dependency — Lake builds it automatically
+cd options-proofs && lake exe cache get && lake build
 ```
 
 ## References

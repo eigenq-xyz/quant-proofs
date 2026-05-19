@@ -6,9 +6,10 @@ Formally verified quantitative finance — Lean 4 proofs of correctness paired w
 
 | Project | Status | What it proves |
 |---------|--------|---------------|
-| [`backtest-proofs/`](backtest-proofs/) | v0.4 — 26 theorems, zero `sorry` | Options delta-hedging accounting: portfolio value identity, self-financing, settlement value formula |
+| [`quant-core/`](quant-core/) | v1.0 — 8 theorems, zero `sorry` | Shared option primitives: `EuropeanOption` type invariants, payoff non-negativity, ITM/OTM characterization, integer payoff identity |
+| [`backtest-proofs/`](backtest-proofs/) | v0.5 — 18 theorems + 8 from QuantCore, zero `sorry` | Options delta-hedging accounting: portfolio value identity, self-financing, settlement value formula |
 | [`ftap-proofs/`](ftap-proofs/) | Skeleton — in progress | Discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981): arbitrage-free ↔ equivalent martingale measure exists |
-| [`options-proofs/`](options-proofs/) | Skeleton — in progress (depends on ftap-proofs) | Put-call parity via Cox-Ross-Rubinstein binomial model |
+| [`options-proofs/`](options-proofs/) | Skeleton — in progress (imports quant-core; depends on ftap-proofs) | Put-call parity via Cox-Ross-Rubinstein binomial model |
 | [`mortgage-proofs/`](mortgage-proofs/) | Active — Lean 4 invariant checking | LangGraph multi-agent mortgage pipeline with formally verified routing invariants |
 
 ## Why formal verification for quant finance?
@@ -19,7 +20,7 @@ Backtesting bugs, settlement errors, and compliance violations share a common ro
 
 ## Structure
 
-Each subdir is an independent project with its own Lake/Python build and its own CLAUDE.md. They share a common namespace convention: `BacktestProofs`, `FtapProofs`, `OptionsProofs`, `MortgageProofs`.
+Each subdir is an independent project with its own Lake/Python build and its own CLAUDE.md. Namespaces: `QuantCore`, `BacktestProofs`, `FtapProofs`, `OptionsProofs`, `MortgageProofs`. `quant-core` sits at the base of the dependency graph; `backtest-proofs` and `options-proofs` import it.
 
 ## License
 
