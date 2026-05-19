@@ -131,6 +131,20 @@ Use lowercase kebab-case for `<description>`, camelCase for `<leanIdentifier>`.
   Add(backtest): callPayoff Cython FFI export
   ```
 
+### Declaring PR dependencies
+
+If this PR builds on another that hasn't merged yet, say so at the top of the
+description:
+
+```markdown
+> **Depends on #N — merge that first.** This branch was cut from
+> `<dependency-branch-name>`, not from main.
+```
+
+Branch dependent PRs off the dependency's branch (not main) so the diff stays
+clean. After the dependency merges, rebase this branch onto main and force-push
+before merging. See `/contributing-to-eigenq` for the full sequencing workflow.
+
 ### Description template
 
 ```markdown
