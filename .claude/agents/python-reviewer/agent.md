@@ -5,8 +5,8 @@ description: >
   anti-patterns specific to the quant-proofs codebase. Use before merging
   Python changes in backtest-proofs or mortgage-proofs.
 skills:
-  - writing-python-code
-  - reviewing-code-quality
+  - write-python-code
+  - review-code-quality
 disallowedTools: Edit, Write, NotebookEdit
 model: sonnet
 maxTurns: 15
