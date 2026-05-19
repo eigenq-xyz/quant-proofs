@@ -29,6 +29,8 @@ jobs:
             lean-dir: quant-core/lean
           - subdir: backtest-proofs
             lean-dir: backtest-proofs/lean
+            # quant-core is a path dependency; cache its .lake alongside
+            dep-lake: quant-core/lean/.lake
           - subdir: ftap-proofs
             lean-dir: ftap-proofs
           - subdir: options-proofs
@@ -46,17 +48,19 @@ jobs:
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
       - name: Cache Lean toolchain and packages
+        id: lean-cache
         uses: actions/cache@v4
         with:
           path: |
             ~/.elan
             ${{ matrix.lean-dir }}/.lake
-          key: lean-${{ matrix.subdir }}-${{ runner.os }}-${{ hashFiles(format('{0}/lean-toolchain', matrix.lean-dir), format('{0}/lake-manifest.json', matrix.lean-dir)) }}
+            ${{ matrix.dep-lake }}
+          key: lean-${{ matrix.subdir }}-${{ runner.os }}-${{ hashFiles(format('{0}/lake-manifest.json', matrix.lean-dir)) }}
           restore-keys: lean-${{ matrix.subdir }}-${{ runner.os }}-
 
       - name: Fetch mathlib binary cache
+        if: steps.lean-cache.outputs.cache-hit != 'true'
         working-directory: ${{ matrix.lean-dir }}
-        # best-effort: speeds builds from ~60 min to ~5 min on cache hit
         run: lake exe cache get || echo "Cache miss — building from source"
 
       - name: Build
