@@ -1,0 +1,61 @@
+# Pre-commit hooks for verified-options-backtest
+# Install: uv pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+# Skip hooks that require specialized tooling in pre-commit.ci
+ci:
+  skip: [lean-build, pytest]
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=2000']
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+
+  # Python: Ruff (linting + formatting)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # Python: Type checking with mypy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.19.1
+    hooks:
+      - id: mypy
+        args: [--ignore-missing-imports, --no-strict-optional]
+        additional_dependencies: []
+        files: ^python/src/
+
+  # Markdown linting (v0.37.0 supports Node 18.x)
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.37.0
+    hooks:
+      - id: markdownlint
+        args: [--fix, --disable, MD013, MD033, MD041]  # Disable line length, HTML, first line heading
+
+  # Lean: Ensure code compiles
+  - repo: local
+    hooks:
+      - id: lean-build
+        name: Lean Build
+        entry: bash -c 'cd lean && lake build'
+        language: system
+        files: ^lean/.*\.lean$
+        pass_filenames: false
+
+      - id: pytest
+        name: Python Tests
+        entry: bash -c 'cd python && uv run pytest -q --tb=short'
+        language: system
+        files: ^python/(src|tests)/.*\.py$
+        pass_filenames: false

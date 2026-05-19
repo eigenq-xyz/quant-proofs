@@ -1,0 +1,4 @@
+*.csv filter=git-crypt diff=git-crypt
+*.parquet filter=git-crypt diff=git-crypt
+*.h5 filter=git-crypt diff=git-crypt
+*.db filter=git-crypt diff=git-crypt

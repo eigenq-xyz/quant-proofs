@@ -1,0 +1,29 @@
+title: verified-options-backtest
+author: Akhil Karra
+
+execute:
+  execute_notebooks: "off"
+
+latex:
+  latex_documents:
+    targetname: book.tex
+
+bibtex_bibfiles:
+  - references.bib
+
+repository:
+  url: https://github.com/eigenq-xyz/verified-options-backtest
+  path_to_book: docs
+  branch: main
+
+logo: ../IMG_8062.png
+
+html:
+  use_issues_button: true
+  use_repository_button: true
+  extra_navbar: "Educational use only — not for production trading"
+
+sphinx:
+  config:
+    html_theme: quantecon_book_theme
+    myst_heading_anchors: 4
