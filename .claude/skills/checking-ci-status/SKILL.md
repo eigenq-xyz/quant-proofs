@@ -18,8 +18,10 @@ gh run list --repo eigenq-xyz/quant-proofs --branch main --limit 5 \
 import sys, json
 runs = json.load(sys.stdin)
 for r in runs:
-    result = r.get('conclusion') or r.get('status')
-    icon = '✓' if result == 'success' else ('…' if result in ('in_progress','queued') else '✗')
+    conclusion = r.get('conclusion') or ''
+    status = r.get('status') or ''
+    icon = '✓' if conclusion == 'success' else ('…' if (not conclusion or status in ('in_progress','queued','waiting')) else '✗')
+    result = conclusion or status
     print(f\"{icon} {r['name']:<35} {result:<12} {r['createdAt'][:16]}\")
 "
 ```
