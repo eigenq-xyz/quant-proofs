@@ -23,7 +23,7 @@ Each subdir has its own CLAUDE.md with architecture details. Read that before wo
 ## Skills and agents
 
 This repo has 12 skills and 6 agents in `.claude/skills/` and `.claude/agents/`.
-Run `/onboarding-to-eigenq` for the full org briefing.
+Run `/onboarding-to-eigenq` for the full codebase briefing.
 Run `/writing-lean4-proofs` or `/writing-python-code` before writing code.
 
 ## Thesis
