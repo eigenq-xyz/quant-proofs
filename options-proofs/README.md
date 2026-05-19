@@ -17,9 +17,9 @@ lake build           # build the library
 
 ## Dependencies
 
+- `quant-core` — shared option primitives (`OptionKind`, `EuropeanOption`, payoff theorems).
 - `mathlib` — measure theory, expectation, finite probability.
-- (Eventually) `verified-ftap` — once it exposes a stable interface for EMMs and
-  no-arbitrage statements.
+- `ftap-proofs` (planned) — once it exposes a stable interface for EMMs and no-arbitrage.
 
 ## License
 
