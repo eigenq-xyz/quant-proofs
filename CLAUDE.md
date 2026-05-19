@@ -22,10 +22,9 @@ Each subdir has its own CLAUDE.md with architecture details. Read that before wo
 
 ## Skills and agents
 
-This repo has 12 skills and 6 agents in `.claude/skills/` and `.claude/agents/`.
 Run `/onboarding-to-eigenq` for the full codebase briefing.
 Run `/writing-lean4-proofs` or `/writing-python-code` before writing code.
 
-## Thesis
+## Why this repo exists
 
-Routine quant work will be largely automated. The durable skill is directing and auditing AI-generated quant work — which requires mathematical depth and the ability to verify outputs formally. Every project here demonstrates that capability.
+The durable skill in quant work is directing and auditing AI-generated output — which requires being able to verify it formally. Every project here demonstrates that capability.
