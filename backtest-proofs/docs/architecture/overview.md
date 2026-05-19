@@ -50,12 +50,12 @@ and the integer is the only thing that crosses into the Lean kernel. Lean never 
 
 ## FFI Boundary
 
-The Cython extension `verified_options_backtest/ffi/lean_ffi.pyx` is the live FFI path.
+The Cython extension `backtest_proofs/ffi/lean_ffi.pyx` is the live FFI path.
 It loads `libleanrt` + `libuv`, manages Lean's deterministic reference counting, and wraps
 each `@[export hedge_*]` symbol. Key functions exposed to Python:
 
 ```python
-# python/src/verified_options_backtest/ffi/__init__.py  (imports from lean_ffi.so)
+# python/src/backtest_proofs/ffi/__init__.py  (imports from lean_ffi.so)
 
 apply_trade(cash, positions, asset_id, delta_quantity, execution_price, fee)
     # returns: {"cash": int, "positions": list[dict], "portfolio_value": int}
@@ -100,7 +100,7 @@ the kernel.
 
 ## Key Design Decisions
 
-See [DECISIONS.md](https://github.com/eigenq-xyz/verified-options-backtest/blob/main/DECISIONS.md) for full ADR documentation:
+See [DECISIONS.md](https://github.com/eigenq-xyz/backtest-proofs/blob/main/DECISIONS.md) for full ADR documentation:
 
 - **ADR-000**: Lean for accounting, Python for ETL, data-source agnostic kernel
 - **ADR-001**: Scaled integer arithmetic (basis points) instead of floats or rationals

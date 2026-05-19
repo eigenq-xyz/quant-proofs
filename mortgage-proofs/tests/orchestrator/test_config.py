@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from verified_mortgage_agent.orchestrator.config import get_model_id
+from mortgage_proofs.orchestrator.config import get_model_id
 
 
 def test_default_model_returned_when_no_env(monkeypatch: pytest.MonkeyPatch) -> None:

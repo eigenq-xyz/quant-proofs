@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from verified_mortgage_agent.domain.enums import RoutingOutcome
-from verified_mortgage_agent.orchestrator.agents.router import (
+from mortgage_proofs.domain.enums import RoutingOutcome
+from mortgage_proofs.orchestrator.agents.router import (
     route_after_analysis,
     route_after_intake,
 )
-from verified_mortgage_agent.record.models import RoutingDecision
+from mortgage_proofs.record.models import RoutingDecision
 
 
 def _decision(agent: str, outcome: RoutingOutcome, app_id=None) -> RoutingDecision:  # type: ignore[no-untyped-def]

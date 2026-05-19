@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from verified_mortgage_agent.lean_bridge.runner import verify_file
+from mortgage_proofs.lean_bridge.runner import verify_file
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 

@@ -21,7 +21,7 @@ build:
 	@lake build
 
 test:
-	@lake build OptionHedge.Tests.UnitTests
+	@lake build BacktestProofs.Tests.UnitTests
 
 clean:
 	@lake clean

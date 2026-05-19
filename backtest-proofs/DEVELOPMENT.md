@@ -1,6 +1,6 @@
 # Development Guide
 
-Deep technical reference for verified-options-backtest development.
+Deep technical reference for backtest-proofs development.
 
 ---
 
@@ -44,7 +44,7 @@ All targets orchestrate operations across `lean/` and `python/` subdirectories.
 | --- | --- | --- |
 | `setup` | Install elan | Downloads Lean toolchain |
 | `build` | `lake build` | Compiles all Lean files |
-| `test` | `lake build OptionHedge.Tests.UnitTests` | Runs test suites |
+| `test` | `lake build BacktestProofs.Tests.UnitTests` | Runs test suites |
 | `clean` | `lake clean` | Removes build/ |
 | `watch` | `lake build --watch` | Continuous compilation |
 
@@ -71,7 +71,7 @@ lean/
 ├── lakefile.lean          # Lake build configuration
 ├── lean-toolchain         # Lean version pin (v4.27.0-rc1)
 ├── Makefile               # Lean-specific targets
-└── OptionHedge/
+└── BacktestProofs/
     ├── Basic.lean         # AssetId, Position (markPrice_pos), Portfolio (value_valid),
     │                      # Trade (executionPrice_pos, fee_nonneg), applyTrade
     ├── Accounting.lean    # @[export hedge_*] FFI symbols only
@@ -89,18 +89,18 @@ lean/
 import Lake
 open Lake DSL
 
-package «verified-options-backtest» where
+package «backtest-proofs» where
   -- Package configuration
 
-lean_lib OptionHedge where
-  -- Library: all OptionHedge.* modules
+lean_lib BacktestProofs where
+  -- Library: all BacktestProofs.* modules
 
 @[default_target]
-lean_lib OptionHedge
+lean_lib BacktestProofs
 ```
 
-The `OptionHedge` namespace is the module hierarchy name (not the package name). All imports
-use `import OptionHedge.Basic`, `import OptionHedge.Invariants`, etc.
+The `BacktestProofs` namespace is the module hierarchy name (not the package name). All imports
+use `import BacktestProofs.Basic`, `import BacktestProofs.Invariants`, etc.
 
 ### Proof Workflow
 
@@ -122,7 +122,7 @@ Proofs live inline in `Invariants.lean` and `OptionInvariants.lean` — there is
 3. **Add concrete test** to `Tests/UnitTests.lean`:
 
    ```lean
-   import OptionHedge.Accounting
+   import BacktestProofs.Accounting
    example : some_computable_expression = expected := by native_decide
    ```
 
@@ -142,7 +142,7 @@ python/
 ├── Makefile                    # Python-specific targets
 ├── setup_ffi.py                # Cython extension build script
 ├── src/
-│   └── verified_options_backtest/
+│   └── backtest_proofs/
 │       ├── __init__.py
 │       ├── pricer/
 │       │   ├── black_scholes.py   # bs_price, bs_greeks (scipy)
@@ -184,7 +184,7 @@ cd python
 uv run python setup_ffi.py build_ext --inplace
 ```
 
-The compiled `lean_ffi.so` lands in `src/verified_options_backtest/ffi/`. CI builds Lean
+The compiled `lean_ffi.so` lands in `src/backtest_proofs/ffi/`. CI builds Lean
 first (`make build-lean`), then the Cython extension, then runs Python tests.
 
 ---
@@ -195,7 +195,7 @@ All monetary values use **basis points** (×10,000) as `Int`. Floats are compute
 (BS pricing, Greeks) and converted at the FFI boundary.
 
 ```python
-# verified_options_backtest/pricer/conventions.py
+# backtest_proofs/pricer/conventions.py
 def to_bp(value: float) -> int:
     """Convert a dollar float to basis-point integer (×10,000)."""
     return round(value * 10_000)
@@ -208,8 +208,8 @@ def from_bp(value: int) -> float:
 The FFI functions only accept and return `int` (basis points). Lean never receives floats.
 
 ```python
-from verified_options_backtest.pricer.conventions import to_bp, from_bp
-from verified_options_backtest.ffi import apply_trade
+from backtest_proofs.pricer.conventions import to_bp, from_bp
+from backtest_proofs.ffi import apply_trade
 
 result = apply_trade(
     cash=to_bp(100_000.00),
@@ -248,7 +248,7 @@ the invariant matters and what economic property it captures.
 
 ### Step 2: Define Lean Theorem
 
-In `OptionHedge/Invariants.lean` (or `OptionInvariants.lean` for options-specific theorems):
+In `BacktestProofs/Invariants.lean` (or `OptionInvariants.lean` for options-specific theorems):
 
 ```lean
 /-- All transaction fees must be non-negative -/
@@ -273,7 +273,7 @@ theorem cashUpdateCorrect (p : Portfolio) (t : Trade) :
 In `Tests/UnitTests.lean`:
 
 ```lean
-import OptionHedge.Accounting
+import BacktestProofs.Accounting
 
 -- Verify at a concrete input via native_decide
 example : (some concrete expression) = expected_value := by native_decide
@@ -303,12 +303,12 @@ The workflows in summary:
 
 **`.github/workflows/lean.yml`** — runs on every push. Installs elan, caches
 `~/.elan` and `lean/build` by `lakefile.lean` hash, runs `lake build`. Any `sorry`
-causes a compile error (CI fails automatically). Checks `grep -r "sorry" lean/OptionHedge`
+causes a compile error (CI fails automatically). Checks `grep -r "sorry" lean/BacktestProofs`
 count is zero.
 
 **`.github/workflows/python.yml`** — runs on every push. Installs uv, builds the Lean
-library and Cython extension, then runs `uv run pytest --cov=verified_options_backtest
---cov-fail-under=80` and `uv run mypy src/verified_options_backtest`. Matrix covers
+library and Cython extension, then runs `uv run pytest --cov=backtest_proofs
+--cov-fail-under=80` and `uv run mypy src/backtest_proofs`. Matrix covers
 `ubuntu-latest` and `macos-latest`.
 
 **`.github/workflows/docs.yml`** — runs on pushes to `main`. Builds JupyterBook
@@ -336,8 +336,8 @@ act
 ```python
 import cProfile
 import pstats
-from verified_options_backtest.backtest.runner import run_delta_hedge
-from verified_options_backtest.backtest.scenarios import hull_192_path, HULL_192_K
+from backtest_proofs.backtest.runner import run_delta_hedge
+from backtest_proofs.backtest.scenarios import hull_192_path, HULL_192_K
 
 def profile_backtest():
     profiler = cProfile.Profile()
@@ -419,7 +419,7 @@ import ipdb; ipdb.set_trace()
 # pytest --pdb  # Drop into debugger on failure
 
 # Inspect basis-point values
-from verified_options_backtest.pricer.conventions import from_bp
+from backtest_proofs.pricer.conventions import from_bp
 print(from_bp(result["portfolio_value"]))
 ```
 

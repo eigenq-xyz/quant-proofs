@@ -19,8 +19,8 @@ from pathlib import Path
 
 import pytest
 
-from verified_mortgage_agent.lean_bridge.runner import verify
-from verified_mortgage_agent.record.io import read
+from mortgage_proofs.lean_bridge.runner import verify
+from mortgage_proofs.record.io import read
 
 PREDATORY_DIR = Path(__file__).parents[1] / "fixtures" / "predatory"
 

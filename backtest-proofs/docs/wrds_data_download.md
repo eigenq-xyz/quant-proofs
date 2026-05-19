@@ -78,7 +78,7 @@ secid→ticker mapping, spot-price join, ATM ±3% filter, 20 to 40 day expiry
 filter, and a strike×1000 sanity check.
 
 ```bash
-cd /path/to/verified-options-backtest
+cd /path/to/backtest-proofs
 uv run python scripts/wrds_csv_to_parquet.py
 ```
 

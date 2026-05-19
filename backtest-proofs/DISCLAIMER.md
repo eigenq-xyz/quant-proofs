@@ -2,7 +2,7 @@
 
 ## Educational and Research Use Only
 
-This software ("verified-options-backtest") is provided for **educational and research purposes only**. It is NOT intended, designed, or suitable for use in live trading, production environments, or any real financial decision-making.
+This software ("backtest-proofs") is provided for **educational and research purposes only**. It is NOT intended, designed, or suitable for use in live trading, production environments, or any real financial decision-making.
 
 ## No Financial Advice
 

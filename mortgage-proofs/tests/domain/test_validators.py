@@ -1,6 +1,6 @@
-from verified_mortgage_agent.domain.enums import DocumentType, RoutingOutcome
-from verified_mortgage_agent.domain.models import MortgageApplication
-from verified_mortgage_agent.domain.validators import (
+from mortgage_proofs.domain.enums import DocumentType, RoutingOutcome
+from mortgage_proofs.domain.models import MortgageApplication
+from mortgage_proofs.domain.validators import (
     check_approval_eligibility,
     missing_documents,
     suggest_outcome,

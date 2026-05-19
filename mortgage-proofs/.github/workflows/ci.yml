@@ -60,7 +60,7 @@ jobs:
       - name: Build Lean verifier
         run: |
           cd lean
-          lake build MortgageVerifier
+          lake build MortgageProofs
           lake build verify-trace
 
       - name: Smoke test — valid record passes
@@ -114,7 +114,7 @@ jobs:
       - name: Build Lean verifier
         run: |
           cd lean
-          lake build MortgageVerifier
+          lake build MortgageProofs
           lake build verify-trace
 
       - name: Run integration tests

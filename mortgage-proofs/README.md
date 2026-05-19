@@ -55,7 +55,7 @@ vma schema dump
 Or run the HTTP API:
 
 ```bash
-uvicorn verified_mortgage_agent.app.api:app --reload
+uvicorn mortgage_proofs.app.api:app --reload
 # POST /process   — full pipeline
 # POST /verify    — Lean verification only
 # GET  /health    — checks Lean binary availability

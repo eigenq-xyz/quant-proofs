@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from verified_mortgage_agent.domain.enums import DocumentType, RoutingOutcome
-from verified_mortgage_agent.orchestrator.agents.compliance import compliance_node
-from verified_mortgage_agent.orchestrator.agents.intake import intake_node
-from verified_mortgage_agent.orchestrator.agents.risk import risk_node
-from verified_mortgage_agent.orchestrator.agents.underwriter import underwriter_node
-from verified_mortgage_agent.orchestrator.tools import (
+from mortgage_proofs.domain.enums import DocumentType, RoutingOutcome
+from mortgage_proofs.orchestrator.agents.compliance import compliance_node
+from mortgage_proofs.orchestrator.agents.intake import intake_node
+from mortgage_proofs.orchestrator.agents.risk import risk_node
+from mortgage_proofs.orchestrator.agents.underwriter import underwriter_node
+from mortgage_proofs.orchestrator.tools import (
     AgentResponse,
     ReasoningStepOutput,
 )
@@ -48,7 +48,7 @@ def _base_state(application_approvable):  # type: ignore[no-untyped-def]
 def test_intake_approve(application_approvable) -> None:  # type: ignore[no-untyped-def]
     mock_llm = _make_llm_mock(RoutingOutcome.APPROVE)
     with patch(
-        "verified_mortgage_agent.orchestrator.agents.intake.get_llm",
+        "mortgage_proofs.orchestrator.agents.intake.get_llm",
         return_value=mock_llm,
     ):
         result = intake_node(_base_state(application_approvable))
@@ -73,7 +73,7 @@ def test_intake_request_documents(application_missing_docs) -> None:  # type: ig
         "final_outcome": None,
     }
     with patch(
-        "verified_mortgage_agent.orchestrator.agents.intake.get_llm",
+        "mortgage_proofs.orchestrator.agents.intake.get_llm",
         return_value=mock_llm,
     ):
         result = intake_node(state)
@@ -85,7 +85,7 @@ def test_intake_request_documents(application_missing_docs) -> None:  # type: ig
 def test_risk_approve(application_approvable) -> None:  # type: ignore[no-untyped-def]
     mock_llm = _make_llm_mock(RoutingOutcome.APPROVE)
     with patch(
-        "verified_mortgage_agent.orchestrator.agents.risk.get_llm",
+        "mortgage_proofs.orchestrator.agents.risk.get_llm",
         return_value=mock_llm,
     ):
         result = risk_node(_base_state(application_approvable))
@@ -97,7 +97,7 @@ def test_risk_approve(application_approvable) -> None:  # type: ignore[no-untype
 def test_compliance_approve(application_approvable) -> None:  # type: ignore[no-untyped-def]
     mock_llm = _make_llm_mock(RoutingOutcome.APPROVE)
     with patch(
-        "verified_mortgage_agent.orchestrator.agents.compliance.get_llm",
+        "mortgage_proofs.orchestrator.agents.compliance.get_llm",
         return_value=mock_llm,
     ):
         result = compliance_node(_base_state(application_approvable))
@@ -108,7 +108,7 @@ def test_compliance_approve(application_approvable) -> None:  # type: ignore[no-
 def test_underwriter_sets_final_outcome(application_approvable) -> None:  # type: ignore[no-untyped-def]
     mock_llm = _make_llm_mock(RoutingOutcome.APPROVE)
     with patch(
-        "verified_mortgage_agent.orchestrator.agents.underwriter.get_llm",
+        "mortgage_proofs.orchestrator.agents.underwriter.get_llm",
         return_value=mock_llm,
     ):
         result = underwriter_node(_base_state(application_approvable))
@@ -123,7 +123,7 @@ def test_underwriter_escalation(application_approvable) -> None:  # type: ignore
         escalation_reason="Borderline DTI requires senior review",
     )
     with patch(
-        "verified_mortgage_agent.orchestrator.agents.underwriter.get_llm",
+        "mortgage_proofs.orchestrator.agents.underwriter.get_llm",
         return_value=mock_llm,
     ):
         result = underwriter_node(_base_state(application_approvable))

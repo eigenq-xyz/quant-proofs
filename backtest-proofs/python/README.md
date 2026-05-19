@@ -1,6 +1,6 @@
-# verified-options-backtest — Python package
+# backtest-proofs — Python package
 
-Python components of the verified-options-backtest engine.
+Python components of the backtest-proofs engine.
 
 ## Modules
 

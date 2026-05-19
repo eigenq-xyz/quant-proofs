@@ -1,6 +1,6 @@
 import Lean.Data.Json
-import MortgageVerifier.Parser
-import MortgageVerifier.Checker
+import MortgageProofs.Parser
+import MortgageProofs.Checker
 
 /-!
 # Main.lean — `lake exe verify-trace` entry point
@@ -17,13 +17,13 @@ Stdout: JSON object matching Python's `VerificationResult` schema.
 Stderr: human-readable diagnostics (not machine-parsed by Python).
 -/
 
-open MortgageVerifier
+open MortgageProofs
 
 private def EXPECTED_SCHEMA_VERSION : String := "1.0.0"
 
 -- Build a minimal error result JSON for parse failures
 private def errorJson (recordId : String) (name : String) (description : String) : String :=
-  MortgageVerifier.Checker.resultToJson {
+  MortgageProofs.Checker.resultToJson {
     passed      := false
     recordId    := recordId
     violations  := [{ invariantName := name, description := description, severity := "ERROR" }]

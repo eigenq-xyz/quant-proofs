@@ -6,13 +6,13 @@ from decimal import Decimal
 
 import pytest
 
-from verified_mortgage_agent.domain.enums import (
+from mortgage_proofs.domain.enums import (
     DocumentType,
     EmploymentStatus,
     LoanType,
     PropertyType,
 )
-from verified_mortgage_agent.domain.models import (
+from mortgage_proofs.domain.models import (
     Applicant,
     LoanRequest,
     MortgageApplication,

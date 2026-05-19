@@ -1,6 +1,6 @@
 # Contributing Guide
 
-Welcome to verified-options-backtest. This guide covers development setup, workflow, and conventions.
+Welcome to backtest-proofs. This guide covers development setup, workflow, and conventions.
 
 ---
 
@@ -29,8 +29,8 @@ Welcome to verified-options-backtest. This guide covers development setup, workf
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/eigenq-xyz/verified-options-backtest.git
-cd verified-options-backtest
+git clone https://github.com/eigenq-xyz/backtest-proofs.git
+cd backtest-proofs
 
 # 2. Install all dependencies
 make setup
@@ -64,13 +64,13 @@ cd lean
 lake build
 
 # Run tests
-lake build OptionHedge.Tests.UnitTests
+lake build BacktestProofs.Tests.UnitTests
 
 # Watch mode (rebuild on file changes)
 lake build --watch
 
 # Check for sorry (must be zero)
-grep -r "sorry" OptionHedge/
+grep -r "sorry" BacktestProofs/
 
 # Open in VSCode with Lean 4 extension
 code .
@@ -95,10 +95,10 @@ uv sync
 uv run pytest
 
 # Run tests with coverage
-uv run pytest --cov=verified_options_backtest --cov-report=term-missing
+uv run pytest --cov=backtest_proofs --cov-report=term-missing
 
 # Type checking
-uv run mypy src/verified_options_backtest
+uv run mypy src/backtest_proofs
 
 # Linting
 uv run ruff check src/ tests/
@@ -146,8 +146,8 @@ make integration
 ### Lean
 
 ```lean
--- Module naming: PascalCase under OptionHedge.*
--- OptionHedge/Basic.lean, OptionHedge/Invariants.lean
+-- Module naming: PascalCase under BacktestProofs.*
+-- BacktestProofs/Basic.lean, BacktestProofs/Invariants.lean
 
 -- Structure names: PascalCase
 structure Portfolio where
@@ -172,8 +172,8 @@ theorem valueUpdateFormula (p : Portfolio) (t : Trade) : ... := by ...
 # Follow PEP 8, use type hints everywhere
 # All monetary values crossing the FFI boundary are basis-point integers
 
-from verified_options_backtest.pricer.conventions import to_bp, from_bp
-from verified_options_backtest.ffi import apply_trade
+from backtest_proofs.pricer.conventions import to_bp, from_bp
+from backtest_proofs.ffi import apply_trade
 
 result = apply_trade(
     cash=to_bp(100_000.0),
@@ -227,7 +227,7 @@ make integration # Integration test passes
 
 ```python
 # tests/test_pricer.py
-from verified_options_backtest.pricer.black_scholes import bs_price
+from backtest_proofs.pricer.black_scholes import bs_price
 
 def test_bs_price_hull_ex15_6():
     """Matches Hull Example 15.6 reference vector."""
@@ -239,7 +239,7 @@ def test_bs_price_hull_ex15_6():
 
 ```lean
 -- Tests/UnitTests.lean
-import OptionHedge.Accounting
+import BacktestProofs.Accounting
 
 -- Concrete computation test via native_decide
 example : hedge_portfolio_value 500_000 [] = 500_000 := by native_decide
@@ -252,7 +252,7 @@ example : hedge_portfolio_value 500_000 [] = 500_000 := by native_decide
 ### Adding a New Invariant
 
 1. **Document in DECISIONS.md**: Why is this invariant important?
-2. **Define theorem in Lean** (`OptionHedge/Invariants.lean` or `OptionInvariants.lean`)
+2. **Define theorem in Lean** (`BacktestProofs/Invariants.lean` or `OptionInvariants.lean`)
 3. **Implement proof inline** (use `rfl`/`simp`/`omega`/`native_decide` where possible)
 4. **Add concrete example** to `Tests/UnitTests.lean`
 5. **Test in Python** if the invariant has a Python-observable effect
@@ -371,8 +371,8 @@ GitHub Actions runs on every push:
 
 ## Getting Help
 
-- **Questions**: Open a [Discussion](https://github.com/eigenq-xyz/verified-options-backtest/discussions)
-- **Bugs**: Open an [Issue](https://github.com/eigenq-xyz/verified-options-backtest/issues)
+- **Questions**: Open a [Discussion](https://github.com/eigenq-xyz/backtest-proofs/discussions)
+- **Bugs**: Open an [Issue](https://github.com/eigenq-xyz/backtest-proofs/issues)
 - **Lean help**: [Lean Zulip](https://leanprover.zulipchat.com/)
 - **Technical detail**: See [DEVELOPMENT.md](DEVELOPMENT.md)
 

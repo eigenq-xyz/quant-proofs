@@ -2,7 +2,7 @@
 
 import pytest
 
-from verified_options_backtest.backtest.audit import (
+from backtest_proofs.backtest.audit import (
     StepCertificate,
     verify_step,
 )

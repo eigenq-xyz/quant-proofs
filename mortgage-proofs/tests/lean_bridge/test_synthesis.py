@@ -6,21 +6,21 @@ from decimal import Decimal
 
 import pytest
 
-from verified_mortgage_agent.domain.enums import (
+from mortgage_proofs.domain.enums import (
     EmploymentStatus,
     GoalPriority,
     LoanType,
     RoutingOutcome,
 )
-from verified_mortgage_agent.domain.models import (
+from mortgage_proofs.domain.models import (
     ApplicantSituation,
     MortgageGoal,
     MortgagePackageProposal,
 )
-from verified_mortgage_agent.lean_bridge.synthesis import (
+from mortgage_proofs.lean_bridge.synthesis import (
     synthesize_record_from_proposal,
 )
-from verified_mortgage_agent.record.models import SCHEMA_VERSION
+from mortgage_proofs.record.models import SCHEMA_VERSION
 
 
 @pytest.fixture

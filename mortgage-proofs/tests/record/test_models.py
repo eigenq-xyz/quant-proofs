@@ -1,6 +1,6 @@
 
-from verified_mortgage_agent.domain.enums import RoutingOutcome
-from verified_mortgage_agent.record.models import (
+from mortgage_proofs.domain.enums import RoutingOutcome
+from mortgage_proofs.record.models import (
     SCHEMA_VERSION,
     DecisionRecord,
     ReasoningStep,
@@ -51,7 +51,7 @@ def test_decision_record_schema_version(
 def test_record_serialization_roundtrip(
     application_approvable,  # type: ignore[no-untyped-def]
 ) -> None:
-    from verified_mortgage_agent.record.io import loads, serialize
+    from mortgage_proofs.record.io import loads, serialize
 
     decision = RoutingDecision(
         application_id=application_approvable.id,

@@ -8,14 +8,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from verified_mortgage_agent.domain.enums import RoutingOutcome
-from verified_mortgage_agent.lean_bridge.runner import (
+from mortgage_proofs.domain.enums import RoutingOutcome
+from mortgage_proofs.lean_bridge.runner import (
     LeanBinaryNotFoundError,
     LeanVerifierError,
     _parse_output,
     verify,
 )
-from verified_mortgage_agent.record.models import DecisionRecord, RoutingDecision
+from mortgage_proofs.record.models import DecisionRecord, RoutingDecision
 
 
 def _make_record(application_approvable, outcome: RoutingOutcome) -> DecisionRecord:  # type: ignore[no-untyped-def]
@@ -70,7 +70,7 @@ def test_verify_binary_not_found_raises(application_approvable) -> None:  # type
     record = _make_record(application_approvable, RoutingOutcome.APPROVE)
 
     with patch(
-        "verified_mortgage_agent.lean_bridge.runner.get_binary_path",
+        "mortgage_proofs.lean_bridge.runner.get_binary_path",
         return_value=Path("/nonexistent/verify-trace"),
     ):
         with pytest.raises(LeanBinaryNotFoundError):
@@ -92,7 +92,7 @@ def test_verify_success(application_approvable) -> None:  # type: ignore[no-unty
     mock_proc.stderr = ""
 
     with patch(
-        "verified_mortgage_agent.lean_bridge.runner.get_binary_path",
+        "mortgage_proofs.lean_bridge.runner.get_binary_path",
         return_value=Path("/fake/verify-trace"),
     ), patch("pathlib.Path.exists", return_value=True), patch(
         "subprocess.run", return_value=mock_proc
@@ -119,7 +119,7 @@ def test_verify_violation_exit_1(application_approvable) -> None:  # type: ignor
     mock_proc.stderr = ""
 
     with patch(
-        "verified_mortgage_agent.lean_bridge.runner.get_binary_path",
+        "mortgage_proofs.lean_bridge.runner.get_binary_path",
         return_value=Path("/fake/verify-trace"),
     ), patch("pathlib.Path.exists", return_value=True), patch(
         "subprocess.run", return_value=mock_proc
@@ -139,7 +139,7 @@ def test_verify_parse_error_exit_2_raises(application_approvable) -> None:  # ty
     mock_proc.stderr = ""
 
     with patch(
-        "verified_mortgage_agent.lean_bridge.runner.get_binary_path",
+        "mortgage_proofs.lean_bridge.runner.get_binary_path",
         return_value=Path("/fake/verify-trace"),
     ), patch("pathlib.Path.exists", return_value=True), patch(
         "subprocess.run", return_value=mock_proc

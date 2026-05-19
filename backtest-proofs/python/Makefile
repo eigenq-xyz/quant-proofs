@@ -30,7 +30,7 @@ build-ffi:	## Compile the Lean↔Python Cython extension in-place
 	uv run python setup_ffi.py build_ext --inplace
 
 test:
-	uv run pytest -v --cov=verified_options_backtest --cov-report=term-missing
+	uv run pytest -v --cov=backtest_proofs --cov-report=term-missing
 
 lint:
 	uv run ruff check src/ tests/

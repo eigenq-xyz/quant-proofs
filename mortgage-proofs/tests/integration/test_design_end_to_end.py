@@ -26,26 +26,26 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from verified_mortgage_agent.domain.enums import (
+from mortgage_proofs.domain.enums import (
     EmploymentStatus,
     GoalPriority,
     SessionOutcome,
 )
-from verified_mortgage_agent.domain.models import (
+from mortgage_proofs.domain.models import (
     ApplicantSituation,
     MortgageGoal,
 )
-from verified_mortgage_agent.lean_bridge.result import VerificationResult, Violation
-from verified_mortgage_agent.orchestrator.runner import run_design_sync
-from verified_mortgage_agent.orchestrator.tools import (
+from mortgage_proofs.lean_bridge.result import VerificationResult, Violation
+from mortgage_proofs.orchestrator.runner import run_design_sync
+from mortgage_proofs.orchestrator.tools import (
     PackageProposalOutput,
     PackageReviewOutput,
 )
 
-_DESIGNER_MODULE = "verified_mortgage_agent.orchestrator.agents.package_designer.get_llm"
-_REVIEWER_MODULE = "verified_mortgage_agent.orchestrator.agents.package_reviewer.get_llm"
-_ESCALATION_MODULE = "verified_mortgage_agent.orchestrator.graph.get_llm"
-_VERIFY_MODULE = "verified_mortgage_agent.orchestrator.graph.verify_proposal"
+_DESIGNER_MODULE = "mortgage_proofs.orchestrator.agents.package_designer.get_llm"
+_REVIEWER_MODULE = "mortgage_proofs.orchestrator.agents.package_reviewer.get_llm"
+_ESCALATION_MODULE = "mortgage_proofs.orchestrator.graph.get_llm"
+_VERIFY_MODULE = "mortgage_proofs.orchestrator.graph.verify_proposal"
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -285,7 +285,7 @@ def test_verification_skipped_when_lean_binary_missing(
     goal: MortgageGoal,
 ) -> None:
     """When Lean binary is absent, graph treats as pass and sets verification_skipped."""
-    from verified_mortgage_agent.lean_bridge.runner import LeanBinaryNotFoundError
+    from mortgage_proofs.lean_bridge.runner import LeanBinaryNotFoundError
 
     proposal = PackageProposalOutput(
         loan_type="CONVENTIONAL",

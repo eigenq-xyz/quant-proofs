@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from verified_mortgage_agent.domain.enums import RoutingOutcome
-from verified_mortgage_agent.record.io import (
+from mortgage_proofs.domain.enums import RoutingOutcome
+from mortgage_proofs.record.io import (
     RecordSchemaVersionError,
     RecordValidationError,
     loads,
@@ -13,7 +13,7 @@ from verified_mortgage_agent.record.io import (
     serialize,
     write,
 )
-from verified_mortgage_agent.record.models import DecisionRecord, RoutingDecision
+from mortgage_proofs.record.models import DecisionRecord, RoutingDecision
 
 
 def make_record(application_approvable):  # type: ignore[no-untyped-def]

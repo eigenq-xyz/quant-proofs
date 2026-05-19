@@ -1,4 +1,4 @@
-# verified-options-backtest
+# backtest-proofs
 
 > **Educational Use Only**: This software is for research and educational purposes only. It is not intended for live trading or production use.
 
@@ -31,8 +31,8 @@ This holds whether the option expires in-the-money (ITM, `applyTrade` path) or o
 ## Quick start
 
 ```bash
-git clone https://github.com/eigenq-xyz/verified-options-backtest
-cd verified-options-backtest
+git clone https://github.com/eigenq-xyz/backtest-proofs
+cd backtest-proofs
 make setup   # install Lean (elan) + Python (uv)
 make test    # Lean proofs + Python tests
 ```

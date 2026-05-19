@@ -1,9 +1,9 @@
-# verified-options-backtest
+# backtest-proofs
 
-[![Lean CI](https://github.com/eigenq-xyz/verified-options-backtest/actions/workflows/lean.yml/badge.svg)](https://github.com/eigenq-xyz/verified-options-backtest/actions/workflows/lean.yml)
-[![Python CI](https://github.com/eigenq-xyz/verified-options-backtest/actions/workflows/python.yml/badge.svg)](https://github.com/eigenq-xyz/verified-options-backtest/actions/workflows/python.yml)
-[![codecov](https://codecov.io/gh/eigenq-xyz/verified-options-backtest/branch/main/graph/badge.svg)](https://codecov.io/gh/eigenq-xyz/verified-options-backtest)
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/eigenq-xyz/verified-options-backtest/main.svg)](https://results.pre-commit.ci/latest/github/eigenq-xyz/verified-options-backtest/main)
+[![Lean CI](https://github.com/eigenq-xyz/backtest-proofs/actions/workflows/lean.yml/badge.svg)](https://github.com/eigenq-xyz/backtest-proofs/actions/workflows/lean.yml)
+[![Python CI](https://github.com/eigenq-xyz/backtest-proofs/actions/workflows/python.yml/badge.svg)](https://github.com/eigenq-xyz/backtest-proofs/actions/workflows/python.yml)
+[![codecov](https://codecov.io/gh/eigenq-xyz/backtest-proofs/branch/main/graph/badge.svg)](https://codecov.io/gh/eigenq-xyz/backtest-proofs)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/eigenq-xyz/backtest-proofs/main.svg)](https://results.pre-commit.ci/latest/github/eigenq-xyz/backtest-proofs/main)
 
 > **Educational use only.** Research software, not production trading infrastructure. See [DISCLAIMER.md](DISCLAIMER.md).
 
@@ -22,7 +22,7 @@ The following invariants are proved as Lean 4 theorems — not tested, *proved*.
 | Self-financing | Trading at the mark price changes PV only by the fee | `selfFinancing` |
 | Settlement | At expiry ΔPV = qty × (payoff − mark), unifying ITM and OTM | `settlement_value_formula` |
 
-26 theorems total across [`Invariants.lean`](lean/OptionHedge/Invariants.lean) (12) and [`OptionInvariants.lean`](lean/OptionHedge/OptionInvariants.lean) (14). See [docs/formal_guarantees.md](docs/formal_guarantees.md) for the full list.
+26 theorems total across [`Invariants.lean`](lean/BacktestProofs/Invariants.lean) (12) and [`OptionInvariants.lean`](lean/BacktestProofs/OptionInvariants.lean) (14). See [docs/formal_guarantees.md](docs/formal_guarantees.md) for the full list.
 
 ## Status
 
@@ -53,10 +53,10 @@ Numerical results that confirm the engine behaves correctly on externally verifi
 ## Repository structure
 
 ```text
-verified-options-backtest/
+backtest-proofs/
 ├── lean/
 │   ├── lakefile.lean
-│   └── OptionHedge/
+│   └── BacktestProofs/
 │       ├── Basic.lean              # Portfolio, Position, Trade
 │       ├── Accounting.lean         # @[export hedge_*] FFI exports
 │       ├── Invariants.lean         # accounting theorems
@@ -65,7 +65,7 @@ verified-options-backtest/
 │       └── Tests/UnitTests.lean
 ├── python/
 │   ├── pyproject.toml
-│   └── src/verified_options_backtest/
+│   └── src/backtest_proofs/
 │       ├── pricer/                 # Black-Scholes + Greeks
 │       ├── etl/                    # WRDS OptionMetrics loaders
 │       ├── simulator/              # seeded GBM
@@ -85,8 +85,8 @@ verified-options-backtest/
 ## Setup
 
 ```bash
-git clone https://github.com/eigenq-xyz/verified-options-backtest
-cd verified-options-backtest
+git clone https://github.com/eigenq-xyz/backtest-proofs
+cd backtest-proofs
 make setup      # elan + uv + Mathlib cache (~5 min first run)
 make test       # Lean proofs + Python tests
 ```
@@ -102,8 +102,8 @@ Any `sorry` would cause a compile error; the build succeeding is the audit.
 ## Running a backtest
 
 ```python
-from verified_options_backtest.backtest.runner import run_delta_hedge
-from verified_options_backtest.backtest.scenarios import (
+from backtest_proofs.backtest.runner import run_delta_hedge
+from backtest_proofs.backtest.scenarios import (
     hull_192_path, HULL_192_K, HULL_192_R, HULL_192_SIGMA, HULL_192_N_CONTRACTS,
 )
 

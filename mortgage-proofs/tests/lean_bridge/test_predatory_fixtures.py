@@ -15,9 +15,9 @@ from pathlib import Path
 
 import pytest
 
-from verified_mortgage_agent.domain.enums import LoanType, RoutingOutcome
-from verified_mortgage_agent.record.io import read
-from verified_mortgage_agent.record.models import DecisionRecord
+from mortgage_proofs.domain.enums import LoanType, RoutingOutcome
+from mortgage_proofs.record.io import read
+from mortgage_proofs.record.models import DecisionRecord
 
 PREDATORY_DIR = Path(__file__).parents[1] / "fixtures" / "predatory"
 

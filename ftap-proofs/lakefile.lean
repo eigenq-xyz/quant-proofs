@@ -1,7 +1,7 @@
 import Lake
 open Lake DSL
 
-package «verified-ftap» where
+package «ftap-proofs» where
   version := v!"0.0.1"
   keywords := #["formal verification", "asset pricing", "finance", "mathlib"]
   leanOptions := #[
@@ -13,4 +13,4 @@ require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git" @ "master"
 
 @[default_target]
-lean_lib Ftap
+lean_lib FtapProofs

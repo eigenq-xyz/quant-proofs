@@ -10,7 +10,7 @@ from pathlib import Path
 # Allow running from repo root without installing the package
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
-from verified_mortgage_agent.record.schema import SCHEMA_PATH, dump_schema
+from mortgage_proofs.record.schema import SCHEMA_PATH, dump_schema
 
 if __name__ == "__main__":
     dump_schema()

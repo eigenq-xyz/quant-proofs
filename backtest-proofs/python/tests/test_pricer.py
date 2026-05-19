@@ -12,13 +12,13 @@ import math
 
 import pytest
 
-from verified_options_backtest.pricer.black_scholes import (
+from backtest_proofs.pricer.black_scholes import (
     BSGreeks,
     BSPrice,
     bs_greeks,
     bs_price,
 )
-from verified_options_backtest.pricer.conventions import from_bp, to_bp
+from backtest_proofs.pricer.conventions import from_bp, to_bp
 
 # ---------------------------------------------------------------------------
 # Conventions
@@ -224,7 +224,7 @@ def _ref_bs_price(
 
     This is the canonical formula from Hull (2022) Chapter 15, implemented
     from scratch using only scipy.stats.norm.  It has no shared code with
-    ``verified_options_backtest.pricer.black_scholes`` and serves as an independent oracle.
+    ``backtest_proofs.pricer.black_scholes`` and serves as an independent oracle.
     """
     from scipy.stats import norm  # type: ignore[import-untyped]
 
@@ -282,7 +282,7 @@ class TestBenchmarkImplementation:
 
     The reference functions above implement Black-Scholes from first principles
     using only ``scipy.stats.norm`` — no shared code with
-    ``verified_options_backtest.pricer.black_scholes``.  Agreement to machine precision
+    ``backtest_proofs.pricer.black_scholes``.  Agreement to machine precision
     (rel=1e-6) across all scenarios confirms that our implementation is
     indistinguishable from the standard formula.
 

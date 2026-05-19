@@ -23,12 +23,12 @@ backtester + BS pricer/Greeks in Python).
 ### Lean only (from `lean/` or via root)
 
 - `lake build` — build Lean library and proofs
-- `lake build OptionHedge.Tests.UnitTests` — run Lean tests
+- `lake build BacktestProofs.Tests.UnitTests` — run Lean tests
 - `lake build --watch` — rebuild on file changes
 
 ### Python only (from `python/`)
 
-- `uv run pytest -v --cov=verified_options_backtest --cov-report=term-missing` — run tests with coverage
+- `uv run pytest -v --cov=backtest_proofs --cov-report=term-missing` — run tests with coverage
 - `uv run ruff check src/ tests/` — lint
 - `uv run mypy src/` — typecheck (strict mode)
 - `uv run ruff format src/ tests/` — format code
@@ -40,7 +40,7 @@ backtester + BS pricer/Greeks in Python).
 
 ```text
 lean/           — Lean 4 accounting kernel (Lake build system, Mathlib dependency)
-python/         — Python package managed by uv (src/verified_options_backtest/)
+python/         — Python package managed by uv (src/backtest_proofs/)
 integration/    — Cross-language integration tests
 docs/           — JupyterBook documentation site (builds to GitHub Pages)
 notebooks/      — standalone executable notebooks (demo)
@@ -60,7 +60,7 @@ data/           — Encrypted market data (git-crypt)
 - **Basis-point integers** are the only numeric type that crosses the FFI boundary; Lean never
   operates on floats.
 
-### Lean types and functions (`lean/OptionHedge/`)
+### Lean types and functions (`lean/BacktestProofs/`)
 
 - `Basic.lean` — core types: `AssetId`, `Position` (with `markPrice_pos` proof),
   `Portfolio` (with `value_valid` proof), `Trade` (with `executionPrice_pos`, `fee_nonneg`),
@@ -78,7 +78,7 @@ data/           — Encrypted market data (git-crypt)
   (unifies ITM/OTM expiry: ΔPV = qty × (payoff − mark)).
 - `Tests/UnitTests.lean` — concrete computation tests via `native_decide`.
 
-### Python package (`python/src/verified_options_backtest/`)
+### Python package (`python/src/backtest_proofs/`)
 
 - `pricer/black_scholes.py` — `bs_price`, `bs_greeks` (Black-Scholes pricing + Greeks via
   scipy); `pricer/conventions.py` — `to_bp`, `from_bp` (float ↔ basis-point conversion).

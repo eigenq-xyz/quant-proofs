@@ -14,11 +14,11 @@ import math
 
 import pytest
 
-from verified_options_backtest.backtest.data_types import PricePath
-from verified_options_backtest.backtest.runner import run_delta_hedge
-from verified_options_backtest.ffi import apply_trade
-from verified_options_backtest.pricer.black_scholes import bs_greeks
-from verified_options_backtest.pricer.conventions import to_bp
+from backtest_proofs.backtest.data_types import PricePath
+from backtest_proofs.backtest.runner import run_delta_hedge
+from backtest_proofs.ffi import apply_trade
+from backtest_proofs.pricer.black_scholes import bs_greeks
+from backtest_proofs.pricer.conventions import to_bp
 
 # ── Shared fixtures ────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-title: verified-options-backtest
+title: backtest-proofs
 author: Akhil Karra
 
 execute:
@@ -12,7 +12,7 @@ bibtex_bibfiles:
   - references.bib
 
 repository:
-  url: https://github.com/eigenq-xyz/verified-options-backtest
+  url: https://github.com/eigenq-xyz/backtest-proofs
   path_to_book: docs
   branch: main
 

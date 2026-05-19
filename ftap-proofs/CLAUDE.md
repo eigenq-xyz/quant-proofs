@@ -22,8 +22,8 @@ start (camelCase definitions, snake_case lemma names, `where` blocks for structu
 
 ## Architecture
 
-Single Lean library `Ftap`. Submodules to be added under `Ftap/` as the formalization
-develops (e.g., `Ftap.Market`, `Ftap.Arbitrage`, `Ftap.MartingaleMeasure`, `Ftap.Theorem`).
+Single Lean library `FtapProofs`. Submodules to be added under `FtapProofs/` as the formalization
+develops (e.g., `FtapProofs.Market`, `FtapProofs.Arbitrage`, `FtapProofs.MartingaleMeasure`, `FtapProofs.Theorem`).
 
 ## Constraints
 

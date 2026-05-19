@@ -48,7 +48,7 @@ LEANC = LEAN_TC / "bin" / "leanc"
 
 # ── Lean project C IR files ──────────────────────────────────────────────────
 LEAN_PROJECT = PROJECT_ROOT / "lean"
-LEAN_IR = LEAN_PROJECT / ".lake" / "build" / "ir" / "OptionHedge"
+LEAN_IR = LEAN_PROJECT / ".lake" / "build" / "ir" / "BacktestProofs"
 
 # Only the four modules that contain FFI-callable runtime code.
 # Invariants.c and OptionInvariants.c depend on Mathlib (for proof tactics)
@@ -152,8 +152,8 @@ link_args = [
 
 extensions = [
     Extension(
-        "verified_options_backtest.ffi.lean_ffi",
-        sources=["src/verified_options_backtest/ffi/lean_ffi.pyx"],
+        "backtest_proofs.ffi.lean_ffi",
+        sources=["src/backtest_proofs/ffi/lean_ffi.pyx"],
         include_dirs=[str(LEAN_INCLUDE)],
         library_dirs=library_dirs,
         libraries=libraries,

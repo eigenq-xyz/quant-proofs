@@ -1,9 +1,9 @@
-name = "MortgageVerifier"
+name = "MortgageProofs"
 version = "0.1.0"
 description = "Formal verification of LLM mortgage routing decisions"
 
 [[lean_lib]]
-name = "MortgageVerifier"
+name = "MortgageProofs"
 
 [[lean_exe]]
 name = "verify-trace"

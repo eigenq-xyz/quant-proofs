@@ -3,8 +3,8 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from verified_mortgage_agent.domain.enums import EmploymentStatus, LoanType
-from verified_mortgage_agent.domain.models import (
+from mortgage_proofs.domain.enums import EmploymentStatus, LoanType
+from mortgage_proofs.domain.models import (
     Applicant,
     LoanRequest,
     MortgageApplication,

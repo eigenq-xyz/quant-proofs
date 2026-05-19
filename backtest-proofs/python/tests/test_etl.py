@@ -7,12 +7,12 @@ session is not active (no credentials in environment).
 import pytest
 from pydantic import ValidationError
 
-from verified_options_backtest.backtest.data_types import PricePath
-from verified_options_backtest.etl.data_types import (
+from backtest_proofs.backtest.data_types import PricePath
+from backtest_proofs.etl.data_types import (
     OptionSnapshot,
     UnderlyingSnapshot,
 )
-from verified_options_backtest.etl.wrds_loader import price_path_from_snapshots
+from backtest_proofs.etl.wrds_loader import price_path_from_snapshots
 
 
 class TestUnderlyingSnapshot:
@@ -153,7 +153,7 @@ class TestWRDSLoader:
     def test_underlying_from_df(self, pd: "object") -> None:
         import pandas  # type: ignore[import-untyped]
 
-        from verified_options_backtest.etl.wrds_loader import (
+        from backtest_proofs.etl.wrds_loader import (
             underlying_snapshots_from_df,
         )
 
@@ -172,7 +172,7 @@ class TestWRDSLoader:
     def test_option_from_df(self, pd: "object") -> None:
         import pandas  # type: ignore[import-untyped]
 
-        from verified_options_backtest.etl.wrds_loader import (
+        from backtest_proofs.etl.wrds_loader import (
             option_snapshots_from_df,
         )
 
@@ -196,7 +196,7 @@ class TestWRDSLoader:
         """optionmetrics loader populates underlying_price from spotprice column."""
         import pandas  # type: ignore[import-untyped]
 
-        from verified_options_backtest.etl.wrds_loader import (
+        from backtest_proofs.etl.wrds_loader import (
             optionmetrics_option_snapshots_from_df,
         )
 
@@ -224,7 +224,7 @@ class TestWRDSLoader:
         """underlying_price is None when spotprice column is absent."""
         import pandas  # type: ignore[import-untyped]
 
-        from verified_options_backtest.etl.wrds_loader import (
+        from backtest_proofs.etl.wrds_loader import (
             optionmetrics_option_snapshots_from_df,
         )
 
@@ -248,7 +248,7 @@ class TestWRDSLoader:
         """Rows with ask < bid are silently skipped."""
         import pandas  # type: ignore[import-untyped]
 
-        from verified_options_backtest.etl.wrds_loader import (
+        from backtest_proofs.etl.wrds_loader import (
             optionmetrics_option_snapshots_from_df,
         )
 

@@ -35,8 +35,8 @@ def find_lean_prefix() -> Path:
 
 
 def find_lake_ir(repo_root: Path) -> Path:
-    """Return the Lake C IR output directory for OptionHedge."""
-    ir_dir = repo_root / "lean" / ".lake" / "build" / "ir" / "OptionHedge"
+    """Return the Lake C IR output directory for BacktestProofs."""
+    ir_dir = repo_root / "lean" / ".lake" / "build" / "ir" / "BacktestProofs"
     if not ir_dir.is_dir():
         sys.exit(
             f"ERROR: Lake IR directory not found at {ir_dir}\n"
@@ -71,13 +71,13 @@ def main() -> None:
     pyx_file = str(
         Path(__file__).parent
         / "src"
-        / "verified_options_backtest"
+        / "backtest_proofs"
         / "ffi"
         / "lean_ffi.pyx"
     )
 
     extension = Extension(
-        name="verified_options_backtest.ffi.lean_ffi",
+        name="backtest_proofs.ffi.lean_ffi",
         sources=[pyx_file] + lean_c_sources,
         include_dirs=[lean_include],
         library_dirs=[lean_lib_dir],
@@ -90,7 +90,7 @@ def main() -> None:
     )
 
     setup(
-        name="verified-options-backtest-ffi",
+        name="backtest-proofs-ffi",
         ext_modules=cythonize(
             [extension],
             compiler_directives={

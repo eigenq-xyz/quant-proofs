@@ -92,7 +92,7 @@ def positionValue (qty markPrice : Int) : Int := qty * markPrice
 In Python — convert at the boundary using `to_bp` / `from_bp`:
 
 ```python
-# verified_options_backtest/pricer/conventions.py
+# backtest_proofs/pricer/conventions.py
 def to_bp(value: float) -> int:
     return round(value * 10_000)
 

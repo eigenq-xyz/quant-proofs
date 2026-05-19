@@ -7,23 +7,23 @@ from decimal import Decimal
 
 import pytest
 
-from verified_mortgage_agent.domain.enums import (
+from mortgage_proofs.domain.enums import (
     EmploymentStatus,
     GoalPriority,
     LoanType,
     SessionOutcome,
 )
-from verified_mortgage_agent.domain.models import (
+from mortgage_proofs.domain.models import (
     ApplicantSituation,
     MortgageGoal,
     MortgagePackageProposal,
 )
-from verified_mortgage_agent.record.design_session_io import (
+from mortgage_proofs.record.design_session_io import (
     DesignSessionSchemaVersionError,
     loads,
     serialize,
 )
-from verified_mortgage_agent.record.models import (
+from mortgage_proofs.record.models import (
     DESIGN_SESSION_SCHEMA_VERSION,
     DesignSessionRecord,
 )
