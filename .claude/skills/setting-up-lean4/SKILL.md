@@ -45,7 +45,7 @@ or `~/.bashrc`.
 ## First-time setup for a subproject
 
 Work always happens inside a specific subdir. Replace `<subdir>` with one of
-`backtest-proofs/lean`, `ftap-proofs`, `binomial-proofs`, or `mortgage-proofs`.
+`backtest-proofs/lean`, `ftap-proofs`, `options-proofs`, or `mortgage-proofs`.
 
 ```bash
 cd /Users/akhilkarra/ode/eigenq/quant-proofs/<subdir>
@@ -143,11 +143,11 @@ lake exe cache get
 lake build
 ```
 
-**`binomial-proofs` fails to build:**
+**`options-proofs` fails to build:**
 This subproject imports `FtapProofs`. Build `ftap-proofs` first:
 ```bash
 cd /Users/akhilkarra/ode/eigenq/quant-proofs/ftap-proofs && lake build
-cd /Users/akhilkarra/ode/eigenq/quant-proofs/binomial-proofs && lake build
+cd /Users/akhilkarra/ode/eigenq/quant-proofs/options-proofs && lake build
 ```
 
 ## Quick reference

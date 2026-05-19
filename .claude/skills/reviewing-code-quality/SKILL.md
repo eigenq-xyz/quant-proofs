@@ -42,7 +42,7 @@ A PR is ready to merge only when all applicable items are **Pass**.
 ### Build
 
 - [ ] `lake build` exits 0 in the affected subdir with no errors or warnings.
-- [ ] If `binomial-proofs/` is changed, also run `lake build` in `ftap-proofs/` —
+- [ ] If `options-proofs/` is changed, also run `lake build` in `ftap-proofs/` —
   the dependency chain must remain intact.
 
 ### Namespace convention
@@ -50,7 +50,7 @@ A PR is ready to merge only when all applicable items are **Pass**.
 - [ ] Top-level namespace matches the subdir convention:
   - `backtest-proofs/lean/` → `BacktestProofs`
   - `ftap-proofs/` → `FtapProofs`
-  - `binomial-proofs/` → `BinomialProofs`
+  - `options-proofs/` → `OptionsProofs`
   - `mortgage-proofs/lean/` → `MortgageProofs`
 - [ ] No theorem or definition uses a namespace from another subdir without an
   explicit import.

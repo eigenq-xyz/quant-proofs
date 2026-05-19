@@ -20,8 +20,8 @@ When reviewing a proof file:
 4. Verify docstrings are present on exported theorems and written for a non-Lean audience
 5. Run `lake build` in the relevant subdir to confirm compilation
 6. Check imports are specific — no `import Mathlib`
-7. Verify namespace matches the subdir convention (BacktestProofs, FtapProofs, BinomialProofs, MortgageProofs)
-8. For mathlib-targeted work (ftap-proofs, binomial-proofs): check that style matches mathlib4 conventions
+7. Verify namespace matches the subdir convention (BacktestProofs, FtapProofs, OptionsProofs, MortgageProofs)
+8. For mathlib-targeted work (ftap-proofs, options-proofs): check that style matches mathlib4 conventions
 
 Report findings as a structured review with severity levels:
 - **BLOCKING:** must fix before merge (sorry, compilation failure, wrong namespace)

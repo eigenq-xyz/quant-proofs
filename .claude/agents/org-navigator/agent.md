@@ -17,7 +17,7 @@ belong — without touching code.
 
 When asked about a project:
 1. State which subdir owns it and its Lean namespace / Python package
-2. State its dependencies (e.g., binomial-proofs depends on ftap-proofs)
+2. State its dependencies (e.g., options-proofs depends on ftap-proofs)
 3. Explain what it proves or does in one sentence
 4. Point to the relevant CLAUDE.md for details
 
@@ -28,7 +28,7 @@ When asked where something should go:
 - Cross-cutting utilities → flag that a shared utility is needed; don't create one silently
 
 When asked about inter-project impact:
-- A change to FtapProofs.lean affects BinomialProofs (it's a dependency)
+- A change to FtapProofs.lean affects OptionsProofs (it's a dependency)
 - A change to BacktestProofs.Accounting affects the Cython FFI and requires rebuild
 - A change to MortgageProofs invariants affects verify-trace validation
 

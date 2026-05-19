@@ -21,7 +21,7 @@ Run these in order. Each step gates the next — do not skip.
 ```
 1. Sorry check      (Lean, any subdir)
 2. lake build       (Lean, the subdir you changed)
-3. lake build       (Lean, downstream deps — binomial-proofs if you changed ftap-proofs)
+3. lake build       (Lean, downstream deps — options-proofs if you changed ftap-proofs)
 4. Python tests     (if the subdir has a Python layer)
 5. mypy --strict    (if the subdir has a Python layer)
 6. Trace verify     (mortgage-proofs only)
@@ -37,7 +37,7 @@ A `sorry` means the theorem is unproven. Zero tolerance on `main`.
 # For a specific subdir:
 grep -rn sorry --include="*.lean" backtest-proofs/lean/
 grep -rn sorry --include="*.lean" ftap-proofs/
-grep -rn sorry --include="*.lean" binomial-proofs/
+grep -rn sorry --include="*.lean" options-proofs/
 grep -rn sorry --include="*.lean" mortgage-proofs/lean/
 
 # Expected output: (empty — no output means zero sorry)
@@ -59,8 +59,8 @@ cd /Users/akhilkarra/ode/eigenq/quant-proofs/backtest-proofs/lean && lake build
 # ftap-proofs
 cd /Users/akhilkarra/ode/eigenq/quant-proofs/ftap-proofs && lake build
 
-# binomial-proofs (also builds ftap-proofs as a dependency)
-cd /Users/akhilkarra/ode/eigenq/quant-proofs/binomial-proofs && lake build
+# options-proofs (also builds ftap-proofs as a dependency)
+cd /Users/akhilkarra/ode/eigenq/quant-proofs/options-proofs && lake build
 
 # mortgage-proofs
 cd /Users/akhilkarra/ode/eigenq/quant-proofs/mortgage-proofs && lake build
@@ -69,9 +69,9 @@ cd /Users/akhilkarra/ode/eigenq/quant-proofs/mortgage-proofs && lake build
 Must exit 0. A non-zero exit means there is a type error, a missing import, or a broken
 definition somewhere in the changed files.
 
-**If `binomial-proofs` fails after touching `ftap-proofs`:**
+**If `options-proofs` fails after touching `ftap-proofs`:**
 The error is almost certainly in `ftap-proofs` itself. Fix the `ftap-proofs` build first,
-then retry `binomial-proofs`.
+then retry `options-proofs`.
 
 ---
 
@@ -82,7 +82,7 @@ or namespace exports).
 
 ```bash
 # After ftap-proofs builds cleanly:
-cd /Users/akhilkarra/ode/eigenq/quant-proofs/binomial-proofs && lake build
+cd /Users/akhilkarra/ode/eigenq/quant-proofs/options-proofs && lake build
 ```
 
 `backtest-proofs` and `mortgage-proofs` have no cross-subdir Lean dependencies, so they
@@ -189,7 +189,7 @@ Before opening a PR or merging to `main`:
 
 - [ ] Zero `sorry` in all changed `.lean` files (`grep -rn sorry --include="*.lean" <subdir>/`)
 - [ ] `lake build` exits 0 in every changed subdir
-- [ ] `lake build` exits 0 in `binomial-proofs` (if `ftap-proofs` changed)
+- [ ] `lake build` exits 0 in `options-proofs` (if `ftap-proofs` changed)
 - [ ] `uv run pytest -q` passes (if `backtest-proofs/python/` changed)
 - [ ] `pytest` passes (if `mortgage-proofs/` Python changed)
 - [ ] `mypy src/ --strict` exits 0 (if any Python in `src/` changed)

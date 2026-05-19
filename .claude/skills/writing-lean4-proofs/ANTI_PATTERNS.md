@@ -73,7 +73,7 @@ theorem hard_lemma : ArbitrageImpossible market := by
 - In `backtest-proofs`, the Cython FFI compiles against the Lean kernel. A `sorry` means the
   kernel guarantees are void — the Python code is not actually verified.
 - CI (`grep -rn sorry --include="*.lean"`) fails on `main`.
-- A `sorry` in `ftap-proofs` would invalidate every theorem in `binomial-proofs` that depends
+- A `sorry` in `ftap-proofs` would invalidate every theorem in `options-proofs` that depends
   on the sorry'd result.
 
 **Correct on a feature branch:**

@@ -6,7 +6,7 @@
 
 mathlib uses a systematic naming scheme where the theorem name encodes the conclusion.
 For `ftap-proofs` (targeting mathlib), follow this precisely.
-For `backtest-proofs`, `binomial-proofs`, `mortgage-proofs`, follow it as a guide.
+For `backtest-proofs`, `options-proofs`, `mortgage-proofs`, follow it as a guide.
 
 | Pattern | Example name | Meaning |
 |---------|-------------|---------|
@@ -130,7 +130,7 @@ import Mathlib.Algebra.BigOperators.Group.Finset
 -- Open frequently-used namespaces (sparingly)
 open BigOperators
 
-namespace BacktestProofs   -- or FtapProofs, BinomialProofs, MortgageProofs
+namespace BacktestProofs   -- or FtapProofs, OptionsProofs, MortgageProofs
 
 /-! ## Section heading (optional for large files) -/
 

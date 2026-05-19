@@ -21,7 +21,7 @@ work**, which requires two things that AI cannot self-supply:
 Every subdir in this repo is a concrete demonstration of that thesis. The Lean 4 kernel in
 `backtest-proofs/` proves that the Python backtester cannot silently miscount P&L. The FTAP
 proof in `ftap-proofs/` shows that no-arbitrage pricing follows from a constructively verified
-argument. The binomial model in `binomial-proofs/` closes the loop from abstract theorem to
+argument. The binomial model in `options-proofs/` closes the loop from abstract theorem to
 concrete option pricing formula. The mortgage agent in `mortgage-proofs/` shows that even
 LLM-driven pipelines can have their routing decisions formally audited.
 
@@ -33,7 +33,7 @@ quant-proofs/
 │   ├── lean/             # Lean 4 accounting kernel (BacktestProofs namespace)
 │   └── python/           # Cython FFI + Python backtester (backtest_proofs package)
 ├── ftap-proofs/          # Discrete FTAP proof (FtapProofs namespace)
-├── binomial-proofs/      # Put-call parity via CRR model (BinomialProofs namespace)
+├── options-proofs/      # Put-call parity via CRR model (OptionsProofs namespace)
 └── mortgage-proofs/      # LangGraph mortgage pipeline (MortgageProofs namespace)
     ├── agents/           # intake, risk, compliance, underwriter LangGraph agents
     ├── lean/             # Lean 4 invariant definitions
@@ -44,13 +44,13 @@ quant-proofs/
 
 ```
 ftap-proofs
-    └── binomial-proofs   (imports FtapProofs.NoArbitrage)
+    └── options-proofs   (imports FtapProofs.NoArbitrage)
 backtest-proofs           (standalone; accounting kernel is self-contained)
 mortgage-proofs           (standalone; imports no other subdir's Lean library)
 ```
 
-Key implication: changes to `ftap-proofs/` may require updating `binomial-proofs/`. Always
-run `lake build` in `binomial-proofs/` after touching `ftap-proofs/` interfaces.
+Key implication: changes to `ftap-proofs/` may require updating `options-proofs/`. Always
+run `lake build` in `options-proofs/` after touching `ftap-proofs/` interfaces.
 
 ## What each subdir does
 
@@ -72,10 +72,10 @@ measure. Namespace: `FtapProofs`. Targeting a mathlib PR once complete.
 **Before working here:** read `ftap-proofs/CLAUDE.md`. The mathlib PR process is described
 in `/contributing-to-eigenq`.
 
-### `binomial-proofs/`
+### `options-proofs/`
 A Lean 4 proof of put-call parity using the Cox-Ross-Rubinstein binomial model. Imports
-`FtapProofs.NoArbitrage` to ground the no-arbitrage argument. Namespace: `BinomialProofs`.
-**Before working here:** read `binomial-proofs/CLAUDE.md`. Ensure `ftap-proofs/` builds
+`FtapProofs.NoArbitrage` to ground the no-arbitrage argument. Namespace: `OptionsProofs`.
+**Before working here:** read `options-proofs/CLAUDE.md`. Ensure `ftap-proofs/` builds
 cleanly first.
 
 ### `mortgage-proofs/`
@@ -108,7 +108,7 @@ Every routing decision is emitted as a `DecisionRecord` JSON object. The Lean 4 
 |--------|-------|-----------------|--------------|
 | `backtest-proofs/` | `cd backtest-proofs/lean && lake build` | `grep -rn sorry backtest-proofs/lean --include="*.lean"` | `cd backtest-proofs/python && pytest` |
 | `ftap-proofs/` | `cd ftap-proofs && lake build` | `grep -rn sorry ftap-proofs --include="*.lean"` | — |
-| `binomial-proofs/` | `cd binomial-proofs && lake build` | `grep -rn sorry binomial-proofs --include="*.lean"` | — |
+| `options-proofs/` | `cd options-proofs && lake build` | `grep -rn sorry options-proofs --include="*.lean"` | — |
 | `mortgage-proofs/` | `cd mortgage-proofs && lake build` | `grep -rn sorry mortgage-proofs/lean --include="*.lean"` | `cd mortgage-proofs && pytest` |
 
 Run mypy on Python: `mypy --strict <subdir>/python/src/` (or `mortgage-proofs/src/`).
@@ -126,7 +126,7 @@ Run mypy on Python: `mypy --strict <subdir>/python/src/` (or `mortgage-proofs/sr
   resume paths, or application-cycle notes anywhere in this repo.
 - **Each subdir has its own CLAUDE.md.** Read it before working in that subdir. The top-level
   CLAUDE.md (this file's parent) is a routing document only.
-- **Dependency direction.** `binomial-proofs` may import `ftap-proofs`. Nothing else imports
+- **Dependency direction.** `options-proofs` may import `ftap-proofs`. Nothing else imports
   across subdirs. `mortgage-proofs` does not import `backtest-proofs`.
 
 ## Where to look for what
