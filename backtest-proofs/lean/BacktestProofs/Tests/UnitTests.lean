@@ -6,7 +6,7 @@ Authors: Akhil Karra
 
 import BacktestProofs.Basic
 import BacktestProofs.Accounting
-import BacktestProofs.Options
+import BacktestProofs.Settlement
 
 /-!
 # Unit Tests
@@ -15,6 +15,8 @@ Concrete tests for portfolio types, portfolio value calculation, position lookup
 -/
 
 namespace BacktestProofs.Tests
+
+open QuantCore
 
 /-! ## Empty portfolio -/
 
@@ -108,27 +110,6 @@ example : (applyTrade testPortfolio tradeCloseAAPL).cash = 90950000 := by native
 example : (applyTrade testPortfolio tradeCloseAAPL).portfolioValue =
     testPortfolio.portfolioValue - 50000 := by native_decide
 
-/-! ## Option payoffs -/
-
--- Call ITM: spot=$55, strike=$50 → payoff = $5.00 (500,000 bp)
-example : callPayoff 550000 500000 = 50000 := by native_decide
-
--- Call OTM: spot=$45, strike=$50 → payoff = $0
-example : callPayoff 450000 500000 = 0 := by native_decide
-
--- Call ATM: spot=$50, strike=$50 → payoff = $0
-example : callPayoff 500000 500000 = 0 := by native_decide
-
--- Put ITM: spot=$45, strike=$50 → payoff = $5.00 (500,000 bp)
-example : putPayoff 450000 500000 = 50000 := by native_decide
-
--- Put OTM: spot=$55, strike=$50 → payoff = $0
-example : putPayoff 550000 500000 = 0 := by native_decide
-
--- Put-call parity: call - put = spot - strike (integer identity)
-example : callPayoff 550000 500000 - putPayoff 550000 500000 = 550000 - 500000 := by native_decide
-example : callPayoff 450000 500000 - putPayoff 450000 500000 = 450000 - 500000 := by native_decide
-
 /-! ## Settlement -/
 
 private def testCall : EuropeanOption := EuropeanOption.mk' "SPY-CALL" .Call 500000
@@ -141,21 +122,21 @@ private def callPortfolio : Portfolio :=
 -- ITM: spot=$55 (550,000 bp) > strike=$50 (500,000 bp); payoff = 50,000 bp
 -- applySettlement closes position: qty → 0, cash += 100 × 50,000 = 5,000,000
 example : (applySettlement callPortfolio testCall
-    (testCall.settle 550000 100)).getQuantity "SPY-CALL" = 0 := by native_decide
+    (settleEuropeanOption testCall 550000 100)).getQuantity "SPY-CALL" = 0 := by native_decide
 
 example : (applySettlement callPortfolio testCall
-    (testCall.settle 550000 100)).cash = 10000000 + 100 * 50000 := by native_decide
+    (settleEuropeanOption testCall 550000 100)).cash = 10000000 + 100 * 50000 := by native_decide
 
 -- OTM: spot=$45 (450,000 bp) < strike=$50 (500,000 bp); payoff = 0
 -- abandonPosition: cash unchanged, position erased
 example : (applySettlement callPortfolio testCall
-    (testCall.settle 450000 100)).getPosition "SPY-CALL" = none := by native_decide
+    (settleEuropeanOption testCall 450000 100)).getPosition "SPY-CALL" = none := by native_decide
 
 example : (applySettlement callPortfolio testCall
-    (testCall.settle 450000 100)).cash = 10000000 := by native_decide
+    (settleEuropeanOption testCall 450000 100)).cash = 10000000 := by native_decide
 
 -- ATM: spot=$50 (500,000 bp) = strike; follows OTM path
 example : (applySettlement callPortfolio testCall
-    (testCall.settle 500000 100)).getPosition "SPY-CALL" = none := by native_decide
+    (settleEuropeanOption testCall 500000 100)).getPosition "SPY-CALL" = none := by native_decide
 
 end BacktestProofs.Tests

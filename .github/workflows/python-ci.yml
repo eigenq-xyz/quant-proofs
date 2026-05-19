@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'quant-core/python/**'
       - 'backtest-proofs/python/**'
       - 'backtest-proofs/lean/**'
       - 'mortgage-proofs/src/**'
@@ -12,19 +13,49 @@ on:
       - 'mortgage-proofs/pyproject.toml'
   pull_request:
     branches: [main]
-    paths:
-      - 'backtest-proofs/python/**'
-      - 'backtest-proofs/lean/**'
-      - 'mortgage-proofs/src/**'
-      - 'mortgage-proofs/tests/**'
-      - 'mortgage-proofs/lean/**'
-      - 'mortgage-proofs/pyproject.toml'
 
 concurrency:
   group: python-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # quant-core runs on ubuntu — pure Python, no FFI
+  quant-core-python:
+    name: quant-core Python
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Python dependencies
+        working-directory: quant-core/python
+        run: uv sync --extra dev
+
+      - name: Run tests with coverage
+        working-directory: quant-core/python
+        run: uv run pytest -q --cov=src --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: quant-core/python/coverage.xml
+          flags: quant-core
+        continue-on-error: true
+
+      - name: Type check
+        working-directory: quant-core/python
+        run: uv run mypy src/ --strict
+
+      - name: Lint
+        working-directory: quant-core/python
+        run: uv run ruff check src/ tests/
+
   # backtest-proofs runs on macOS — libuv + Cython FFI requires a matching platform
   backtest-python:
     name: backtest-proofs Python

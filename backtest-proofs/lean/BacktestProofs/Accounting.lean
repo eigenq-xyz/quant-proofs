@@ -9,9 +9,11 @@
 -/
 
 import BacktestProofs.Basic
-import BacktestProofs.Options
+import BacktestProofs.Settlement
 
 namespace BacktestProofs
+
+open QuantCore
 
 /-- FFI: Calculate the market value of a single position -/
 @[export hedge_position_value]
@@ -58,6 +60,6 @@ def optionPayoffFFI (opt : EuropeanOption) (spot : Int) : Int :=
 def settleOptionFFI (p : Portfolio) (opt : EuropeanOption) (spot : Int) : Portfolio :=
   match p.getPosition opt.assetId with
   | none     => p   -- no position to settle
-  | some pos => applySettlement p opt (opt.settle spot pos.quantity)
+  | some pos => applySettlement p opt (settleEuropeanOption opt spot pos.quantity)
 
 end BacktestProofs

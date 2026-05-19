@@ -23,6 +23,7 @@ formalization develops (e.g., `OptionsProofs.Tree`, `OptionsProofs.RiskNeutral`,
 
 ## Dependencies
 
+- `quant-core` — shared option primitives (`OptionKind`, `EuropeanOption`, payoff theorems).
 - `mathlib` — measure theory, expectation, finite probability.
 - `ftap-proofs` (planned) — once it exposes a stable interface for EMMs and no-arbitrage.
 

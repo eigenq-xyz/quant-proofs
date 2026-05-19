@@ -72,10 +72,12 @@ data/           — Encrypted market data (git-crypt)
   `position_value_def`, `pricesPositive`, `feeNonNegative`, `cashUpdateCorrect`,
   `quantityConservation`, `valueUpdateFormula`, `selfFinancing`, `empty_wellFormed`,
   `applyTrade_wellFormed`.
-- `Options.lean` — `OptionKind`, `EuropeanOption` (with `strike_pos`), `callPayoff`,
-  `putPayoff`, `optionPayoff`, settlement dispatcher.
-- `OptionInvariants.lean` — 14 settlement theorems including `settlement_value_formula`
-  (unifies ITM/OTM expiry: ΔPV = qty × (payoff − mark)).
+- `Settlement.lean` — settlement dispatcher: `Trade.settlementITM`, `Portfolio.abandonPosition`,
+  `EuropeanOption.settle`, `applySettlement`. Imports `QuantCore.Option` for types/payoffs.
+- `SettlementInvariants.lean` — 6 settlement theorems including `settlement_value_formula`
+  (crown jewel: ΔPV = qty × (payoff − mark), unifies ITM/OTM expiry).
+- Pure option types and payoff theorems (8 theorems) live in `QuantCore.Option` and
+  `QuantCore.OptionInvariants`; import via the `quant-core` dependency.
 - `Tests/UnitTests.lean` — concrete computation tests via `native_decide`.
 
 ### Python package (`python/src/backtest_proofs/`)

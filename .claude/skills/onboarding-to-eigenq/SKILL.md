@@ -29,11 +29,14 @@ LLM-driven pipelines can have their routing decisions formally audited.
 
 ```
 quant-proofs/
+├── quant-core/           # Shared pricing primitives (QuantCore namespace)
+│   ├── lean/             # Lean 4: AssetId, OptionKind, EuropeanOption, payoff theorems
+│   └── python/           # Python: Black-Scholes pricer, GBM simulator, PricePath
 ├── backtest-proofs/      # Options delta-hedging backtester
 │   ├── lean/             # Lean 4 accounting kernel (BacktestProofs namespace)
 │   └── python/           # Cython FFI + Python backtester (backtest_proofs package)
 ├── ftap-proofs/          # Discrete FTAP proof (FtapProofs namespace)
-├── options-proofs/      # Put-call parity via CRR model (OptionsProofs namespace)
+├── options-proofs/       # Put-call parity via CRR model (OptionsProofs namespace)
 └── mortgage-proofs/      # LangGraph mortgage pipeline (MortgageProofs namespace)
     ├── agents/           # intake, risk, compliance, underwriter LangGraph agents
     ├── lean/             # Lean 4 invariant definitions
@@ -43,14 +46,17 @@ quant-proofs/
 ## Dependency graph
 
 ```
-ftap-proofs
-    └── options-proofs   (imports FtapProofs.NoArbitrage)
-backtest-proofs           (standalone; accounting kernel is self-contained)
-mortgage-proofs           (standalone; imports no other subdir's Lean library)
+quant-core                (shared; depends only on mathlib)
+    ├── backtest-proofs   (accounting kernel imports QuantCore.Option)
+    └── options-proofs    (pricing theorems import QuantCore.Option + QuantCore.OptionInvariants)
+ftap-proofs               (standalone)
+mortgage-proofs           (standalone)
 ```
 
-Key implication: changes to `ftap-proofs/` may require updating `options-proofs/`. Always
-run `lake build` in `options-proofs/` after touching `ftap-proofs/` interfaces.
+Key implications:
+- Always build `quant-core/lean` before `backtest-proofs/lean` or `options-proofs/`.
+- Changes to `quant-core/lean` may require rebuilding both dependents.
+- `ftap-proofs` and `mortgage-proofs` are independent of `quant-core`.
 
 ## What each subdir does
 
@@ -106,10 +112,13 @@ Every routing decision is emitted as a `DecisionRecord` JSON object. The Lean 4 
 
 | Subdir | Build | Verify no sorry | Python tests |
 |--------|-------|-----------------|--------------|
+| `quant-core/` | `cd quant-core/lean && lake build` | `grep -rn sorry quant-core/lean --include="*.lean"` | `cd quant-core/python && pytest` |
 | `backtest-proofs/` | `cd backtest-proofs/lean && lake build` | `grep -rn sorry backtest-proofs/lean --include="*.lean"` | `cd backtest-proofs/python && pytest` |
 | `ftap-proofs/` | `cd ftap-proofs && lake build` | `grep -rn sorry ftap-proofs --include="*.lean"` | — |
 | `options-proofs/` | `cd options-proofs && lake build` | `grep -rn sorry options-proofs --include="*.lean"` | — |
 | `mortgage-proofs/` | `cd mortgage-proofs && lake build` | `grep -rn sorry mortgage-proofs/lean --include="*.lean"` | `cd mortgage-proofs && pytest` |
+
+Build `quant-core/lean` before `backtest-proofs/lean` or `options-proofs/` on a fresh checkout.
 
 Run mypy on Python: `mypy --strict <subdir>/python/src/` (or `mortgage-proofs/src/`).
 
@@ -126,8 +135,9 @@ Run mypy on Python: `mypy --strict <subdir>/python/src/` (or `mortgage-proofs/sr
   resume paths, or application-cycle notes anywhere in this repo.
 - **Each subdir has its own CLAUDE.md.** Read it before working in that subdir. The top-level
   CLAUDE.md (this file's parent) is a routing document only.
-- **Dependency direction.** `options-proofs` may import `ftap-proofs`. Nothing else imports
-  across subdirs. `mortgage-proofs` does not import `backtest-proofs`.
+- **Dependency direction.** `backtest-proofs` and `options-proofs` both import `quant-core`.
+  `options-proofs` may also import `ftap-proofs` (planned). `mortgage-proofs` does not
+  import any other subdir's Lean library.
 
 ## Where to look for what
 

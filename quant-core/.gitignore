@@ -1,0 +1,24 @@
+# Lean build artifacts
+.lake/
+*.olean
+*.ilean
+*.c
+*.o
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# OS
+.DS_Store
