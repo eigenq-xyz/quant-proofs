@@ -34,9 +34,21 @@ jobs:
         working-directory: backtest-proofs/python
         run: uv sync --extra docs
 
-      - name: Build JupyterBook
+      # Build the root overview book (deploys to /)
+      - name: Build root JupyterBook
         working-directory: backtest-proofs/python
         run: uv run jupyter-book build ../../docs/
+
+      # Build the backtest-proofs detailed book (deploys to /backtest-proofs/)
+      - name: Build backtest-proofs JupyterBook
+        working-directory: backtest-proofs/python
+        run: uv run jupyter-book build ../../backtest-proofs/docs/
+
+      # Embed backtest-proofs book inside the root artifact
+      - name: Merge backtest-proofs build into root site
+        run: |
+          mkdir -p docs/_build/html/backtest-proofs
+          cp -r backtest-proofs/docs/_build/html/. docs/_build/html/backtest-proofs/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
