@@ -1,0 +1,53 @@
+project:
+  type: default
+  output-dir: _output
+
+format:
+  pdf:
+    documentclass: scrartcl
+    classoption:
+      - DIV=12
+      - numbers=noendperiod
+    papersize: letter
+    fontsize: 11pt
+    linestretch: 1.15
+    geometry:
+      - margin=1in
+    colorlinks: true
+    link-citations: true
+    number-sections: true
+    toc: false
+    include-in-header: _eigenq.tex
+    cite-method: biblatex
+    biblio-style: authoryear
+    keep-tex: true
+    fig-pos: "tbp"
+    fig-cap-location: bottom
+    tbl-cap-location: top
+
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: false
+    fig-cap-location: bottom
+    tbl-cap-location: top
+    html-math-method: katex
+
+bibliography: _references.bib
+csl: https://www.zotero.org/styles/journal-of-finance
+
+execute:
+  echo: true
+  warning: false
+  freeze: auto
+
+crossref:
+  thm-title: Theorem
+  lem-title: Lemma
+  cor-title: Corollary
+  prp-title: Proposition
+  def-title: Definition
+  rem-title: Remark
+  exm-title: Example
