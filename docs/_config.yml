@@ -19,5 +19,6 @@ sphinx:
   extra_extensions:
     - sphinx.ext.autodoc
   config:
+    html_theme: quantecon_book_theme
     html_show_sourcelink: false
-    bibtex_bibfiles: []
+    myst_heading_anchors: 4

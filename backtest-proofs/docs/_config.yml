@@ -12,11 +12,9 @@ bibtex_bibfiles:
   - references.bib
 
 repository:
-  url: https://github.com/eigenq-xyz/backtest-proofs
-  path_to_book: docs
+  url: https://github.com/eigenq-xyz/quant-proofs
+  path_to_book: backtest-proofs/docs
   branch: main
-
-logo: ../IMG_8062.png
 
 html:
   use_issues_button: true
