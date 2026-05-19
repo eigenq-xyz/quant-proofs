@@ -13,14 +13,6 @@ on:
       - 'mortgage-proofs/pyproject.toml'
   pull_request:
     branches: [main]
-    paths:
-      - 'quant-core/python/**'
-      - 'backtest-proofs/python/**'
-      - 'backtest-proofs/lean/**'
-      - 'mortgage-proofs/src/**'
-      - 'mortgage-proofs/tests/**'
-      - 'mortgage-proofs/lean/**'
-      - 'mortgage-proofs/pyproject.toml'
 
 concurrency:
   group: python-${{ github.workflow }}-${{ github.ref }}

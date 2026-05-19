@@ -11,12 +11,6 @@ on:
       - 'mortgage-proofs/lean/**'
   pull_request:
     branches: [main]
-    paths:
-      - 'quant-core/lean/**'
-      - 'backtest-proofs/lean/**'
-      - 'ftap-proofs/**'
-      - 'options-proofs/**'
-      - 'mortgage-proofs/lean/**'
 
 concurrency:
   group: lean-${{ github.workflow }}-${{ github.ref }}
