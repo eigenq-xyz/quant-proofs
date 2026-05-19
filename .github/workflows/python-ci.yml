@@ -19,12 +19,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # quant-core runs on ubuntu — pure Python, no FFI
   quant-core-python:
     name: quant-core Python
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - uses: actions/checkout@v4
 
@@ -33,11 +31,11 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install Python dependencies
+      - name: Install dependencies
         working-directory: quant-core/python
         run: uv sync --extra dev
 
-      - name: Run tests with coverage
+      - name: Test
         working-directory: quant-core/python
         run: uv run pytest -q --cov=src --cov-report=xml
 
@@ -56,12 +54,10 @@ jobs:
         working-directory: quant-core/python
         run: uv run ruff check src/ tests/
 
-  # backtest-proofs runs on macOS — libuv + Cython FFI requires a matching platform
   backtest-python:
     name: backtest-proofs Python
     runs-on: macos-latest
     timeout-minutes: 45
-
     steps:
       - uses: actions/checkout@v4
 
@@ -74,11 +70,7 @@ jobs:
             | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
-      # quant-core is a path dependency of backtest-proofs; cache both .lake dirs.
-      # ~/.elan omitted deliberately — toolchain re-downloads in ~30s and keeping
-      # it out of the cache avoids size pressure on the 10 GB repo cache limit.
       - name: Cache Lake packages
-        id: lean-cache
         uses: actions/cache@v4
         with:
           path: |
@@ -87,18 +79,13 @@ jobs:
           key: lean-backtest-${{ runner.os }}-${{ hashFiles('backtest-proofs/lean/lake-manifest.json') }}
           restore-keys: lean-backtest-${{ runner.os }}-
 
-      - name: Fetch mathlib binary cache
-        if: steps.lean-cache.outputs.cache-hit != 'true'
-        working-directory: backtest-proofs/lean
-        run: lake exe cache get || echo "Cache miss — building from source"
-
       - name: Build Lean kernel
         working-directory: backtest-proofs/lean
         run: lake build
 
-      # set_ffi.py calls `lean --print-prefix`; elan shims only resolve when
-      # a default toolchain is active or lean-toolchain is in the working dir.
-      # Setting the default here makes `lean` available from any directory.
+      # setup_ffi.py calls `lean --print-prefix`; with --default-toolchain none
+      # the elan shim fails outside a lean-toolchain directory. Set a default
+      # so `lean` resolves from any working directory.
       - name: Activate Lean toolchain
         working-directory: backtest-proofs/lean
         run: elan default $(cat lean-toolchain)
@@ -108,15 +95,15 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install Python dependencies
+      - name: Install dependencies
         working-directory: backtest-proofs/python
         run: uv sync --extra dev
 
-      - name: Build Cython FFI extension
+      - name: Build Cython FFI
         working-directory: backtest-proofs/python
         run: uv run python setup_ffi.py build_ext --inplace
 
-      - name: Run tests with coverage
+      - name: Test
         working-directory: backtest-proofs/python
         run: uv run pytest -q --cov=src --cov-report=xml
 
@@ -135,12 +122,10 @@ jobs:
         working-directory: backtest-proofs/python
         run: uv run ruff check src/ tests/
 
-  # mortgage-proofs runs on ubuntu — no native FFI dependency
   mortgage-python:
     name: mortgage-proofs Python
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - uses: actions/checkout@v4
 
@@ -166,11 +151,11 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install Python dependencies
+      - name: Install dependencies
         working-directory: mortgage-proofs
         run: uv sync --all-extras
 
-      - name: Run unit tests with coverage
+      - name: Test
         working-directory: mortgage-proofs
         run: uv run pytest -m "not integration" -q --cov=src --cov-report=xml
 
