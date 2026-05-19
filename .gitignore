@@ -1,0 +1,37 @@
+# Claude Code — local settings (API keys, personal hooks)
+.claude/settings.local.json
+
+# Lean build artifacts
+**/.lake/
+**/lake-packages/
+
+# Python build artifacts
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.venv/
+**/build/
+**/dist/
+**/*.egg-info/
+**/.mypy_cache/
+**/.pytest_cache/
+**/.ruff_cache/
+
+# Cython compiled extensions
+**/*.so
+**/*.pyd
+
+# Data directories (licensed data — never commit)
+**/data/*.parquet
+**/data/*.csv
+**/data/*.h5
+**/data/*.arrow
+**/data/raw/
+**/data/processed/
+
+# Jupyter
+**/.ipynb_checkpoints/
+**/*_files/
+
+# macOS
+**/.DS_Store
