@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'quant-core/lean/**'
       - 'backtest-proofs/lean/**'
       - 'ftap-proofs/**'
       - 'options-proofs/**'
@@ -11,6 +12,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'quant-core/lean/**'
       - 'backtest-proofs/lean/**'
       - 'ftap-proofs/**'
       - 'options-proofs/**'
@@ -29,6 +31,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - subdir: quant-core
+            lean-dir: quant-core/lean
           - subdir: backtest-proofs
             lean-dir: backtest-proofs/lean
           - subdir: ftap-proofs
