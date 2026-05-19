@@ -3,7 +3,9 @@ root: intro
 parts:
   - caption: Projects
     chapters:
-      - file: backtest-proofs
+      - file: quant-core
+      - url: https://eigenq-xyz.github.io/quant-proofs/backtest-proofs/intro.html
+        title: backtest-proofs
       - file: ftap-proofs
       - file: options-proofs
       - file: mortgage-proofs
