@@ -80,17 +80,16 @@ jobs:
           restore-keys: lean-backtest-${{ runner.os }}-
 
       - name: Fetch mathlib cache
-        if: steps.lean-cache.outputs.cache-hit != 'true'
         working-directory: backtest-proofs/lean
-        run: lake exe cache get || true
+        run: lake exe cache get || echo "Cache miss — building from source"
 
       - name: Build Lean kernel
         working-directory: backtest-proofs/lean
         run: lake build
 
-      # setup_ffi.py calls `lean --print-prefix`; with --default-toolchain none
-      # the elan shim fails outside a lean-toolchain directory. Set a default
-      # so `lean` resolves from any working directory.
+      # setup_ffi.py calls `lean --print-prefix`; elan was installed with
+      # --default-toolchain none so the shim fails outside a lean-toolchain
+      # directory. Set a default so `lean` resolves from any working directory.
       - name: Activate Lean toolchain
         working-directory: backtest-proofs/lean
         run: elan default $(cat lean-toolchain)
