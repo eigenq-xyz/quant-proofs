@@ -79,6 +79,17 @@ gh run watch --repo eigenq-xyz/quant-proofs
 | Python CI mypy failure | Missing type annotations | `uv run mypy src/ --strict` locally |
 | Python CI Cython build failure | Lean IR files missing | Ensure Lean build step ran before Cython build |
 
+## Background monitoring (automatic)
+
+After every `git push` or `gh pr merge`, a background hook polls GitHub until
+all CI runs on that branch complete, then wakes Claude with the result:
+
+- `CI finished: PASS: all checks on <branch>` — everything green
+- `CI finished: FAIL on <branch>: <workflow names>` — one or more failed
+
+The hook polls every 15 seconds and times out after 11 minutes. If CI is still
+running at that point, check manually with the commands above.
+
 ## Checklist before merging a PR
 
 - [ ] Main is green: `gh run list --branch main --status failure --limit 1` returns empty
