@@ -11,7 +11,9 @@
 
 import BacktestProofs.Basic
 import BacktestProofs.Accounting
-import Mathlib.Tactic
+import Mathlib.Tactic.Linarith
+import Mathlib.Tactic.Ring
+import Mathlib.Data.List.Perm.Basic
 
 namespace BacktestProofs
 

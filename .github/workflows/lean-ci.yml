@@ -51,7 +51,7 @@ jobs:
           path: |
             ~/.elan
             ${{ matrix.lean-dir }}/.lake
-          key: lean-${{ matrix.subdir }}-${{ runner.os }}-${{ hashFiles(format('{0}/lean-toolchain', matrix.lean-dir)) }}
+          key: lean-${{ matrix.subdir }}-${{ runner.os }}-${{ hashFiles(format('{0}/lean-toolchain', matrix.lean-dir), format('{0}/lake-manifest.json', matrix.lean-dir)) }}
           restore-keys: lean-${{ matrix.subdir }}-${{ runner.os }}-
 
       - name: Fetch mathlib binary cache
