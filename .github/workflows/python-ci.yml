@@ -79,6 +79,11 @@ jobs:
           key: lean-backtest-${{ runner.os }}-${{ hashFiles('backtest-proofs/lean/lake-manifest.json') }}
           restore-keys: lean-backtest-${{ runner.os }}-
 
+      - name: Fetch mathlib cache
+        if: steps.lean-cache.outputs.cache-hit != 'true'
+        working-directory: backtest-proofs/lean
+        run: lake exe cache get || true
+
       - name: Build Lean kernel
         working-directory: backtest-proofs/lean
         run: lake build
