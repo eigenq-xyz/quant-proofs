@@ -185,3 +185,25 @@ ax.set_title("VRP Strategy Cumulative Returns, 1990–2023", fontsize=13)
 ax.legend(fontsize=11)
 fig.tight_layout()
 ```
+
+---
+
+## JupyterBook site conventions (docs/)
+
+The repo uses JupyterBook with the **QuantEcon Book Theme** (`quantecon-book-theme`),
+matching the style used in other eigenq-xyz projects. Theme is in
+`backtest-proofs/python/pyproject.toml` under `[project.optional-dependencies] docs`.
+
+Build:
+```bash
+cd backtest-proofs/python && uv sync --extra docs
+uv run jupyter-book build ../../docs/
+```
+
+Theme-specific conventions:
+- `execute_notebooks: "off"` — notebooks are pre-executed; outputs committed to repo
+- `myst_enable_extensions: [colon_fence, deflist]` — use `:::` for admonitions
+- Mathematical notation rendered via MathJax — use `$...$` inline, `$$...$$` display
+- `bibtex_bibfiles: []` — add a `.bib` file here when references are added
+- All `.ipynb` notebooks go in `docs/` or `backtest-proofs/notebooks/`; symlink if needed
+- Do not add dark-mode styles — the QuantEcon theme handles this

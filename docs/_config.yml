@@ -1,7 +1,12 @@
 title: "quant-proofs"
 author: "eigenq-xyz"
+logo: ""
 execute:
   execute_notebooks: "off"
+parse:
+  myst_enable_extensions:
+    - colon_fence
+    - deflist
 html:
   use_repository_button: true
   use_issues_button: true
@@ -11,5 +16,8 @@ repository:
   branch: main
   path_to_book: docs
 sphinx:
+  extra_extensions:
+    - sphinx.ext.autodoc
   config:
     html_show_sourcelink: false
+    bibtex_bibfiles: []
