@@ -10,7 +10,7 @@ The organizing principle: before trusting a numerical result, prove the accounti
 
 Options delta-hedging backtester with a Lean 4 accounting kernel. The kernel (26 theorems, zero `sorry`) proves portfolio value identity, self-financing, and settlement-value formulae. Python calls the kernel via Cython FFI; the accounting layer cannot silently mis-report results regardless of strategy complexity.
 
-See the [full documentation](backtest-proofs/intro.html) including formal guarantees, validation, and architecture.
+See the [full documentation](https://eigenq-xyz.github.io/quant-proofs/backtest-proofs/intro.html) including formal guarantees, validation, and architecture.
 
 ### ftap-proofs
 
