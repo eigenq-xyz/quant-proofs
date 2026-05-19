@@ -1,0 +1,141 @@
+---
+name: contributing-to-eigenq
+description: >
+  PR workflow, branch conventions, testing requirements, and mathlib upstream process
+  for the quant-proofs monorepo. Use before opening a PR, when setting up a branch,
+  or when preparing ftap-proofs or binomial-proofs for a mathlib contribution.
+paths:
+  - "**/*"
+---
+
+# Contributing to quant-proofs
+
+## Branch naming conventions
+
+Every branch is scoped to a single subdir. Pick the prefix that describes the intent:
+
+| Prefix | Use when |
+|--------|----------|
+| `feat/<subdir>/<description>` | New capability, new module, new agent |
+| `fix/<subdir>/<description>` | Bug fix, proof repair, type error |
+| `proof/<subdir>/<theorem-name>` | Adding or completing a Lean 4 proof |
+| `refactor/<subdir>/<description>` | Internal restructure, no behavior change |
+| `docs/<subdir>/<description>` | CLAUDE.md, inline comments, docstrings |
+| `mathlib/<subdir>/<module-name>` | Branch tracking a mathlib upstream PR |
+
+Examples:
+```
+feat/backtest-proofs/cython-ffi-export
+fix/mortgage-proofs/compliance-agent-nil-trace
+proof/ftap-proofs/noArbitrageMartingale
+proof/binomial-proofs/putCallParity
+mathlib/ftap-proofs/Mathlib.Finance.NoArbitrage
+```
+
+Use lowercase kebab-case for `<description>` and camelCase for `<theorem-name>` (matching
+the Lean 4 identifier).
+
+## Pre-merge checklist
+
+Before opening a PR — and before requesting review — verify every item:
+
+### Lean 4
+- [ ] `lake build` passes with no errors in the affected subdir
+- [ ] Zero `sorry` in all `.lean` files under the affected subdir:
+  ```
+  grep -rn sorry <subdir>/lean --include="*.lean"
+  ```
+  (An empty result is required. `-- sorry` comments in docs are fine; actual `sorry` terms
+  are not.)
+- [ ] If `binomial-proofs/` is changed, also build `ftap-proofs/` — the dependency goes
+  `binomial-proofs → ftap-proofs`, so `ftap-proofs` must still build cleanly.
+- [ ] New theorems have `-- Proof sketch:` comments explaining the high-level argument.
+
+### Python / Cython
+- [ ] `pytest` passes in the affected subdir's Python tree
+- [ ] `mypy --strict <subdir>/python/src/` (or `<subdir>/src/`) is clean
+- [ ] No licensed data files are staged (`git diff --cached --name-only` must not include
+  `.csv`, `.parquet`, `.h5`, or raw data files)
+
+### All PRs
+- [ ] Branch is scoped to one subdir (one `lake build` root, one Python package)
+- [ ] Commit history is clean (no merge commits from `main`; rebase if needed)
+- [ ] PR description follows the template below
+
+## PR template
+
+Use this structure for every PR. Omit sections that don't apply (e.g., no Proof sketch for
+a pure Python change), but keep the headers so reviewers can scan quickly.
+
+```markdown
+## Summary
+
+- One-sentence description of what changed and why.
+- Any subdir-level dependency implications (e.g., "bumps FtapProofs API; binomial-proofs
+  updated in tandem").
+
+## Proof sketch (Lean PRs only)
+
+High-level argument for the main theorem(s) introduced or modified:
+- State the key lemmas used.
+- Note any non-obvious steps (e.g., "the martingale characterization requires Doob's
+  optional stopping, invoked via `Mathlib.Probability.Martingale.Stopping`").
+- If a `sorry` was present on the feature branch, state explicitly how it was discharged.
+
+## Test plan
+
+- [ ] `lake build` passes in `<subdir>/`
+- [ ] `grep -rn sorry <subdir>/lean --include="*.lean"` returns empty
+- [ ] `pytest` passes (if Python changed)
+- [ ] `mypy --strict` clean (if Python changed)
+- [ ] `lake exe verify-trace` passes on sample trace (mortgage-proofs only)
+```
+
+## Mathlib upstream process
+
+When a proof in `ftap-proofs/` or `binomial-proofs/` is ready for mathlib:
+
+### Namespace requirements
+
+Lean 4 identifiers must conform to mathlib style:
+- Top-level namespace must be `Mathlib.` (e.g., `Mathlib.Finance.NoArbitrage`)
+- The module name should fit under an existing mathlib parent:
+  - `Mathlib.Analysis.` for analytical results
+  - `Mathlib.Probability.` for measure-theoretic probability
+  - `Mathlib.Finance.` (proposed; check current mathlib tree before assuming this exists)
+- Use `theorem` not `lemma` for results intended as the main export.
+- All `def`, `theorem`, and `lemma` names must be in `UpperCamelCase` (types/structures)
+  or `lowerCamelCase` (theorems/lemmas) per mathlib convention.
+
+### Preparation steps
+
+1. **Create a `mathlib/<subdir>/<module-name>` branch** from the current `main`.
+2. **Restructure the namespace.** Move from `FtapProofs.X` to `Mathlib.Finance.X` (or
+   agreed parent). Update all imports in `binomial-proofs/` accordingly.
+3. **Strip non-mathlib dependencies.** The submitted file must import only from `Mathlib`
+   and `Std`. Remove any local utility lemmas that duplicate existing mathlib lemmas —
+   search `Mathlib` first.
+4. **Add `#check` and `#eval` sanity lines** in a separate `Examples.lean` file (not
+   submitted, but useful for review prep).
+5. **Run mathlib4 CI locally** using the `leanprover-community/mathlib4` Docker image or
+   `lake exe cache get && lake build`.
+6. **Open a draft PR on mathlib4.** Title format: `feat(Finance): <short description>`.
+   The PR description must include the mathematical statement in plain English, the
+   formalization approach, and a pointer to the paper (Harrison-Pliska 1981 for FTAP).
+7. **Track review comments on the `mathlib/` branch** and sync back to `main` once merged.
+
+### Timing
+
+Do not open the mathlib PR until:
+- `lake build` is clean on the `mathlib/` branch with zero `sorry`.
+- The proof has been stable on `main` for at least one week (no further edits anticipated).
+- The `binomial-proofs/` dependency on the FTAP result has been tested post-namespace-change.
+
+## Commit standards
+
+See `/writing-commits-and-prs` for the full commit message format. Summary:
+- Imperative mood, subject ≤72 characters.
+- Reference theorem names by their Lean 4 identifier for proof commits.
+- Body explains why the change was made, not what the diff shows.
+- One logical change per commit (a proof and its FFI export may be one commit if inseparable;
+  otherwise split).
