@@ -39,14 +39,15 @@ At expiry the option is settled via the Lean verified accounting layer.
 from dataclasses import dataclass, field
 from typing import Literal, Protocol
 
+from quant_core.pricer.black_scholes import bs_greeks, bs_price
+from quant_core.pricer.conventions import from_bp, to_bp
+
 from backtest_proofs.backtest.audit import (
     StepCertificate,
     verify_step,
 )
 from backtest_proofs.backtest.data_types import PricePath
 from backtest_proofs.ffi import apply_trade, settle_option
-from quant_core.pricer.black_scholes import bs_greeks, bs_price
-from quant_core.pricer.conventions import from_bp, to_bp
 
 # Asset identifiers used inside the verified accounting layer
 _OPT_ID = "CALL"
