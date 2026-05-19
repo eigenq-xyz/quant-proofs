@@ -1,0 +1,69 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(lake build *)",
+      "Bash(lake clean)",
+      "Bash(lake exe cache get)",
+      "Bash(lake exe verify-trace *)",
+      "Bash(lake update)",
+      "Bash(uv run pytest *)",
+      "Bash(uv run mypy *)",
+      "Bash(uv run ruff *)",
+      "Bash(uv sync *)",
+      "Bash(uv run python setup_ffi.py *)",
+      "Bash(grep -rn sorry *)",
+      "Bash(find * -name *.lean *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git status *)",
+      "Write(.claude/agents/**)",
+      "Edit(.claude/agents/**)",
+      "Write(.claude/skills/**)",
+      "Edit(.claude/skills/**)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push origin HEAD)",
+      "Bash(git push origin HEAD:*)",
+      "Bash(git push --set-upstream origin *)",
+      "Bash(git checkout -b *)",
+      "Bash(git checkout *)",
+      "Bash(git branch *)",
+      "Bash(git stash *)",
+      "Bash(git merge --no-ff *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr merge *)",
+      "Bash(gh pr comment *)",
+      "Bash(gh pr review *)"
+    ],
+    "deny": [
+      "Bash(git push --force *)",
+      "Bash(git push --force-with-lease *)",
+      "Bash(git reset --hard *)",
+      "Bash(git branch -D *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git push *)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || exit 0; repo=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null) || exit 0; if gh api \"repos/$repo/branches?protected=true&per_page=100\" --jq '.[].name' 2>/dev/null | grep -qx \"$branch\"; then echo \"BLOCK: '$branch' is a protected branch in $repo — push from a feature branch instead.\" >&2; exit 1; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"\nimport sys, json, re\npayload = json.load(sys.stdin)\ncontent = payload.get('content', '') or payload.get('new_string', '')\npatterns = [\n    r'unofficial_academic_record',\n    r'mfe-applications',\n    r'Akhil Karra Resume',\n    r'summer-2026-plan\\.md',\n    r'MSCF Class of',\n]\nfor p in patterns:\n    if re.search(p, content, re.IGNORECASE):\n        print(f'BLOCK: private content pattern: {p}', file=sys.stderr)\n        sys.exit(1)\n\""
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -99,7 +99,7 @@ Public documentation must not contain private context.
   is designed to demonstrate skills for X firm"). AQR and Fama-French are fine as
   data source names — they publish public datasets.
 - [ ] No paths to personal files outside the repository (e.g., no references to
-  `~/ode/mfe-applications/`).
+  `~/personal/` or any path not under `quant-proofs/`).
 - [ ] Positioning language, if present, refers to "academic and industry research"
   or "production quant codebases" — not to specific firms or job applications.
 
