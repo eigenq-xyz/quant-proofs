@@ -1,9 +1,9 @@
-# verified-binomial-model
+# options-proofs
 
 Lean 4 proof of put-call parity via the Cox-Ross-Rubinstein (CRR) binomial model.
 
 The CRR model is a finite-state market in which the FTAP from
-[`verified-ftap`](https://github.com/eigenq-xyz/verified-ftap) applies, exhibiting an
+[`ftap-proofs`](https://github.com/eigenq-xyz/quant-proofs/tree/main/ftap-proofs) applies, exhibiting an
 explicit risk-neutral measure. Put-call parity follows.
 
 This is a **work-in-progress skeleton.**
