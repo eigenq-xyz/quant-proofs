@@ -1,0 +1,79 @@
+name: Lean CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backtest-proofs/lean/**'
+      - 'ftap-proofs/**'
+      - 'binomial-proofs/**'
+      - 'mortgage-proofs/lean/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backtest-proofs/lean/**'
+      - 'ftap-proofs/**'
+      - 'binomial-proofs/**'
+      - 'mortgage-proofs/lean/**'
+
+concurrency:
+  group: lean-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lean-build:
+    name: ${{ matrix.subdir }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - subdir: backtest-proofs
+            lean-dir: backtest-proofs/lean
+          - subdir: ftap-proofs
+            lean-dir: ftap-proofs
+          - subdir: binomial-proofs
+            lean-dir: binomial-proofs
+          - subdir: mortgage-proofs
+            lean-dir: mortgage-proofs/lean
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Cache Lean toolchain and packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.elan
+            ${{ matrix.lean-dir }}/.lake
+          key: lean-${{ matrix.subdir }}-${{ runner.os }}-${{ hashFiles(format('{0}/lean-toolchain', matrix.lean-dir)) }}
+          restore-keys: lean-${{ matrix.subdir }}-${{ runner.os }}-
+
+      - name: Fetch mathlib binary cache
+        working-directory: ${{ matrix.lean-dir }}
+        # best-effort: speeds builds from ~60 min to ~5 min on cache hit
+        run: lake exe cache get || echo "Cache miss — building from source"
+
+      - name: Build
+        working-directory: ${{ matrix.lean-dir }}
+        run: lake build
+
+      - name: Check zero sorry
+        run: |
+          count=$(grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake \
+                    "${{ matrix.lean-dir }}/" \
+                  | grep -v '^\s*--' | wc -l | tr -d ' ')
+          if [ "$count" -gt 0 ]; then
+            echo "FAIL: $count sorry term(s) found on main:"
+            grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake \
+              "${{ matrix.lean-dir }}/" | grep -v '^\s*--'
+            exit 1
+          fi
+          echo "PASS: zero sorry in ${{ matrix.subdir }}"

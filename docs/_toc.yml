@@ -1,0 +1,9 @@
+format: jb-book
+root: intro
+parts:
+  - caption: Projects
+    chapters:
+      - file: backtest-proofs
+      - file: ftap-proofs
+      - file: binomial-proofs
+      - file: mortgage-proofs
