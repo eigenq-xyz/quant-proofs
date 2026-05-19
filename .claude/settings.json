@@ -56,7 +56,7 @@
             "timeout": 660,
             "statusMessage": "Watching CI…",
             "rewakeMessage": "CI finished: ",
-            "command": "branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || exit 0; repo=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null) || exit 0; sleep 20; end=$((SECONDS+640)); while [ $SECONDS -lt $end ]; do data=$(gh run list --repo \"$repo\" --branch \"$branch\" --limit 5 --json name,status,conclusion --jq '[.[] | {n:.name,s:(.conclusion//.status)}]' 2>/dev/null); [ -z \"$data\" ] && sleep 15 && continue; pending=$(echo \"$data\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(sum(1 for r in d if r['s'] in ('in_progress','queued','waiting')))\"); failed=$(echo \"$data\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(', '.join(r['n'] for r in d if r['s'] in ('failure','cancelled','timed_out')))\"); if [ \"$pending\" = \"0\" ]; then if [ -n \"$failed\" ]; then echo \"FAIL on $branch: $failed\"; exit 2; else echo \"PASS: all checks on $branch\"; exit 0; fi; fi; sleep 15; done; echo \"CI still running on $branch after 11 min\"; exit 0"
+            "command": "QDIR=/Users/akhilkarra/ode/eigenq/quant-proofs; branch=$(git -C \"$QDIR\" rev-parse --abbrev-ref HEAD 2>/dev/null) || exit 0; repo=$(cd \"$QDIR\" && gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null) || exit 0; sleep 20; end=$((SECONDS+640)); while [ $SECONDS -lt $end ]; do data=$(gh run list --repo \"$repo\" --branch \"$branch\" --limit 5 --json name,status,conclusion --jq '[.[] | {n:.name,s:(.conclusion//.status)}]' 2>/dev/null); [ -z \"$data\" ] && sleep 15 && continue; pending=$(echo \"$data\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(sum(1 for r in d if r['s'] in ('in_progress','queued','waiting')))\"); failed=$(echo \"$data\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(', '.join(r['n'] for r in d if r['s'] in ('failure','cancelled','timed_out')))\"); if [ \"$pending\" = \"0\" ]; then if [ -n \"$failed\" ]; then echo \"FAIL on $branch: $failed\"; exit 2; else echo \"PASS: all checks on $branch\"; exit 0; fi; fi; sleep 15; done; echo \"CI still running on $branch after 11 min\"; exit 0"
           }
         ]
       },
@@ -69,7 +69,7 @@
             "timeout": 660,
             "statusMessage": "Watching CI on main…",
             "rewakeMessage": "CI finished: ",
-            "command": "repo=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null) || exit 0; sleep 25; end=$((SECONDS+640)); while [ $SECONDS -lt $end ]; do data=$(gh run list --repo \"$repo\" --branch main --limit 5 --json name,status,conclusion --jq '[.[] | {n:.name,s:(.conclusion//.status)}]' 2>/dev/null); [ -z \"$data\" ] && sleep 15 && continue; pending=$(echo \"$data\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(sum(1 for r in d if r['s'] in ('in_progress','queued','waiting')))\"); failed=$(echo \"$data\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(', '.join(r['n'] for r in d if r['s'] in ('failure','cancelled','timed_out')))\"); if [ \"$pending\" = \"0\" ]; then if [ -n \"$failed\" ]; then echo \"FAIL on main: $failed\"; exit 2; else echo \"PASS: all checks on main\"; exit 0; fi; fi; sleep 15; done; echo \"CI still running on main after 11 min\"; exit 0"
+            "command": "QDIR=/Users/akhilkarra/ode/eigenq/quant-proofs; repo=$(cd \"$QDIR\" && gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null) || exit 0; sleep 25; end=$((SECONDS+640)); while [ $SECONDS -lt $end ]; do data=$(gh run list --repo \"$repo\" --branch main --limit 5 --json name,status,conclusion --jq '[.[] | {n:.name,s:(.conclusion//.status)}]' 2>/dev/null); [ -z \"$data\" ] && sleep 15 && continue; pending=$(echo \"$data\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(sum(1 for r in d if r['s'] in ('in_progress','queued','waiting')))\"); failed=$(echo \"$data\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(', '.join(r['n'] for r in d if r['s'] in ('failure','cancelled','timed_out')))\"); if [ \"$pending\" = \"0\" ]; then if [ -n \"$failed\" ]; then echo \"FAIL on main: $failed\"; exit 2; else echo \"PASS: all checks on main\"; exit 0; fi; fi; sleep 15; done; echo \"CI still running on main after 11 min\"; exit 0"
           }
         ]
       }
@@ -80,7 +80,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || exit 0; repo=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null) || exit 0; if gh api \"repos/$repo/branches?protected=true&per_page=100\" --jq '.[].name' 2>/dev/null | grep -qx \"$branch\"; then echo \"BLOCK: '$branch' is a protected branch in $repo — push from a feature branch instead.\" >&2; exit 1; fi"
+            "command": "QDIR=/Users/akhilkarra/ode/eigenq/quant-proofs; branch=$(git -C \"$QDIR\" rev-parse --abbrev-ref HEAD 2>/dev/null) || exit 0; repo=$(cd \"$QDIR\" && gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null) || exit 0; if gh api \"repos/$repo/branches?protected=true&per_page=100\" --jq '.[].name' 2>/dev/null | grep -qx \"$branch\"; then echo \"BLOCK: '$branch' is a protected branch in $repo — push from a feature branch instead.\" >&2; exit 1; fi"
           }
         ]
       },
