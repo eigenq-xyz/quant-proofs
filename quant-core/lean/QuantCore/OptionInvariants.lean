@@ -5,7 +5,6 @@ Authors: Akhil Karra
 -/
 
 import QuantCore.Option
-import Mathlib.Tactic
 
 /-!
 # Option Payoff Invariants
@@ -30,16 +29,16 @@ namespace QuantCore
     Economic meaning: the holder of a call never owes money at expiry —
     they exercise only when it is profitable to do so. The right but not
     the obligation to buy. -/
-theorem callPayoff_nonneg (spot strike : Int) : callPayoff spot strike ≥ 0 :=
-  le_max_left 0 (spot - strike)
+theorem callPayoff_nonneg (spot strike : Int) : callPayoff spot strike ≥ 0 := by
+  unfold callPayoff; omega
 
 /-- Put payoff is always non-negative.
 
     Economic meaning: the holder of a put never owes money at expiry —
     they exercise only when it is profitable to do so. The right but not
     the obligation to sell. -/
-theorem putPayoff_nonneg (spot strike : Int) : putPayoff spot strike ≥ 0 :=
-  le_max_left 0 (strike - spot)
+theorem putPayoff_nonneg (spot strike : Int) : putPayoff spot strike ≥ 0 := by
+  unfold putPayoff; omega
 
 /-- Option payoff is always non-negative.
 
@@ -60,32 +59,32 @@ theorem optionPayoff_nonneg (opt : EuropeanOption) (spot : Int) :
     Economic meaning: when the underlying closes above the strike the
     holder receives the intrinsic value (spot − strike) in cash. -/
 theorem callPayoff_itm (spot strike : Int) (h : spot > strike) :
-    callPayoff spot strike = spot - strike :=
-  max_eq_right (by omega)
+    callPayoff spot strike = spot - strike := by
+  unfold callPayoff; omega
 
 /-- Call is out-of-the-money (or at-the-money): payoff is zero.
 
     Economic meaning: when the underlying closes at or below the strike,
     exercising the call is unprofitable and the option expires worthless. -/
 theorem callPayoff_otm (spot strike : Int) (h : spot ≤ strike) :
-    callPayoff spot strike = 0 :=
-  max_eq_left (by omega)
+    callPayoff spot strike = 0 := by
+  unfold callPayoff; omega
 
 /-- Put is in-the-money: payoff equals strike minus spot.
 
     Economic meaning: when the underlying closes below the strike the
     holder receives the intrinsic value (strike − spot) in cash. -/
 theorem putPayoff_itm (spot strike : Int) (h : spot < strike) :
-    putPayoff spot strike = strike - spot :=
-  max_eq_right (by omega)
+    putPayoff spot strike = strike - spot := by
+  unfold putPayoff; omega
 
 /-- Put is at-the-money or out-of-the-money: payoff is zero.
 
     Economic meaning: when the underlying closes at or above the strike,
     exercising the put is unprofitable and the option expires worthless. -/
 theorem putPayoff_otm (spot strike : Int) (h : spot ≥ strike) :
-    putPayoff spot strike = 0 :=
-  max_eq_left (by omega)
+    putPayoff spot strike = 0 := by
+  unfold putPayoff; omega
 
 /-! ## Integer Payoff Difference -/
 

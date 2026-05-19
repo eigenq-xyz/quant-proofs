@@ -29,10 +29,12 @@ jobs:
             lean-dir: quant-core/lean
           - subdir: backtest-proofs
             lean-dir: backtest-proofs/lean
+            dep-lake: quant-core/lean/.lake
           - subdir: ftap-proofs
             lean-dir: ftap-proofs
           - subdir: options-proofs
             lean-dir: options-proofs
+            dep-lake: quant-core/lean/.lake
           - subdir: mortgage-proofs
             lean-dir: mortgage-proofs/lean
 
@@ -45,18 +47,17 @@ jobs:
             | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
-      - name: Cache Lean toolchain and packages
+      - name: Cache Lake packages
         uses: actions/cache@v4
         with:
           path: |
-            ~/.elan
             ${{ matrix.lean-dir }}/.lake
-          key: lean-${{ matrix.subdir }}-${{ runner.os }}-${{ hashFiles(format('{0}/lean-toolchain', matrix.lean-dir)) }}
+            ${{ matrix.dep-lake }}
+          key: lean-${{ matrix.subdir }}-${{ runner.os }}-${{ hashFiles(format('{0}/lake-manifest.json', matrix.lean-dir)) }}
           restore-keys: lean-${{ matrix.subdir }}-${{ runner.os }}-
 
-      - name: Fetch mathlib binary cache
+      - name: Fetch mathlib cache
         working-directory: ${{ matrix.lean-dir }}
-        # best-effort: speeds builds from ~60 min to ~5 min on cache hit
         run: lake exe cache get || echo "Cache miss — building from source"
 
       - name: Build
@@ -69,7 +70,7 @@ jobs:
                     "${{ matrix.lean-dir }}/" \
                   | grep -v '^\s*--' | wc -l | tr -d ' ')
           if [ "$count" -gt 0 ]; then
-            echo "FAIL: $count sorry term(s) found on main:"
+            echo "FAIL: $count sorry term(s) found:"
             grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake \
               "${{ matrix.lean-dir }}/" | grep -v '^\s*--'
             exit 1

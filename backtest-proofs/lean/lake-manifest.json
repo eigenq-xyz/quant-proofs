@@ -6,7 +6,7 @@
    "name": "«quant-core»",
    "manifestFile": "lake-manifest.json",
    "inherited": false,
-   "dir": "../quant-core/lean",
+   "dir": "../../quant-core/lean",
    "configFile": "lakefile.lean"},
   {"url": "https://github.com/leanprover-community/mathlib4.git",
    "type": "git",
@@ -98,6 +98,6 @@
    "inputRev": "v4.30.0-rc2",
    "inherited": true,
    "configFile": "lakefile.toml"}],
- "name": "«options-proofs»",
+ "name": "«backtest-proofs»",
  "lakeDir": ".lake",
  "fixedToolchain": false}

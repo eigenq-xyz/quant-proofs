@@ -19,12 +19,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # quant-core runs on ubuntu — pure Python, no FFI
   quant-core-python:
     name: quant-core Python
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - uses: actions/checkout@v4
 
@@ -33,11 +31,11 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install Python dependencies
+      - name: Install dependencies
         working-directory: quant-core/python
         run: uv sync --extra dev
 
-      - name: Run tests with coverage
+      - name: Test
         working-directory: quant-core/python
         run: uv run pytest -q --cov=src --cov-report=xml
 
@@ -56,12 +54,10 @@ jobs:
         working-directory: quant-core/python
         run: uv run ruff check src/ tests/
 
-  # backtest-proofs runs on macOS — libuv + Cython FFI requires a matching platform
   backtest-python:
     name: backtest-proofs Python
     runs-on: macos-latest
     timeout-minutes: 45
-
     steps:
       - uses: actions/checkout@v4
 
@@ -74,16 +70,16 @@ jobs:
             | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
-      - name: Cache Lean toolchain and packages
+      - name: Cache Lake packages
         uses: actions/cache@v4
         with:
           path: |
-            ~/.elan
             backtest-proofs/lean/.lake
-          key: lean-backtest-${{ runner.os }}-${{ hashFiles('backtest-proofs/lean/lean-toolchain') }}
+            quant-core/lean/.lake
+          key: lean-backtest-${{ runner.os }}-${{ hashFiles('backtest-proofs/lean/lake-manifest.json') }}
           restore-keys: lean-backtest-${{ runner.os }}-
 
-      - name: Fetch mathlib binary cache
+      - name: Fetch mathlib cache
         working-directory: backtest-proofs/lean
         run: lake exe cache get || echo "Cache miss — building from source"
 
@@ -91,20 +87,27 @@ jobs:
         working-directory: backtest-proofs/lean
         run: lake build
 
+      # setup_ffi.py calls `lean --print-prefix`; elan was installed with
+      # --default-toolchain none so the shim fails outside a lean-toolchain
+      # directory. Set a default so `lean` resolves from any working directory.
+      - name: Activate Lean toolchain
+        working-directory: backtest-proofs/lean
+        run: elan default $(cat lean-toolchain)
+
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
 
-      - name: Install Python dependencies
+      - name: Install dependencies
         working-directory: backtest-proofs/python
         run: uv sync --extra dev
 
-      - name: Build Cython FFI extension
+      - name: Build Cython FFI
         working-directory: backtest-proofs/python
         run: uv run python setup_ffi.py build_ext --inplace
 
-      - name: Run tests with coverage
+      - name: Test
         working-directory: backtest-proofs/python
         run: uv run pytest -q --cov=src --cov-report=xml
 
@@ -123,12 +126,10 @@ jobs:
         working-directory: backtest-proofs/python
         run: uv run ruff check src/ tests/
 
-  # mortgage-proofs runs on ubuntu — no native FFI dependency
   mortgage-python:
     name: mortgage-proofs Python
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - uses: actions/checkout@v4
 
@@ -138,12 +139,10 @@ jobs:
             | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
-      - name: Cache Lean toolchain and packages
+      - name: Cache Lake packages
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.elan
-            mortgage-proofs/lean/.lake
+          path: mortgage-proofs/lean/.lake
           key: lean-mortgage-${{ runner.os }}-${{ hashFiles('mortgage-proofs/lean/lean-toolchain') }}
           restore-keys: lean-mortgage-${{ runner.os }}-
 
@@ -156,11 +155,11 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install Python dependencies
+      - name: Install dependencies
         working-directory: mortgage-proofs
         run: uv sync --all-extras
 
-      - name: Run unit tests with coverage
+      - name: Test
         working-directory: mortgage-proofs
         run: uv run pytest -m "not integration" -q --cov=src --cov-report=xml
 

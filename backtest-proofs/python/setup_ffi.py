@@ -45,24 +45,41 @@ def find_lake_ir(repo_root: Path) -> Path:
     return ir_dir
 
 
+def find_quant_core_ir(repo_root: Path) -> Path:
+    """Return the Lake C IR directory for QuantCore (path dependency)."""
+    ir_dir = (
+        repo_root.parent / "quant-core" / "lean"
+        / ".lake" / "build" / "ir" / "QuantCore"
+    )
+    if not ir_dir.is_dir():
+        sys.exit(
+            f"ERROR: QuantCore IR directory not found at {ir_dir}\n"
+            "Run `cd backtest-proofs/lean && lake build` first."
+        )
+    return ir_dir
+
+
 def main() -> None:
     # Repo root is one directory up from python/
     repo_root = Path(__file__).parent.parent.resolve()
     lean_prefix = find_lean_prefix()
     ir_dir = find_lake_ir(repo_root)
+    qc_ir_dir = find_quant_core_ir(repo_root)
 
     lean_include = str(lean_prefix / "include")
     lean_lib_dir = str(lean_prefix / "lib" / "lean")
 
     # Lean C source files to compile alongside the Cython extension.
-    # Basic, Options, and Accounting are all needed at runtime — Options is
-    # imported by Accounting, so its initializer must be in the .so.
-    # Proofs (Invariants, OptionInvariants) and tests are pure Prop / #eval
-    # and are not required at runtime.
+    # Basic, Settlement, and Accounting are all needed at runtime.
+    # QuantCore/Option is a path dependency extracted from the monorepo;
+    # its C file lives in quant-core's own .lake/build/ir/ directory.
+    # Pure Prop modules (Invariants, SettlementInvariants, OptionInvariants)
+    # have no runtime code and are excluded.
     lean_c_sources = [
         str(ir_dir / "Basic.c"),
-        str(ir_dir / "Options.c"),
+        str(ir_dir / "Settlement.c"),
         str(ir_dir / "Accounting.c"),
+        str(qc_ir_dir / "Option.c"),
     ]
     for src in lean_c_sources:
         if not os.path.isfile(src):
