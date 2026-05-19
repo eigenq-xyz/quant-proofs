@@ -125,6 +125,18 @@ end BacktestProofs
 
 See REFERENCE.md for the full module convention and EXAMPLES.md for annotated examples.
 
+## Where to put a new theorem or type
+
+| Content | Where it goes |
+|---|---|
+| Shared across ≥2 subdirs (e.g., a new option type, a utility lemma) | `quant-core/lean/QuantCore/` |
+| Specific to portfolio accounting or FFI | `backtest-proofs/lean/BacktestProofs/` |
+| Pricing theory (CRR, BSM, replication cost) | `options-proofs/` (imports quant-core) |
+| FTAP / no-arbitrage / EMM | `ftap-proofs/` |
+| Mortgage routing invariants | `mortgage-proofs/lean/MortgageProofs/` |
+
+When in doubt: start in the leaf project. Move to `quant-core` only when a second project actually needs it.
+
 ## Verifying your work
 
 After writing or editing a proof:

@@ -5,72 +5,33 @@ Authors: Akhil Karra
 -/
 
 import BacktestProofs.Basic
+import QuantCore.Option
 
 /-!
-# European Options
+# European Option Settlement
 
-Types and functions for European option settlement.
+Functions for settling European options into a portfolio.
 
 This module defines:
-- `OptionKind`: Call or Put
-- `EuropeanOption`: Option contract with type-level strike positivity
-- `callPayoff`, `putPayoff`, `optionPayoff`: Payoff functions (non-negative, exact integer)
 - `Trade.settlementITM`: Closing trade for in-the-money expiry
 - `Portfolio.abandonPosition`: Erase a worthless position (OTM expiry)
 - `SettlementResult`, `EuropeanOption.settle`, `applySettlement`: Unified settlement
+
+Option types and payoff functions live in `QuantCore.Option`.
+Settlement invariants (including `settlement_value_formula`) live in
+`BacktestProofs.SettlementInvariants`.
 
 ## Design Notes
 
 `executionPrice_pos` on `Trade` requires `executionPrice > 0`.  OTM options have payoff 0,
 which would violate this constraint, so OTM settlement uses `Portfolio.abandonPosition`
 (erase the position via `Portfolio.mk'`) rather than `applyTrade`.  The crown-jewel theorem
-`settlement_value_formula` in `OptionInvariants.lean` unifies both branches.
+`settlement_value_formula` in `SettlementInvariants.lean` unifies both branches.
 -/
 
 namespace BacktestProofs
 
-/-- Call or Put -/
-inductive OptionKind where
-  | Call
-  | Put
-  deriving DecidableEq, Repr, BEq
-
-/-- A European option contract.
-
-The `strike_pos` field is a proof that `strike > 0`,
-making it impossible to construct an option with a non-positive strike. -/
-structure EuropeanOption where
-  assetId   : AssetId
-  kind      : OptionKind
-  strike    : Int
-  strike_pos : strike > 0
-  deriving DecidableEq
-
-instance : BEq EuropeanOption := ⟨fun a b => decide (a = b)⟩
-
-instance : Repr EuropeanOption where
-  reprPrec o _ :=
-    s!"EuropeanOption(assetId := {repr o.assetId}, kind := {repr o.kind}, strike := {repr o.strike})"
-
-/-- Smart constructor: builds a EuropeanOption with strike proved positive.
-    The proof is auto-discharged by `omega` for concrete positive literals. -/
-def EuropeanOption.mk' (assetId : AssetId) (kind : OptionKind) (strike : Int)
-    (h : strike > 0 := by omega) : EuropeanOption :=
-  ⟨assetId, kind, strike, h⟩
-
-/-- Call payoff: max(spot − strike, 0) -/
-@[inline]
-def callPayoff (spot strike : Int) : Int := max 0 (spot - strike)
-
-/-- Put payoff: max(strike − spot, 0) -/
-@[inline]
-def putPayoff (spot strike : Int) : Int := max 0 (strike - spot)
-
-/-- Option payoff dispatched by kind -/
-def optionPayoff (opt : EuropeanOption) (spot : Int) : Int :=
-  match opt.kind with
-  | .Call => callPayoff spot opt.strike
-  | .Put  => putPayoff  spot opt.strike
+open QuantCore
 
 /-- Build the settlement trade for an ITM option.
 
@@ -97,7 +58,7 @@ inductive SettlementResult where
 
     - ITM: payoff > 0 → close with a `settlementITM` trade
     - OTM: payoff = 0 → abandon the position (no cash impact) -/
-def EuropeanOption.settle (opt : EuropeanOption) (spot currentQty : Int) :
+def settleEuropeanOption (opt : EuropeanOption) (spot currentQty : Int) :
     SettlementResult :=
   let payoff := optionPayoff opt spot
   if h : payoff > 0 then

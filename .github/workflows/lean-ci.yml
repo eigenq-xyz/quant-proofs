@@ -4,17 +4,13 @@ on:
   push:
     branches: [main]
     paths:
+      - 'quant-core/lean/**'
       - 'backtest-proofs/lean/**'
       - 'ftap-proofs/**'
       - 'options-proofs/**'
       - 'mortgage-proofs/lean/**'
   pull_request:
     branches: [main]
-    paths:
-      - 'backtest-proofs/lean/**'
-      - 'ftap-proofs/**'
-      - 'options-proofs/**'
-      - 'mortgage-proofs/lean/**'
 
 concurrency:
   group: lean-${{ github.workflow }}-${{ github.ref }}
@@ -29,6 +25,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - subdir: quant-core
+            lean-dir: quant-core/lean
           - subdir: backtest-proofs
             lean-dir: backtest-proofs/lean
           - subdir: ftap-proofs

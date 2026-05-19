@@ -5,6 +5,7 @@ Authors: Akhil Karra
 -/
 
 import Std.Data.HashMap
+import QuantCore.Option
 
 /-!
 # Basic Types
@@ -29,8 +30,8 @@ All monetary values use **basis points** (×10,000) for exact decimal arithmetic
 
 namespace BacktestProofs
 
-/-- Type alias for asset identifiers -/
-abbrev AssetId := String
+/-- Asset identifier — alias of `QuantCore.AssetId` (= String). -/
+abbrev AssetId := QuantCore.AssetId
 
 /-- Position in a single asset.
 

@@ -12,6 +12,8 @@ package «backtest-proofs» where
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git" @ "master"
 
+require «quant-core» from "../../quant-core/lean"
+
 @[default_target]
 lean_lib BacktestProofs where
   globs := #[.submodules `BacktestProofs]

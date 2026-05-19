@@ -12,13 +12,13 @@ import math
 
 import pytest
 
-from backtest_proofs.pricer.black_scholes import (
+from quant_core.pricer.black_scholes import (
     BSGreeks,
     BSPrice,
     bs_greeks,
     bs_price,
 )
-from backtest_proofs.pricer.conventions import from_bp, to_bp
+from quant_core.pricer.conventions import from_bp, to_bp
 
 # ---------------------------------------------------------------------------
 # Conventions
@@ -145,7 +145,7 @@ class TestBSGreeks:
         assert result.delta == pytest.approx(0.6368, abs=0.001)
 
     def test_deep_itm_call_delta(self) -> None:
-        """Deep ITM call: S=120, K=100, T=0.5yr, r=5%, σ=20% → delta ≈ 0.9378 (DG400a verified)."""
+        """Deep ITM call: S=120, K=100, T=0.5yr, r=5%, σ=20% → delta ≈ 0.9378."""
         result = bs_greeks(
             S=120, K=100, T=0.5, r=0.05, sigma=0.20, option_type="call"
         )
@@ -220,12 +220,7 @@ def _ref_bs_price(
     sigma: float,
     option_type: str,
 ) -> float:
-    """Black-Scholes price — direct scipy formula, independent of our code.
-
-    This is the canonical formula from Hull (2022) Chapter 15, implemented
-    from scratch using only scipy.stats.norm.  It has no shared code with
-    ``backtest_proofs.pricer.black_scholes`` and serves as an independent oracle.
-    """
+    """Black-Scholes price — direct scipy formula, independent of our code."""
     from scipy.stats import norm  # type: ignore[import-untyped]
 
     if T <= 0:
@@ -262,33 +257,23 @@ def _ref_delta(
 
 _BENCHMARK_SCENARIOS = [
     # (S, K, T, r, sigma, option_type)  — spans ATM, ITM, OTM, long/short expiry
-    (42.0, 40.0, 0.5, 0.10, 0.20, "call"),  # Hull Ex 15.6 call
-    (42.0, 40.0, 0.5, 0.10, 0.20, "put"),  # Hull Ex 15.6 put
-    (100.0, 100.0, 1.0, 0.05, 0.20, "call"),  # ATM call, 1yr
-    (100.0, 100.0, 1.0, 0.05, 0.20, "put"),  # ATM put, 1yr
-    (120.0, 100.0, 0.5, 0.05, 0.20, "call"),  # deep ITM call
-    (80.0, 100.0, 0.5, 0.05, 0.20, "put"),  # deep ITM put
-    (80.0, 100.0, 0.5, 0.05, 0.20, "call"),  # deep OTM call
-    (120.0, 100.0, 0.5, 0.05, 0.20, "put"),  # deep OTM put
-    (100.0, 100.0, 1 / 52, 0.05, 0.25, "call"),  # one-week ATM, higher vol
-    (490.0, 490.0, 21 / 365, 0.05, 0.155, "call"),  # SPY-like ATM ~1mo
-    (490.0, 510.0, 21 / 365, 0.05, 0.165, "call"),  # SPY-like OTM ~1mo
-    (490.0, 470.0, 21 / 365, 0.05, 0.145, "put"),  # SPY-like ITM put ~1mo
+    (42.0, 40.0, 0.5, 0.10, 0.20, "call"),
+    (42.0, 40.0, 0.5, 0.10, 0.20, "put"),
+    (100.0, 100.0, 1.0, 0.05, 0.20, "call"),
+    (100.0, 100.0, 1.0, 0.05, 0.20, "put"),
+    (120.0, 100.0, 0.5, 0.05, 0.20, "call"),
+    (80.0, 100.0, 0.5, 0.05, 0.20, "put"),
+    (80.0, 100.0, 0.5, 0.05, 0.20, "call"),
+    (120.0, 100.0, 0.5, 0.05, 0.20, "put"),
+    (100.0, 100.0, 1 / 52, 0.05, 0.25, "call"),
+    (490.0, 490.0, 21 / 365, 0.05, 0.155, "call"),
+    (490.0, 510.0, 21 / 365, 0.05, 0.165, "call"),
+    (490.0, 470.0, 21 / 365, 0.05, 0.145, "put"),
 ]
 
 
 class TestBenchmarkImplementation:
-    """Cross-validate our pricer against an independent scipy reference.
-
-    The reference functions above implement Black-Scholes from first principles
-    using only ``scipy.stats.norm`` — no shared code with
-    ``backtest_proofs.pricer.black_scholes``.  Agreement to machine precision
-    (rel=1e-6) across all scenarios confirms that our implementation is
-    indistinguishable from the standard formula.
-
-    This is the test a quant practitioner uses to establish that the pricing
-    engine is correct, independent of Hull's 3dp-rounded reference tables.
-    """
+    """Cross-validate our pricer against an independent scipy reference."""
 
     @pytest.mark.parametrize("S,K,T,r,sigma,ot", _BENCHMARK_SCENARIOS)
     def test_price_matches_reference(
