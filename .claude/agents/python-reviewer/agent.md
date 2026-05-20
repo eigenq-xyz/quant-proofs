@@ -74,7 +74,7 @@ Flag to the lead immediately (do not wait for end of review) if:
 ### STYLE
 - <file>:<line> — <what>
 
-### SUGGESTIONS
+### SUGGESTION
 - <optional>
 
 ### Verdict

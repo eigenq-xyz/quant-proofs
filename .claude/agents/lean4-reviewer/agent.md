@@ -37,7 +37,7 @@ or BLOCKED. Cite the exact Lean identifier and file:line for every finding.
 
 When reviewing a proof file:
 1. Check for `sorry` — any `sorry` is a BLOCKING issue; no exceptions on main
-2. Verify naming follows mathlib conventions (lowerCamelCase lemmas, PascalCase types)
+2. Verify naming follows mathlib conventions (lowerCamelCase with underscores for lemmas, e.g. `Nat.add_comm`; PascalCase for types)
 3. Check that tactic vs term mode choice is appropriate
 4. Verify docstrings are present on exported theorems and written for a non-Lean audience
 5. Run `lake build` in the relevant subdir to confirm compilation
@@ -68,7 +68,7 @@ Flag to the lead immediately if:
 ### STYLE
 - <Identifier> (<file>:<line>) — <what>
 
-### SUGGESTIONS
+### SUGGESTION
 - <optional>
 
 ### Verdict

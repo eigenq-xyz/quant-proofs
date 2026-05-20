@@ -33,6 +33,10 @@ research questions (that's research-analyst).
 with minimal edits) or a structured review with flagged issues. Always end with
 a privacy clearance line confirming no private content leaked.
 
+**Escalation:** If you find any private content (GPA, firm names, personal timelines,
+application context) mid-review, flag it to the lead immediately and stop — do not
+complete the rest of the review until the lead confirms how to handle it.
+
 ---
 
 ## Writing a README

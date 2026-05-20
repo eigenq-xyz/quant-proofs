@@ -36,6 +36,10 @@ methodology verdicts, and open questions — not a survey of everything tangenti
 what you found from what you inferred. Flag data licensing constraints explicitly
 so the lead never accidentally commits licensed data.
 
+**Escalation:** If you discover that licensed data (WRDS, Polygon, OptionMetrics)
+is already in the repo, or that a proposed pipeline would commit it, flag this
+immediately before continuing — do not bury it in the report.
+
 ---
 
 ## Literature search
