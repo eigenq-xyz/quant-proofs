@@ -89,6 +89,10 @@ module = "scipy.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+module = "QuantLib"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 module = "pandas"
 ignore_missing_imports = true
 ignore_errors = true
@@ -118,4 +122,10 @@ exclude_lines = [
 dev = [
     "cython>=3.2.4",
     "setuptools>=80.9.0",
+]
+research = [
+    "QuantLib>=1.32",
+    "matplotlib>=3.8.0",
+    "seaborn>=0.13.0",
+    "jupyter>=1.1.0",
 ]

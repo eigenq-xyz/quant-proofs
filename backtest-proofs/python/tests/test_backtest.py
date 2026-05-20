@@ -51,6 +51,12 @@ from backtest_proofs.backtest.scenarios import (
     hull_192_path,
     hull_193_path,
 )
+from backtest_proofs.backtest.stress import (
+    _SERIES_KEYS,
+)
+from backtest_proofs.backtest.stress import (
+    run_stress_window as _run_stress_window,
+)
 from backtest_proofs.pricer.black_scholes import bs_greeks, bs_price
 from backtest_proofs.simulator.gbm import simulate_gbm
 
@@ -602,9 +608,6 @@ class TestPortfolioHedge:
         )
 
 
-_SERIES_KEYS = ["underlying_ticker", "expiry", "strike", "option_type"]
-
-
 def _stratified_sample(
     df: "Any",
     per_ticker: int = 100,
@@ -1021,73 +1024,6 @@ _STRESS_MIN_SERIES = 5   # minimum qualifying option series to run assertions
 _DATA_ROOT = Path(__file__).parent.parent.parent / "data"
 
 
-def _run_stress_window(
-    df: "Any",
-    date_start: str,
-    date_end: str,
-    r: float,
-    label: str,
-) -> tuple[list[float], int]:
-    """Filter ``df`` to ``[date_start, date_end]`` and backtest every call series.
-
-    Returns ``(ratios, n_series)`` where ``ratios`` is cost/premium per series
-    and ``n_series`` is the count of qualifying series.  Every step certificate
-    is asserted to pass inline — a failure surfaces the series and date range.
-    """
-    import pandas as pd
-
-    from backtest_proofs.etl.wrds_loader import (
-        optionmetrics_option_snapshots_from_df,
-    )
-
-    mask = (pd.to_datetime(df["date"]) >= date_start) & (
-        pd.to_datetime(df["date"]) <= date_end
-    )
-    window = df[mask]
-
-    ratios: list[float] = []
-    for (_ticker, _expiry, strike, cp), group in window.groupby(_SERIES_KEYS):
-        if cp != "call":
-            continue
-        group = group.sort_values("date")
-        if len(group) < 5:
-            continue
-        snaps = optionmetrics_option_snapshots_from_df(group)
-        if not snaps or any(s.underlying_price is None for s in snaps):
-            continue
-        first = snaps[0]
-        und_prices = [s.underlying_price for s in snaps]  # type: ignore[misc]
-        times = [
-            (pd.Timestamp(s.date) - pd.Timestamp(first.date)).days / 365.0
-            for s in snaps
-        ]
-        path = PricePath(times=times, prices=und_prices)
-        if path.times[-1] <= 0:
-            continue
-        result = run_delta_hedge(
-            path=path,
-            K=float(strike),
-            r=r,
-            sigma=first.implied_vol,
-            n_contracts=1,
-        )
-        failures = [c for c in result.certificates if not c.invariant_holds]
-        assert failures == [], (
-            f"{label}: {len(failures)} certificate(s) failed for "
-            f"ticker={_ticker} strike={strike} expiry={_expiry}"
-        )
-        premium = bs_price(
-            S=und_prices[0],
-            K=float(strike),
-            T=path.times[-1],
-            r=r,
-            sigma=first.implied_vol,
-            option_type="call",
-        ).value
-        if premium > 0:
-            ratios.append(result.total_hedging_cost / premium)
-
-    return ratios, len(ratios)
 
 
 class TestStressCovid2020:

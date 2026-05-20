@@ -7,6 +7,7 @@ on:
       - 'docs/**'
       - 'backtest-proofs/docs/**'
       - 'backtest-proofs/notebooks/**'
+      - 'reports/**'
   workflow_dispatch:
 
 permissions:
@@ -30,6 +31,9 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
       - name: Install docs dependencies
         working-directory: backtest-proofs/python
         run: uv sync --extra docs
@@ -44,11 +48,28 @@ jobs:
         working-directory: backtest-proofs/python
         run: uv run jupyter-book build ../../backtest-proofs/docs/
 
+      # Render backtest-proofs paper HTML from frozen cache (no Python/LaTeX needed).
+      # Freeze outputs live in reports/_freeze/ (committed); --no-execute skips
+      # chunk re-execution so the render is fast and dependency-free.
+      - name: Render backtest-proofs paper (HTML)
+        working-directory: reports
+        run: quarto render backtest-proofs.qmd --to html --no-execute
+
       # Embed backtest-proofs book inside the root artifact
       - name: Merge backtest-proofs build into root site
         run: |
           mkdir -p docs/_build/html/backtest-proofs
           cp -r backtest-proofs/docs/_build/html/. docs/_build/html/backtest-proofs/
+
+      # Deploy paper under /paper/ — PDF from committed file, HTML freshly rendered.
+      # PDF is committed at reports/backtest-proofs.pdf (via post-render.sh hook) so
+      # no LaTeX installation is required in CI.
+      - name: Copy paper to Pages artifact
+        run: |
+          mkdir -p docs/_build/html/paper
+          cp reports/backtest-proofs.pdf docs/_build/html/paper/
+          cp reports/_output/backtest-proofs.html docs/_build/html/paper/
+          cp -r reports/_output/backtest-proofs_files docs/_build/html/paper/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

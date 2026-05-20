@@ -1,4 +1,4 @@
-.PHONY: help setup clean test lint build docs-build docs-serve integration dev-lean dev-python watch-lean
+.PHONY: help setup clean test lint build docs-build docs-serve integration dev-lean dev-python watch-lean paper paper-fast paper-clean
 
 help:		## Show this help message
 	@echo "Option Hedge Engine - Makefile"
@@ -63,3 +63,15 @@ dev-python:	## Activate Python venv shell
 
 watch-lean:	## Watch Lean files and rebuild on change
 	@cd lean && $(MAKE) watch
+
+paper:		## Render the Quarto research paper (re-executes stale chunks)
+	@cd ../reports && quarto render backtest-proofs.qmd
+
+paper-fast:	## Render the paper from the frozen chunk cache (no code execution)
+	@cd ../reports && quarto render backtest-proofs.qmd --no-execute
+
+paper-clean:	## Wipe paper artifacts: figures, metrics.json, and Quarto freeze cache
+	@rm -f results/figures/*.pdf results/metrics.json
+	@rm -rf ../reports/_freeze/backtest-proofs
+	@rm -f ../reports/_output/backtest-proofs.html ../reports/_output/backtest-proofs.pdf
+	@echo "Paper artifacts cleaned."

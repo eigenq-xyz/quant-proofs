@@ -41,13 +41,43 @@ Quarto (`.qmd`) only — never raw LaTeX, never plain Markdown.
 Build commands:
 
 ```bash
-quarto render <project>-proofs.qmd      # one paper → PDF + HTML
-quarto render                           # all papers in reports/
-quarto preview <project>-proofs.qmd     # live HTML preview while drafting
+cd reports
+
+# Full render — re-executes stale frozen chunks, produces PDF + HTML:
+quarto render <project>-proofs.qmd
+
+# Fast render from frozen cache (no Python execution, no LaTeX needed for HTML):
+quarto render <project>-proofs.qmd --no-execute
+
+# HTML-only draft preview (fastest; renders in browser):
+quarto preview <project>-proofs.qmd --to html --no-execute
+
+# Or via Makefile from <project>-proofs/:
+make paper       # full render
+make paper-fast  # frozen-cache render
 ```
 
-PDF builds require a LaTeX distribution with the packages listed at the top of
-`reports/_eigenq.tex`. Install missing packages with `tlmgr install <name>`.
+**Quarto configuration rules** (see `docs-report` skill for full detail):
+
+- **PDF engine:** `xelatex` only — set `pdf-engine: xelatex` in `_quarto.yml`
+  under `format.pdf`. Never `pdflatex` (Unicode math breaks in prose sections).
+- **Citations:** `cite-method: citeproc` at top of `_quarto.yml`. Never
+  `cite-method: biblatex` — TinyTeX's stripped biblatex lacks `.dbx` files
+  required by biblatex 3.18+, causing CI failures.
+- **Cross-references:** Quarto native only (`@fig-x`, `@tbl-x`, `@thm-x`).
+  Do not load `cleveref` in `_eigenq.tex` — `\usepackage` inside
+  `\AtBeginDocument` is illegal; load-order with hyperref is unsolvable in
+  `include-in-header`.
+- **Freeze:** `execute: freeze: auto` in `_quarto.yml`. Commit `_freeze/` to
+  git — this is the reproducibility contract for CI fast-path renders.
+- **Committed PDF:** `reports/<project>-proofs.pdf` is committed via the
+  `post-render.sh` hook. This is what CI copies to GitHub Pages — no LaTeX
+  needed in GitHub Actions.
+
+PDF requires TinyTeX (managed via `quarto install tinytex`) or a system
+xelatex with the packages listed at the top of `reports/_eigenq.tex`.
+Install missing packages with:
+`~/Library/TinyTeX/bin/universal-darwin/tlmgr install <package>`
 
 ## Composition with the rest of the monorepo
 
@@ -140,10 +170,17 @@ Fill in this order, not document order:
 Build and proofread the rendered PDF, not the source:
 
 ```bash
-cd reports && quarto render <project>-proofs.qmd
+cd reports && quarto render <project>-proofs.qmd --no-execute
 ```
 
-Commit the `.qmd`; do not commit the rendered PDF or the `_output/` dir.
+Commit both:
+1. The `.qmd` source file.
+2. The `_freeze/` frozen chunk cache (reproducibility contract for CI).
+3. The committed `<project>-proofs.pdf` at the repo root of `reports/` — this
+   is copied there automatically by `reports/post-render.sh` on every render,
+   and is what CI deploys to GitHub Pages without requiring LaTeX.
+
+Do NOT commit `_output/` (gitignored) or `*.tex` intermediate files.
 
 ## Hard rules
 

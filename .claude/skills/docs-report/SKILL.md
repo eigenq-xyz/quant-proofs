@@ -2,7 +2,7 @@
 name: docs-report
 description: >
   Builds the Quarto research papers in reports/ to PDF and HTML, then stages
-  the output for GitHub Pages deployment under /reports/. Use after verify
+  the output for GitHub Pages deployment under /paper/. Use after verify
   passes and when any reports/<project>-proofs.qmd or shared config
   (_quarto.yml, _eigenq.tex, _references.bib) changes.
 paths:
@@ -12,67 +12,98 @@ allowed-tools: Bash(quarto *) Bash(cp *) Bash(mkdir *) Bash(rm *)
 
 # Docs Report
 
-## Command
+## Quarto configuration (best practices)
+
+**Engine:** `xelatex` — Unicode-aware, no encoding declarations needed.
+Set via `pdf-engine: xelatex` in the `format.pdf` block of `_quarto.yml`.
+Never use `pdflatex` for eigenq papers (Unicode math symbols in prose fail).
+
+**Citations:** `cite-method: citeproc` (Quarto-native, CSL-driven).
+Set at the top level of `_quarto.yml`. Do NOT use `cite-method: biblatex` or
+`biblio-style: authoryear` — biblatex 3.18+ requires `.dbx` files that are
+not consistently available in TinyTeX, causing CI failures.
+
+**Cross-references:** Quarto native (`@fig-x`, `@tbl-x`, `@thm-x`).
+Do NOT load `cleveref` in `_eigenq.tex` — cleveref must load after hyperref,
+but `include-in-header` is processed before Pandoc adds hyperref, and
+`\usepackage` inside `\AtBeginDocument` is illegal.
+
+**Freeze:** `execute: freeze: auto` in `_quarto.yml`. Frozen outputs live in
+`reports/_freeze/` (committed to git). `--no-execute` skips chunk re-execution
+for CI fast-path and HTML-only renders.
+
+**Post-render hook:** `reports/post-render.sh` copies `_output/*.pdf` to the
+project root (`reports/<name>.pdf`). The committed PDF is what CI deploys to
+Pages — no LaTeX installation required in GitHub Actions.
+
+## Commands
 
 ```bash
 cd reports
-quarto render                              # all papers → PDF + HTML in _output/
-quarto render <project>-proofs.qmd         # one paper only
+
+# Full render (PDF + HTML, re-executes stale frozen chunks):
+quarto render backtest-proofs.qmd
+
+# Fast render from frozen cache (PDF + HTML, no Python execution):
+quarto render backtest-proofs.qmd --no-execute
+
+# PDF only:
+quarto render backtest-proofs.qmd --to pdf --no-execute
+
+# HTML only (for draft previewing; no LaTeX needed):
+quarto render backtest-proofs.qmd --to html --no-execute
+
+# Or use the Makefile from backtest-proofs/:
+make paper        # full re-render (stale chunks only)
+make paper-fast   # no-execute fast path
+make paper-clean  # wipe _freeze/, _output/, results/figures/, metrics.json
 ```
 
-Output layout under `reports/_output/`:
+Output layout after rendering:
 
 ```
-<project>-proofs.pdf
-<project>-proofs.html
-<project>-proofs_files/                    # HTML assets (KaTeX, figures)
+reports/_output/           ← gitignored; Quarto's working output
+  backtest-proofs.pdf      ← xelatex-built PDF
+  backtest-proofs.html     ← HTML with KaTeX math
+  backtest-proofs_files/   ← HTML assets
+reports/backtest-proofs.pdf  ← committed stable path (copied by post-render.sh)
+reports/_freeze/             ← committed frozen chunk cache
 ```
 
-## Deployment
+## GitHub Pages deployment
 
-After `quarto render`, the orchestrator `docs-publish` stages the output for
-GitHub Pages:
+CI (`pages.yml`) deploys paper under `/paper/`:
+- **HTML**: rendered in CI from frozen cache via `quarto render --no-execute`
+- **PDF**: copied directly from committed `reports/<name>.pdf` — no LaTeX in CI
+
+Pages URLs: `/paper/backtest-proofs.html` and `/paper/backtest-proofs.pdf`
+
+Adding a new paper to Pages requires adding a corresponding `cp` step in
+`pages.yml`'s "Copy paper to Pages artifact" step.
+
+## LaTeX package management (local rendering only)
+
+For packages not in TinyTeX by default, install via:
 
 ```bash
-mkdir -p docs/reports
-cp reports/_output/*.pdf reports/_output/*.html docs/reports/
-cp -r reports/_output/*_files docs/reports/ 2>/dev/null || true
+~/Library/TinyTeX/bin/universal-darwin/tlmgr install <package>
 ```
 
-Target Pages layout: `/reports/<project>-proofs.{pdf,html}`. The PDF is the
-canonical archival artifact (fixed pagination, citable). The HTML is the
-web-discoverable version (linkable anchors, KaTeX math).
-
-## Prerequisites
-
-1. **Quarto CLI** installed (`quarto --version` ≥ 1.4).
-2. **LaTeX distribution** with the packages listed at the top of
-   `reports/_eigenq.tex`. Install missing packages with `tlmgr install <name>`.
-3. **Authoring complete** — papers must be written via the
-   `write-research-reports` skill before this skill renders them.
-4. **`/verify` Levels 1–5 passing** — never render docs from a broken proof
-   or failing test. Enforced by `docs-publish`.
+The `_eigenq.tex` preamble documents which packages are required.
+The `keep-tex: true` option in `_quarto.yml` leaves `_output/<name>.tex` for
+debugging compilation failures.
 
 ## Composition with other docs sub-builds
 
-A paper's Formalization section cites Lean theorems by name. If `docs-lean`
-is also rebuilt in the same publish cycle, the links to `/lean/` resolve.
-Out-of-cycle builds may produce stale cross-links — `docs-publish` is the
-orchestrator that keeps them in sync.
-
-A paper's Results and Robustness sections cite figures from
-`<project>-proofs/results/figures/*.pdf` by relative path. Those artifacts
-are produced by the `verify-empirical` and `verify-regime` levels and
-indexed by `docs-research` for the aggregation site. `docs-report` renders
-them into the standalone paper PDF — it does not regenerate them.
+A paper's Formalization section cites Lean theorems by name. Results sections
+cite figures from `<project>-proofs/results/figures/*.pdf`. Both are produced
+by the `verify-empirical` and `verify-regime` skills — `docs-report` renders
+them into the paper but does not regenerate them.
 
 ## Current status
 
-The `reports/` project exists with shared config (`_quarto.yml`,
-`_eigenq.tex`, `_references.bib`, `_template.qmd`). No `<project>-proofs.qmd`
-files have been authored yet — start with the `write-research-reports`
-skill before invoking this skill.
-
-The Pages workflow at `pages.yml` currently deploys `/` and `/lean/`; the
-`/reports/` path needs a `cp` step added to the workflow once a paper is
-published.
+`reports/backtest-proofs.qmd` is the first live paper. It has all 9 sections
+scaffolded with hidden plan callouts and 7 figure chunks backed by frozen
+outputs. Prose sections are TODO stubs pending the fill-order pass
+(§5 → §6 → §7 → §8 → §3 → §4 → §2 → §1). The paper deploys to Pages via
+`pages.yml` whenever `reports/**` changes on main.

@@ -1,9 +1,12 @@
 project:
   type: default
   output-dir: _output
+  post-render:
+    - ./post-render.sh
 
 format:
   pdf:
+    pdf-engine: xelatex
     documentclass: scrartcl
     classoption:
       - DIV=12
@@ -18,8 +21,6 @@ format:
     number-sections: true
     toc: false
     include-in-header: _eigenq.tex
-    cite-method: biblatex
-    biblio-style: authoryear
     keep-tex: true
     fig-pos: "tbp"
     fig-cap-location: bottom
@@ -36,7 +37,8 @@ format:
     html-math-method: katex
 
 bibliography: _references.bib
-csl: https://www.zotero.org/styles/journal-of-finance
+csl: _journal-of-finance.csl
+cite-method: citeproc
 
 execute:
   echo: true
@@ -49,5 +51,4 @@ crossref:
   cor-title: Corollary
   prp-title: Proposition
   def-title: Definition
-  rem-title: Remark
   exm-title: Example
