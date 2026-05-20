@@ -265,7 +265,7 @@ Lever 4 can be a deferred proof-of-concept once data access is confirmed.
 | ID | Risk | Severity | Status | Milestone |
 |----|------|----------|--------|-----------|
 | R1 | Decimal precision | 🔴 Critical | ✅ Mitigated | v0.2-nav |
-| R2 | Proof difficulty | 🟠 High | ✅ Resolved | v0.4 |
+| R2 | Proof difficulty | 🟠 High | ✅ Resolved | v0.5 |
 | R3 | DG mismatch | 🟢 Low | ✅ Mitigated | v0.4 |
 | R4 | Docs timeout | 🟢 Low | ✅ Mitigated | v0.4 |
 | R5 | uv lock drift | 🟡 Medium | ✅ Mitigated | v0.1-scaffold |

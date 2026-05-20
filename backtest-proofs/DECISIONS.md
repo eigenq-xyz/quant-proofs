@@ -324,7 +324,7 @@ These are portfolio-specific and do not belong in the shared library.
 
 ## Future ADRs (Pending)
 
-The accounting module is complete at v0.4. Future ADRs will cover credibility and
+The accounting module is complete at v0.5. Future ADRs will cover credibility and
 validation work rather than proof extensions:
 
 - ADR-008: QuantLib A-B comparison methodology — credibility lever 3
