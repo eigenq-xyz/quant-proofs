@@ -1,10 +1,10 @@
 ---
-name: writing-research-reports
+name: write-research-reports
 description: >
   Authoring assistant for full-length research papers in the eigenq-xyz Quarto
   format. Use when starting a new paper, drafting or reviewing a section, or
   auditing a draft for adherence to the AQR/JFE hybrid template with mandatory
-  Formalization and Robustness sections. Distinct from readme-results
+  Formalization and Robustness sections. Distinct from write-readme-results
   (single exhibits) and docs-research (Jupyter Book aggregation site).
 paths:
   - "reports/**"
@@ -20,20 +20,43 @@ allowed-tools: Bash(quarto *) Read Write Edit Glob
 - Reviewing a draft for adherence to the standard format
 
 Not this skill:
-- Single-exhibit results in a README → `readme-results`
+- Single-exhibit results in a README → `write-readme-results`
 - Cross-project aggregation site → `docs-research`
-- Lean 4 proof docstrings → `writing-technical-docs`
-- Empirical methodology design → `conducting-quant-research`
+- Lean 4 proof docstrings → `write-technical-docs`
+- Empirical methodology design → `conduct-quant-research`
 
 ## Format
 
 Quarto (`.qmd`) only — never raw LaTeX, never plain Markdown.
 
-- Project root: `reports/`
-- Template: `reports/_template.qmd` — copy this to start a new paper
-- Shared preamble: `reports/_eigenq.tex`
-- Bibliography: `reports/_references.bib`
-- Build config: `reports/_quarto.yml`
+| File | Purpose |
+|------|---------|
+| `reports/_template.qmd` | Canonical template — copy to start a new paper |
+| `reports/_quarto.yml` | Project config (PDF + HTML output, biblatex author-year) |
+| `reports/_eigenq.tex` | Shared LaTeX preamble (math packages, finance macros, styling) |
+| `reports/_references.bib` | Shared bibliography |
+| `reports/_output/` | Render artifacts — not committed |
+| `reports/<project>-proofs.qmd` | One per project; build with `quarto render <file>.qmd` |
+
+Build commands:
+
+```bash
+quarto render <project>-proofs.qmd      # one paper → PDF + HTML
+quarto render                           # all papers in reports/
+quarto preview <project>-proofs.qmd     # live HTML preview while drafting
+```
+
+PDF builds require a LaTeX distribution with the packages listed at the top of
+`reports/_eigenq.tex`. Install missing packages with `tlmgr install <name>`.
+
+## Composition with the rest of the monorepo
+
+- `<project>-proofs/results/` — committed empirical artifacts (figures, JSON metrics).
+  Papers cite these by relative path; they do not regenerate them.
+- `docs/` — Jupyter Book reference site. A finished paper can be indexed from
+  the docs site via the `docs-research` skill.
+- `<project>-proofs/CLAUDE.md` — project architecture; a paper's Setup section
+  should be consistent with that document.
 
 ## Mandatory sections
 
@@ -73,7 +96,7 @@ formalized (floating-point execution, data ingestion, statistical claims).
 
 **Empirical Setup.** A table with data source, sample window, universe,
 frequency, filters, and final N. Licensed-data sources documented per
-`sourcing-financial-data`; raw data never committed.
+`source-financial-data`; raw data never committed.
 
 **Results.** Lead with the headline figure. Plain-English result in the
 figure caption. Every empirical claim traceable to
@@ -133,19 +156,19 @@ Commit the `.qmd`; do not commit the rendered PDF or the `_output/` dir.
   in Empirical Setup.
 - No private context: no GPA, firm names, internship timelines, or
   "developed to impress X." Write for a public research audience. Same rule
-  as `readme-results`.
+  as `write-readme-results`.
 - No raw `.tex` reports. Quarto only.
 
 ## Related skills
 
-- `readme-results` — short single-exhibit results writeup for a README. The
-  Results section here can pull from a `readme-results` exhibit, but a paper
+- `write-readme-results` — short single-exhibit results writeup for a README. The
+  Results section here can pull from a `write-readme-results` exhibit, but a paper
   is not a stitched series of exhibits.
 - `docs-research` — Jupyter Book aggregation site; cites finished papers
   from `reports/`.
-- `conducting-quant-research` — empirical methodology behind §6–§8.
-- `writing-technical-docs` — proof docstrings, narrative project docs.
+- `conduct-quant-research` — empirical methodology behind §6–§8.
+- `write-technical-docs` — proof docstrings, narrative project docs.
 - `verify-empirical`, `verify-regime` — produce the `results/` artifacts
   cited in §7 and §8.
-- `writing-commits-and-prs` — commit message conventions when landing a
+- `write-commits-and-prs` — commit message conventions when landing a
   paper draft.

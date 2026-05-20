@@ -49,7 +49,7 @@ web-discoverable version (linkable anchors, KaTeX math).
 2. **LaTeX distribution** with the packages listed at the top of
    `reports/_eigenq.tex`. Install missing packages with `tlmgr install <name>`.
 3. **Authoring complete** — papers must be written via the
-   `writing-research-reports` skill before this skill renders them.
+   `write-research-reports` skill before this skill renders them.
 4. **`/verify` Levels 1–5 passing** — never render docs from a broken proof
    or failing test. Enforced by `docs-publish`.
 
@@ -70,7 +70,7 @@ them into the standalone paper PDF — it does not regenerate them.
 
 The `reports/` project exists with shared config (`_quarto.yml`,
 `_eigenq.tex`, `_references.bib`, `_template.qmd`). No `<project>-proofs.qmd`
-files have been authored yet — start with the `writing-research-reports`
+files have been authored yet — start with the `write-research-reports`
 skill before invoking this skill.
 
 The Pages workflow at `pages.yml` currently deploys `/` and `/lean/`; the
