@@ -827,7 +827,7 @@ Two robustness dimensions required:
 
 ```{python}
 #| label: fig-stress
-#| fig-cap: "Cost/premium distributions across four acute stress windows. Each panel shows the violin of cost/premium ratios for call series that survived data filters. All step certificates pass in every window. Source: WRDS OptionMetrics (see §5 data table)."
+#| fig-cap: "Cost/premium distributions across four acute stress windows. Each panel shows the violin of cost/premium ratios for call series that survived data filters. All step certificates pass in every window. Flash Crash 2015 refers to the August 24, 2015 ETF liquidity event, not the May 6, 2010 event. Source: WRDS OptionMetrics (see §5 data table)."
 
 STRESS_WINDOWS = {
     "COVID 2020\n(Feb 19 – Mar 23)": {

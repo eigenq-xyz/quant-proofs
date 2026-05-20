@@ -97,7 +97,7 @@ data/           — Encrypted market data (git-crypt)
 
 - **Numeric precision**: All monetary values use **basis points** (×10,000) as `Int`.
   Example: $50.25 = 502,500. Never pass floats across the FFI boundary.
-- **Lean toolchain**: v4.27.0-rc1 (pinned in `lean/lean-toolchain`, managed by elan).
+- **Lean toolchain**: v4.30.0-rc2 (pinned in `lean/lean-toolchain`, managed by elan).
 - **Python**: 3.12+, managed by uv. Strict mypy, ruff for linting/formatting.
 - **Line length**: 79 characters for Python (ruff config in `pyproject.toml`).
 - **Ruff rules**: E, W, F, I, B, C4, UP with double-quote style.
