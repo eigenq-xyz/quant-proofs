@@ -136,7 +136,7 @@ def process_csv(csv_path: Path, spec: _WindowSpec) -> pd.DataFrame:
         best_bid, best_offer, impl_volatility, underlying_price,
         delta, volume, open_interest, optionid
     """
-    raw = pd.read_csv(csv_path, low_memory=False)
+    raw = pd.read_csv(csv_path, sep=None, engine="python", low_memory=False)
     raw.columns = [c.lower().strip() for c in raw.columns]
 
     # Verify required columns are present
