@@ -78,7 +78,6 @@ the column is still in raw encoding and needs the correction.
 from __future__ import annotations
 
 import argparse
-import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -193,10 +192,7 @@ def process_csv(csv_path: Path, spec: _WindowSpec) -> pd.DataFrame:
     df = df[
         df["impl_volatility"].between(_IV_LO, _IV_HI, inclusive="both")
     ]
-    df = df[
-        (df["spotprice"] > 0)
-        & df["impl_volatility"].notna()
-    ]
+    df = df[df["spotprice"] > 0]
     moneyness = df["strike_price"] / df["spotprice"]
     df = df[moneyness.between(_MONO_LO, _MONO_HI, inclusive="both")]
 
