@@ -7,16 +7,16 @@ Authors: Akhil Karra
 import BacktestProofs.Basic
 
 /-!
-# BacktestProofs — Options Portfolio Accounting Kernel
+# BacktestProofs — Options Portfolio Accounting Module
 
-Formally verified options portfolio accounting and hedging system (v0.5).
+Options portfolio accounting and hedging with Lean 4 proof-checked invariants (v0.5).
 
 This library provides:
 - Exact decimal arithmetic using scaled integers (basis points × 10,000)
 - Portfolio state representation with `value_valid` proof field
 - Formally proven accounting invariants: `valueIdentity`, `valueUpdateFormula`,
   `selfFinancing`, `quantityConservation`, `cashUpdateCorrect`
-- European option settlement: `settlement_value_formula` (crown jewel)
+- European option settlement: `settlement_value_formula` (ΔPV = qty × (payoff − mark))
 - FFI exports (C symbols via `@[export hedge_*]`) for Cython bridge
 
 Shared option primitives (types, payoff functions, payoff theorems) live in `QuantCore`.

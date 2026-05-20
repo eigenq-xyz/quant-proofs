@@ -8,6 +8,6 @@ Python components of the backtest-proofs engine.
 - `etl/` — WRDS OptionMetrics loaders + Pydantic data types
 - `simulator/` — Seeded GBM path generator
 - `backtest/` — Delta-hedging runner, step certificates, Hull 19.2/19.3 scenarios
-- `ffi/` — Compiled Cython bridge to the Lean accounting kernel
+- `ffi/` — Compiled Cython bridge to the Lean accounting module
 
 See the [main README](../README.md) and [docs/architecture/overview.md](../docs/architecture/overview.md) for the bigger picture.

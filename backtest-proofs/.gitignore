@@ -56,6 +56,11 @@ docs/_build/
 
 # Data & Secrets
 data/DG400a/
+data/raw/
+data/processed/
+*.parquet
+*.h5
+*.csv
 *.key
 *.pem
 secrets.*

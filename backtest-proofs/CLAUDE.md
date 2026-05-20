@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Formally verified options portfolio backtesting and hedging engine. Lean 4 implements the
-accounting kernel (portfolio value, trades, option settlement, proofs). Python handles data
+Options portfolio delta-hedging backtester. Lean 4 implements the
+accounting module (portfolio value, trades, option settlement, proofs). Python handles data
 engineering, pricing, simulation, and orchestration. They communicate via compiled Cython FFI.
-Currently at v0.4 (accounting kernel + option settlement + Cython FFI + delta-hedging
+Currently at v0.4 (accounting module + option settlement + Cython FFI + delta-hedging
 backtester + BS pricer/Greeks in Python).
 
 ## Build & Test Commands
@@ -39,7 +39,7 @@ backtester + BS pricer/Greeks in Python).
 ### Dual-language monorepo
 
 ```text
-lean/           — Lean 4 accounting kernel (Lake build system, Mathlib dependency)
+lean/           — Lean 4 accounting module (Lake build system, Mathlib dependency)
 python/         — Python package managed by uv (src/backtest_proofs/)
 integration/    — Cross-language integration tests
 docs/           — JupyterBook documentation site (builds to GitHub Pages)
@@ -50,7 +50,7 @@ data/           — Encrypted market data (git-crypt)
 ### Core design: no code duplication
 
 - **Lean** implements all accounting logic as pure functions (`Portfolio → Trade → Portfolio`).
-  The kernel is data-source agnostic — it never touches I/O or makes assumptions about where
+  The module is data-source agnostic — it never touches I/O or makes assumptions about where
   data came from.
 - **Python** handles data loading (WRDS, FRED), Black-Scholes pricing, simulation, backtest
   orchestration, and step-certificate emission.
@@ -75,7 +75,7 @@ data/           — Encrypted market data (git-crypt)
 - `Settlement.lean` — settlement dispatcher: `Trade.settlementITM`, `Portfolio.abandonPosition`,
   `EuropeanOption.settle`, `applySettlement`. Imports `QuantCore.Option` for types/payoffs.
 - `SettlementInvariants.lean` — 6 settlement theorems including `settlement_value_formula`
-  (crown jewel: ΔPV = qty × (payoff − mark), unifies ITM/OTM expiry).
+  (ΔPV = qty × (payoff − mark), covers both ITM and OTM expiry).
 - Pure option types and payoff theorems (8 theorems) live in `QuantCore.Option` and
   `QuantCore.OptionInvariants`; import via the `quant-core` dependency.
 - `Tests/UnitTests.lean` — concrete computation tests via `native_decide`.
@@ -108,7 +108,7 @@ data/           — Encrypted market data (git-crypt)
 
 Major design decisions are documented in `DECISIONS.md` with full rationale. Key ADRs:
 
-- **ADR-000**: Lean for accounting, Python for ETL, data-source agnostic kernel
+- **ADR-000**: Lean for accounting, Python for ETL, data-source agnostic module
 - **ADR-001**: Scaled integer arithmetic (basis points) instead of floats or rationals
 - **ADR-002**: JSON certificates with string-encoded decimals (future cross-language verifier)
 - **ADR-004**: Monorepo structure with root Makefile orchestration
