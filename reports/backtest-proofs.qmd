@@ -223,8 +223,8 @@ The six accounting invariants therefore hold for any instrument
 expressible as an integer mark price and a signed quantity, without
 modification to the proofs.
 
-The remaining four theorems — `settlement_value_formula` from
-`BacktestProofs.SettlementInvariants` and the three payoff theorems
+The remaining four theorems in @tbl-theorems — `settlement_value_formula` from
+`BacktestProofs.SettlementInvariants` and three of the eight payoff theorems
 from `QuantCore.OptionInvariants` — depend on `QuantCore.Option` and
 `optionPayoff`. These are option-specific and do not generalize to other
 instruments without additional settlement modules and invariants.
