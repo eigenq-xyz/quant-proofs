@@ -6,7 +6,7 @@ web.
 
 Authoring guidance — section structure, formatting conventions, hard rules —
 lives in the [`writing-research-reports`](../.claude/skills/writing-research-reports/SKILL.md)
-skill. Run `/writing-research-reports` before drafting or reviewing.
+skill. Run `/write-research-reports` before drafting or reviewing.
 
 ## Files
 

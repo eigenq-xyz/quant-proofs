@@ -65,5 +65,5 @@ The root Jupyter Book (`docs/`) and Pages workflow (`pages.yml`) are deployed.
 - `/docs-lean` is blocked on doc-gen4 being added to lakefiles.
 - `/docs-research` is blocked on `results/` directory existing.
 - `/docs-report` is unblocked — `reports/` scaffold exists; needs the first
-  `<project>-proofs.qmd` authored via `writing-research-reports`, then a
+  `<project>-proofs.qmd` authored via `write-research-reports`, then a
   `cp` step added to `pages.yml`.
