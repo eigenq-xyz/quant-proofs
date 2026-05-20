@@ -18,14 +18,19 @@ from Cython.Build import cythonize
 from setuptools import Extension, setup
 
 
-def find_lean_prefix() -> Path:
-    """Locate the active Lean toolchain prefix via `lean --print-prefix`."""
+def find_lean_prefix(lean_dir: Path) -> Path:
+    """Locate the active Lean toolchain prefix via `lean --print-prefix`.
+
+    Must be called from *lean_dir* so that elan reads the correct
+    ``lean-toolchain`` file (pinned toolchain for this project).
+    """
     try:
         result = subprocess.run(
             ["lean", "--print-prefix"],
             capture_output=True,
             text=True,
             check=True,
+            cwd=lean_dir,
         )
         return Path(result.stdout.strip())
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
@@ -62,7 +67,8 @@ def find_quant_core_ir(repo_root: Path) -> Path:
 def main() -> None:
     # Repo root is one directory up from python/
     repo_root = Path(__file__).parent.parent.resolve()
-    lean_prefix = find_lean_prefix()
+    lean_dir = repo_root / "lean"
+    lean_prefix = find_lean_prefix(lean_dir)
     ir_dir = find_lake_ir(repo_root)
     qc_ir_dir = find_quant_core_ir(repo_root)
 
