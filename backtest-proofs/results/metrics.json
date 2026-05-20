@@ -1,5 +1,5 @@
 {
-  "commit_sha": "d42206f",
+  "commit_sha": "17e987a",
   "wrds_data_present": false,
   "mc_mean_deviation_pct": 2.335705520456064,
   "mc_n_paths": 500,
@@ -38,5 +38,11 @@
       "all_certs_pass": null,
       "median_ratio": null
     }
-  }
+  },
+  "straddle_192_cost": 517074.5638,
+  "straddle_193_cost": 513253.3027,
+  "straddle_median_cost": 487461.50234999997,
+  "straddle_cost_std": 93115.1431867694,
+  "bull_spread_cost": -193298.6425,
+  "bull_spread_net_payoff": 400000.0
 }
