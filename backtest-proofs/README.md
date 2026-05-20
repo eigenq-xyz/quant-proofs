@@ -129,7 +129,7 @@ This matters as AI-generated trading code becomes common. A model that produces 
 
 ## Credibility roadmap
 
-The Lean accounting module is complete at v0.4 (26 theorems, zero `sorry`). The remaining
+The Lean accounting module is complete at v0.5 (26 theorems, zero `sorry`). The remaining
 work is empirical: showing the engine produces correct *numbers*, not just formally
 consistent accounting. Four credibility levers, ordered by effort:
 
@@ -138,7 +138,7 @@ consistent accounting. Four credibility levers, ordered by effort:
 3. **QuantLib A-B comparison** — 5–10 benchmark scenarios through both engines; agree within 1 bp. Differentiator: same numbers + formal proof.
 4. **March 2020 VIX stress run** — run on WRDS OptionMetrics data through the fastest VIX spike on record; confirm invariants never fail, `settlement_value_formula` holds every bar.
 
-See `PLAN-backtest-credibility.md` for execution schedule and "victory" definition.
+See the credibility roadmap in [DEVELOPMENT.md](DEVELOPMENT.md) and [DECISIONS.md](DECISIONS.md) for pending ADRs.
 
 ## References
 

@@ -10,7 +10,7 @@ This is the foundational result of modern mathematical finance. The discrete ver
 
 ## Status
 
-**In progress** — skeleton scaffolded May 2026, implementation planned Summer 2026.
+**In progress** — skeleton scaffolded, implementation in progress.
 
 The `FtapProofs` namespace is open; the proof structure (`FtapProofs.Market`, `FtapProofs.Arbitrage`, `FtapProofs.MartingaleMeasure`, `FtapProofs.Theorem`) will be filled in during development.
 

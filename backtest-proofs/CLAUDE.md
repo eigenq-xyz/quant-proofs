@@ -7,8 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Options portfolio delta-hedging backtester. Lean 4 implements the
 accounting module (portfolio value, trades, option settlement, proofs). Python handles data
 engineering, pricing, simulation, and orchestration. They communicate via compiled Cython FFI.
-Currently at v0.4 (accounting module + option settlement + Cython FFI + delta-hedging
-backtester + BS pricer/Greeks in Python).
+Currently at v0.5 (accounting module + option settlement + Cython FFI + delta-hedging
+backtester + BS pricer/Greeks via quant-core).
 
 ## Build & Test Commands
 

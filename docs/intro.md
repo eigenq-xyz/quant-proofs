@@ -1,8 +1,8 @@
-# quant-proofs
+# quant-proofs — EigenQ Research Series
 
 Formally verified quantitative finance — Lean 4 machine-checked proofs paired with production-quality Python execution.
 
-The organizing principle: before trusting a numerical result, prove the accounting correct. Every project here pairs a formal proof with the code that runs in production.
+The organizing principle: before trusting a numerical result, prove the accounting correct. Every project in the EigenQ Research Series pairs a formal proof with the code that runs in production.
 
 ## Projects
 
@@ -20,13 +20,13 @@ See the [full documentation](https://eigenq-xyz.github.io/quant-proofs/backtest-
 
 Lean 4 formalization of the discrete Fundamental Theorem of Asset Pricing (Harrison and Pliska, 1981): a finite-state, discrete-time market is arbitrage-free if and only if an equivalent martingale measure exists. Targeting a mathlib PR.
 
-Status: in progress (Summer 2026).
+Status: skeleton — proof content planned; targeting a mathlib PR.
 
 ### options-proofs
 
 Lean 4 proof of put-call parity via the Cox-Ross-Rubinstein binomial model. Imports `quant-core` for shared option types and payoff theorems; the CRR pricing theorems build directly on `QuantCore.Option` and `QuantCore.OptionInvariants`. The FTAP connection (risk-neutral measure → put-call parity) depends on `ftap-proofs`.
 
-Status: in progress (Summer 2026), depends on `quant-core` (active) and `ftap-proofs` (planned).
+Status: skeleton — depends on `quant-core` (active) and `ftap-proofs` (planned).
 
 ### mortgage-proofs
 

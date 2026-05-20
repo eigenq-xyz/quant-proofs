@@ -1,6 +1,6 @@
 ---
 title: "Lean 4 Proof-Checked Delta-Hedging: Accounting Invariants with Empirical Validation Across Four Historical Regimes"
-subtitle: "backtest-proofs — eigenq-xyz research series"
+subtitle: "backtest-proofs — EigenQ Research Series"
 author:
   - name: Akhil Karra
     affiliation: eigenq-xyz

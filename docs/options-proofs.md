@@ -10,7 +10,7 @@ The proof route: the CRR binomial model is a finite-state, discrete-time market.
 
 ## Status
 
-**In progress** — skeleton scaffolded May 2026, depends on `ftap-proofs`.
+**In progress** — skeleton scaffolded, depends on `ftap-proofs`.
 
 Implementation begins once the FTAP proof exposes a stable interface for the no-arbitrage condition and the EMM.
 
