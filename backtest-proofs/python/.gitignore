@@ -1,0 +1,12 @@
+# Generated Cython FFI artifacts
+src/backtest_proofs/ffi/lean_ffi.c
+src/backtest_proofs/ffi/*.so
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+.coverage
+htmlcov/
