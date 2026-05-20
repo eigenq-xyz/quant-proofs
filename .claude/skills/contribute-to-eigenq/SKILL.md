@@ -188,6 +188,34 @@ If two parallel PRs already exist and conflict:
 4. `git push --force-with-lease` to update the PR
 5. Merge the rebased PR (squash if the rebase added noise, merge commit otherwise)
 
+## Claude Code Review — the mandatory review gate
+
+Every PR gets reviewed by the Claude Code Review bot (`claude-review` CI check).
+This is not a formality — it is the primary code review mechanism for this repo.
+
+**Hard rules:**
+- Never merge before `claude-review` completes. Even with all other checks green,
+  wait for it. Use `ScheduleWakeup` (~270s) to re-check if it's IN_PROGRESS.
+- After creating a PR, immediately post a focused `@claude` comment to direct the
+  review. The bot reviews everything, but a targeted ask produces better signal.
+
+**Template for the @claude comment** (post right after `gh pr create`):
+```
+@claude Please review this PR with focus on:
+- <specific concern tailored to what changed — e.g., "Lean sorry-free status and invariant coverage">
+- <e.g., "mypy strict compliance in the new module">
+- <e.g., "Quarto freeze cache and figure chunk correctness">
+Any blocking issues or follow-up commit suggestions are most useful.
+```
+
+**Reading the review:**
+```bash
+gh pr view <PR-number> --comments | grep -A 30 "github-actions\[bot\]"
+```
+
+Act on blocking findings before merging. Log non-blocking findings as follow-up
+tasks. The review feedback informs future commits and skill updates.
+
 ## GitHub workflow rules
 
 **Never push directly to a protected branch.** All changes go through a PR, regardless

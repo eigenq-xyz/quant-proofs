@@ -117,6 +117,46 @@ If this PR depends on another unmerged PR, add at the top:
 > `<dependency-branch-name>`, not from main.
 ```
 
-## Do all four steps in a single message
+## Step 5 — solicit Claude Code Review
+
+Immediately after the PR is created, post a comment on the PR thread that tags
+`@claude` and asks for focused feedback. Tailor the asks to what actually changed
+in this PR. Template:
+
+```bash
+gh pr comment <PR-number> --body "$(cat <<'EOF'
+@claude Please review this PR with focus on:
+
+- <specific concern 1 — e.g., "correctness of the Lean accounting invariants">
+- <specific concern 2 — e.g., "mypy strict compliance in the new stress.py module">
+- <specific concern 3 — e.g., "Quarto chunk labels and freeze cache correctness">
+
+Any issues that would block merge or require a follow-up commit are most useful.
+EOF
+)"
+```
+
+Adapt the bullet points to the PR's actual content. This offloads review work to
+the Claude Code Review bot and generates feedback that informs future commits.
+
+**Hard rule: never merge before `claude-review` completes.** Even when all other
+CI checks are green, wait for the Claude review — it surfaces issues the automated
+checks miss (logic errors, convention violations, paper-section inconsistencies).
+
+After posting the @claude comment, schedule **two wakeups** in the same message:
+
+```python
+# Wakeup 1 — check if claude-review CI check completed (fast turnaround)
+ScheduleWakeup(delaySeconds=270, reason="Check claude-review CI completion on PR #N",
+  prompt="Check if claude-review check on PR #N has completed: gh pr view N --json statusCheckRollup ...")
+
+# Wakeup 2 — read the full review comment once the bot posts it
+ScheduleWakeup(delaySeconds=600, reason="Read claude-review comment body on PR #N",
+  prompt="Read claude-review comment on PR #N: gh pr view N --comments --json comments | python3 -c \"import json,sys; [print(c['body']) for c in json.load(sys.stdin)['comments'] if c['author']['login']=='claude']\". Summarize blocking findings to user. If no comment yet, reschedule at 270s.")
+```
+
+If the review is still IN_PROGRESS when a wakeup fires, reschedule at 270s.
+
+## Do all five steps in a single message
 
 Call all necessary tools in one response — do not pause between steps.

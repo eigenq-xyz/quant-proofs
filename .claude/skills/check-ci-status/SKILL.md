@@ -92,8 +92,41 @@ all CI runs on that branch complete, then wakes Claude with the result:
 The hook polls every 15 seconds and times out after 11 minutes. If CI is still
 running at that point, check manually with the commands above.
 
+## Claude Code Review — mandatory gate
+
+The `claude-review` check runs the Claude Code Review bot on every PR. It is
+**not optional** — never merge before it completes, even when all other checks
+are green. It surfaces issues that automated CI misses: logic errors, convention
+violations, paper-section inconsistencies, and style drift.
+
+```bash
+# Check claude-review status specifically
+gh pr view <PR-number> --json statusCheckRollup \
+  | python3 -c "
+import json, sys
+for c in json.load(sys.stdin)['statusCheckRollup']:
+    if 'claude' in c.get('name','').lower():
+        print(c['name'], '→', c.get('conclusion') or c.get('status'))
+"
+```
+
+If `claude-review` is IN_PROGRESS, use `ScheduleWakeup` with `delaySeconds: 270`
+to re-check automatically. When it completes, read the review comments on the PR
+thread and act on any blocking findings before merging.
+
+**Proactive review requests:** After opening a PR, post a comment tagging `@claude`
+with specific review asks (see `ship` skill Step 5). This focuses the review on
+the areas that matter most and generates actionable feedback.
+
+```bash
+# Read review comments left by claude-review
+gh pr view <PR-number> --comments | grep -A 20 "github-actions\[bot\]"
+```
+
 ## Checklist before merging a PR
 
 - [ ] Main is green: `gh run list --branch main --status failure --limit 1` returns empty
 - [ ] PR checks pass: `gh pr checks <number>` shows all green
+- [ ] `claude-review` completed (not just IN_PROGRESS) — **hard requirement**
+- [ ] Claude review comments read and actioned (blocking findings fixed, non-blocking noted)
 - [ ] No check is still pending — wait rather than merging speculatively
