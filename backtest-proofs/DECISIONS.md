@@ -19,10 +19,10 @@ without architectural changes.
 
 **Decision:** Two distinct subprojects with no code duplication:
 
-1. **Accounting Kernel (100% Lean) — Data Source Agnostic**
+1. **Accounting Module (100% Lean) — Data Source Agnostic**
    - Lean implements ALL portfolio accounting (NAV, trades, cash, positions, settlement)
    - Pure functions: `state + action → new state`
-   - No I/O: kernel never touches databases, files, or data sources
+   - No I/O: module never touches databases, files, or data sources
    - Lean proves formal invariants about accounting logic
    - Lean code compiled to C via Lake, exposed with `@[export]`
    - Called from Python via Cython FFI (see ADR-006)
@@ -44,7 +44,7 @@ without architectural changes.
 **Consequences (positive):**
 
 - Zero duplicate code between Lean and Python
-- Accounting kernel is fully formally verified
+- Accounting module is fully formally verified
 - Data pipeline has flexibility while maintaining guarantees
 
 **Consequences (negative):**
@@ -61,7 +61,7 @@ without architectural changes.
 **Design Principles (don't):**
 
 - Hard-code WRDS-specific logic in Lean
-- Embed data loading in accounting kernel
+- Embed data loading in accounting module
 - Assume data frequency (daily vs. intraday vs. tick)
 
 **Consultation Points:**
@@ -324,7 +324,7 @@ These are portfolio-specific and do not belong in the shared library.
 
 ## Future ADRs (Pending)
 
-The accounting kernel is complete at v0.4. Future ADRs will cover credibility and
+The accounting module is complete at v0.4. Future ADRs will cover credibility and
 validation work rather than proof extensions:
 
 - ADR-008: QuantLib A-B comparison methodology — credibility lever 3

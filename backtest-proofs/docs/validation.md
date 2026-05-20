@@ -16,7 +16,7 @@ The pricer is validated against Hull's DerivaGem (DG400a) reference values.
 Tolerances: `abs=0.01` on price, `abs=0.001` on delta.
 
 All monetary values cross the FFI boundary as basis-point integers (×10,000):
-`to_bp(50.25) = 502_500`. The Lean kernel never operates on floats.
+`to_bp(50.25) = 502_500`. The Lean accounting module never operates on floats.
 
 ## Monte Carlo Convergence (the Black-Scholes Theorem)
 

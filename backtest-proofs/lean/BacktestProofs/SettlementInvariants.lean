@@ -16,8 +16,8 @@ Formal theorems for European option settlement on portfolios.
 This module proves:
 - OTM abandonment: portfolio value drops by position's mark value
 - ITM settlement: cash increases by qty × payoff, position closed
-- `settlement_value_formula` (crown jewel): portfolio value change = qty × (payoff − mark)
-  for BOTH ITM and OTM paths, unifying the two settlement branches
+- `settlement_value_formula`: portfolio value change = qty × (payoff − mark)
+  for both ITM and OTM paths, covering both settlement branches
 
 Pure payoff theorems (non-negativity, ITM/OTM characterization, integer parity)
 live in `QuantCore.OptionInvariants`.

@@ -12,7 +12,7 @@ Shared pricing primitives used by `backtest-proofs` and `options-proofs`. Provid
 
 ### backtest-proofs
 
-Options delta-hedging backtester with a Lean 4 accounting kernel. 18 BacktestProofs theorems plus 8 from QuantCore, zero `sorry`. Proves portfolio value identity, self-financing, and `settlement_value_formula` (ΔPV = qty × (payoff − mark), unifying ITM and OTM expiry). Python calls the kernel via Cython FFI; the accounting layer cannot silently mis-report results regardless of strategy complexity.
+Options delta-hedging backtester with a Lean 4 accounting module. 18 BacktestProofs theorems plus 8 from QuantCore, zero `sorry`. Proves portfolio value identity, self-financing, and `settlement_value_formula` (ΔPV = qty × (payoff − mark), covering ITM and OTM expiry). Python calls the module via Cython FFI; the accounting layer cannot silently mis-report results regardless of strategy complexity.
 
 See the [full documentation](https://eigenq-xyz.github.io/quant-proofs/backtest-proofs/intro.html) including formal guarantees, validation, and architecture.
 

@@ -2,13 +2,11 @@
 
 > **Educational Use Only**: This software is for research and educational purposes only. It is not intended for live trading or production use.
 
-A formally verified options hedging engine combining **Lean 4 theorem proving** with **Python numerical computing**.
+An options delta-hedging backtester with Lean 4 proof-checked accounting invariants, implemented in Python.
 
-Every portfolio state transition (every trade, every mark-to-market update, every option settlement) carries a machine-checked proof of correctness. The results are not merely tested; they are provably correct, with the proof attached.
+## What this does
 
-## What the engine does
-
-The engine is a **formally verified delta-hedging backtester**. It simulates discrete delta-hedging strategies over historical or synthetic price paths. A real-time hedging execution engine is in development.
+The backtester simulates discrete delta-hedging strategies over historical or synthetic price paths. Portfolio bookkeeping (NAV identity, trade accounting, self-financing, option settlement) is implemented in Lean 4 and called from Python via Cython FFI.
 
 At each weekly rebalancing step:
 
@@ -20,7 +18,7 @@ A bug in the accounting logic raises `ValueError` immediately rather than silent
 
 ## Why formal proof?
 
-A unit test checks one input. A Lean proof checks **all inputs**. The theorems in this engine hold for every possible portfolio, every possible trade size, every possible option strike and spot price.
+A unit test checks one input. A Lean proof checks **all inputs**. The accounting theorems hold for every possible portfolio, every possible trade size, every possible option strike and spot price.
 
 The key theorem, `settlement_value_formula`, unifies ITM and OTM option expiry into a single machine-checked statement:
 
@@ -42,8 +40,8 @@ make test    # Lean proofs + Python tests
 - **Formal Guarantees**: the theorems proven and the states made impossible by construction
 - **Validation**: DerivaGem reference vectors, Monte Carlo convergence, BKL variance scaling, Carr-Madan decomposition
 - **Delta-Hedging Demo**: Hull Table 19.2 replication with live step certificates and a deliberately broken example
-- **Credibility Exhibits** *(planned)*: Leland (1985) rehedge-frequency sweep, QuantLib A-B comparison, March 2020 VIX stress run — see `PLAN-backtest-credibility.md`
-- **Architecture**: Lean kernel, Python, and Cython FFI
+- **Credibility Exhibits**: Leland (1985) rehedge-frequency sweep, QuantLib A-B comparison, four historical stress regimes
+- **Architecture**: Lean accounting module, Python, and Cython FFI
 - **Human-AI Collaboration**: how Lean acts as a development scaffold constraining AI-generated code
 
 ## References

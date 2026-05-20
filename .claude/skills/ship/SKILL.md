@@ -132,6 +132,9 @@ gh pr comment <PR-number> --body "$(cat <<'EOF'
 - <specific concern 3 — e.g., "Quarto chunk labels and freeze cache correctness">
 
 Any issues that would block merge or require a follow-up commit are most useful.
+
+---
+*Review request authored by Claude Code (claude-sonnet-4-6) on behalf of @akhilkarra*
 EOF
 )"
 ```

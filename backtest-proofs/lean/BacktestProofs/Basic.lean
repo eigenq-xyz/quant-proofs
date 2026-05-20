@@ -19,7 +19,7 @@ This module defines:
 - `Trade`: A single trade with type-level price/fee invariants
 - `applyTrade`: Apply a trade to a portfolio (returns a new valid Portfolio)
 
-These types form the foundation of the verified accounting kernel.
+These types form the foundation of the accounting module.
 
 ## Numeric Conventions
 

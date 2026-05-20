@@ -207,12 +207,12 @@ def test_apply_trade_self_financing():
     assert result["portfolio_value"] == initial_pv - fee
 
 
-# -- Lean kernel FFI verification --
+# -- Lean accounting module FFI verification --
 
 
 @pytest.mark.skipif(not HAS_LEAN_FFI, reason="Cython extension not built")
 def test_portfolio_value_via_lean_ffi():
-    """Verify that portfolio_value is routed through the compiled Lean kernel.
+    """Verify that portfolio_value is routed through the compiled Lean accounting module.
 
     When the Cython extension is present, backtest_proofs.ffi imports from it
     rather than the pure-Python stubs. This test confirms we are exercising

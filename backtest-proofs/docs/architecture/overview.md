@@ -6,7 +6,7 @@
 
 **Lean** and **Python** have distinct, non-overlapping responsibilities:
 
-- **Lean**: Accounting kernel + formal proofs (pure functions, data-source agnostic)
+- **Lean**: Accounting module + formal proofs (pure functions, data-source agnostic)
 - **Python**: Black-Scholes pricing, GBM simulation, backtest runner, ETL, certificates
 - **Cython FFI**: Bridge between the two (compiled Lean → C → Cython → Python)
 
@@ -23,7 +23,7 @@ Python (ETL, simulation, backtest runner)
     ├─ simulate_gbm          (via quant_core — seeded GBM path generator)
     ├─ run_delta_hedge        (source-agnostic backtest runner)
     │
-    └─▶ Lean kernel (via compiled Cython FFI)
+    └─▶ Lean accounting module (via compiled Cython FFI)
             │
             ├─ hedge_apply_trade      (applyTrade + valueUpdateFormula)
             ├─ hedge_settle_option    (applySettlement + settlement_value_formula)
@@ -55,7 +55,7 @@ from_bp(502_500) = 50.25
 ```
 
 Floats are computed in Python (BS pricing, Greeks), converted to integers at the boundary,
-and the integer is the only thing that crosses into the Lean kernel. Lean never operates on floats.
+and the integer is the only thing that crosses into the Lean accounting module. Lean never operates on floats.
 
 ## FFI Boundary
 
@@ -103,15 +103,15 @@ def _apply_interest(portfolio, rate_per_step):
     ...
 ```
 
-The Lean kernel is stateless about time. `valueUpdateFormula` certifies individual
+The Lean accounting module is stateless about time. `valueUpdateFormula` certifies individual
 trades, not time evolution. Interest is a between-trade event and never belongs in
-the kernel.
+the module.
 
 ## Key Design Decisions
 
 See [DECISIONS.md](https://github.com/eigenq-xyz/backtest-proofs/blob/main/DECISIONS.md) for full ADR documentation:
 
-- **ADR-000**: Lean for accounting, Python for ETL, data-source agnostic kernel
+- **ADR-000**: Lean for accounting, Python for ETL, data-source agnostic module
 - **ADR-001**: Scaled integer arithmetic (basis points) instead of floats or rationals
 - **ADR-002**: JSON certificates with string-encoded decimals
 - **ADR-004**: Monorepo structure with root Makefile orchestration

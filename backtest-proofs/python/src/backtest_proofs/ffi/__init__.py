@@ -2,7 +2,7 @@
 
 Exports match the Lean @[export hedge_*] functions in Accounting.lean.
 
-All functions call directly into the Lean kernel compiled to C via the
+All functions call directly into the Lean accounting module compiled to C via the
 Cython extension (lean_ffi.so).  Build it with:
 
     cd python && python setup.py build_ext --inplace

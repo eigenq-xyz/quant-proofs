@@ -129,7 +129,7 @@ This matters as AI-generated trading code becomes common. A model that produces 
 
 ## Credibility roadmap
 
-The Lean accounting kernel is complete at v0.4 (26 theorems, zero `sorry`). The remaining
+The Lean accounting module is complete at v0.4 (26 theorems, zero `sorry`). The remaining
 work is empirical: showing the engine produces correct *numbers*, not just formally
 consistent accounting. Four credibility levers, ordered by effort:
 
