@@ -28,3 +28,9 @@ parts:
     chapters:
       - file: human_ai
         title: "Human–AI Collaboration via Lean"
+  - caption: "Paper"
+    chapters:
+      - url: https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.html
+        title: "Formally Verified Delta-Hedging (HTML)"
+      - url: https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf
+        title: "Formally Verified Delta-Hedging (PDF)"
