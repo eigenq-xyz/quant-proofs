@@ -245,7 +245,7 @@ future work.
 What is **not** formalized: Black-Scholes floating-point computations,
 GBM path simulation, the Cython FFI bridge, and statistical claims about
 cost distributions. These layers are tested empirically and cross-checked
-against QuantLib (@sec-quantlib-ab), but no machine-checked proof covers them.
+against QuantLib (@sec-quantlib), but no machine-checked proof covers them.
 
 # Empirical Setup {#sec-data}
 
