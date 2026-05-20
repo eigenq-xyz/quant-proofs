@@ -211,8 +211,41 @@ Reproduce with `make verify-lean` or the `verify-lean` skill.
 
 ## Scope of formalization {#sec-scope}
 
-TODO: Draft what is and is not formalized (accounting layer only; not
-pricer floating-point, FFI bridge, or statistical claims).
+Six of the ten theorems in @tbl-theorems —
+`valueIdentity`, `valueUpdateFormula`, `cashUpdateCorrect`,
+`quantityConservation`, `selfFinancing`, and `applyTrade_wellFormed` —
+operate entirely on `Portfolio`, `Position`, and `Trade`.
+These Lean 4 types carry no option-specific fields: a `Position` is a named
+asset (`AssetId : String`), a signed integer quantity, and an integer mark
+price. A stock leg, a futures contract, and an options position are all valid
+`Position` instances under this representation.
+The six accounting invariants therefore hold for any instrument
+expressible as an integer mark price and a signed quantity, without
+modification to the proofs.
+
+The remaining four theorems — `settlement_value_formula` from
+`BacktestProofs.SettlementInvariants` and the three payoff theorems
+from `QuantCore.OptionInvariants` — depend on `QuantCore.Option` and
+`optionPayoff`. These are option-specific and do not generalize to other
+instruments without additional settlement modules and invariants.
+This design mirrors @echenim2021, who separate generic portfolio/market
+accounting from instrument-specific pricing in their Isabelle/HOL
+formalization of the Cox–Ross–Rubinstein model.
+
+::: {.callout-note title="Instrument-class generality"}
+The accounting layer (NAV identity, self-financing, trade accounting) is
+formally verified for any instrument representable as an integer mark price
+and a signed quantity — stocks and equity futures included.
+Extending the *settlement* layer to equity futures (mark-to-market final
+settlement) or interest rate futures (accrued coupon) requires new Lean
+`Settlement` modules and corresponding invariants; that extension is left to
+future work.
+:::
+
+What is **not** formalized: Black-Scholes floating-point computations,
+GBM path simulation, the Cython FFI bridge, and statistical claims about
+cost distributions. These layers are tested empirically and cross-checked
+against QuantLib (@sec-quantlib-ab), but no machine-checked proof covers them.
 
 # Empirical Setup {#sec-data}
 
