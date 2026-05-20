@@ -37,7 +37,7 @@ format:
     html-math-method: katex
 
 bibliography: _references.bib
-csl: https://www.zotero.org/styles/journal-of-finance
+csl: _journal-of-finance.csl
 cite-method: citeproc
 
 execute:

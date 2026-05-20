@@ -81,6 +81,9 @@ def _ql_bs_price_delta(
 
     Returns ``(price, delta)``. Returns intrinsic value and 0.0/1.0 delta
     when T ≤ 0.
+
+    Note: sets ``ql.Settings.instance().evaluationDate`` — a process-global
+    singleton. Not thread-safe; do not call concurrently (e.g., pytest-xdist).
     """
     try:
         import QuantLib as ql
@@ -210,5 +213,9 @@ def max_price_diff_bp(rows: list[ComparisonRow]) -> float:
 
 
 def within_threshold(rows: list[ComparisonRow], threshold_bp: float) -> bool:
-    """Return ``True`` if all price differences are within *threshold_bp*."""
-    return math.isfinite(max_price_diff_bp(rows)) and max_price_diff_bp(rows) <= threshold_bp
+    """Return ``True`` if all price differences are within *threshold_bp*.
+
+    An empty *rows* list returns ``True`` (vacuously satisfied).
+    """
+    max_bp = max_price_diff_bp(rows)
+    return math.isfinite(max_bp) and max_bp <= threshold_bp
