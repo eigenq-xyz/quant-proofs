@@ -1,6 +1,6 @@
 # backtest-proofs
 
-Options delta-hedging backtester with a formally verified accounting kernel.
+Options delta-hedging backtester with a Lean 4 accounting module and proof-checked invariants.
 
 ## What it proves
 
@@ -9,7 +9,7 @@ Options delta-hedging backtester with a formally verified accounting kernel.
 - **valueIdentity** — portfolio value equals the sum of position values plus cash
 - **selfFinancing** — net cash flow from a trade is exactly zero
 - **settlement_value_formula** — option settlement changes portfolio value by `qty × (payoff − mark)`, unifying ITM and OTM expiry
-- 15 more in `BacktestProofs.Invariants` (12) and `BacktestProofs.SettlementInvariants` (5 supporting the crown jewel)
+- 15 more in `BacktestProofs.Invariants` (12) and `BacktestProofs.SettlementInvariants` (5 supporting `settlement_value_formula`)
 - 8 payoff theorems in `QuantCore.OptionInvariants` (non-negativity, ITM/OTM characterization, integer payoff identity)
 
 ## Architecture
@@ -20,14 +20,14 @@ quant-core/lean/QuantCore/         # Shared option types and payoff theorems
 └── OptionInvariants.lean          # 8 payoff theorems
 
 backtest-proofs/
-├── lean/BacktestProofs/           # Formally verified accounting kernel (Lean 4)
+├── lean/BacktestProofs/           # Accounting module (Lean 4)
 │   ├── Basic.lean                 # Portfolio, Position, Trade types with invariant proofs
 │   ├── Accounting.lean            # FFI exports (@[export hedge_*])
 │   ├── Invariants.lean            # 12 accounting theorems
 │   ├── Settlement.lean            # Settlement functions (ITM trade / OTM abandon)
 │   └── SettlementInvariants.lean  # 6 settlement theorems
 └── python/src/backtest_proofs/    # Python execution layer
-    ├── ffi/                       # Cython bridge to the Lean kernel
+    ├── ffi/                       # Cython bridge to the Lean accounting module
     ├── pricer/                    # Re-exports quant_core.pricer (Black-Scholes + Greeks)
     ├── etl/                       # WRDS OptionMetrics loader
     ├── simulator/                 # Re-exports quant_core.simulator (GBM)
@@ -37,7 +37,7 @@ backtest-proofs/
 ## Building
 
 ```bash
-# Lean kernel
+# Lean accounting module
 cd backtest-proofs/lean && lake exe cache get && lake build
 
 # Python + Cython FFI (requires Lean build first)

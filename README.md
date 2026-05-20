@@ -16,7 +16,7 @@ Formally verified quantitative finance — Lean 4 proofs of correctness paired w
 
 Backtesting bugs, settlement errors, and compliance violations share a common root: the code does something subtly different from what the math says. Lean 4 proofs make that gap impossible — the theorem statement *is* the spec, and the proof *is* the test.
 
-`backtest-proofs` proves the accounting kernel correct once; Python calls into it via Cython FFI. No matter how complex the backtesting strategy gets, the accounting layer cannot silently mis-report portfolio value, misapply a trade, or mis-settle an option.
+`backtest-proofs` proves the accounting module correct once; Python calls into it via Cython FFI. No matter how complex the backtesting strategy gets, the accounting layer cannot silently mis-report portfolio value, misapply a trade, or mis-settle an option.
 
 ## Structure
 

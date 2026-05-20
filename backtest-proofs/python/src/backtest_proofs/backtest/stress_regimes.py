@@ -1,7 +1,7 @@
 """Synthetic stress-regime backtesting using GBM fallback paths.
 
-When WRDS/OptionMetrics data is unavailable, Figure 7 (stress cost
-distributions) falls back to GBM paths calibrated to regime-specific
+When WRDS/OptionMetrics data is unavailable, the stress cost distribution
+figure (`fig-stress`) falls back to GBM paths calibrated to regime-specific
 volatility parameters derived from publicly documented peak VIX values.
 """
 

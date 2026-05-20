@@ -1,5 +1,5 @@
 ---
-title: "Formally Verified Delta-Hedging: A Lean 4 Accounting Kernel with Empirical Validation Across Four Historical Regimes"
+title: "Lean 4 Proof-Checked Delta-Hedging: Accounting Invariants with Empirical Validation Across Four Historical Regimes"
 subtitle: "backtest-proofs — eigenq-xyz research series"
 author:
   - name: Akhil Karra
@@ -639,6 +639,27 @@ plt.close()
 #| label: fig-straddle-pnl
 #| fig-cap: "Short straddle hedging cost distribution vs. buy-and-hold P&L across 100 seeded GBM paths (S₀=49, K=50, σ=20%, T=20 wks). The straddle collects premium from both legs at inception; the hedging cost distribution is wider than a single-leg position because both ITM and OTM settlement branches contribute. Source: synthetic GBM, seed 20261519."
 
+from backtest_proofs.backtest.runner import OptionLeg, run_portfolio_hedge
+from backtest_proofs.backtest.scenarios import (
+    STRADDLE_K,
+    STRADDLE_N_CONTRACTS,
+    STRADDLE_R,
+    STRADDLE_SIGMA,
+)
+
+_legs_straddle_pnl = [
+    OptionLeg(
+        "CALL_K50", "call",
+        K=STRADDLE_K, sigma=STRADDLE_SIGMA,
+        n_contracts=-STRADDLE_N_CONTRACTS,
+    ),
+    OptionLeg(
+        "PUT_K50", "put",
+        K=STRADDLE_K, sigma=STRADDLE_SIGMA,
+        n_contracts=-STRADDLE_N_CONTRACTS,
+    ),
+]
+
 _STRADDLE_N_PATHS = 100
 _STRADDLE_SEED_OFFSET = 1000
 
@@ -651,7 +672,7 @@ for _i in range(_STRADDLE_N_PATHS):
         n_steps=MC_N_STEPS, seed=MC_SEED + _STRADDLE_SEED_OFFSET + _i,
     )
     _pp = PricePath(times=_path_gbm.times, prices=_path_gbm.prices)
-    _res = run_portfolio_hedge(_pp, _legs_straddle, r=STRADDLE_R)
+    _res = run_portfolio_hedge(_pp, _legs_straddle_pnl, r=STRADDLE_R)
     _straddle_costs.append(_res.total_hedging_cost)
     _bah_pnl.append(
         (_path_gbm.prices[-1] - _path_gbm.prices[0]) * MC_N_CONTRACTS
@@ -682,6 +703,9 @@ plt.close()
 ```{python}
 #| label: fig-bull-spread
 #| fig-cap: "Bull call spread (long K=48, short K=52, N=100K) on the Hull 19.2 price path (S_T=57.25). Both calls expire ITM; net payoff = (52−48)×N = \\$400K. Portfolio value path (top) and per-step certificate status (bottom, green=pass). Source: Hull (2014) Table 19.2."
+
+from backtest_proofs.backtest.runner import OptionLeg, run_portfolio_hedge
+from backtest_proofs.backtest.scenarios import STRADDLE_R, STRADDLE_SIGMA
 
 _BULL_K_LONG  = 48.0
 _BULL_K_SHORT = 52.0
