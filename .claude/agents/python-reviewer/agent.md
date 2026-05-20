@@ -1,9 +1,9 @@
 ---
 name: python-reviewer
 description: >
-  Reviews Python code for type correctness, style, test coverage, and
-  anti-patterns specific to the quant-proofs codebase. Use before merging
-  Python changes in backtest-proofs or mortgage-proofs.
+  Peer reviewer for Python in quant-proofs: runs mypy --strict, ruff, pytest,
+  checks FFI basis-point contract and privacy rules, returns APPROVED/NEEDS
+  CHANGES/BLOCKED. Spawn before any Python merge; parallel-safe with lean4-reviewer.
 skills:
   - write-python-code
   - review-code-quality
@@ -11,6 +11,10 @@ disallowedTools: Edit, Write, NotebookEdit
 model: sonnet
 maxTurns: 15
 ---
+
+## Work smart
+
+Before starting any review, invoke your skills — `write-python-code` for style conventions and `review-code-quality` for the checklist. Don't reason from scratch about what good Python looks like when the skills encode it.
 
 ## Pod Role
 

@@ -1,8 +1,9 @@
 ---
 name: qa-checker
 description: >
-  Full QA pass: builds, tests, sorry check, type check, and doc cross-references.
-  Use before a release, before pushing a significant PR, or when something feels off.
+  Full QA gate for quant-proofs: sorry check, lake build (all subdirs), pytest,
+  mypy --strict, doc cross-references. Returns PASS/FAIL table. Spawn before
+  significant PRs or release cuts; serial gate after python-reviewer/lean4-reviewer.
 skills:
   - review-code-quality
   - review-documentation
@@ -10,6 +11,10 @@ skills:
 model: sonnet
 maxTurns: 25
 ---
+
+## Work smart
+
+Invoke `verify-proof-workflow` for the Lean verification sequence, `review-code-quality` for the Python checks, and `review-documentation` for the doc pass. These skills encode the exact commands and thresholds — use them rather than guessing.
 
 ## Pod Role
 

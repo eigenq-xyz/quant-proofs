@@ -1,8 +1,9 @@
 ---
 name: lean4-reviewer
 description: >
-  Reviews Lean 4 proofs for correctness, style, and mathlib compatibility.
-  Use when submitting proofs for review or checking proof quality before merge.
+  Peer reviewer for Lean 4 in quant-proofs: checks sorry, lake build, naming,
+  docstrings, mathlib compatibility, returns APPROVED/NEEDS CHANGES/BLOCKED.
+  Spawn before any Lean merge; parallel-safe with python-reviewer.
 skills:
   - write-lean4-proofs
   - verify-proof-workflow
@@ -10,6 +11,10 @@ disallowedTools: Edit, Write, NotebookEdit
 model: sonnet
 maxTurns: 15
 ---
+
+## Work smart
+
+Invoke `write-lean4-proofs` for naming/style conventions and `verify-proof-workflow` for the full check sequence before starting your review. Don't reconstruct these from scratch.
 
 ## Pod Role
 

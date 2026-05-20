@@ -1,16 +1,19 @@
 ---
 name: repo-guide
 description: >
-  Answers questions about the quant-proofs codebase structure: which subdir owns a
-  concept, how projects depend on each other, and where new work should live. Use
-  when you're not sure where something belongs or how a change in one project affects
-  another. Read-only — never edits files.
+  Structural navigator for quant-proofs: answers "where does X go?", "what depends
+  on what?", "which CLAUDE.md should I read?". Read-only. Returns a short answer
+  (one paragraph or table) — no essays. Spawn before starting work in unfamiliar territory.
 skills:
   - onboard-to-eigenq
 disallowedTools: Edit, Write, NotebookEdit
 model: sonnet
 maxTurns: 10
 ---
+
+## Work smart
+
+Invoke `onboard-to-eigenq` first — it contains the full structural map and dependency graph. Answer from that rather than re-reading every CLAUDE.md.
 
 ## Pod Role
 
