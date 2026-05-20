@@ -1,45 +1,80 @@
 % eigenq research paper preamble — shared across all reports/<project>.qmd
 %
-% Required TeX packages (install via tlmgr if rendering locally):
-%   amsmath, amssymb, amsthm, mathtools, bm, booktabs, microtype,
-%   biblatex, csquotes, hyperref, cleveref, enumitem, siunitx, minted
+% Engine: xelatex (Unicode-aware; set via pdf-engine: xelatex in _quarto.yml)
+% Citations: citeproc (Quarto-native, CSL-driven; no biblatex/natbib needed)
+% Cross-refs: Quarto native (@fig-x, @tbl-x, @thm-x) — cleveref not needed
+%
+% Required packages (install via tlmgr if missing):
+%   amsmath, amsfonts, amssymb, mathtools, bm, dsfont
+%   booktabs, microtype, enumitem, siunitx
+%   tcolorbox (with breakable, skins libs)
+%   fancyhdr, xcolor, geometry
 
 \usepackage{amsmath}
+\usepackage{amsfonts}
 \usepackage{amssymb}
 \usepackage{mathtools}
 \usepackage{bm}
+\usepackage{dsfont}      % \mathds{1} for indicator functions
 \usepackage{booktabs}
 \usepackage{microtype}
 \usepackage{enumitem}
 \usepackage{siunitx}
-\usepackage{cleveref}
+\usepackage{xcolor}
 
-% Number theorem-likes within sections, share a counter so numbering is contiguous.
+% ── Page style ───────────────────────────────────────────────────────────────
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\fancypagestyle{plain}{%
+  \fancyhf{}
+  \fancyfoot[C]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% ── Caption / float spacing ───────────────────────────────────────────────────
+\setlength{\belowcaptionskip}{12pt}
+\setlength{\abovecaptionskip}{6pt}
+
+% ── Numbering ────────────────────────────────────────────────────────────────
 % Quarto's native theorem callouts use these counters automatically.
 \numberwithin{equation}{section}
 \numberwithin{figure}{section}
 \numberwithin{table}{section}
 
-% Probability / finance shorthand.
+% ── Math: probability / finance shorthand ────────────────────────────────────
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\Prob}{\mathbb{P}}
-\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\Q}{\mathbb{Q}}         % risk-neutral measure
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\N}{\mathbb{N}}
 \newcommand{\Z}{\mathbb{Z}}
-\newcommand{\Filt}{\mathcal{F}}
+\newcommand{\Filt}{\mathcal{F}}     % filtration
 \newcommand{\indep}{\perp\!\!\!\perp}
-\newcommand{\indic}[1]{\mathbf{1}_{\{#1\}}}
+\newcommand{\indic}[1]{\mathds{1}_{\{#1\}}}   % indicator via dsfont
 \newcommand{\eqdist}{\stackrel{d}{=}}
 \newcommand{\eqas}{\stackrel{\text{a.s.}}{=}}
 \renewcommand{\Pr}{\mathbb{P}}
 
-% Visual style for the standardized "Formalization" callout — referenced from
-% template.qmd as `::: {.callout-note title="Formalization"}`.
+% Bracket-style expectation and probability
+\newcommand{\Ebb}[1]{\mathbb{E}\!\left[#1\right]}
+\newcommand{\Pbb}[1]{\mathbb{P}\!\left[#1\right]}
+\newcommand{\Var}[1]{\operatorname{Var}\!\left[#1\right]}
+\newcommand{\Cov}[2]{\operatorname{Cov}\!\left[#1,\,#2\right]}
+
+% Finance / derivatives shorthand
+\newcommand{\BS}{\mathrm{BS}}       % Black-Scholes
+\newcommand{\GBM}{\mathrm{GBM}}     % geometric Brownian motion
+\newcommand{\bp}{\text{bp}}         % basis points
+
+% ── Formalization callout ─────────────────────────────────────────────────────
+% Referenced from .qmd as ::: {.callout-note title="Formalization"}
 \usepackage{tcolorbox}
 \tcbuselibrary{breakable, skins}
 
-% Title block styling consistent with AQR / JFE working-paper aesthetic.
+% ── KOMA title block — AQR / JFE working-paper aesthetic ─────────────────────
 \setkomafont{title}{\bfseries\Large}
 \setkomafont{author}{\normalsize}
 \setkomafont{date}{\small\itshape}

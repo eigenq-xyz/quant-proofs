@@ -1,0 +1,42 @@
+{
+  "commit_sha": "d42206f",
+  "wrds_data_present": false,
+  "mc_mean_deviation_pct": 2.335705520456064,
+  "mc_n_paths": 500,
+  "bkl_ratio_10_20": 1.3716371901804782,
+  "carr_madan_corr": 0.9507783976332581,
+  "hull_192_cost": 253731.2878,
+  "hull_192_expected": 263300.0,
+  "hull_193_cost": 251821.5698,
+  "hull_193_expected": 256600.0,
+  "leland_var_slope_empirical": 193185.5958463862,
+  "leland_var_slope_theoretical": 221913.2872708504,
+  "leland_n_frequencies": 5,
+  "quantlib_max_dev_bp": 2.6855127464983752,
+  "quantlib_within_1bp": false,
+  "quantlib_n_scenarios": 5,
+  "wrds_holdout_median": null,
+  "wrds_holdout_n_series": null,
+  "stress": {
+    "covid_2020": {
+      "n_series": null,
+      "all_certs_pass": null,
+      "median_ratio": null
+    },
+    "gfc_2008": {
+      "n_series": null,
+      "all_certs_pass": null,
+      "median_ratio": null
+    },
+    "volm_2018": {
+      "n_series": null,
+      "all_certs_pass": null,
+      "median_ratio": null
+    },
+    "flash_2015": {
+      "n_series": null,
+      "all_certs_pass": null,
+      "median_ratio": null
+    }
+  }
+}
