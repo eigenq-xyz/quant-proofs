@@ -2,9 +2,9 @@
 
 **Purpose**: Document all identified risks, mitigation strategies, and decision rationale. Consult with professors/practitioners before major pivots.
 
-**Last Updated**: 2026-05-09
+**Last Updated**: 2026-05-20
 **Review Cadence**: Every milestone completion
-**Status**: Work in Progress (v0.4)
+**Status**: Work in Progress (v0.5)
 
 ---
 
@@ -48,10 +48,10 @@
 
 **Severity**: 🟠 High (schedule risk)
 
-**Status**: ✅ Resolved (v0.4). 26 theorems proved across `Invariants.lean` (12) and
-`OptionInvariants.lean` (14), zero `sorry`, zero `axiom`. The hardest theorem was
-`settlement_value_formula` (unifies ITM/OTM expiry into a single statement); proved in
-v0.4 without external consultation using `omega` + `simp`.
+**Status**: ✅ Resolved (v0.5). 26 theorems proved: 12 in `Invariants.lean`, 6 in
+`SettlementInvariants.lean`, and 8 payoff theorems in `quant-core/QuantCore/OptionInvariants.lean`.
+Zero `sorry`, zero `axiom`. The hardest theorem was `settlement_value_formula`
+(unifies ITM/OTM expiry into a single statement); proved using `omega` + `simp`.
 
 **Mitigation Strategy** ✅ DECIDED:
 - **Prioritization**: Prove simple invariants first (NAV identity, conservation)
@@ -245,8 +245,8 @@ each require external tools or data that may be harder to acquire or validate th
 
 **Severity**: 🟡 Medium (schedule risk for credibility work)
 
-**Status**: Open. Accounting kernel is complete (v0.4); credibility levers are the remaining
-open work. See `PLAN-backtest-credibility.md` for the execution schedule.
+**Status**: Open. Accounting module is complete (v0.5); credibility levers are the remaining
+open work.
 
 **Mitigation Strategy**:
 
@@ -265,7 +265,7 @@ Lever 4 can be a deferred proof-of-concept once data access is confirmed.
 | ID | Risk | Severity | Status | Milestone |
 |----|------|----------|--------|-----------|
 | R1 | Decimal precision | 🔴 Critical | ✅ Mitigated | v0.2-nav |
-| R2 | Proof difficulty | 🟠 High | ✅ Resolved | v0.4 |
+| R2 | Proof difficulty | 🟠 High | ✅ Resolved | v0.5 |
 | R3 | DG mismatch | 🟢 Low | ✅ Mitigated | v0.4 |
 | R4 | Docs timeout | 🟢 Low | ✅ Mitigated | v0.4 |
 | R5 | uv lock drift | 🟡 Medium | ✅ Mitigated | v0.1-scaffold |

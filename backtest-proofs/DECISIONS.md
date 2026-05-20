@@ -2,8 +2,8 @@
 
 **Purpose:** Document significant design decisions for future reference and consultation.
 
-**Last Updated:** 2026-05-09
-**Status:** Work in Progress (v0.4)
+**Last Updated:** 2026-05-20
+**Status:** Work in Progress (v0.5)
 
 ---
 
@@ -39,7 +39,7 @@ without architectural changes.
 2. Lean strengths: formal verification + compiled performance for critical accounting
 3. Python strengths: data wrangling, rich ecosystem (pandas, numpy, scipy)
 4. Clear interfaces: FFI for accounting calls, step certificates for audit trail
-5. Data source flexibility: kernel works for historical data, simulations, live feeds
+5. Data source flexibility: accounting module works for historical data, simulations, live feeds
 
 **Consequences (positive):**
 
@@ -324,7 +324,7 @@ These are portfolio-specific and do not belong in the shared library.
 
 ## Future ADRs (Pending)
 
-The accounting module is complete at v0.4. Future ADRs will cover credibility and
+The accounting module is complete at v0.5. Future ADRs will cover credibility and
 validation work rather than proof extensions:
 
 - ADR-008: QuantLib A-B comparison methodology — credibility lever 3
