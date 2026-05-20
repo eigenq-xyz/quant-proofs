@@ -40,7 +40,7 @@ the lead can act immediately. Never declare PASS overall when any check is FAIL.
 
 ### 1. Sorry check (all Lean subdirs)
 ```bash
-grep -rn sorry --include="*.lean" backtest-proofs/ ftap-proofs/ options-proofs/ mortgage-proofs/
+grep -rn sorry --include="*.lean" quant-core/ backtest-proofs/ ftap-proofs/ options-proofs/ mortgage-proofs/
 ```
 Any sorry is a BLOCKING failure on main.
 
