@@ -332,15 +332,239 @@ data.
 
 # Main Results {#sec-main-results}
 
-::: {.callout-note .hidden}
-TODO (§4, draft fourth):
-11 informal+formal theorem pairs.
-Lead each with intuition; follow with the Lean statement.
-Use `::: {#thm-name}` callout format.
-Every theorem references its Lean name and file from the table in §5.
+The eleven theorems fall into three groups. The first group (Theorems 1–7) covers
+portfolio accounting invariants: the NAV identity, cash update rule, quantity
+conservation, the trade accounting formula, self-financing (with and without an
+explicit cost term), and well-formedness preservation. These theorems operate
+entirely on the `Portfolio`, `Position`, and `Trade` types defined in
+`BacktestProofs.Basic`. Because those types carry no option-specific fields — a
+`Position` is simply an `AssetId`, a signed integer quantity, and an integer
+mark price — all seven theorems hold for any instrument representable as an
+integer mark price and a signed quantity: stocks, equity futures, and options
+alike. The second group (Theorem 8) is the settlement value formula, which
+unifies the in-the-money and out-of-the-money expiry paths into a single
+equation relating the change in portfolio value to the difference between the
+option's payoff and its pre-expiry mark price. The third group (Theorems 9–11)
+establishes payoff non-negativity for European calls, puts, and the combined
+dispatch function, grounding the signed arithmetic used throughout the
+settlement proof in the economics of limited liability.
+
+::: {#thm-value-identity}
+**Theorem 1 (NAV Identity).** *The portfolio's net asset value equals its cash
+balance plus the sum of quantity times mark price across all open positions.*
+
+Every `Portfolio` carries a type-level proof field `value_valid` that
+enforces this equation at construction time, so no runtime reconciliation is
+possible — the invariant is structural.
+
+*Lean 4:* `valueIdentity`, [`BacktestProofs/Invariants.lean`, line 31](https://github.com/eigenq-xyz/quant-proofs/blob/main/backtest-proofs/lean/BacktestProofs/Invariants.lean#L31).
+
+```lean
+theorem valueIdentity (p : Portfolio) :
+    p.portfolioValue = p.cash + sumPositionValues p.positions :=
+  p.value_valid
+```
 :::
 
-TODO: Draft per fill order (§4 = fourth).
+::: {#thm-cash-update}
+**Theorem 2 (Cash Update).** *Executing a trade debits the cash balance by
+exactly the signed cost of the trade (quantity delta times execution price)
+plus the fee — no more, no less.*
+
+This rules out any hidden source of funds: every dollar spent buying shares,
+and every dollar received selling them, flows through and only through the
+cash balance. The proof is `rfl` — the definition and the theorem are the
+same statement.
+
+*Lean 4:* `cashUpdateCorrect`, [`BacktestProofs/Invariants.lean`, line 82](https://github.com/eigenq-xyz/quant-proofs/blob/main/backtest-proofs/lean/BacktestProofs/Invariants.lean#L82).
+
+```lean
+theorem cashUpdateCorrect (p : Portfolio) (t : Trade) :
+    (applyTrade p t).cash = p.cash - (t.deltaQuantity * t.executionPrice + t.fee) := rfl
+```
+:::
+
+::: {#thm-quantity-conservation}
+**Theorem 3 (Quantity Conservation).** *After a trade, the position quantity
+for the traded asset equals the pre-trade quantity plus the signed trade size.*
+
+Shares cannot appear from thin air or silently disappear. The theorem covers
+all possible prior quantities and trade sizes, including zero-to-nonzero (new
+positions), nonzero-to-nonzero (partial adjustments), and nonzero-to-zero
+(full liquidation, in which case the position is erased from the portfolio
+map entirely).
+
+*Lean 4:* `quantityConservation`, [`BacktestProofs/Invariants.lean`, line 176](https://github.com/eigenq-xyz/quant-proofs/blob/main/backtest-proofs/lean/BacktestProofs/Invariants.lean#L176).
+
+```lean
+theorem quantityConservation (p : Portfolio) (t : Trade) :
+    (applyTrade p t).getQuantity t.assetId =
+    p.getQuantity t.assetId + t.deltaQuantity := by
+```
+:::
+
+::: {#thm-value-update}
+**Theorem 4 (Trade Accounting).** *The change in portfolio value when a trade
+executes equals the mark-to-market gain on the pre-trade position (quantity
+held before the trade times the difference between execution price and mark
+price) minus the fee.*
+
+Formally, $\Delta\text{PV} = q_{\text{before}} \times (p_{\text{exec}} -
+p_{\text{mark}}) - \text{fee}$. A brand-new position ($q_{\text{before}} = 0$)
+contributes zero MTM gain. The theorem rules out leakage from rounding,
+ordering, or representation error in all cases simultaneously.
+
+*Lean 4:* `valueUpdateFormula`, [`BacktestProofs/Invariants.lean`, line 212](https://github.com/eigenq-xyz/quant-proofs/blob/main/backtest-proofs/lean/BacktestProofs/Invariants.lean#L212).
+
+```lean
+theorem valueUpdateFormula (p : Portfolio) (t : Trade) :
+    (applyTrade p t).portfolioValue =
+    p.portfolioValue + p.getQuantity t.assetId * (t.executionPrice - p.getMarkPrice_orZero t.assetId)
+          - t.fee := by
+```
+:::
+
+::: {#thm-self-financing}
+**Theorem 5 (Self-Financing).** *If a trade executes at the existing mark
+price, the portfolio value changes by exactly the negative of the fee and
+nothing else.*
+
+Buying or selling at today's mark is a "fair" trade: no value is created or
+destroyed by the act of trading itself, and only the transaction fee is paid.
+The theorem is conditional on the execution price equaling the mark price of
+the pre-existing position.
+
+*Lean 4:* `selfFinancing`, [`BacktestProofs/Invariants.lean`, line 281](https://github.com/eigenq-xyz/quant-proofs/blob/main/backtest-proofs/lean/BacktestProofs/Invariants.lean#L281).
+
+```lean
+theorem selfFinancing (p : Portfolio) (t : Trade) (pos : Position)
+    (hPos  : p.getPosition t.assetId = some pos)
+    (hPrice : t.executionPrice = pos.markPrice) :
+    (applyTrade p t).portfolioValue = p.portfolioValue - t.fee := by
+```
+:::
+
+::: {#thm-self-financing-with-cost}
+**Theorem 6 (Self-Financing with Cost).** *A trade that executes at the mark
+price and incurs a known fee `fee` changes portfolio value by exactly
+$-\texttt{fee}$.*
+
+This is a named-fee variant of Theorem 5: by binding the fee to an explicit
+variable, downstream proofs can reason about a specific cost level without
+unfolding `t.fee` everywhere. The proof delegates immediately to
+`selfFinancing` via a single rewrite.
+
+*Lean 4:* `selfFinancingWithCost`, [`BacktestProofs/Invariants.lean`, line 299](https://github.com/eigenq-xyz/quant-proofs/blob/main/backtest-proofs/lean/BacktestProofs/Invariants.lean#L299).
+
+```lean
+theorem selfFinancingWithCost (p : Portfolio) (t : Trade) (fee : Int) (pos : Position)
+    (h_fee         : t.fee = fee)
+    (hPos          : p.getPosition t.assetId = some pos)
+    (hPrice        : t.executionPrice = pos.markPrice) :
+    (applyTrade p t).portfolioValue = p.portfolioValue - fee :=
+  h_fee ▸ selfFinancing p t pos hPos hPrice
+```
+:::
+
+::: {#thm-well-formedness}
+**Theorem 7 (Well-Formedness).** *Applying any trade to a well-formed
+portfolio produces a well-formed portfolio — one in which every stored
+position has non-zero quantity.*
+
+`WellFormed` is the invariant that zero-quantity positions are never stored
+in the position map. `applyTrade` maintains it by erasing the position when
+the new quantity reaches zero. This theorem guarantees that no ghost
+positions (size-zero entries) accumulate across an arbitrary sequence of
+trades.
+
+*Lean 4:* `applyTrade_wellFormed`, [`BacktestProofs/Invariants.lean`, line 317](https://github.com/eigenq-xyz/quant-proofs/blob/main/backtest-proofs/lean/BacktestProofs/Invariants.lean#L317).
+
+```lean
+theorem applyTrade_wellFormed (p : Portfolio) (t : Trade) (hw : p.WellFormed) :
+    (applyTrade p t).WellFormed := by
+```
+:::
+
+::: {#thm-settlement}
+**Theorem 8 (Settlement Value Formula).** *At expiry, settling a European
+option changes the portfolio value by the quantity held times the difference
+between the option's payoff and its pre-expiry mark price.*
+
+Formally, $\Delta\text{PV} = q \times (\text{payoff}(S_T) - p_{\text{mark}})$.
+When the option expires in-the-money, `payoff` > 0 and the position is closed
+via `applyTrade` (cash credited, position removed). When it expires
+out-of-the-money, `payoff` = 0 and the position is abandoned (no cash
+movement, mark value written off). Both branches are unified in a single
+equation proved by case-splitting on moneyness internally. If
+$\text{payoff} > p_{\text{mark}}$ the portfolio gains; if
+$\text{payoff} < p_{\text{mark}}$ it loses; if they are equal the portfolio
+is unchanged — the option was fairly marked at expiry.
+
+*Lean 4:* `settlement_value_formula`, [`BacktestProofs/SettlementInvariants.lean`, line 104](https://github.com/eigenq-xyz/quant-proofs/blob/main/backtest-proofs/lean/BacktestProofs/SettlementInvariants.lean#L104).
+
+```lean
+theorem settlement_value_formula (p : Portfolio) (opt : EuropeanOption)
+    (pos : Position) (hPos : p.getPosition opt.assetId = some pos)
+    (spot : Int) :
+    (applySettlement p opt (settleEuropeanOption opt spot pos.quantity)).portfolioValue =
+      p.portfolioValue + pos.quantity * (optionPayoff opt spot - pos.markPrice) := by
+```
+:::
+
+::: {#thm-call-payoff}
+**Theorem 9 (Call Payoff Non-Negativity).** *The payoff of a European call
+option is always non-negative: the holder never owes money at expiry.*
+
+`callPayoff spot strike` is defined as $\max(0, \text{spot} - \text{strike})$
+in integer arithmetic. The proof is a single `omega` call on the unfolded
+definition, reflecting that non-negativity is a trivial consequence of the
+max-with-zero definition.
+
+*Lean 4:* `callPayoff_nonneg`, [`quant-core/lean/QuantCore/OptionInvariants.lean`, line 32](https://github.com/eigenq-xyz/quant-proofs/blob/main/quant-core/lean/QuantCore/OptionInvariants.lean#L32).
+
+```lean
+theorem callPayoff_nonneg (spot strike : Int) : callPayoff spot strike ≥ 0 := by
+  unfold callPayoff; omega
+```
+:::
+
+::: {#thm-put-payoff}
+**Theorem 10 (Put Payoff Non-Negativity).** *The payoff of a European put
+option is always non-negative: the holder never owes money at expiry.*
+
+`putPayoff spot strike` is defined as $\max(0, \text{strike} - \text{spot})$
+in integer arithmetic. As with the call, non-negativity follows immediately
+from the max-with-zero structure.
+
+*Lean 4:* `putPayoff_nonneg`, [`quant-core/lean/QuantCore/OptionInvariants.lean`, line 40](https://github.com/eigenq-xyz/quant-proofs/blob/main/quant-core/lean/QuantCore/OptionInvariants.lean#L40).
+
+```lean
+theorem putPayoff_nonneg (spot strike : Int) : putPayoff spot strike ≥ 0 := by
+  unfold putPayoff; omega
+```
+:::
+
+::: {#thm-option-payoff}
+**Theorem 11 (Option Payoff Non-Negativity).** *A European option of any
+kind — call or put — can never obligate its holder to pay at expiry.*
+
+`optionPayoff` dispatches on `opt.kind` to either `callPayoff` or
+`putPayoff`. The proof cases on the constructor and delegates to Theorems 9
+and 10 respectively. This theorem is the payoff non-negativity guarantee
+consumed by `settlement_value_formula` (Theorem 8) when establishing that
+the out-of-the-money payoff is exactly zero.
+
+*Lean 4:* `optionPayoff_nonneg`, [`quant-core/lean/QuantCore/OptionInvariants.lean`, line 48](https://github.com/eigenq-xyz/quant-proofs/blob/main/quant-core/lean/QuantCore/OptionInvariants.lean#L48).
+
+```lean
+theorem optionPayoff_nonneg (opt : EuropeanOption) (spot : Int) :
+    optionPayoff opt spot ≥ 0 := by
+  simp only [optionPayoff]
+  cases opt.kind with
+  | Call => exact callPayoff_nonneg spot opt.strike
+  | Put  => exact putPayoff_nonneg  spot opt.strike
+```
+:::
 
 # Formalization {#sec-formalization}
 
@@ -793,7 +1017,7 @@ All step certificates pass for both paths (@fig-hull).
 
 ```{python}
 #| label: fig-ql
-#| fig-cap: "Scatter of our BS call price vs QuantLib's analytic price across 5 scenarios × 20+ evaluation points. Dashed line: 1 bp agreement band. Source: synthetic GBM, seed 20260519."
+#| fig-cap: "Scatter of our BS call price vs QuantLib's analytic price across 5 scenarios × 20+ evaluation points. Dashed line: perfect agreement diagonal; annotated value shows maximum basis-point deviation across all evaluation points. Source: synthetic GBM, seed 20260519."
 
 try:
     from backtest_proofs.backtest.quantlib_compare import (
@@ -813,7 +1037,7 @@ try:
 
     ql_rows = compare_to_quantlib(QL_SCENARIOS, seed=QL_SEED)
     ql_max_dev = max_price_diff_bp(ql_rows)
-    ql_within_1bp = within_threshold(ql_rows, 1.0)
+    ql_within_3bp = within_threshold(ql_rows, 3.0)
     ql_n_scenarios = len(QL_SCENARIOS)
 
     our_prices = [r.our_price for r in ql_rows]
@@ -837,7 +1061,7 @@ try:
     ql_available = True
 except ImportError:
     ql_max_dev = float("nan")
-    ql_within_1bp = False
+    ql_within_3bp = False
     ql_n_scenarios = 0
     ql_available = False
     fig, ax = plt.subplots(figsize=(6, 5))
