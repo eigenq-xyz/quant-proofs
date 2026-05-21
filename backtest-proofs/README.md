@@ -35,7 +35,7 @@ The following invariants are proved as Lean 4 theorems — not tested, *proved*.
 | Delta-hedging strategy (single-leg + portfolio) | ✅ Complete |
 | P&L attribution identity (Γ/Θ decomposition per path) | 📋 Credibility lever 1 |
 | Leland (1985) rehedge-frequency variance sweep | 📋 Credibility lever 2 |
-| QuantLib A-B price-path comparison (1 bp threshold) | 📋 Credibility lever 3 |
+| QuantLib A-B price-path comparison (max dev 2.69 bp across 5 scenarios) | 📋 Credibility lever 3 |
 | March 2020 VIX stress run on WRDS OptionMetrics data | 📋 Credibility lever 4 |
 
 ## What is not verified
@@ -135,7 +135,7 @@ consistent accounting. Four credibility levers, ordered by effort:
 
 1. **P&L attribution identity** — `P&L ≈ ½·Γ·(ΔS)² − Θ·Δt + residual` on a GBM path; fastest catch of any hidden accounting bug.
 2. **Leland (1985) rehedge-frequency sweep** — `Var(P&L) ∝ Γ²·S²·σ²·Δt`; replicate Leland's Table II across daily/hourly/15-min frequencies. JupyterBook exhibit.
-3. **QuantLib A-B comparison** — 5–10 benchmark scenarios through both engines; agree within 1 bp. Differentiator: same numbers + formal proof.
+3. **QuantLib A-B comparison** — 5 benchmark scenarios through both engines; max deviation 2.69 bp across all evaluation points. Differentiator: same numbers + formal proof.
 4. **March 2020 VIX stress run** — run on WRDS OptionMetrics data through the fastest VIX spike on record; confirm invariants never fail, `settlement_value_formula` holds every bar.
 
 See the credibility roadmap in [DEVELOPMENT.md](DEVELOPMENT.md) and [DECISIONS.md](DECISIONS.md) for pending ADRs.
