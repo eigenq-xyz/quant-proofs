@@ -165,12 +165,14 @@ If the review is still IN_PROGRESS when a wakeup fires, reschedule at 270s.
 Before finishing, scan open issues for any this PR resolves:
 
 ```bash
-gh issue list --state open --label ""
+gh issue list --state open
 ```
 
-Close resolved issues with `gh issue close N` and ensure the PR body contains
-`closes #N` for each. Wiring the closure to the PR keeps the milestone burndown
-accurate and makes planning visible across sessions.
+Ensure the PR body contains `closes #N` for each resolved issue. GitHub
+auto-closes the issue on merge — do NOT run `gh issue close N` manually
+before the PR merges, as that marks the issue done before the code is reviewed.
+Wiring the closure to the PR keeps the milestone burndown accurate and makes
+planning visible across sessions.
 
 ## Do all six steps in a single message
 

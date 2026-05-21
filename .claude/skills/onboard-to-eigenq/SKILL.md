@@ -102,7 +102,8 @@ Run these at the start of every session before doing any substantive work:
 
 ```bash
 # 1. Live skill/agent roster (changes frequently)
-ls .claude/skills/ && ls .claude/agents/
+ls .claude/skills/
+ls .claude/agents/ 2>/dev/null || echo "(no agents directory)"
 
 # 2. Open PRs + any pending claude-review comments
 gh pr list
