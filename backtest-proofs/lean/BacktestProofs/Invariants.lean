@@ -288,6 +288,21 @@ theorem selfFinancing (p : Portfolio) (t : Trade) (pos : Position)
   rw [hMark, hPrice]
   ring
 
+/-! ### Self-Financing With Cost -/
+
+/-! **Proof sketch:** `selfFinancingWithCost` is `selfFinancing` with `t.fee` renamed to
+a named variable `fee`. The term-mode proof `h_fee ▸ selfFinancing p t pos hPos hPrice`
+rewrites the expected type using `h_fee : t.fee = fee` and closes the goal directly.
+No tactics required. -/
+
+/-- A trade that is self-financing except for a known fee changes portfolio value by exactly −fee. -/
+theorem selfFinancingWithCost (p : Portfolio) (t : Trade) (fee : Int) (pos : Position)
+    (h_fee         : t.fee = fee)
+    (hPos          : p.getPosition t.assetId = some pos)
+    (hPrice        : t.executionPrice = pos.markPrice) :
+    (applyTrade p t).portfolioValue = p.portfolioValue - fee :=
+  h_fee ▸ selfFinancing p t pos hPos hPrice
+
 /-! ## Well-Formedness Invariants (v0.3.2) -/
 
 /-- An empty portfolio is well-formed: no positions, so the condition is vacuously true. -/
