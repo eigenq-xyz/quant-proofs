@@ -8,10 +8,25 @@ author:
 date: today
 date-format: long
 abstract: |
-  TODO: Draft last (§1 per fill order). 150–250 words. State the question,
-  the zero-`sorry` claim at the commit SHA below, the WRDS OptionMetrics
-  2019–2024 sample, the headline MC deviation percentage, and the scope
-  limitation (flat-σ Black-Scholes; no transaction costs).
+  We present the first Lean 4 formalization of operational accounting invariants
+  for a traditional-securities options delta-hedging backtester. Eleven theorems
+  — covering NAV identity, trade accounting, cash-update correctness, quantity
+  conservation, self-financing, option settlement, and option payoff
+  non-negativity — are proved zero-sorry at main HEAD (commit 5774760) and
+  compiled via Lean 4's LLVM backend to a native shared library called at
+  runtime through a Cython FFI layer, closing the gap between proof and
+  execution by construction. We pair the formalization with empirical validation
+  on 500 seeded GBM paths and a WRDS OptionMetrics sample of 491,390
+  option-day observations (2019–2024, six equity underlyings, ATM ±3%). The
+  Monte Carlo running-mean hedging cost converges to the Black-Scholes price
+  with a 2.34% final deviation; our Black-Scholes implementation agrees with
+  QuantLib's analytic pricer to a maximum of 2.69 basis points across five
+  parameter scenarios. The accounting invariants hold unconditionally across
+  four historical stress regimes (GFC 2008, Volmageddon 2018, Q4 2018, COVID
+  2020) — a formal guarantee independent of empirical outcomes. Primary
+  empirical results assume flat per-series implied volatility and zero
+  transaction costs; a fixed-fee extension is proved as a separate theorem,
+  with proportional cost support deferred to future work.
 keywords:
   - quantitative finance
   - formal verification
@@ -134,7 +149,26 @@ All 11 theorems confirmed sorry-free at main HEAD.
 
 # Abstract {.unnumbered}
 
-TODO: Draft last. See hidden callout above for content requirements.
+We present the first Lean 4 formalization of operational accounting invariants
+for a traditional-securities options delta-hedging backtester. Eleven theorems
+— covering NAV identity, trade accounting, cash-update correctness, quantity
+conservation, self-financing, option settlement, and option payoff
+non-negativity — are proved zero-sorry at main HEAD (commit 5774760) and
+compiled via Lean 4's LLVM backend to a native shared library called at
+runtime through a Cython FFI layer, closing the gap between proof and
+execution by construction. We pair the formalization with empirical validation
+on 500 seeded GBM paths and a WRDS OptionMetrics sample of 491,390
+option-day observations (2019–2024, six equity underlyings, ATM ±3%). The
+Monte Carlo running-mean hedging cost converges to the Black-Scholes price
+with a 2.34% final deviation; our Black-Scholes implementation agrees with
+QuantLib's analytic pricer to a maximum of 2.69 basis points across five
+parameter scenarios. The accounting invariants hold unconditionally across
+four historical stress regimes (GFC 2008, Volmageddon 2018, Q4 2018, COVID
+2020) — a formal guarantee independent of empirical outcomes. Primary
+empirical results assume flat per-series implied volatility and zero
+transaction costs; a fixed-fee extension is proved as a separate theorem
+(`selfFinancingWithCost`), with proportional cost support deferred to future
+work.
 
 # Introduction {#sec-intro}
 
