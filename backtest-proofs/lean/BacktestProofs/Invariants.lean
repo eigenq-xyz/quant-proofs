@@ -288,6 +288,33 @@ theorem selfFinancing (p : Portfolio) (t : Trade) (pos : Position)
   rw [hMark, hPrice]
   ring
 
+/-! ### Self-Financing With Cost -/
+
+/-!
+  **Proof sketch for `selfFinancingWithCost`:**
+  1. Unfold `applyTrade`: `newCash = p.cash - (t.deltaQuantity * t.executionPrice + t.fee)`.
+  2. Unfold `Portfolio.value` on both sides via `valueIdentity`:
+     `PV = cash + sumPositionValues positions`.
+  3. The cash component changes by `-(t.deltaQuantity * t.executionPrice + fee)`.
+  4. The position value component changes by `+t.deltaQuantity * t.executionPrice`
+     (same reasoning as `selfFinancing`: trade at mark price ⇒ no MTM gain/loss on
+     the pre-existing position, only the new shares valued at executionPrice = markPrice).
+  5. Net change: `-(t.deltaQuantity * t.executionPrice + fee) + t.deltaQuantity * t.executionPrice = -fee`.
+  6. Proof reduces to arithmetic on `Int` after rewriting with `valueUpdateFormula`
+     (or directly with `cashUpdateCorrect` + the sumPositionValues lemmas); `ring` or
+     `linarith` closes the goal.
+  Useful mathlib lemmas: `Int.add_comm`, `Int.sub_add_cancel`; `ring` tactic should
+  close all arithmetic goals once the rewrite chain is complete.
+-/
+
+/-- A trade that is self-financing except for a known fee changes portfolio value by exactly −fee. -/
+theorem selfFinancingWithCost (p : Portfolio) (t : Trade) (fee : Int) (pos : Position)
+    (h_fee         : t.fee = fee)
+    (hPos          : p.getPosition t.assetId = some pos)
+    (hPrice        : t.executionPrice = pos.markPrice) :
+    (applyTrade p t).portfolioValue = p.portfolioValue - fee := by
+  sorry
+
 /-! ## Well-Formedness Invariants (v0.3.2) -/
 
 /-- An empty portfolio is well-formed: no positions, so the condition is vacuously true. -/
