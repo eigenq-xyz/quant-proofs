@@ -21,6 +21,18 @@ Each subdir has its own CLAUDE.md with architecture details. Read that before wo
 - Licensed data (OptionMetrics/WRDS, Polygon paid) never committed. See `/source-financial-data`.
 - No private content: no GPA, grades, target firm names in strategy context, resume paths, or application timelines.
 
+## Planning
+
+Open GitHub issues for all action items; close them in the same PR cycle. Check issues and
+milestones at session start:
+
+```bash
+gh issue list --state open
+gh api repos/eigenq-xyz/quant-proofs/milestones --jq '.[] | {number,title,due_on,open_issues}'
+```
+
+Active milestones: #1 SSRN preprint (2026-08-01) · #2 JAR submission (2026-11-30).
+
 ## Skills and agents
 
 Run `/onboard-to-eigenq` for the full codebase briefing.
