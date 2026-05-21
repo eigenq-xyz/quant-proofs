@@ -160,6 +160,18 @@ ScheduleWakeup(delaySeconds=600, reason="Read claude-review comment body on PR #
 
 If the review is still IN_PROGRESS when a wakeup fires, reschedule at 270s.
 
-## Do all five steps in a single message
+## Step 6 — close resolved issues
+
+Before finishing, scan open issues for any this PR resolves:
+
+```bash
+gh issue list --state open --label ""
+```
+
+Close resolved issues with `gh issue close N` and ensure the PR body contains
+`closes #N` for each. Wiring the closure to the PR keeps the milestone burndown
+accurate and makes planning visible across sessions.
+
+## Do all six steps in a single message
 
 Call all necessary tools in one response — do not pause between steps.

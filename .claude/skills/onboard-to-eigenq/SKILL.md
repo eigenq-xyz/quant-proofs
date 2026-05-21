@@ -96,6 +96,29 @@ Every routing decision is emitted as a `DecisionRecord` JSON object. The Lean 4 
 `risk_score_nonneg`) and validates traces via `lake exe verify-trace <trace.json>`.
 **Before working here:** read `mortgage-proofs/CLAUDE.md`.
 
+## Session start checklist
+
+Run these at the start of every session before doing any substantive work:
+
+```bash
+# 1. Live skill/agent roster (changes frequently)
+ls .claude/skills/ && ls .claude/agents/
+
+# 2. Open PRs + any pending claude-review comments
+gh pr list
+gh pr view <open-PR> --comments
+
+# 3. Open issues and milestone progress (canonical planning system)
+gh issue list --state open
+gh api repos/eigenq-xyz/quant-proofs/milestones --jq '.[] | {number,title,due_on,open_issues}'
+```
+
+Active milestones: #1 SSRN preprint (2026-08-01) · #2 JAR submission (2026-11-30).
+
+When new action items surface (from agents, code review, or conversation), open a GH issue
+immediately rather than tracking in conversation. Close issues in the same PR cycle using
+`closes #N` in the PR body.
+
 ## Navigating the repo: which skill to run
 
 | Task | Skill to invoke first |
