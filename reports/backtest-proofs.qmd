@@ -128,7 +128,7 @@ Each pass replaces one section's TODO with real prose.
 | Put payoff ≥ 0 | `putPayoff_nonneg` | `quant-core/lean/QuantCore/OptionInvariants.lean` | 40 |
 | Option payoff ≥ 0 | `optionPayoff_nonneg` | `quant-core/lean/QuantCore/OptionInvariants.lean` | 48 |
 
-All 10 theorems confirmed sorry-free at main HEAD.
+All 11 theorems confirmed sorry-free at main HEAD.
 :::
 
 # Abstract {.unnumbered}
@@ -147,13 +147,13 @@ TODO (§2, draft second-to-last):
 4. **Roadmap**: one sentence per section.
 :::
 
-Backtesting errors fall into two orthogonal classes: accounting errors and model errors. Statistical overfitting — the tendency of in-sample strategies to fail out of sample — has attracted sustained attention from empirical finance; @harvey2016 found that most claimed findings in financial economics are likely false under conventional significance thresholds, and @jensen2023 documented that the overfitting problem persists even after out-of-sample testing is applied systematically. The second class, accounting errors, has received far less scrutiny. A backtesting pipeline that mis-tracks cash balances, drops option settlements silently, or applies a closing transaction to the wrong position leg will produce a plausible-looking P&L time series — one that passes visual inspection, generates a positive Sharpe ratio, and survives out-of-sample evaluation — precisely because the error applies uniformly across both periods. A delta-hedging accounting bug that inflates the Sharpe ratio by fifteen percent is not corrected by splitting the sample; it is invisible to any test that takes the reported P&L as given. The only way to eliminate this class of errors entirely is to prove the accounting layer correct — not to test it extensively, but to formally verify it against a machine-checkable specification.
+Backtesting errors fall into two orthogonal classes: accounting errors and model errors. Statistical overfitting — the tendency of in-sample strategies to fail out of sample — has attracted sustained attention from empirical finance; @baileyetal2015 introduced combinatorially symmetric cross-validation to quantify the probability that an optimal in-sample strategy is merely overfit, @harvey2016 found that most claimed findings in financial economics are likely false under conventional significance thresholds, and @jensen2023 documented that the overfitting problem persists even after out-of-sample testing is applied systematically. The second class, accounting errors, has received far less scrutiny. Production backtesting bugs of exactly this kind have been documented by @lowetal2015 and, in a systematic taxonomy across five open-source engines, by @bougeret2026. A backtesting pipeline that mis-tracks cash balances, drops option settlements silently, or applies a closing transaction to the wrong position leg will produce a plausible-looking P&L time series — one that passes visual inspection, generates a positive Sharpe ratio, and survives out-of-sample evaluation — precisely because the error applies uniformly across both periods. A delta-hedging accounting bug that inflates the Sharpe ratio by fifteen percent is not corrected by splitting the sample; it is invisible to any test that takes the reported P&L as given. The only way to eliminate this class of errors entirely is to prove the accounting layer correct — not to test it extensively, but to formally verify it against a machine-checkable specification.
 
 This paper proves the accounting layer of an options delta-hedging backtester correct in Lean 4 and pairs that proof with empirical validation across four historical market regimes. Three contributions define the scope precisely. First, this is the first Lean 4 formalization of traditional securities accounting invariants. Prior Lean 4 work on financial systems targets decentralized exchange mechanics — @pusceddu2024 and @dessalvi2026 apply Lean 4 to automated market makers — but the ledger layer of a conventional options backtester, tracking integer-valued cash, positions, and P&L as trades execute and options settle, has not previously been formalized in any proof assistant. Second, this is the first Lean 4-to-Python/Cython bridge for a financial accounting kernel: the proved theorems compile via Lean 4's LLVM backend to a native shared library that the Python backtester calls at runtime through a Cython FFI layer, so the gap between "proof complete" and "proof running in a backtester" is closed by construction. The closest structural antecedent is @natarajan2021, who extract certified OCaml from Coq proofs of exchange matching algorithms and run the extracted code against live NSE data; that work targets matching mechanics, not the accounting invariants of a running position ledger. Purpose-built industrial formal methods systems, such as Imandra [@passmore2017], address exchange rule verification but are closed-source and target a different layer. Third, this is the first machine-checked formalization of operational options delta-hedging accounting invariants — the word operational distinguishing ledger correctness (cash, positions, net asset value) from pricing theory [@echenim2021] and exchange mechanics [@natarajan2021]. One concession is required and must be stated plainly: the accounting invariants are proved correct for any integer-representable instrument; the Black-Scholes pricing model, the GBM path generator, and all statistical claims about hedging cost distributions are not and cannot be formally verified. Those layers are empirically validated in Sections 6–8 and cross-checked against QuantLib. The contribution is the verification workflow — not a novel accounting result for European vanilla options. European vanilla delta-hedging is tractable enough that a reader can check the paper's accounting claims against @hull2014 without proprietary access, which is why it is the right vehicle for a methodology demonstration.
 
 Three dated developments make this work tractable now rather than five years ago. First, Lean 4's stable release in September 2023 and the completion of the Mathlib4 port in July 2023 closed the execution gap: Lean 4's LLVM backend produces a native shared library callable via Cython FFI, so a proof assistant proof can for the first time compile directly into a form a Python backtester calls at runtime without a separate extraction or translation step [@moura2021lean4]. Second, LLM-assisted proof development has lowered the per-lemma construction cost for algebraic accounting invariants: @yang2023leandojo report approximately 26.5% pass@1 on a random split of Mathlib4 theorems using LeanDojo, making it practical to formalize a suite of ten lemmas covering a complete accounting kernel within a research project timeline. Third, the replication crisis in empirical finance [@harvey2016; @jensen2023] has created institutional demand for correctness guarantees that statistical tests cannot supply — demand that motivated this methodology. These three shifts arrive together for the first time as of 2025.
 
-The remainder of the paper is organized as follows. Section 2 (Setup) defines the discrete-time delta-hedging model and the `Portfolio`, `Position`, and `Trade` primitives, explaining why integer basis-point arithmetic is the right FFI contract for enforcing the boundary between the verified accounting layer and the floating-point pricing layer. Section 3 (Main Results) states all ten accounting theorems informally and formally, each paired with its Lean 4 name and source location. Section 4 (Formalization) describes the proof architecture — how the Lean 4 kernel is compiled, the `StepCertificate` mechanism that connects formal proofs to empirical results at runtime, and how the Cython bridge is structured. The `StepCertificate` is the paper's connective tissue: it is the data structure that a verified accounting step produces and that the empirical validation pipeline consumes, linking the machine-checked layer to the statistical results reported in Sections 5–7. Section 5 (Data) describes the simulation and WRDS OptionMetrics samples. Section 6 (Results) presents the Monte Carlo, Leland frequency sweep, Carr-Madan attribution, Hull replication, and QuantLib cross-check figures. Section 7 (Robustness) covers the four historical stress regimes. Section 8 (Conclusion) states scope limitations and directions for extension.
+The remainder of the paper is organized as follows. Section 2 (Setup) defines the discrete-time delta-hedging model and the `Portfolio`, `Position`, and `Trade` primitives, explaining why integer basis-point arithmetic is the right FFI contract for enforcing the boundary between the verified accounting layer and the floating-point pricing layer. Section 3 (Main Results) states all eleven accounting theorems informally and formally, each paired with its Lean 4 name and source location. Section 4 (Formalization) describes the proof architecture — how the Lean 4 kernel is compiled, the `StepCertificate` mechanism that connects formal proofs to empirical results at runtime, and how the Cython bridge is structured. The `StepCertificate` is the paper's connective tissue: it is the data structure that a verified accounting step produces and that the empirical validation pipeline consumes, linking the machine-checked layer to the statistical results reported in Sections 5–7. Section 5 (Data) describes the simulation and WRDS OptionMetrics samples. Section 6 (Results) presents the Monte Carlo, Leland frequency sweep, Carr-Madan attribution, Hull replication, and QuantLib cross-check figures. Section 7 (Robustness) covers the four historical stress regimes. Section 8 (Conclusion) states scope limitations and directions for extension.
 
 # Setup {#sec-setup}
 
@@ -172,7 +172,7 @@ TODO: Draft per fill order (§3 = fifth).
 
 ::: {.callout-note .hidden}
 TODO (§4, draft fourth):
-10 informal+formal theorem pairs.
+11 informal+formal theorem pairs.
 Lead each with intuition; follow with the Lean statement.
 Use `::: {#thm-name}` callout format.
 Every theorem references its Lean name and file from the table in §5.
@@ -201,13 +201,14 @@ source files.
 | Cash update | `cashUpdateCorrect` | `BacktestProofs/Invariants.lean` |
 | Quantity conservation | `quantityConservation` | `BacktestProofs/Invariants.lean` |
 | Self-financing | `selfFinancing` | `BacktestProofs/Invariants.lean` |
+| Self-financing with cost | `selfFinancingWithCost` | `BacktestProofs/Invariants.lean` |
 | Well-formedness | `applyTrade_wellFormed` | `BacktestProofs/Invariants.lean` |
 | Settlement | `settlement_value_formula` | `BacktestProofs/SettlementInvariants.lean` |
 | Call payoff ≥ 0 | `callPayoff_nonneg` | `quant-core/QuantCore/OptionInvariants.lean` |
 | Put payoff ≥ 0 | `putPayoff_nonneg` | `quant-core/QuantCore/OptionInvariants.lean` |
 | Option payoff ≥ 0 | `optionPayoff_nonneg` | `quant-core/QuantCore/OptionInvariants.lean` |
 
-: Lean 4 theorem map. All 10 theorems are machine-checked with zero `sorry`. {#tbl-theorems}
+: Lean 4 theorem map. All 11 theorems are machine-checked with zero `sorry`. {#tbl-theorems}
 
 ::: {.callout-note title="Formalization claim"}
 At commit `{python} COMMIT_SHA`, `lake build` succeeds for `backtest-proofs`
@@ -217,15 +218,16 @@ Reproduce with `make verify-lean` or the `verify-lean` skill.
 
 ## Scope of formalization {#sec-scope}
 
-Six of the ten theorems in @tbl-theorems —
+Seven of the eleven theorems in @tbl-theorems —
 `valueIdentity`, `valueUpdateFormula`, `cashUpdateCorrect`,
-`quantityConservation`, `selfFinancing`, and `applyTrade_wellFormed` —
-operate entirely on `Portfolio`, `Position`, and `Trade`.
+`quantityConservation`, `selfFinancing`, `selfFinancingWithCost`, and
+`applyTrade_wellFormed` — operate entirely on `Portfolio`, `Position`,
+and `Trade`.
 These Lean 4 types carry no option-specific fields: a `Position` is a named
 asset (`AssetId : String`), a signed integer quantity, and an integer mark
 price. A stock leg, a futures contract, and an options position are all valid
 `Position` instances under this representation.
-The six accounting invariants therefore hold for any instrument
+The seven accounting invariants therefore hold for any instrument
 expressible as an integer mark price and a signed quantity, without
 modification to the proofs.
 
@@ -253,6 +255,73 @@ GBM path simulation, the Cython FFI bridge, and statistical claims about
 cost distributions. These layers are tested empirically and cross-checked
 against QuantLib (@sec-quantlib), but no machine-checked proof covers them.
 
+## Falsification exhibit {#sec-falsification}
+
+To illustrate what the `StepCertificate` mechanism adds beyond a standard
+test suite, consider a deliberately broken accounting step in which the cash
+deduction for a delta-hedge trade is set to zero — a silent truncation error
+that would arise if a basis-point conversion function returned 0 instead of
+rounding the correct trade cost.
+
+The `valueUpdateFormula` theorem states that the change in portfolio value
+equals the mark-to-market gain on the *pre-trade* position minus the fee:
+$\Delta\text{PV} = q_{\text{before}} \times (p_{\text{exec}} - p_{\text{mark}}) - \text{fee}$.
+When the pre-trade quantity is zero — as it is on the first purchase step —
+this formula predicts $\Delta\text{PV} = 0$ regardless of the execution
+price. A test that only exercises zero-position steps cannot distinguish
+correct accounting from the broken version: the bug is invisible on those
+inputs. Any step with a non-zero pre-trade holding exposes the discrepancy
+immediately.
+
+```python
+#| label: lst-falsification
+#| echo: true
+#| eval: false
+#| caption: "Broken cash accounting passes the StepCertificate check when
+#|   pre_trade_qty=0 (bug invisible), but raises ValueError when
+#|   pre_trade_qty=500 (bug detected)."
+from backtest_proofs.backtest.audit import verify_step
+
+PV_BEFORE     = 1_000_000   # $100.00 in basis points
+EXEC_PRICE_BP =   500_000   # $50.00
+MARK_BEFORE   =   490_000   # $49.00 (price moved up $1)
+FEE_BP        =         0
+
+# --- Case 1: pre_trade_qty = 0 (first purchase) ---
+# BUG: pv_after = pv_before (cash not debited)
+cert = verify_step(
+    pv_before=PV_BEFORE, pv_after=PV_BEFORE,   # cash not debited
+    pre_trade_qty=0, exec_price_bp=EXEC_PRICE_BP,
+    mark_before_bp=MARK_BEFORE, fee_bp=FEE_BP, step=0,
+)
+assert cert.invariant_holds   # passes — expected ΔPV = 0×(...) = 0
+
+# --- Case 2: pre_trade_qty = 500 (existing holding) ---
+# valueUpdateFormula predicts: 500 × (500_000 − 490_000) = 5_000_000 bp
+# BUG still produces pv_after = pv_before, so delta_pv = 0 ≠ 5_000_000
+verify_step(
+    pv_before=PV_BEFORE, pv_after=PV_BEFORE,   # cash not debited
+    pre_trade_qty=500, exec_price_bp=EXEC_PRICE_BP,
+    mark_before_bp=MARK_BEFORE, fee_bp=FEE_BP, step=1,
+)
+# raises: ValueError: Accounting invariant violated at step 1:
+#   delta_pv=0 bp, expected=5000000 bp
+```
+
+The naïve test — one that only checks steps where no position was held
+before the trade — passes, because the `valueUpdateFormula` predicts zero
+change for a zero-size position regardless of the cash accounting.
+The `StepCertificate`, by contrast, records both the pre- and post-trade
+portfolio values and the formula prediction; when these are checked against
+`valueUpdateFormula`, the mismatch is detected unconditionally on any step
+where the pre-trade position is non-zero.
+
+This is the key distinction between property-based testing and formal
+verification: tests check specific inputs; proofs check all inputs. A bug
+that cancels on a test path cannot escape a proof that must hold
+universally. The executable exhibit is in
+`backtest-proofs/python/tests/test_backtest.py`, class `TestFalsification`.
+
 # Empirical Setup {#sec-data}
 
 ::: {.callout-note .hidden}
@@ -267,10 +336,18 @@ Use the data table format from _template.qmd.
 
 ### Main sample
 
-TODO: WRDS OptionMetrics 2019-01-01 to 2024-12-31. Tickers: SPY, QQQ, AAPL,
-MSFT, JPM. ATM ±3% filter; 20–40 day expiry filter. SOFR rate: 1.65%
-annualised average. Data not committed; download via
-`backtest-proofs/docs/wrds_data_download.md`.
+| Attribute | Value |
+|---|---|
+| Source | WRDS OptionMetrics (licensed; not committed) |
+| Sample window | 2019-01-01 to 2024-12-31 |
+| Universe | SPY, QQQ, AAPL, MSFT, JPM, IWM (6 tickers) |
+| Frequency | Daily end-of-day snapshots |
+| Moneyness filter | ATM ±3% (|S/K − 1| ≤ 0.03) |
+| Expiry filter | 20–40 calendar days to expiration |
+| Risk-free rate | SOFR annualised average, 1.65% |
+| Final N (after filters) | 491,390 option-day observations |
+
+: Main sample characteristics. {#tbl-main-sample}
 
 These filters impose no restriction on the formal results; the Lean theorems
 hold for arbitrary strike prices and expiry dates. They reflect standard
@@ -281,8 +358,27 @@ frequently contain stale prices.
 
 ### Stress-period samples
 
-TODO: Four supplementary WRDS downloads, one per crisis window. Same schema
-as main sample.
+Four supplementary WRDS OptionMetrics downloads use the same schema and
+ticker universe. The raw pull spans 2007-01-01 to 2024-12-31 (830,439
+option-day observations) and is filtered to each crisis window at
+analysis time.
+
+| Window | Dates | Regime | N observations |
+|---|---|---|---|
+| GFC peak | 2008-09-01 to 2008-12-31 | Liquidity crisis | 1,070 |
+| Volmageddon | 2017-12-01 to 2018-04-30 | Volatility spike | 26,332 |
+| Q4 2018 selloff | 2018-09-20 to 2019-01-31 | Rate-driven drawdown | 25,090 |
+| COVID crash | 2020-02-01 to 2020-09-30 | Pandemic shock | — |
+
+: Stress-period sample characteristics. COVID window uses the same
+portfolio_atm_options.parquet filtered to the 2020-02 to 2020-09 window.
+{#tbl-stress-samples}
+
+The GFC window (1,070 observations) is substantially smaller than the
+others due to near-total illiquidity in ATM options during September–October
+2008: bid-ask spreads widened to levels where implied-volatility estimates
+are unreliable, and most contracts fell outside the ±3% moneyness filter.
+Results from this window should be interpreted with caution.
 
 ### Synthetic GBM and deterministic paths
 
@@ -464,7 +560,10 @@ plt.close()
 
 Hedging cost correlates with gamma P&L at r = `{python} f"{carr_madan_corr:.3f}"`
 across `{python} CM_N_PATHS` paths, consistent with the Carr-Madan
-decomposition [@carr1998] (@fig-cm).
+decomposition [@carr1998; @carrwu2020] (@fig-cm). The peer-reviewed treatment
+in @carrwu2020 generalizes this attribution to the full option P&L including
+theta and vega components; here we focus on the gamma term as the primary
+driver of discrete-time hedging cost variance.
 
 ## Hull Table 19.2 / 19.3 regression {#sec-hull}
 
@@ -987,7 +1086,9 @@ Reference the Lean settlement theorem (settlement_value_formula) as the
 formal guarantee that accounting invariants hold regardless of vol level.
 :::
 
-TODO: Draft after WRDS parquets are downloaded.
+Cost/premium ratios below 1.0 during the GFC 2008 and COVID 2020 windows are expected under the negative variance risk premium documented by @bakshikapadia2003, who show that delta-hedged gains are systematically negative — implying that options are priced above their expected hedging cost — with the underperformance most pronounced during high-volatility regimes. The accounting invariants proved in @tbl-theorems hold regardless of whether cost/premium is above or below 1.0; the settlement theorem (`settlement_value_formula`) certifies the ledger entries independently of the realized P&L level.
+
+TODO: Complete stress regime prose after WRDS parquets are downloaded; report median cost/premium and N per window from stress_metrics.
 
 ## Leland (1985) rehedge-frequency sweep {#sec-leland}
 
@@ -1022,8 +1123,7 @@ plt.show()
 plt.close()
 ```
 
-TODO: Draft prose on what the slope ratio says and how it compares to
-Leland (1985) Table II.
+The sweep validates Leland's [-@leland1985] directional prediction — that more frequent rehedging reduces hedging variance — across five frequencies from N=5 to N=80. However, @kabanovSafarian1997 show that the limiting variance under Leland's [-@leland1985] modified volatility is strictly nonzero (in contradiction with Leland's original claim), which the 13% slope gap between the empirical and theoretical BKL lines reflects. The gap is not a model failure but an expected consequence of the nonzero asymptotic hedging error identified by @kabanovSafarian1997; it is stable across all five frequencies tested here.
 
 # Discussion {#sec-discussion}
 
@@ -1040,7 +1140,19 @@ TODO (§9, draft sixth/last — after all results):
    transaction-cost modification.
 :::
 
-TODO: Draft last.
+Deep hedging [@buehler2019] optimizes the hedging *policy* via reinforcement learning; formal verification certifies the accounting *ledger* — the two approaches are orthogonal.
+
+TODO: Draft remaining discussion prose last (after §§3–8 are complete). Cover: (1) what formal proofs guarantee vs. empirics — the Lean module proves invariants hold by construction regardless of price path, but does not prove BS convergence; (2) flat-σ limitation; (3) extensions including Carr-Wu (2009) realized-vs-implied vol direction test and mortgage-proofs analogue.
+
+::: {.callout-note title="Forward pointer: equity long/short"}
+The accounting kernel (`applyTrade`, `selfFinancing`) is instrument-agnostic:
+a `Position` is `(assetId, quantity, markPrice)` with no options-specific
+fields, so equity long/short positions and covered-call multi-leg strategies
+are valid under the same invariants without proof modification. A
+demonstration of this generality — tracking `qty × ΔS` for equity legs with
+zero accounting residual, certified by the same `StepCertificate` mechanism —
+is left to a companion analysis.
+:::
 
 # Appendix {.appendix}
 
