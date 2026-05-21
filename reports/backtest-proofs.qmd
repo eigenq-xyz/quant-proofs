@@ -287,8 +287,8 @@ in @sec-scope.
 
 The Python layer implements a pluggable `HedgingStrategy` protocol. The built-in
 `SingleLegStrategy` encapsulates all options-specific logic for a single written European
-option: it computes the Black-Scholes delta at each rebalancing step using the standard
-Garman-Kohlhagen formula, determines the rebalancing trade quantity as
+option: it computes the Black-Scholes delta at each rebalancing step using `bs_greeks`
+from `backtest_proofs.pricer.black_scholes`, determines the rebalancing trade quantity as
 $(\Delta_i - \Delta_{i-1}) \cdot N$, converts the execution price to basis points via
 `to_bp`, and dispatches to the Lean-exported `applyTrade` function through the Cython
 bridge. The strategy object holds the contract parameters $(K, r, \sigma, N)$ and
