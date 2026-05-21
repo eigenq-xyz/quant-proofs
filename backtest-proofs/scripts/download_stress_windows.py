@@ -1,8 +1,15 @@
 """Convert WRDS web-portal CSV exports of SPX options into stress-window parquets.
 
-This script is the manual-download companion to the WRDS web portal.  It does
-NOT require the ``wrds`` Python package; it only needs ``pandas`` and
-``pyarrow`` (both installed by ``uv sync --extra dev``).
+DEPRECATED: The preferred workflow is now a single wide-window download
+(2007-01-01 to 2024-12-31) via ``scripts/wrds_csv_to_parquet.py``, which
+automatically writes all sub-window parquets in one pass.  See
+``docs/wrds_data_download.md`` for the updated instructions.
+
+This script remains available as a fallback for separate per-window CSV
+downloads (e.g. if only one stress window needs to be refreshed).
+
+This script does NOT require the ``wrds`` Python package; it only needs
+``pandas`` and ``pyarrow`` (both installed by ``uv sync --extra dev``).
 
 How to download the three stress windows from WRDS
 ----------------------------------------------------
@@ -15,7 +22,7 @@ For each of the three windows below, repeat these steps on the WRDS web portal
   2. Date range — set the window dates:
        GFC-2008:          2008-09-15 to 2008-11-21
        Volmageddon-2018:  2018-01-22 to 2018-02-16
-       Flash Crash-2015:  2015-08-17 to 2015-08-28
+       Dec 2018 Q4:       2018-10-01 to 2019-01-31
 
   3. Security filter — search for ticker "SPX" and select it.
      (SPX = S&P 500 index options; not SPY the ETF.)
@@ -30,16 +37,16 @@ For each of the three windows below, repeat these steps on the WRDS web portal
   6. Download and note the path.  Suggested filenames:
        spx_opprcd_gfc_2008.csv
        spx_opprcd_volm_2018.csv
-       spx_opprcd_flash_2015.csv
+       spx_opprcd_dec2018.csv
 
 Usage
 -----
 From the backtest-proofs directory:
 
     uv run python scripts/download_stress_windows.py \\
-        --gfc   ~/Downloads/spx_opprcd_gfc_2008.csv \\
-        --volm  ~/Downloads/spx_opprcd_volm_2018.csv \\
-        --flash ~/Downloads/spx_opprcd_flash_2015.csv
+        --gfc    ~/Downloads/spx_opprcd_gfc_2008.csv \\
+        --volm   ~/Downloads/spx_opprcd_volm_2018.csv \\
+        --dec2018 ~/Downloads/spx_opprcd_dec2018.csv
 
 Omit any flag to skip that window (useful when re-running after a partial
 download).
@@ -48,7 +55,7 @@ Output
 ------
   data/stress_gfc_2008.parquet
   data/stress_volm_2018.parquet
-  data/stress_flash_2015.parquet
+  data/stress_dec2018.parquet
 
 These three files plus the existing ``data/portfolio_atm_options.parquet``
 satisfy the ``WRDS_PRESENT`` gate in ``reports/backtest-proofs.qmd``, causing
@@ -117,12 +124,12 @@ _SPECS: dict[str, _WindowSpec] = {
         r=0.015,
         out_stem="stress_volm_2018",
     ),
-    "flash": _WindowSpec(
-        label="FlashCrash-2015",
-        start_date="2015-08-17",
-        end_date="2015-08-28",
-        r=0.005,
-        out_stem="stress_flash_2015",
+    "dec2018": _WindowSpec(
+        label="Dec2018-Q4Selloff",
+        start_date="2018-10-01",
+        end_date="2019-01-31",
+        r=0.0225,
+        out_stem="stress_dec2018",
     ),
 }
 
@@ -234,8 +241,8 @@ def _parse_args() -> argparse.Namespace:
                    help="opprcd CSV for GFC-2008 (2008-09-15 to 2008-11-21)")
     p.add_argument("--volm",  type=Path, default=None, metavar="CSV",
                    help="opprcd CSV for Volmageddon-2018 (2018-01-22 to 2018-02-16)")
-    p.add_argument("--flash", type=Path, default=None, metavar="CSV",
-                   help="opprcd CSV for Flash Crash-2015 (2015-08-17 to 2015-08-28)")
+    p.add_argument("--dec2018", type=Path, default=None, metavar="CSV",
+                   help="opprcd CSV for Dec 2018 Q4 selloff (2018-10-01 to 2019-01-31)")
     return p.parse_args()
 
 
@@ -245,13 +252,13 @@ def main() -> None:
     inputs: dict[str, Path | None] = {
         "gfc": args.gfc,
         "volm": args.volm,
-        "flash": args.flash,
+        "dec2018": args.dec2018,
     }
 
     if not any(inputs.values()):
         print(__doc__)
         raise SystemExit(
-            "No CSV files specified.  Pass at least one of --gfc, --volm, --flash."
+            "No CSV files specified.  Pass at least one of --gfc, --volm, --dec2018."
         )
 
     _DATA.mkdir(exist_ok=True)
@@ -283,6 +290,9 @@ def main() -> None:
         "\nDone.  Once all three stress parquets plus portfolio_atm_options.parquet"
         "\nare in data/, WRDS_PRESENT will be True and fig-stress will render."
         "\nReminder: never commit .parquet files — they are .gitignored."
+        "\n\nNote: the preferred workflow is to use wrds_csv_to_parquet.py with a"
+        "\nsingle wide-window download (2007-2024) — it writes all sub-windows"
+        "\nautomatically.  See docs/wrds_data_download.md."
     )
 
 

@@ -68,13 +68,13 @@ STRESS_REGIMES: list[RegimeParameters] = [
         description="Short-volatility unwind",
     ),
     RegimeParameters(
-        label="FlashCrash-2015",
-        sigma=0.40,
-        r=0.005,
-        start_date="2015-08-17",
-        end_date="2015-08-28",
-        peak_vix=40.74,
-        description="August 2015 ETF flash crash",
+        label="Dec2018-Q4Selloff",
+        sigma=0.35,
+        r=0.0225,
+        start_date="2018-10-01",
+        end_date="2019-01-31",
+        peak_vix=36.20,
+        description="Q4 2018 Fed/trade-war selloff (S&P -20% peak-to-trough)",
     ),
 ]
 

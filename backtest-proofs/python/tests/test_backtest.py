@@ -1007,7 +1007,11 @@ class TestHoldoutValidation:
 #   data/portfolio_atm_options.parquet  — 2019-2024, covers COVID 2020
 #   data/stress_gfc_2008.parquet        — 2008-09-01 to 2008-12-31
 #   data/stress_volm_2018.parquet       — 2017-12-01 to 2018-04-30
-#   data/stress_flash_2015.parquet      — 2015-07-01 to 2015-10-31
+#   data/stress_dec2018.parquet         — 2018-10-01 to 2019-01-31
+#
+# Note: the Aug 2015 flash crash was an intraday event invisible in daily
+# OptionMetrics data; it has been replaced by the Dec 2018 Q4 selloff
+# (S&P -20% peak-to-trough), which is fully visible at daily frequency.
 #
 # See docs/wrds_data_download.md for download instructions.
 # Tests are skipped gracefully when the data file is absent.
@@ -1017,7 +1021,7 @@ class TestHoldoutValidation:
 _R_COVID_2020 = 0.0025   # Fed cut to ~0 % by Mar 15, 2020; average ≈ 0.25 %
 _R_GFC_2008 = 0.01       # Fed funds fell 2 % → 0.25 % during window
 _R_VOLM_2018 = 0.015     # Fed funds ~1.5 % early 2018
-_R_FLASH_2015 = 0.005    # near-zero rates, pre-liftoff
+_R_DEC2018 = 0.0225      # Fed funds ~2.25 % (last hike Dec 19, 2018)
 
 _STRESS_MIN_SERIES = 5   # minimum qualifying option series to run assertions
 
@@ -1219,19 +1223,21 @@ class TestStressVolmageddon2018:
         )
 
 
-class TestStressFlashCrash2015:
-    """Aug 2015 flash crash — real WRDS OptionMetrics data.
+class TestStressDecember2018:
+    """December 2018 Q4 selloff — real WRDS OptionMetrics data.
 
-    Date window: 2015-08-17 to 2015-08-28 (pre-crash week + crash + partial recovery).
-    SPY opened down ~7 % on Aug 24 due to ETF pricing failures; VIX touched 53.
-    Stressor is intraday gap risk — OptionMetrics records daily closing prices,
-    so the intraday gap appears as an overnight gap in the observed price path.
-    Data file: data/stress_flash_2015.parquet (see wrds_data_download.md).
+    Date window: 2018-10-01 to 2019-01-31 (onset through recovery).
+    S&P 500 fell ~20 % peak-to-trough (Sep 20 high to Dec 24 low); VIX
+    peaked at ~36.  Driven by Fed rate-hike fears, trade-war uncertainty,
+    and year-end liquidity withdrawal.  Fully visible in daily closing
+    prices — qualitatively different from Volmageddon (positioning unwind)
+    and the GFC (sustained credit stress).
+    Data file: data/stress_dec2018.parquet (see wrds_data_download.md).
     """
 
-    _DATA_FILE = _DATA_ROOT / "stress_flash_2015.parquet"
-    _DATE_START = "2015-08-17"
-    _DATE_END = "2015-08-28"
+    _DATA_FILE = _DATA_ROOT / "stress_dec2018.parquet"
+    _DATE_START = "2018-10-01"
+    _DATE_END = "2019-01-31"
 
     def _data_available(self) -> bool:
         try:
@@ -1246,36 +1252,43 @@ class TestStressFlashCrash2015:
             pytest.skip("Data present — run stress tests instead")
 
     def test_all_certificates_pass(self) -> None:
-        """All step certificates pass through the Aug 2015 flash crash gap."""
+        """All step certificates pass through the Dec 2018 Q4 selloff paths."""
         if not self._data_available():
-            pytest.skip("stress_flash_2015.parquet not present")
+            pytest.skip("stress_dec2018.parquet not present")
         import pandas as pd
 
         ratios, n = _run_stress_window(
             pd.read_parquet(self._DATA_FILE),
             self._DATE_START, self._DATE_END,
-            _R_FLASH_2015, "FlashCrash-2015",
+            _R_DEC2018, "Dec 2018 Q4 Selloff",
         )
         assert n >= _STRESS_MIN_SERIES, (
-            f"Only {n} qualifying series in flash crash window — "
-            f"window is only ~8 trading days; widen date range if needed"
+            f"Only {n} qualifying series in Dec 2018 window — check data coverage"
         )
 
-    def test_cost_premium_plausible(self) -> None:
-        """Cost/premium in a plausible range for a gap-risk window [0.8, 5.0]."""
+    def test_cost_premium_above_one(self) -> None:
+        """Median cost/premium > 1.0: realized vol exceeded implied during Q4 selloff.
+
+        Options written at Oct 2018 implied vols significantly understated
+        the subsequent realized vol as the S&P fell ~20 % through Dec 24.
+        Delta-hedgers who wrote calls at pre-selloff implied vols are
+        expected to incur net losses — cost/premium > 1.0 is the empirically
+        honest result for this window.
+        """
         if not self._data_available():
-            pytest.skip("stress_flash_2015.parquet not present")
+            pytest.skip("stress_dec2018.parquet not present")
         import numpy as np
         import pandas as pd
 
         ratios, n = _run_stress_window(
             pd.read_parquet(self._DATA_FILE),
             self._DATE_START, self._DATE_END,
-            _R_FLASH_2015, "FlashCrash-2015",
+            _R_DEC2018, "Dec 2018 Q4 Selloff",
         )
         assert n >= _STRESS_MIN_SERIES
         median_ratio = float(np.median(ratios))
-        assert 0.8 <= median_ratio <= 5.0, (
-            f"Median cost/premium {median_ratio:.3f} outside plausible range "
-            f"[0.8, 5.0] for flash crash window"
+        assert median_ratio > 1.0, (
+            f"Expected cost/premium > 1.0 during Dec 2018 selloff; "
+            f"got {median_ratio:.3f}. "
+            f"If < 1.0, implied vol already exceeded realized — investigate."
         )
