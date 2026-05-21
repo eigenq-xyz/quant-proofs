@@ -1292,3 +1292,104 @@ class TestStressDecember2018:
             f"got {median_ratio:.3f}. "
             f"If < 1.0, implied vol already exceeded realized — investigate."
         )
+
+
+# ---------------------------------------------------------------------------
+# Falsification exhibit — shows what StepCertificate adds beyond a test suite
+# ---------------------------------------------------------------------------
+
+
+class TestFalsification:
+    """Demonstrates that StepCertificate catches accounting bugs that tests miss.
+
+    The bug under study: in a rebalancing step, the cash deduction for a
+    delta-hedge trade is set to zero — a silent truncation error that would
+    arise if a basis-point conversion function returned 0 instead of
+    rounding the correct trade cost.
+
+    A naïve test that only checks the step certificate on a path where the
+    pre-trade position size is zero will pass despite the bug, because the
+    ``valueUpdateFormula`` predicts zero change for a zero-size position
+    regardless of the cash accounting. The StepCertificate invariant check
+    catches the bug unconditionally on any step where the pre-trade
+    position is non-zero.
+    """
+
+    # Concrete basis-point values for both tests:
+    #   pv_before  = $100.00 → 1_000_000 bp
+    #   exec_price = $50.00  → 500_000 bp
+    #   mark_before = $49.00 → 490_000 bp  (price has moved up by $1)
+    #   fee        = $0.00   → 0 bp
+    _PV_BEFORE: int = 1_000_000
+    _EXEC_PRICE_BP: int = 500_000
+    _MARK_BEFORE_BP: int = 490_000
+    _FEE_BP: int = 0
+
+    def test_naive_test_passes_with_broken_cash_delta(self) -> None:
+        """A step with pre_trade_qty=0 passes verify_step even when pv_after
+        is wrong, because the formula predicts zero change for a zero position.
+
+        This is the "blind spot": a test that only exercises zero-position steps
+        cannot catch a cash-accounting bug.
+        """
+        from backtest_proofs.backtest.audit import verify_step
+
+        pre_trade_qty = 0  # no existing position — first purchase
+
+        # BUG: cash_delta is silently set to 0, so pv_after = pv_before.
+        # A correct implementation would debit the trade cost from cash,
+        # changing pv_after.  The bug is invisible here because
+        # expected_delta_pv = 0 * (exec - mark) - fee = 0.
+        pv_after_buggy = self._PV_BEFORE  # cash not debited
+
+        cert = verify_step(
+            pv_before=self._PV_BEFORE,
+            pv_after=pv_after_buggy,
+            pre_trade_qty=pre_trade_qty,
+            exec_price_bp=self._EXEC_PRICE_BP,
+            mark_before_bp=self._MARK_BEFORE_BP,
+            fee_bp=self._FEE_BP,
+            step=0,
+        )
+        # The certificate passes — the bug is invisible when pre_trade_qty=0.
+        assert cert.invariant_holds
+        assert cert.delta_pv == 0
+        assert cert.expected_delta_pv == 0
+
+    def test_step_certificate_catches_broken_cash_delta(self) -> None:
+        """StepCertificate raises ValueError when cash_delta=0 on a step with
+        a non-zero pre-trade position.
+
+        With 500 shares already held at $49, executing a trade at $50
+        changes portfolio value by 500 × ($50 − $49) = $5,000 per the
+        valueUpdateFormula.  The broken implementation leaves pv_after
+        equal to pv_before (cash not debited), producing delta_pv=0.
+        verify_step detects the mismatch and raises immediately.
+        """
+        import pytest as _pytest
+
+        from backtest_proofs.backtest.audit import verify_step
+
+        pre_trade_qty = 500  # 500 shares already held at mark $49
+
+        # Correct expected change per valueUpdateFormula:
+        #   500 × (500_000 − 490_000) − 0 = 500 × 10_000 = 5_000_000 bp
+        expected_correct = (
+            pre_trade_qty * (self._EXEC_PRICE_BP - self._MARK_BEFORE_BP)
+            - self._FEE_BP
+        )
+        assert expected_correct == 5_000_000  # sanity-check the arithmetic
+
+        # BUG: cash_delta is silently set to 0, so pv_after = pv_before.
+        pv_after_buggy = self._PV_BEFORE  # cash not debited
+
+        with _pytest.raises(ValueError, match="Accounting invariant violated"):
+            verify_step(
+                pv_before=self._PV_BEFORE,
+                pv_after=pv_after_buggy,
+                pre_trade_qty=pre_trade_qty,
+                exec_price_bp=self._EXEC_PRICE_BP,
+                mark_before_bp=self._MARK_BEFORE_BP,
+                fee_bp=self._FEE_BP,
+                step=1,
+            )

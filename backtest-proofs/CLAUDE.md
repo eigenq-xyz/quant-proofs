@@ -68,10 +68,10 @@ data/           — Encrypted market data (git-crypt)
 - `Accounting.lean` — FFI exports only (`@[export hedge_*]`): `hedge_portfolio_value` (O(1)
   field read), `hedge_mk_portfolio`, `hedge_position_value`, `hedge_sum_position_values`,
   `hedge_get_position`, `hedge_apply_trade`, `hedge_option_payoff`, `hedge_settle_option`.
-- `Invariants.lean` — 12 accounting theorems: `valueIdentity`, `mk'_value`, `empty_value`,
+- `Invariants.lean` — 13 accounting theorems: `valueIdentity`, `mk'_value`, `empty_value`,
   `position_value_def`, `pricesPositive`, `feeNonNegative`, `cashUpdateCorrect`,
-  `quantityConservation`, `valueUpdateFormula`, `selfFinancing`, `empty_wellFormed`,
-  `applyTrade_wellFormed`.
+  `quantityConservation`, `valueUpdateFormula`, `selfFinancing`, `selfFinancingWithCost`,
+  `empty_wellFormed`, `applyTrade_wellFormed`.
 - `Settlement.lean` — settlement dispatcher: `Trade.settlementITM`, `Portfolio.abandonPosition`,
   `EuropeanOption.settle`, `applySettlement`. Imports `QuantCore.Option` for types/payoffs.
 - `SettlementInvariants.lean` — 6 settlement theorems including `settlement_value_formula`
