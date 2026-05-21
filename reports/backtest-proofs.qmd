@@ -1324,7 +1324,88 @@ TODO (§9, draft sixth/last — after all results):
 
 Deep hedging [@buehler2019] optimizes the hedging *policy* via reinforcement learning; formal verification certifies the accounting *ledger* — the two approaches are orthogonal.
 
-TODO: Draft remaining discussion prose last (after §§3–8 are complete). Cover: (1) what formal proofs guarantee vs. empirics — the Lean module proves invariants hold by construction regardless of price path, but does not prove BS convergence; (2) flat-σ limitation; (3) extensions including Carr-Wu (2009) realized-vs-implied vol direction test and mortgage-proofs analogue.
+## What formal proofs guarantee — and what they do not {#sec-proof-scope}
+
+The Lean 4 proofs establish that the accounting invariants hold *by construction*,
+unconditionally across every possible price path. This is categorically different from
+testing: the proofs cover every integer-representable input, not a sample of inputs, and
+the `StepCertificate` mechanism makes the guarantee visible at runtime. The NAV identity,
+trade accounting, cash update, quantity conservation, and self-financing theorems are not
+statistical claims; they are universal quantifications over `Int`-valued inputs, discharged
+by Lean's kernel at compile time. A user who encounters an unexpected P&L outcome can
+immediately rule out one entire class of explanation — accounting bugs — because the
+formal boundary makes that class impossible by construction.
+
+However, the proofs do *not* establish that the Black-Scholes delta hedge converges to the
+option premium (a probabilistic statement about the pricing layer), that GBM accurately
+models equity price dynamics, or that the backtester's P&L is economically meaningful in
+any specific market regime. Those claims are empirically supported in Sections 6–7 but
+remain outside the formal boundary. A user who finds that MC hedging cost deviates from
+the BS price by 15% can be certain the deviation is not from an accounting bug — but they
+cannot be certain it is not from model misspecification. The analogous point applies to
+the empirical volatility of hedging cost: the variance reported in the MC distributions
+reflects GBM path variance and Black-Scholes approximation error, neither of which is
+formally bounded. This separation of concerns — a proved accounting layer beneath an
+empirically validated pricing layer — is the paper's core methodological claim.
+
+## Scope limitations {#sec-limitations}
+
+Three limitations bound the current results. First, the Black-Scholes implementation uses
+a *flat* implied volatility — the per-series inception-date IV — rather than a dynamic
+volatility surface. The actual volatility smile means real hedging errors exceed the
+flat-$\sigma$ prediction for in-the-money and out-of-the-money options, because
+Black-Scholes delta is computed under an incorrect local volatility when the smile is
+steep. @hull2014 [Ch. 20] documents that delta-hedging errors grow with the curvature of
+the volatility surface, and the Leland [-@leland1985] replication in @sec-leland confirms
+a slope gap between theory and simulation that a flat-volatility model cannot close. This
+is the most quantitatively significant limitation: results in low-IV regimes (2021–2023)
+are more reliable than results in high-IV regimes (COVID 2020, Volmageddon 2018), where
+the smile is steepest.
+
+Second, the settlement and payoff theorems (`settlement_value_formula`,
+`callPayoff_nonneg`) are proved for European-style options only. American-style early
+exercise and barrier events require new settlement modules and new invariants: the
+`settle` function would need to dispatch on an exercise boundary condition, and the
+corresponding Lean theorem would need to quantify over the early-exercise policy. These
+extensions are structurally straightforward but are not yet implemented.
+
+Third, transaction costs are modelled as a fixed fee per trade (the `selfFinancingWithCost`
+theorem); stochastic bid-ask spreads and market impact are not modelled. The flat-fee
+model is conservative for large rehedge sizes and generous for small ones; a stochastic
+spread model would require a new `Trade` field and a new theorem quantifying the expected
+cost in terms of spread distribution parameters.
+
+## Extensions {#sec-extensions}
+
+Four extensions are natural. First, the `selfFinancingWithCost` theorem already
+generalizes the zero-cost result to proportional transaction costs; replacing the constant
+fee with the Leland [-@leland1985] modified volatility
+$\tilde{\sigma}^2 = \sigma^2(1 + \text{Le}\cdot\text{sgn}(\Gamma))$ would make the
+transaction-cost extension analytically tight, connecting the formal accounting layer
+directly to a closed-form replication-cost bound.
+
+Second, a Carr-Wu [-@carrwu2009] realized-vs.-implied volatility direction test —
+asking whether cost/premium $> 1$ is predictable from the IV-RV spread at inception —
+is a natural empirical extension that the accounting kernel supports without modification.
+The accounting layer is agnostic to what drives hedging cost; the `StepCertificate`
+output contains all the cost-attribution data needed to regress cost/premium on the IV-RV
+spread as a predictor, testing the Carr-Wu hypothesis that overpriced implied volatility
+systematically inflates hedging cost.
+
+Third, `ftap-proofs` and `options-proofs` (companion projects in this monorepo) extend
+the formal scope to the discrete Fundamental Theorem of Asset Pricing [@echenim2021] and
+put-call parity via the Cox-Ross-Rubinstein binomial model; together they would constitute
+a formally verified pricing theory layer to complement the accounting layer proved here,
+closing the gap between the formal boundary and the pricing claims that the current paper
+leaves to empirical validation.
+
+Fourth, the `mortgage-proofs` project in this monorepo demonstrates the same
+`StepCertificate` pattern applied to LangGraph routing invariants in a multi-agent
+mortgage pipeline — suggesting the audit-trail methodology generalizes beyond options to
+any AI-generated decision pipeline. The structural parallel is exact: a `DecisionRecord`
+in `mortgage-proofs` plays the role of a `StepCertificate` in `backtest-proofs`, and the
+Lean invariants in both cases are proved unconditionally over the relevant integer-typed
+state variables.
 
 ::: {.callout-note title="Forward pointer: equity long/short"}
 The accounting kernel (`applyTrade`, `selfFinancing`) is instrument-agnostic:
