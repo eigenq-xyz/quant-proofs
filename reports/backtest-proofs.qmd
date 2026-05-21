@@ -67,7 +67,7 @@ _WRDS_FILES = [
     "portfolio_atm_options.parquet",
     "stress_gfc_2008.parquet",
     "stress_volm_2018.parquet",
-    "stress_flash_2015.parquet",
+    "stress_dec2018.parquet",
 ]
 WRDS_PRESENT = all((DATA_ROOT / f).exists() for f in _WRDS_FILES)
 
@@ -850,7 +850,7 @@ TODO: Draft after WRDS parquets are downloaded.
 TODO (§8, draft third-ish, alongside §7):
 Two robustness dimensions required:
 1. Sample-period sensitivity: the four stress regimes (COVID, GFC, Volmageddon,
-   Flash Crash) — each is a distinct stressor, not cherry-picking.
+   Dec 2018 Q4 Selloff) — each is a distinct stressor, not cherry-picking.
 2. Specification sensitivity: Leland (1985) rehedge-frequency sweep — does the
    BKL result hold at other frequencies?
 3. Data source A-B: GBM vs WRDS for MC convergence (if WRDS present).
@@ -860,7 +860,7 @@ Two robustness dimensions required:
 
 ```{python}
 #| label: fig-stress
-#| fig-cap: "Cost/premium distributions across four acute stress windows. Each panel shows the violin of cost/premium ratios for call series that survived data filters. All step certificates pass in every window. Flash Crash 2015 refers to the August 24, 2015 ETF liquidity event, not the May 6, 2010 event. Source: WRDS OptionMetrics (see §5 data table)."
+#| fig-cap: "Cost/premium distributions across four acute stress windows. Each panel shows the violin of cost/premium ratios for call series that survived data filters. All step certificates pass in every window. Dec 2018 Q4 Selloff refers to the October 2018 – January 2019 period (S&P 500 -20% peak-to-trough), fully visible in daily OptionMetrics data. Source: WRDS OptionMetrics (see §5 data table)."
 
 STRESS_WINDOWS = {
     "COVID 2020\n(Feb 19 – Mar 23)": {
@@ -884,12 +884,12 @@ STRESS_WINDOWS = {
         "r": 0.015,
         "label": "Volmageddon-2018",
     },
-    "Flash Crash 2015\n(Aug 17 – Aug 28)": {
-        "file": "stress_flash_2015.parquet",
-        "start": "2015-08-17",
-        "end": "2015-08-28",
-        "r": 0.005,
-        "label": "FlashCrash-2015",
+    "Dec 2018 Q4 Selloff\n(Oct 1 – Jan 31)": {
+        "file": "stress_dec2018.parquet",
+        "start": "2018-10-01",
+        "end": "2019-01-31",
+        "r": 0.0225,
+        "label": "Dec2018-Q4Selloff",
     },
 }
 
@@ -1052,7 +1052,7 @@ metrics = {
     "wrds_holdout_n_series": wrds_holdout_n,
     "stress": stress_metrics if stress_metrics else {
         k: {"n_series": None, "all_certs_pass": None, "median_ratio": None}
-        for k in ["covid_2020", "gfc_2008", "volm_2018", "flash_2015"]
+        for k in ["covid_2020", "gfc_2008", "volm_2018", "dec2018"]
     },
     "straddle_192_cost": float(straddle_192_cost),
     "straddle_193_cost": float(straddle_193_cost),

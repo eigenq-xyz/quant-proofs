@@ -1,23 +1,25 @@
 """Convert WRDS OptionMetrics CSV exports to the engine's parquet schema.
 
-Usage — main dataset (2019–2024)
----------------------------------
+Usage — single wide-window download (2007–2024, all tickers)
+-------------------------------------------------------------
 Place the three WRDS CSV downloads in the data/ directory and run:
 
     cd /path/to/backtest-proofs
     uv run python scripts/wrds_csv_to_parquet.py
 
-Output: data/portfolio_atm_options.parquet
+The script builds a full joined parquet (data/portfolio_all.parquet) and
+automatically writes four sub-window parquets:
 
-Usage — stress period downloads
----------------------------------
-Pass explicit paths for the CSVs and a custom output file:
+    data/portfolio_atm_options.parquet  — 2019-01-01 to 2024-12-31
+    data/stress_gfc_2008.parquet        — 2008-09-01 to 2008-12-31
+    data/stress_volm_2018.parquet       — 2017-12-01 to 2018-04-30
+    data/stress_dec2018.parquet         — 2018-10-01 to 2019-01-31
 
-    uv run python scripts/wrds_csv_to_parquet.py \\
-        --secnmd ~/Downloads/secnmd_gfc.csv \\
-        --options ~/Downloads/opprcd_gfc.csv \\
-        --spots   ~/Downloads/secprd_gfc.csv \\
-        --output  data/stress_gfc_2008.parquet
+Custom output directory
+-----------------------
+Pass --output-dir to write all parquets to a different location:
+
+    uv run python scripts/wrds_csv_to_parquet.py --output-dir /tmp/data
 """
 
 import argparse
@@ -27,13 +29,21 @@ import pandas as pd
 
 _DATA = Path(__file__).parent.parent / "data"
 
-# ── Default input files (WRDS CSV exports, main 2019–2024 dataset) ──────
+# ── Default input files (WRDS CSV exports, wide 2007–2024 dataset) ──────
 SECNMD_CSV = _DATA / "optionmetrics_secid_ticker_cusip.csv"
 OPPRCD_CSV = _DATA / "optionmetrics_tickers_options_data.csv"
 SECPRD_CSV = _DATA / "optionmetrics_asset_prices.csv"
-OUT_FILE = _DATA / "portfolio_atm_options.parquet"
 
-TARGET_TICKERS = {"SPY", "QQQ", "AAPL", "MSFT", "JPM"}
+TARGET_TICKERS = {"SPY", "QQQ", "AAPL", "MSFT", "JPM", "IWM"}
+
+# ── Sub-window date ranges ───────────────────────────────────────────────
+_WINDOWS: list[tuple[str, str, str]] = [
+    # (output_filename, date_start, date_end)
+    ("portfolio_atm_options.parquet", "2019-01-01", "2024-12-31"),
+    ("stress_gfc_2008.parquet",       "2008-09-01", "2008-12-31"),
+    ("stress_volm_2018.parquet",      "2017-12-01", "2018-04-30"),
+    ("stress_dec2018.parquet",        "2018-10-01", "2019-01-31"),
+]
 # ───────────────────────────────────────────────────────────────────────────
 
 
@@ -144,20 +154,19 @@ def _parse_args() -> argparse.Namespace:
         help="Security Prices CSV (default: data/optionmetrics_asset_prices.csv)",
     )
     p.add_argument(
-        "--output",
+        "--output-dir",
         type=Path,
-        default=OUT_FILE,
-        help="Output parquet path (default: data/portfolio_atm_options.parquet)",
+        default=_DATA,
+        help="Output directory for all parquet files (default: data/)",
     )
     return p.parse_args()
 
 
 def main() -> None:
-    """Build a parquet file from WRDS OptionMetrics CSV exports."""
+    """Build parquet files from WRDS OptionMetrics CSV exports."""
     args = _parse_args()
-    secnmd, opprcd, secprd, out = (
-        args.secnmd, args.options, args.spots, args.output
-    )
+    secnmd, opprcd, secprd = args.secnmd, args.options, args.spots
+    out_dir: Path = args.output_dir
 
     for path in (secnmd, opprcd, secprd):
         if not path.exists():
@@ -181,13 +190,41 @@ def main() -> None:
         date_max=("date", "max"),
         iv_median=("impl_volatility", "median"),
     )
-    print("\nSummary by ticker:")
+    print("\nSummary by ticker (full window):")
     print(summary.to_string())
     print(f"\nTotal rows: {len(df):,}")
 
-    out.parent.mkdir(exist_ok=True)
-    df.to_parquet(out, index=False)
-    print(f"\nSaved -> {out}")
+    out_dir.mkdir(exist_ok=True)
+
+    # Write the full wide-window parquet
+    all_out = out_dir / "portfolio_all.parquet"
+    df.to_parquet(all_out, index=False)
+
+    # Write sub-window parquets
+    print("\nWriting sub-window parquets ...")
+    print(f"\n{'Output file':<45}  {'Rows':>7}  {'Date min':<12}  {'Date max'}")
+    print("-" * 85)
+
+    # Full window first
+    _fmt_row(all_out, df)
+
+    for fname, date_start, date_end in _WINDOWS:
+        mask = (df["date"] >= date_start) & (df["date"] <= date_end)
+        sub = df[mask].reset_index(drop=True)
+        out_path = out_dir / fname
+        sub.to_parquet(out_path, index=False)
+        _fmt_row(out_path, sub)
+
+
+def _fmt_row(path: Path, df: pd.DataFrame) -> None:
+    """Print a one-line summary row for a parquet output."""
+    n = len(df)
+    if n > 0:
+        d_min = df["date"].min()
+        d_max = df["date"].max()
+    else:
+        d_min = d_max = "—"
+    print(f"  {str(path.name):<43}  {n:>7,}  {d_min:<12}  {d_max}")
 
 
 if __name__ == "__main__":
