@@ -392,10 +392,10 @@ plt.close()
 The empirical ratio std(N=10) / std(N=20) = `{python} f"{bkl_ratio_10_20:.3f}"`
 (theory: √2 ≈ 1.414). The BKL line fits well across all five frequencies
 (@fig-bkl). However, the empirical slope of the std vs. 1/√N regression diverges
-from the theoretical slope by approximately 13%; this gap is attributable to
-discrete-time approximation effects and is consistent with the findings of
-@broadie1996, who document that discrete-hedging introduces a systematic
-bias relative to the continuous-time limit.
+from the theoretical slope by approximately 13%; this gap is consistent with
+the discrete-time hedging error analyzed by @boyle1980, who show that
+discretely adjusted hedges deviate from the continuous-time limit in a
+manner that grows with rebalancing interval length.
 
 ## Carr-Madan gamma attribution {#sec-carr-madan}
 
