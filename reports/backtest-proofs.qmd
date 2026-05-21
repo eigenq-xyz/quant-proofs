@@ -1377,12 +1377,14 @@ cost in terms of spread distribution parameters.
 
 ## Extensions {#sec-extensions}
 
-Four extensions are natural. First, the `selfFinancingWithCost` theorem already
-generalizes the zero-cost result to proportional transaction costs; replacing the constant
-fee with the Leland [-@leland1985] modified volatility
-$\tilde{\sigma}^2 = \sigma^2(1 + \text{Le}\cdot\text{sgn}(\Gamma))$ would make the
-transaction-cost extension analytically tight, connecting the formal accounting layer
-directly to a closed-form replication-cost bound.
+Four extensions are natural. First, the `selfFinancingWithCost` theorem takes a
+fixed `Int` fee per trade; extending to proportional transaction costs
+(e.g., bid-ask spread as a fraction of notional) would require a new lemma
+that binds the fee argument to `|qty| × spread × executionPrice`.
+With that lemma in place, one could connect the accounting layer directly to the
+Leland [-@leland1985] modified volatility
+$\tilde{\sigma}^2 = \sigma^2(1 + \text{Le}\cdot\text{sgn}(\Gamma))$, yielding a
+formally verified replication-cost bound under proportional transaction costs.
 
 Second, a Carr-Wu [-@carrwu2009] realized-vs.-implied volatility direction test —
 asking whether cost/premium $> 1$ is predictable from the IV-RV spread at inception —
