@@ -13,7 +13,6 @@
   "leland_var_slope_theoretical": 221913.2872708504,
   "leland_n_frequencies": 5,
   "quantlib_max_dev_bp": 2.6855127464983752,
-  "quantlib_within_1bp": false,
   "quantlib_n_scenarios": 5,
   "wrds_holdout_median": null,
   "wrds_holdout_n_series": null,
@@ -44,5 +43,6 @@
   "straddle_median_cost": 487461.50234999997,
   "straddle_cost_std": 93115.1431867694,
   "bull_spread_cost": -193298.6425,
-  "bull_spread_net_payoff": 400000.0
+  "bull_spread_net_payoff": 400000.0,
+  "quantlib_within_3bp": true
 }
