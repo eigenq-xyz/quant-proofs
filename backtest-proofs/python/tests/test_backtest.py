@@ -26,8 +26,11 @@ import pytest
 
 from backtest_proofs.backtest.data_types import PricePath
 from backtest_proofs.backtest.runner import (
+    CoveredCallStrategy,
     DeltaHedgeResult,
+    EquityStrategy,
     OptionLeg,
+    run_backtester,
     run_delta_hedge,
     run_portfolio_hedge,
 )
@@ -1393,3 +1396,125 @@ class TestFalsification:
                 fee_bp=self._FEE_BP,
                 step=1,
             )
+
+
+class TestEquityStrategy:
+    """EquityStrategy — instrument-agnostic equity hold, no options."""
+
+    _N_SHARES = 100_000
+    _R = 0.05
+    _PATH_PRICES = [49.0, 50.0, 51.5, 50.8, 52.0]  # 5-step deterministic
+    _PATH_TIMES = [i / 52.0 for i in range(5)]
+
+    def _path(self) -> PricePath:
+        return PricePath(times=self._PATH_TIMES, prices=self._PATH_PRICES)
+
+    def _strategy(self) -> "EquityStrategy":
+
+        return EquityStrategy(n_shares=self._N_SHARES, r=self._R)
+
+    def test_all_certificates_pass(self) -> None:
+        """Every step certificate passes for a simple equity hold."""
+
+        result = run_backtester(self._path(), self._strategy())
+        failures = [c for c in result.certificates if not c.invariant_holds]
+        assert failures == [], f"{len(failures)} certificate(s) failed"
+
+    def test_portfolio_value_selffinancing(self) -> None:
+        """PV at inception is 0: borrowed N×S0 to buy shares, net PV = 0."""
+
+        result = run_backtester(self._path(), self._strategy())
+        assert result.portfolio_values[0] == 0, (
+            f"Initial PV should be 0 (self-financing), got {result.portfolio_values[0]}"
+        )
+
+    def test_portfolio_value_monotone_with_price(self) -> None:
+        """PV strictly increases (decreases) when price strictly increases (decreases)."""
+
+        result = run_backtester(self._path(), self._strategy())
+        pvs = result.portfolio_values
+        prices = self._PATH_PRICES
+        for i in range(1, len(pvs)):
+            if prices[i] > prices[i - 1]:
+                assert pvs[i] > pvs[i - 1], (
+                    f"Step {i}: price rose but PV fell: {pvs[i]} < {pvs[i-1]}"
+                )
+            elif prices[i] < prices[i - 1]:
+                assert pvs[i] < pvs[i - 1], (
+                    f"Step {i}: price fell but PV rose: {pvs[i]} > {pvs[i-1]}"
+                )
+
+    def test_no_option_legs(self) -> None:
+        """EquityStrategy has no option legs — option_legs() is empty."""
+        strategy = self._strategy()
+        assert strategy.option_legs() == []
+
+    def test_target_hedge_qty_constant(self) -> None:
+        """target_hedge_qty always returns n_shares regardless of S or T."""
+        strategy = self._strategy()
+        for S in [40.0, 50.0, 60.0]:
+            for T_rem in [0.1, 0.5, 1.0]:
+                assert strategy.target_hedge_qty(S, T_rem) == self._N_SHARES
+
+
+class TestCoveredCallStrategy:
+    """CoveredCallStrategy — long N shares + short 1 ATM call."""
+
+    _N_SHARES = 1_000
+    _K = 50.0
+    _SIGMA = 0.20
+    _R = 0.05
+    _T = 20 / 52.0
+
+    def _call_leg(self) -> "OptionLeg":
+        return OptionLeg(
+            option_id="CC_CALL",
+            option_type="call",
+            K=self._K,
+            sigma=self._SIGMA,
+            n_contracts=-1,  # short 1 call
+        )
+
+    def _strategy(self) -> "CoveredCallStrategy":
+
+        return CoveredCallStrategy(
+            n_shares=self._N_SHARES,
+            call_leg=self._call_leg(),
+            r=self._R,
+        )
+
+    def _path(self) -> PricePath:
+        from backtest_proofs.simulator.gbm import simulate_gbm
+
+        gbm = simulate_gbm(
+            S0=49.0, mu=self._R, sigma=self._SIGMA,
+            T=self._T, n_steps=20, seed=20260519,
+        )
+        return PricePath(times=gbm.times, prices=gbm.prices)
+
+    def test_all_certificates_pass(self) -> None:
+        """All step certificates pass for a covered-call portfolio."""
+
+        result = run_backtester(self._path(), self._strategy())
+        failures = [c for c in result.certificates if not c.invariant_holds]
+        assert failures == [], f"{len(failures)} certificate(s) failed"
+
+    def test_premium_received(self) -> None:
+        """Premium received from writing the call is positive."""
+        S0, T0 = 49.0, self._T
+        premium = self._strategy().total_premium_bp(S0, T0)
+        assert premium > 0, "Written call must generate positive premium"
+
+    def test_fixed_share_quantity(self) -> None:
+        """Share quantity never changes — covered call holds shares fixed."""
+        strategy = self._strategy()
+        for S in [40.0, 49.0, 55.0, 65.0]:
+            for T_rem in [0.01, 0.25, self._T]:
+                assert strategy.target_hedge_qty(S, T_rem) == self._N_SHARES
+
+    def test_one_option_leg(self) -> None:
+        """CoveredCallStrategy has exactly one option leg (the written call)."""
+        legs = self._strategy().option_legs()
+        assert len(legs) == 1
+        assert legs[0].option_type == "call"
+        assert legs[0].n_contracts < 0  # written (short)

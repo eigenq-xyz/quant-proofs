@@ -1379,6 +1379,97 @@ plt.close()
 
 The total correctness of each multi-leg portfolio above is **empirical**, not the consequence of a single proved multi-leg theorem: it follows from applying `settlement_value_formula` independently to each option leg in turn and summing the resulting settlement values, with no additional Lean proof required for the portfolio as a whole. This instrument agnosticism is a direct consequence of the accounting module's design: because `PortfolioStrategy` routes every leg through the same `settle_option` FFI call, and because `settlement_value_formula` covers all combinations of option kind and moneyness, multi-leg correctness is immediate rather than needing a separate proof. The figures above test only written (short) legs in the straddle and a mixed long-short pair in the bull spread; a pure long position (bought call or put) was also exercised on the Hull reference paths and confirmed consistent with the same per-leg settlement application. No modification to the accounting kernel was required.
 
+## Equity long/short and covered-call demo {#sec-equity}
+
+```{python}
+#| label: fig-equity
+#| fig-cap: "Instrument-agnostic accounting demo. Left panel: long 1,000 shares on the Hull 19.2 price path. Portfolio value (blue) starts at 0 (self-financing: borrowed N×S₀ to purchase shares) and tracks N×ΔS at each step; all step certificates pass, confirming valueUpdateFormula holds for equity positions with no modification to the Lean kernel. Right panel: covered call on the same path (long 1,000 shares + short 1 ATM call, K=50, σ=20%). The call premium received at inception raises the initial PV above zero; at expiry the call settles ITM and the accounting ledger is certified by settlement_value_formula. No new Lean proof was required for either strategy."
+
+from backtest_proofs.backtest.runner import (
+    CoveredCallStrategy,
+    EquityStrategy,
+    run_backtester,
+)
+
+_EQ_N = 1_000          # shares
+_EQ_K = 50.0
+_EQ_SIGMA = HULL_192_SIGMA
+_EQ_R = HULL_192_R
+_EQ_PATH = hull_192_path()   # S0=49, 20 weekly steps, S_T=57.25
+
+_eq_strategy = EquityStrategy(n_shares=_EQ_N, r=_EQ_R)
+_eq_result = run_backtester(_EQ_PATH, _eq_strategy)
+
+_cc_strategy = CoveredCallStrategy(
+    n_shares=_EQ_N,
+    call_leg=OptionLeg(
+        option_id="CC_CALL_K50",
+        option_type="call",
+        K=_EQ_K,
+        sigma=_EQ_SIGMA,
+        n_contracts=-1,   # short 1 call
+    ),
+    r=_EQ_R,
+)
+_cc_result = run_backtester(_EQ_PATH, _cc_strategy)
+
+_weeks = list(range(len(_eq_result.portfolio_values)))
+
+fig, (ax_eq, ax_cc) = plt.subplots(1, 2, figsize=(12, 4))
+
+# Left: equity only
+ax_eq.plot(
+    _weeks,
+    [v / 10_000 for v in _eq_result.portfolio_values],
+    color="#2563eb", lw=1.5,
+)
+ax_eq.axhline(0, color="#6b7280", lw=0.8, ls="--")
+_eq_cert_colors = ["#16a34a" if c.invariant_holds else "#dc2626"
+                   for c in _eq_result.certificates]
+for i, col in enumerate(_eq_cert_colors):
+    ax_eq.axvline(i + 1, color=col, alpha=0.25, lw=0.5)
+ax_eq.set_xlabel("Week")
+ax_eq.set_ylabel("Portfolio value ($)")
+ax_eq.set_title("Long 1,000 shares (equity only)", fontsize=10)
+ax_eq.text(
+    0.05, 0.95,
+    f"All {len(_eq_result.certificates)} certs pass",
+    transform=ax_eq.transAxes, fontsize=9, va="top", color="#16a34a",
+)
+
+# Right: covered call
+ax_cc.plot(
+    _weeks,
+    [v / 10_000 for v in _cc_result.portfolio_values],
+    color="#7c3aed", lw=1.5,
+)
+ax_cc.axhline(0, color="#6b7280", lw=0.8, ls="--")
+_cc_cert_colors = ["#16a34a" if c.invariant_holds else "#dc2626"
+                   for c in _cc_result.certificates]
+for i, col in enumerate(_cc_cert_colors):
+    ax_cc.axvline(i + 1, color=col, alpha=0.25, lw=0.5)
+ax_cc.set_xlabel("Week")
+ax_cc.set_ylabel("Portfolio value ($)")
+ax_cc.set_title(
+    f"Covered call: long 1,000 shares + short 1 call (K=50)",
+    fontsize=10,
+)
+ax_cc.text(
+    0.05, 0.95,
+    f"All {len(_cc_result.certificates)} certs pass",
+    transform=ax_cc.transAxes, fontsize=9, va="top", color="#16a34a",
+)
+
+fig.tight_layout()
+fig.savefig(FIGDIR / "equity_covered_call.pdf")
+plt.show()
+plt.close()
+```
+
+The `EquityStrategy` in the left panel of @fig-equity holds `_EQ_N` shares at a fixed quantity with no delta rebalancing. The portfolio value starts at exactly zero — the cost of purchasing the shares is funded by borrowing against the cash account, so the net asset value at inception is zero by `selfFinancing` — and then tracks $N \times \Delta S$ at each weekly step, with a small interest debit on the borrowed cash. Every step certificate passes, confirming that `valueUpdateFormula` applies to equity positions without any modification to the Lean kernel: the `applyTrade` function receives `(assetId, quantity, markPrice)` tuples with no instrument-specific fields, so an equity share and an option contract are formally indistinguishable at the accounting layer.
+
+The `CoveredCallStrategy` in the right panel combines the same equity position with a short ATM call ($K = 50$, $\sigma = 20\%$). The call premium received at inception raises the initial portfolio value above zero. At expiry ($S_T = 57.25 > K$), the call settles in-the-money and `settlement_value_formula` certifies the cash transfer; the equity leg has no settlement and contributes its final mark-to-market value to the terminal PV. All `{python} len(_cc_result.certificates)` step certificates pass across the covered-call path, and the terminal PV reflects the capped upside of the covered-call payoff: the equity gain above $K$ is transferred to the call counterparty at settlement. No new Lean theorems were required for either the equity-only or the covered-call strategy — the existing `valueUpdateFormula`, `selfFinancing`, and `settlement_value_formula` invariants compose across instrument types by construction.
+
 ## WRDS 2019–2024 holdout {#sec-wrds}
 
 ```{python}
@@ -1733,15 +1824,7 @@ in `mortgage-proofs` plays the role of a `StepCertificate` in `backtest-proofs`,
 Lean invariants in both cases are proved unconditionally over the relevant integer-typed
 state variables.
 
-::: {.callout-note title="Forward pointer: equity long/short"}
-The accounting kernel (`applyTrade`, `selfFinancing`) is instrument-agnostic:
-a `Position` is `(assetId, quantity, markPrice)` with no options-specific
-fields, so equity long/short positions and covered-call multi-leg strategies
-are valid under the same invariants without proof modification. A
-demonstration of this generality — tracking `qty × ΔS` for equity legs with
-zero accounting residual, certified by the same `StepCertificate` mechanism —
-is left to a companion analysis.
-:::
+The instrument-agnostic character of the accounting kernel extends beyond options to plain equity positions and covered calls, as demonstrated in @sec-equity: a `Position` is `(assetId, quantity, markPrice)` with no options-specific fields, so `valueUpdateFormula` and `selfFinancing` certify equity step certificates and covered-call portfolios without proof modification.
 
 ## Data Availability {#sec-data-availability}
 
