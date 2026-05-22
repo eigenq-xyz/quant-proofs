@@ -4,12 +4,12 @@ Options delta-hedging backtester with a Lean 4 accounting module and proof-check
 
 ## What it proves
 
-26 theorems total across BacktestProofs and QuantCore, zero `sorry`:
+27 theorems total across BacktestProofs and QuantCore, zero `sorry`:
 
 - **valueIdentity** — portfolio value equals the sum of position values plus cash
 - **selfFinancing** — net cash flow from a trade is exactly zero
 - **settlement_value_formula** — option settlement changes portfolio value by `qty × (payoff − mark)`, unifying ITM and OTM expiry
-- 15 more in `BacktestProofs.Invariants` (12) and `BacktestProofs.SettlementInvariants` (5 supporting `settlement_value_formula`)
+- 16 more in `BacktestProofs.Invariants` (13) and `BacktestProofs.SettlementInvariants` (6 supporting `settlement_value_formula`)
 - 8 payoff theorems in `QuantCore.OptionInvariants` (non-negativity, ITM/OTM characterization, integer payoff identity)
 
 ## Architecture

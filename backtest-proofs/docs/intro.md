@@ -6,6 +6,8 @@ An options delta-hedging backtester with Lean 4 proof-checked accounting invaria
 
 ## What this does
 
+Research paper: [Lean 4 Proof-Checked Delta-Hedging (HTML)](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.html) · [PDF](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf)
+
 The backtester simulates discrete delta-hedging strategies over historical or synthetic price paths. Portfolio bookkeeping (NAV identity, trade accounting, self-financing, option settlement) is implemented in Lean 4 and called from Python via Cython FFI.
 
 At each weekly rebalancing step:
@@ -29,10 +31,10 @@ This holds whether the option expires in-the-money (ITM, `applyTrade` path) or o
 ## Quick start
 
 ```bash
-git clone https://github.com/eigenq-xyz/backtest-proofs
-cd backtest-proofs
-make setup   # install Lean (elan) + Python (uv)
-make test    # Lean proofs + Python tests
+git clone https://github.com/eigenq-xyz/quant-proofs
+cd quant-proofs/backtest-proofs
+make setup
+make test
 ```
 
 ## Contents of this book
