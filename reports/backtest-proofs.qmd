@@ -112,76 +112,8 @@ plt.rcParams.update({
 })
 ```
 
-::: {.callout-note .hidden title="PLAN: strategic context (strip before publish)"}
-Figure roster (10 total):
-1. fig-mc — MC convergence (§7 Results)
-2. fig-bkl — BKL variance scaling (§7 Results)
-3. fig-cm — Carr-Madan gamma attribution (§7 Results)
-4. fig-hull — Hull 19.2/19.3 portfolio value path (§7 Results)
-5. fig-ql — QuantLib A-B price comparison (§7 Results)
-6. fig-straddle-settlement — short straddle per-leg settlement (§7 Results, multi-leg)
-7. fig-straddle-pnl — straddle vs buy-and-hold P&L, 100 GBM paths (§7 Results, multi-leg)
-8. fig-bull-spread — bull call spread accounting path (§7 Results, multi-leg)
-9. fig-stress — four historical stress regimes cost distributions (§8 Robustness)
-10. fig-leland — Leland (1985) rehedge-frequency sweep (§8 Robustness)
-11. fig-leland-bias — Leland O(Δt) mean-bias convergence (§8 Robustness)
-
-Authoring fill order: §5 → §6 → §7 → §8 → §3 → §4 → §2 → §1.
-Each pass replaces one section's TODO with real prose.
-:::
-
-::: {.callout-note .hidden title="PLAN: formalization table (confirmed sorry-free at main HEAD)"}
-| Paper theorem | Lean name | File | Line |
-|---|---|---|---|
-| NAV identity | `valueIdentity` | `BacktestProofs/Invariants.lean` | 31 |
-| Trade accounting | `valueUpdateFormula` | `BacktestProofs/Invariants.lean` | 212 |
-| Cash update | `cashUpdateCorrect` | `BacktestProofs/Invariants.lean` | 82 |
-| Quantity conservation | `quantityConservation` | `BacktestProofs/Invariants.lean` | 176 |
-| Self-financing | `selfFinancing` | `BacktestProofs/Invariants.lean` | 281 |
-| Self-financing with cost | `selfFinancingWithCost` | `BacktestProofs/Invariants.lean` | 299 |
-| Well-formedness | `applyTrade_wellFormed` | `BacktestProofs/Invariants.lean` | 317 |
-| Settlement | `settlement_value_formula` | `BacktestProofs/SettlementInvariants.lean` | 104 |
-| Call payoff ≥ 0 | `callPayoff_nonneg` | `quant-core/lean/QuantCore/OptionInvariants.lean` | 32 |
-| Put payoff ≥ 0 | `putPayoff_nonneg` | `quant-core/lean/QuantCore/OptionInvariants.lean` | 40 |
-| Option payoff ≥ 0 | `optionPayoff_nonneg` | `quant-core/lean/QuantCore/OptionInvariants.lean` | 48 |
-
-All 11 theorems confirmed sorry-free at main HEAD.
-:::
-
-# Abstract {.unnumbered}
-
-We present the first Lean 4 formalization of operational accounting invariants
-for a traditional-securities options delta-hedging backtester. Eleven theorems
-— covering NAV identity, trade accounting, cash-update correctness, quantity
-conservation, self-financing, well-formedness, option settlement, and option
-payoff non-negativity — are proved zero-sorry as of commit 5774760 and
-compiled via Lean 4's LLVM backend to a native shared library called at
-runtime through a Cython FFI layer, closing the gap between proof and
-execution by construction. We pair the formalization with empirical validation
-on 500 seeded GBM paths and a WRDS OptionMetrics sample of 491,390
-option-day observations (2019–2024, six equity underlyings, ATM ±3%). The
-Monte Carlo running-mean hedging cost converges to the Black-Scholes price
-with a 2.34% final deviation; our Black-Scholes implementation agrees with
-QuantLib's analytic pricer to a maximum of 2.69 basis points across five
-parameter scenarios. The accounting invariants hold unconditionally across
-four historical stress regimes (GFC 2008, Volmageddon 2018, Q4 2018, COVID
-2020) — a formal guarantee independent of empirical outcomes. Primary
-empirical results assume flat per-series implied volatility and zero
-transaction costs; a fixed-fee extension is proved as a separate theorem
-(`selfFinancingWithCost`), with proportional cost support deferred to future
-work.
 
 # Introduction {#sec-intro}
-
-::: {.callout-note .hidden}
-TODO (§2, draft second-to-last):
-1. **Why now**: AI-generated quant code needs formal accounting verification.
-2. **What we do**: 10 Lean theorems + 7 empirical figures (Hull, MC, BKL,
-   Carr-Madan, QuantLib A-B, Leland sweep, four stress regimes).
-3. **What is new**: Only system combining Lean-verified accounting with
-   real WRDS stress-period validation across four distinct crisis regimes.
-4. **Roadmap**: one sentence per section.
-:::
 
 Backtesting errors fall into two orthogonal classes: accounting errors and model errors. Statistical overfitting — the tendency of in-sample strategies to fail out of sample — has attracted sustained attention from empirical finance; @baileyetal2015 introduced combinatorially symmetric cross-validation to quantify the probability that an optimal in-sample strategy is merely overfit, @harvey2016 found that most claimed findings in financial economics are likely false under conventional significance thresholds, and @jensen2023 documented that the overfitting problem persists even after out-of-sample testing is applied systematically. The second class, accounting errors, has received far less scrutiny. Production backtesting bugs of exactly this kind have been documented by @lowetal2015 and, in a systematic taxonomy across five open-source engines, by @bougeret2026. A backtesting pipeline that mis-tracks cash balances, drops option settlements silently, or applies a closing transaction to the wrong position leg will produce a plausible-looking P&L time series — one that passes visual inspection, generates a positive Sharpe ratio, and survives out-of-sample evaluation — precisely because the error applies uniformly across both periods. A delta-hedging accounting bug that inflates the Sharpe ratio by fifteen percent is not corrected by splitting the sample; it is invisible to any test that takes the reported P&L as given. The only way to eliminate this class of errors entirely is to prove the accounting layer correct — not to test it extensively, but to formally verify it against a machine-checkable specification.
 
@@ -603,11 +535,6 @@ theorem optionPayoff_nonneg (opt : EuropeanOption) (spot : Int) :
 
 # Formalization {#sec-formalization}
 
-::: {.callout-note .hidden}
-TODO (§5, draft first — establishes what is and isn't proved).
-The content below is the live table; fill prose around it.
-:::
-
 ## Lean 4 artifacts {#sec-artifacts}
 
 The formal development lives in
@@ -615,19 +542,19 @@ The formal development lives in
 The following table maps paper-level theorems to their Lean 4 names and
 source files.
 
-| Paper theorem | Lean name | Source file |
-|---|---|---|
-| NAV identity | `valueIdentity` | `BacktestProofs/Invariants.lean` |
-| Trade accounting | `valueUpdateFormula` | `BacktestProofs/Invariants.lean` |
-| Cash update | `cashUpdateCorrect` | `BacktestProofs/Invariants.lean` |
-| Quantity conservation | `quantityConservation` | `BacktestProofs/Invariants.lean` |
-| Self-financing | `selfFinancing` | `BacktestProofs/Invariants.lean` |
-| Self-financing with cost | `selfFinancingWithCost` | `BacktestProofs/Invariants.lean` |
-| Well-formedness | `applyTrade_wellFormed` | `BacktestProofs/Invariants.lean` |
-| Settlement | `settlement_value_formula` | `BacktestProofs/SettlementInvariants.lean` |
-| Call payoff ≥ 0 | `callPayoff_nonneg` | `quant-core/QuantCore/OptionInvariants.lean` |
-| Put payoff ≥ 0 | `putPayoff_nonneg` | `quant-core/QuantCore/OptionInvariants.lean` |
-| Option payoff ≥ 0 | `optionPayoff_nonneg` | `quant-core/QuantCore/OptionInvariants.lean` |
+| Paper theorem | Lean name | Source file | Line |
+|---|---|---|---|
+| NAV identity | `valueIdentity` | `BacktestProofs/Invariants.lean` | 31 |
+| Cash update | `cashUpdateCorrect` | `BacktestProofs/Invariants.lean` | 82 |
+| Quantity conservation | `quantityConservation` | `BacktestProofs/Invariants.lean` | 176 |
+| Trade accounting | `valueUpdateFormula` | `BacktestProofs/Invariants.lean` | 212 |
+| Self-financing | `selfFinancing` | `BacktestProofs/Invariants.lean` | 281 |
+| Self-financing with cost | `selfFinancingWithCost` | `BacktestProofs/Invariants.lean` | 299 |
+| Well-formedness | `applyTrade_wellFormed` | `BacktestProofs/Invariants.lean` | 317 |
+| Settlement | `settlement_value_formula` | `BacktestProofs/SettlementInvariants.lean` | 104 |
+| Call payoff ≥ 0 | `callPayoff_nonneg` | `quant-core/lean/QuantCore/OptionInvariants.lean` | 32 |
+| Put payoff ≥ 0 | `putPayoff_nonneg` | `quant-core/lean/QuantCore/OptionInvariants.lean` | 40 |
+| Option payoff ≥ 0 | `optionPayoff_nonneg` | `quant-core/lean/QuantCore/OptionInvariants.lean` | 48 |
 
 : Lean 4 theorem map. All 11 theorems are machine-checked with zero `sorry`. {#tbl-theorems}
 
@@ -745,17 +672,7 @@ universally. The executable exhibit is in
 
 # Empirical Setup {#sec-data}
 
-::: {.callout-note .hidden}
-TODO (§6, draft second):
-Two data tables: (a) WRDS OptionMetrics 2019–2024 main sample, (b) four
-stress-period downloads. GBM simulator and Hull reference paths documented
-separately. Per the source-financial-data skill: data source, sample window,
-universe, filters, N observations, licensed-data note (never committed).
-
-Use the data table format from _template.qmd.
-:::
-
-### Main sample
+## Main sample
 
 | Attribute | Value |
 |---|---|
@@ -777,12 +694,12 @@ implied-volatility estimates unreliable, and contracts outside the 20–40 day
 window are excluded to avoid illiquid near-expiry and far-dated quotes that
 frequently contain stale prices.
 
-### Stress-period samples
+## Stress-period samples
 
 Four supplementary WRDS OptionMetrics downloads use the same schema and
-ticker universe. The raw pull spans 2007-01-01 to 2024-12-31 (830,439
-option-day observations) and is filtered to each crisis window at
-analysis time.
+ticker universe (@tbl-stress-samples). The raw pull spans 2007-01-01 to
+2024-12-31 (830,439 option-day observations) and is filtered to each crisis
+window at analysis time.
 
 | Window | Dates | Regime | N observations |
 |---|---|---|---|
@@ -801,7 +718,7 @@ others due to near-total illiquidity in ATM options during September–October
 are unreliable, and most contracts fell outside the ±3% moneyness filter.
 Results from this window should be interpreted with caution.
 
-### Synthetic GBM and deterministic paths
+## Synthetic GBM and deterministic paths
 
 The Monte Carlo convergence, BKL scaling, Carr-Madan, Leland, and QuantLib
 figures use no licensed data. GBM paths are seeded with
@@ -812,13 +729,6 @@ Hull Tables 19.2 and 19.3 use the hardcoded weekly prices from
 T = 20 weeks.
 
 # Results {#sec-results}
-
-::: {.callout-note .hidden}
-TODO (§7, draft third):
-Lead with MC convergence (headline). Then BKL, Carr-Madan, Hull, QuantLib A-B,
-WRDS holdout. One paragraph per figure: state the result, cite the figure,
-note the key number from metrics.json.
-:::
 
 ## Monte Carlo convergence {#sec-mc}
 
@@ -1457,16 +1367,6 @@ The WRDS OptionMetrics 2021–2023 holdout contains `{python} f"{wrds_holdout_n:
 
 # Robustness {#sec-robustness}
 
-::: {.callout-note .hidden}
-TODO (§8, draft third-ish, alongside §7):
-Two robustness dimensions required:
-1. Sample-period sensitivity: the four stress regimes (COVID, GFC, Volmageddon,
-   Dec 2018 Q4 Selloff) — each is a distinct stressor, not cherry-picking.
-2. Specification sensitivity: Leland (1985) rehedge-frequency sweep — does the
-   BKL result hold at other frequencies?
-3. Data source A-B: GBM vs WRDS for MC convergence (if WRDS present).
-:::
-
 ## Four historical stress regimes {#sec-stress}
 
 ```{python}
@@ -1694,19 +1594,6 @@ The mean relative bias decreases linearly toward zero as the rebalancing interva
 This rules out the two alternative explanations for the nonzero mean reported in §6: a structural accounting bug would produce a bias that does not converge to zero with N (the ledger error would be present regardless of rebalancing frequency), while stochastic path variance would produce a $O(1/\sqrt{N})$ decay in the mean, not an O(1/N) = O(Δt) decay. The observed linear convergence with $R^2 >$ `{python} f"{leland_bias_r_sq:.3f}"` is consistent only with the discrete-replication interpretation. All step certificates pass for all 500 paths at each of the six frequencies, confirming that the accounting kernel certifies the ledger regardless of the realized direction of the bias.
 
 # Discussion {#sec-discussion}
-
-::: {.callout-note .hidden}
-TODO (§9, draft sixth/last — after all results):
-1. What formal proofs guarantee vs empirics: the Lean accounting module proves
-   invariants hold by construction, regardless of the price path. It does NOT
-   prove convergence to BS price (that is an empirical finding, not a theorem).
-2. Flat-σ BS limitation: implied vol varies across the volatility surface;
-   we use inception-date per-series implied vol as σ (no look-ahead). This
-   understates variance risk during regime changes.
-3. Extensions: Carr-Wu (2009) realized-vs-implied vol direction test;
-   mortgage-proofs analogue (multi-agent routing invariants); Leland
-   transaction-cost modification.
-:::
 
 Deep hedging [@buehler2019] optimizes the hedging *policy* via reinforcement learning; formal verification certifies the accounting *ledger* — the two approaches are orthogonal.
 
