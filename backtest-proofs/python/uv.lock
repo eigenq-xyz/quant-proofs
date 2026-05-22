@@ -181,6 +181,9 @@ docs = [
 [package.dev-dependencies]
 dev = [
     { name = "cython" },
+    { name = "ipykernel" },
+    { name = "jupyter" },
+    { name = "nbclient" },
     { name = "setuptools" },
 ]
 research = [
@@ -213,6 +216,9 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "cython", specifier = ">=3.2.4" },
+    { name = "ipykernel", specifier = ">=7.1.0" },
+    { name = "jupyter", specifier = ">=1.1.1" },
+    { name = "nbclient", specifier = ">=0.10.4" },
     { name = "setuptools", specifier = ">=80.9.0" },
 ]
 research = [
