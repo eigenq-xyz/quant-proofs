@@ -40,9 +40,9 @@ jobs:
           tinytex: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install docs dependencies
+      - name: Install docs + research dependencies (matplotlib, seaborn, QuantLib)
         working-directory: backtest-proofs/python
-        run: uv sync --extra docs
+        run: uv sync --group dev --group research
 
       # Future: build Lean API docs with doc-gen4
       # - name: Build Lean API docs (backtest-proofs)
@@ -59,13 +59,16 @@ jobs:
         working-directory: backtest-proofs/python
         run: uv run jupyter-book build ../../backtest-proofs/docs/
 
-      # Render backtest-proofs paper (HTML + PDF) from frozen cache.
-      # Freeze outputs live in reports/_freeze/ (committed); --no-execute skips
-      # chunk re-execution. TinyTeX (installed above) handles LaTeX compilation
-      # so both formats are generated fresh in CI — no committed PDF needed.
+      # Render backtest-proofs paper (HTML + PDF) with fresh execution.
+      # We DON'T use --no-execute because Quarto's freeze cache does not
+      # preserve figure cross-reference metadata in a form the `--no-execute`
+      # render can resolve (see Pages run 26308687233 for "Unable to resolve
+      # crossref @fig-*" warnings). Fresh execution with research deps installed
+      # guarantees all 12 figures render and all @fig-* refs resolve.
+      # WRDS-gated chunks skip gracefully when data is absent (WRDS_PRESENT).
       - name: Render backtest-proofs paper (HTML + PDF)
-        working-directory: reports
-        run: quarto render backtest-proofs.qmd --no-execute
+        working-directory: backtest-proofs/python
+        run: uv run quarto render ../../reports/backtest-proofs.qmd
 
       - name: Verify paper rendered
         run: |
