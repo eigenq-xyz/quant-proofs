@@ -12,15 +12,29 @@ format:
       - DIV=12
       - numbers=noendperiod
     papersize: letter
+    fontfamily: libertinus
     fontsize: 11pt
-    linestretch: 1.15
+    linestretch: 1.1
     geometry:
-      - margin=1in
+      - top=1.25in
+      - bottom=1.25in
+      - left=1.25in
+      - right=1.25in
     colorlinks: true
+    linkcolor: "0.1,0.1,0.5"
+    urlcolor: "0.1,0.1,0.5"
     link-citations: true
     number-sections: true
     toc: false
-    include-in-header: _eigenq.tex
+    include-in-header:
+      - _eigenq.tex
+      - text: |
+          \usepackage{titlesec}
+          \newcommand{\sectionbreak}{\clearpage}
+          \titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
+          \titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+          \titleformat{\subsubsection}{\normalsize\itshape}{\thesubsubsection}{1em}{}
+          \setlength{\parskip}{4pt}
     keep-tex: true
     fig-pos: "tbp"
     fig-cap-location: bottom
