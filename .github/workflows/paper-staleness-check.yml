@@ -1,0 +1,39 @@
+name: Paper staleness check
+
+# Runs on PRs that touch the QMD source. Verifies that the committed
+# rendered artifacts (HTML, PDF, _files/) have been updated alongside
+# the QMD. Prevents drift between source and published artifacts.
+
+on:
+  pull_request:
+    paths:
+      - 'reports/backtest-proofs.qmd'
+      - 'reports/_quarto.yml'
+      - 'reports/_eigenq.tex'
+      - 'reports/_references.bib'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify rendered artifacts updated alongside QMD
+        run: |
+          # If the QMD changed in this PR, the committed HTML/PDF must also have changed.
+          qmd_changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- \
+            reports/backtest-proofs.qmd reports/_quarto.yml reports/_eigenq.tex 2>/dev/null | wc -l)
+          rendered_changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- \
+            reports/backtest-proofs.html reports/backtest-proofs.pdf 2>/dev/null | wc -l)
+
+          if [ "$qmd_changed" -gt 0 ] && [ "$rendered_changed" -eq 0 ]; then
+            echo "::error::QMD/config changed but rendered HTML/PDF were not updated."
+            echo "::error::Run 'make paper' from backtest-proofs/ and commit the resulting"
+            echo "::error::reports/backtest-proofs.html, .pdf, and backtest-proofs_files/."
+            exit 1
+          fi
+
+          echo "✓ QMD changed: $qmd_changed file(s); rendered changed: $rendered_changed file(s)"

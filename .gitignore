@@ -32,6 +32,7 @@
 # Jupyter
 **/.ipynb_checkpoints/
 **/*_files/
+!reports/backtest-proofs_files/
 
 # macOS
 **/.DS_Store
