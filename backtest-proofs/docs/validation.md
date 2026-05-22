@@ -77,7 +77,7 @@ The four credibility levers — Leland (1985) rehedge-frequency sweep, QuantLib 
 comparison, Carr-Madan attribution, and stress runs across four historical regimes —
 are presented with figures and empirical metrics in the research paper:
 
-**[Formally Verified Delta-Hedging (Quarto Paper)](https://eigenq-xyz.github.io/quant-proofs/backtest-proofs-paper/)**
+**[Formally Verified Delta-Hedging (HTML)](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.html)** · [PDF](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf)
 
 The paper source lives at `reports/backtest-proofs.qmd`; render locally with
 `cd backtest-proofs && make paper`.
