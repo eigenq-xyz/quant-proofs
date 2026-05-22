@@ -8,9 +8,11 @@ parse:
     - colon_fence
     - deflist
 html:
-  use_repository_button: true
-  use_issues_button: true
   home_page_in_navbar: true
+  use_edit_page_button: true
+  use_issues_button: true
+  use_repository_button: true
+  navbar_number_sections: false
 repository:
   url: https://github.com/eigenq-xyz/quant-proofs
   branch: main

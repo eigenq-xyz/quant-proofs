@@ -36,3 +36,13 @@ LangGraph multi-agent mortgage pipeline (intake, risk, compliance, underwriter a
 
 - **GitHub:** [eigenq-xyz/quant-proofs](https://github.com/eigenq-xyz/quant-proofs)
 - **License:** Apache 2.0
+
+## Status
+
+| Project | Theorems | Status | Links |
+|---------|----------|--------|-------|
+| quant-core | 8 (zero sorry) | v1.0 — stable | [Docs](quant-core.html) |
+| backtest-proofs | 27 (zero sorry) | v0.5 — paper published | [Docs](https://eigenq-xyz.github.io/quant-proofs/backtest-proofs/intro.html) · [Paper (HTML)](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.html) · [Paper (PDF)](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf) |
+| ftap-proofs | — | Skeleton | [Docs](ftap-proofs.html) |
+| options-proofs | — | Skeleton (depends on ftap-proofs) | [Docs](options-proofs.html) |
+| mortgage-proofs | — | Active development | [Docs](mortgage-proofs.html) |
