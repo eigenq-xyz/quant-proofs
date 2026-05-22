@@ -21,8 +21,8 @@ format:
       - left=1.25in
       - right=1.25in
     colorlinks: true
-    linkcolor: "0.1,0.1,0.5"
-    urlcolor: "0.1,0.1,0.5"
+    linkcolor: NavyBlue
+    urlcolor: NavyBlue
     link-citations: true
     number-sections: true
     toc: false
