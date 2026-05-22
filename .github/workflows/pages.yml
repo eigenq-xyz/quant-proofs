@@ -8,6 +8,9 @@ on:
       - 'backtest-proofs/docs/**'
       - 'backtest-proofs/notebooks/**'
       - 'reports/**'
+      - 'README.md'
+      - '*/README.md'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -41,6 +44,11 @@ jobs:
         working-directory: backtest-proofs/python
         run: uv sync --extra docs
 
+      # Future: build Lean API docs with doc-gen4
+      # - name: Build Lean API docs (backtest-proofs)
+      #   working-directory: backtest-proofs/lean
+      #   run: lake build && lake exe doc-gen4
+
       # Build the root overview book (deploys to /)
       - name: Build root JupyterBook
         working-directory: backtest-proofs/python
@@ -59,6 +67,12 @@ jobs:
         working-directory: reports
         run: quarto render backtest-proofs.qmd --no-execute
 
+      - name: Verify paper rendered
+        run: |
+          test -f reports/_output/backtest-proofs.pdf || (echo "ERROR: PDF not generated" && exit 1)
+          test -f reports/_output/backtest-proofs.html || (echo "ERROR: HTML not generated" && exit 1)
+          echo "Paper rendered: $(wc -c < reports/_output/backtest-proofs.pdf) bytes PDF"
+
       # Embed backtest-proofs book inside the root artifact
       - name: Merge backtest-proofs build into root site
         run: |
@@ -72,6 +86,16 @@ jobs:
           cp reports/_output/backtest-proofs.pdf docs/_build/html/paper/
           cp reports/_output/backtest-proofs.html docs/_build/html/paper/
           cp -r reports/_output/backtest-proofs_files docs/_build/html/paper/
+
+      - name: Deployment summary
+        run: |
+          echo "### Pages deployment summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Asset | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Paper PDF | $(wc -c < reports/_output/backtest-proofs.pdf) bytes |" >> $GITHUB_STEP_SUMMARY
+          echo "| Paper HTML | $(wc -c < reports/_output/backtest-proofs.html) bytes |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Published at: https://eigenq-xyz.github.io/quant-proofs/" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
