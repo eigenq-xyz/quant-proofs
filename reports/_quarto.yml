@@ -30,11 +30,14 @@ format:
       - _eigenq.tex
       - text: |
           \usepackage{titlesec}
-          \newcommand{\sectionbreak}{\clearpage}
+          \usepackage{needspace}
+          \usepackage{fvextra}
+          \newcommand{\sectionbreak}{\needspace{8\baselineskip}}
           \titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
           \titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
           \titleformat{\subsubsection}{\normalsize\itshape}{\thesubsubsection}{1em}{}
           \setlength{\parskip}{4pt}
+          \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\}}
     keep-tex: true
     fig-pos: "tbp"
     fig-cap-location: bottom
