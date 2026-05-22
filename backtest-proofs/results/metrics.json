@@ -1,5 +1,5 @@
 {
-  "commit_sha": "90dd347",
+  "commit_sha": "c58d709",
   "wrds_data_present": true,
   "wrds_total_obs": 491390,
   "wrds_holdout_n_obs": 266973,
@@ -14,9 +14,9 @@
   "leland_var_slope_empirical": 193185.5958463862,
   "leland_var_slope_theoretical": 221913.2872708504,
   "leland_n_frequencies": 5,
-  "quantlib_max_dev_bp": null,
-  "quantlib_within_3bp": false,
-  "quantlib_n_scenarios": 0,
+  "quantlib_max_dev_bp": 2.6855127464983752,
+  "quantlib_within_3bp": true,
+  "quantlib_n_scenarios": 5,
   "wrds_holdout_median": 0.9211731545009006,
   "wrds_holdout_n_series": 25363,
   "stress": {
