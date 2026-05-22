@@ -1,5 +1,5 @@
 {
-  "commit_sha": "684dbe2",
+  "commit_sha": "d1e9373",
   "wrds_data_present": true,
   "wrds_total_obs": 491390,
   "wrds_holdout_n_obs": 266973,
@@ -47,8 +47,6 @@
   },
   "straddle_192_cost": 517074.5638,
   "straddle_193_cost": 513253.3027,
-  "straddle_median_cost": 487461.50234999997,
-  "straddle_cost_std": 93115.1431867694,
   "bull_spread_cost": -193298.6425,
   "bull_spread_net_payoff": 400000.0
 }
