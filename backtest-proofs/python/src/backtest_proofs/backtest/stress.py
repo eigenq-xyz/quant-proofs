@@ -20,7 +20,7 @@ def run_stress_window(
     date_end: str,
     r: float,
     label: str,
-) -> tuple[list[float], int]:
+) -> tuple[list[float], int, int]:
     """Filter *df* to [date_start, date_end] and backtest every call series.
 
     Args:
@@ -32,10 +32,11 @@ def run_stress_window(
         label: Human-readable window label used in assertion messages.
 
     Returns:
-        ``(ratios, n_series)`` where *ratios* is the list of cost/premium
-        per qualifying call series and *n_series* is ``len(ratios)``.
-        Every step certificate is asserted to pass inline — a failure
-        surfaces the series and date range immediately.
+        ``(ratios, n_obs, n_series)`` where *ratios* is the list of
+        cost/premium per qualifying call series, *n_obs* is the number of
+        option-day rows in the filtered window, and *n_series* is
+        ``len(ratios)``.  Every step certificate is asserted to pass inline
+        — a failure surfaces the series and date range immediately.
     """
     import pandas as pd
 
@@ -94,4 +95,4 @@ def run_stress_window(
         if premium > 0:
             ratios.append(result.total_hedging_cost / premium)
 
-    return ratios, len(ratios)
+    return ratios, len(window), len(ratios)

@@ -27,6 +27,64 @@ from backtest_proofs.backtest.runner import run_delta_hedge
 from backtest_proofs.simulator.gbm import simulate_gbm
 
 
+def leland_bias_sweep(
+    s0: float,
+    k: float,
+    r: float,
+    sigma: float,
+    t: float,
+    n_paths: int,
+    frequencies: list[int],
+    seed: int,
+    n_contracts: int = 1,
+) -> dict[int, float]:
+    """Estimate mean(hedge cost) for each rebalancing frequency N.
+
+    Same path seed scheme as :func:`leland_variance_sweep`.  Use together
+    to get both the mean and std from the same simulation budget.
+
+    Args:
+        s0: Initial spot price (dollars).
+        k: Strike price (dollars).
+        r: Continuously compounded risk-free rate (annualised).
+        sigma: Implied volatility (annualised).
+        t: Time to expiry in years.
+        n_paths: Number of GBM paths per frequency.
+        frequencies: List of rebalancing step counts N to sweep.
+        seed: Base RNG seed (same scheme as :func:`leland_variance_sweep`).
+        n_contracts: Number of written call contracts (default 1).
+
+    Returns:
+        ``{N: mean(cost)}`` dict, one entry per element of *frequencies*.
+    """
+    result: dict[int, float] = {}
+    for n_steps in frequencies:
+        costs: list[float] = []
+        for path_idx in range(n_paths):
+            path_seed = seed + n_steps * 10_000 + path_idx
+            path = simulate_gbm(
+                S0=s0,
+                mu=r,
+                sigma=sigma,
+                T=t,
+                n_steps=n_steps,
+                seed=path_seed,
+            )
+            hedge_result = run_delta_hedge(
+                path=PricePath(
+                    times=path.times,
+                    prices=path.prices,
+                ),
+                K=k,
+                r=r,
+                sigma=sigma,
+                n_contracts=n_contracts,
+            )
+            costs.append(hedge_result.total_hedging_cost)
+        result[n_steps] = float(np.mean(costs))
+    return result
+
+
 def leland_variance_sweep(
     s0: float,
     k: float,

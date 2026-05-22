@@ -1067,7 +1067,7 @@ class TestStressCovid2020:
         """All step certificates pass on real COVID crash price paths."""
         if not self._data_available():
             pytest.skip("portfolio_atm_options.parquet not present")
-        ratios, n = _run_stress_window(
+        ratios, _n_obs, n = _run_stress_window(
             self._load(), self._DATE_START, self._DATE_END,
             _R_COVID_2020, "COVID-2020",
         )
@@ -1085,7 +1085,7 @@ class TestStressCovid2020:
         """
         if not self._data_available():
             pytest.skip("portfolio_atm_options.parquet not present")
-        ratios, n = _run_stress_window(
+        ratios, _n_obs, n = _run_stress_window(
             self._load(), self._DATE_START, self._DATE_END,
             _R_COVID_2020, "COVID-2020",
         )
@@ -1130,7 +1130,7 @@ class TestStressGFC2008:
             pytest.skip("stress_gfc_2008.parquet not present")
         import pandas as pd
 
-        ratios, n = _run_stress_window(
+        ratios, _n_obs, n = _run_stress_window(
             pd.read_parquet(self._DATA_FILE),
             self._DATE_START, self._DATE_END,
             _R_GFC_2008, "GFC-2008",
@@ -1146,7 +1146,7 @@ class TestStressGFC2008:
         import numpy as np
         import pandas as pd
 
-        ratios, n = _run_stress_window(
+        ratios, _n_obs, n = _run_stress_window(
             pd.read_parquet(self._DATA_FILE),
             self._DATE_START, self._DATE_END,
             _R_GFC_2008, "GFC-2008",
@@ -1188,7 +1188,7 @@ class TestStressVolmageddon2018:
             pytest.skip("stress_volm_2018.parquet not present")
         import pandas as pd
 
-        ratios, n = _run_stress_window(
+        ratios, _n_obs, n = _run_stress_window(
             pd.read_parquet(self._DATA_FILE),
             self._DATE_START, self._DATE_END,
             _R_VOLM_2018, "Volmageddon-2018",
@@ -1210,7 +1210,7 @@ class TestStressVolmageddon2018:
         import numpy as np
         import pandas as pd
 
-        ratios, n = _run_stress_window(
+        ratios, _n_obs, n = _run_stress_window(
             pd.read_parquet(self._DATA_FILE),
             self._DATE_START, self._DATE_END,
             _R_VOLM_2018, "Volmageddon-2018",
@@ -1257,7 +1257,7 @@ class TestStressDecember2018:
             pytest.skip("stress_dec2018.parquet not present")
         import pandas as pd
 
-        ratios, n = _run_stress_window(
+        ratios, _n_obs, n = _run_stress_window(
             pd.read_parquet(self._DATA_FILE),
             self._DATE_START, self._DATE_END,
             _R_DEC2018, "Dec 2018 Q4 Selloff",
@@ -1280,7 +1280,7 @@ class TestStressDecember2018:
         import numpy as np
         import pandas as pd
 
-        ratios, n = _run_stress_window(
+        ratios, _n_obs, n = _run_stress_window(
             pd.read_parquet(self._DATA_FILE),
             self._DATE_START, self._DATE_END,
             _R_DEC2018, "Dec 2018 Q4 Selloff",
