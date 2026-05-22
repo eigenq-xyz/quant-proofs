@@ -11,8 +11,8 @@ abstract: |
   We present the first Lean 4 formalization of operational accounting invariants
   for a traditional-securities options delta-hedging backtester. Eleven theorems
   — covering NAV identity, trade accounting, cash-update correctness, quantity
-  conservation, self-financing, option settlement, and option payoff
-  non-negativity — are proved zero-sorry at main HEAD (commit 5774760) and
+  conservation, self-financing, well-formedness, option settlement, and option
+  payoff non-negativity — are proved zero-sorry as of commit 5774760 and
   compiled via Lean 4's LLVM backend to a native shared library called at
   runtime through a Cython FFI layer, closing the gap between proof and
   execution by construction. We pair the formalization with empirical validation
@@ -152,8 +152,8 @@ All 11 theorems confirmed sorry-free at main HEAD.
 We present the first Lean 4 formalization of operational accounting invariants
 for a traditional-securities options delta-hedging backtester. Eleven theorems
 — covering NAV identity, trade accounting, cash-update correctness, quantity
-conservation, self-financing, option settlement, and option payoff
-non-negativity — are proved zero-sorry at main HEAD (commit 5774760) and
+conservation, self-financing, well-formedness, option settlement, and option
+payoff non-negativity — are proved zero-sorry as of commit 5774760 and
 compiled via Lean 4's LLVM backend to a native shared library called at
 runtime through a Cython FFI layer, closing the gap between proof and
 execution by construction. We pair the formalization with empirical validation
