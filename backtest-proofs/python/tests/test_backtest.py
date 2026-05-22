@@ -26,8 +26,11 @@ import pytest
 
 from backtest_proofs.backtest.data_types import PricePath
 from backtest_proofs.backtest.runner import (
+    CoveredCallStrategy,
     DeltaHedgeResult,
+    EquityStrategy,
     OptionLeg,
+    run_backtester,
     run_delta_hedge,
     run_portfolio_hedge,
 )
@@ -1407,13 +1410,11 @@ class TestEquityStrategy:
         return PricePath(times=self._PATH_TIMES, prices=self._PATH_PRICES)
 
     def _strategy(self) -> "EquityStrategy":
-        from backtest_proofs.backtest.runner import EquityStrategy
 
         return EquityStrategy(n_shares=self._N_SHARES, r=self._R)
 
     def test_all_certificates_pass(self) -> None:
         """Every step certificate passes for a simple equity hold."""
-        from backtest_proofs.backtest.runner import run_backtester
 
         result = run_backtester(self._path(), self._strategy())
         failures = [c for c in result.certificates if not c.invariant_holds]
@@ -1421,7 +1422,6 @@ class TestEquityStrategy:
 
     def test_portfolio_value_selffinancing(self) -> None:
         """PV at inception is 0: borrowed N×S0 to buy shares, net PV = 0."""
-        from backtest_proofs.backtest.runner import run_backtester
 
         result = run_backtester(self._path(), self._strategy())
         assert result.portfolio_values[0] == 0, (
@@ -1430,7 +1430,6 @@ class TestEquityStrategy:
 
     def test_portfolio_value_monotone_with_price(self) -> None:
         """PV strictly increases (decreases) when price strictly increases (decreases)."""
-        from backtest_proofs.backtest.runner import run_backtester
 
         result = run_backtester(self._path(), self._strategy())
         pvs = result.portfolio_values
@@ -1477,7 +1476,6 @@ class TestCoveredCallStrategy:
         )
 
     def _strategy(self) -> "CoveredCallStrategy":
-        from backtest_proofs.backtest.runner import CoveredCallStrategy
 
         return CoveredCallStrategy(
             n_shares=self._N_SHARES,
@@ -1496,7 +1494,6 @@ class TestCoveredCallStrategy:
 
     def test_all_certificates_pass(self) -> None:
         """All step certificates pass for a covered-call portfolio."""
-        from backtest_proofs.backtest.runner import run_backtester
 
         result = run_backtester(self._path(), self._strategy())
         failures = [c for c in result.certificates if not c.invariant_holds]
