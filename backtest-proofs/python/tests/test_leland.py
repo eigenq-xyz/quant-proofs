@@ -2,7 +2,10 @@
 
 import math
 
-from backtest_proofs.backtest.leland import leland_bias_sweep, leland_variance_sweep
+from backtest_proofs.backtest.leland import (
+    leland_bias_sweep,
+    leland_variance_sweep,
+)
 from backtest_proofs.pricer.black_scholes import bs_price
 
 # Fixed scenario matching MC convergence parameters in test_backtest.py
