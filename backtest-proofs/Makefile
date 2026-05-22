@@ -65,7 +65,8 @@ watch-lean:	## Watch Lean files and rebuild on change
 	@cd lean && $(MAKE) watch
 
 paper:		## Render the Quarto research paper (re-executes stale chunks)
-	@cd ../reports && quarto render backtest-proofs.qmd
+	@cd python && uv sync --group dev --group research
+	@cd python && uv run quarto render ../reports/backtest-proofs.qmd
 
 paper-fast:	## Render the paper from the frozen chunk cache (no code execution)
 	@cd ../reports && quarto render backtest-proofs.qmd --no-execute
