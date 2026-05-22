@@ -1,48 +1,52 @@
 {
-  "commit_sha": "dbb0387",
-  "wrds_data_present": false,
-  "mc_mean_deviation_pct": 2.335705520456064,
-  "mc_n_paths": 500,
-  "bkl_ratio_10_20": 1.3716371901804782,
-  "carr_madan_corr": 0.9507783976332581,
-  "hull_192_cost": 253731.2878,
-  "hull_192_expected": 263300.0,
-  "hull_193_cost": 251821.5698,
-  "hull_193_expected": 256600.0,
-  "leland_var_slope_empirical": 193185.5958463862,
-  "leland_var_slope_theoretical": 221913.2872708504,
-  "leland_n_frequencies": 5,
-  "quantlib_max_dev_bp": 2.6855127464983752,
-  "quantlib_n_scenarios": 5,
-  "wrds_holdout_median": null,
-  "wrds_holdout_n_series": null,
-  "stress": {
-    "covid_2020": {
-      "n_series": null,
-      "all_certs_pass": null,
-      "median_ratio": null
+    "commit_sha": "dbb0387",
+    "wrds_data_present": true,
+    "mc_mean_deviation_pct": 2.335705520456064,
+    "mc_n_paths": 500,
+    "bkl_ratio_10_20": 1.3716371901804782,
+    "carr_madan_corr": 0.9507783976332581,
+    "hull_192_cost": 253731.2878,
+    "hull_192_expected": 263300.0,
+    "hull_193_cost": 251821.5698,
+    "hull_193_expected": 256600.0,
+    "leland_var_slope_empirical": 193185.5958463862,
+    "leland_var_slope_theoretical": 221913.2872708504,
+    "leland_n_frequencies": 5,
+    "quantlib_max_dev_bp": 2.6855127464983752,
+    "quantlib_n_scenarios": 5,
+    "wrds_holdout_median": 0.9211731545009006,
+    "wrds_holdout_n_series": 25363,
+    "stress": {
+        "covid_2020": {
+            "n_series": 309,
+            "n_obs": 6569,
+            "all_certs_pass": true,
+            "median_ratio": 1.691329111069255
+        },
+        "gfc_2008": {
+            "n_series": 42,
+            "n_obs": 527,
+            "all_certs_pass": true,
+            "median_ratio": 1.2294103058276196
+        },
+        "volm_2018": {
+            "n_series": 527,
+            "n_obs": 5060,
+            "all_certs_pass": true,
+            "median_ratio": 1.2279778906321952
+        },
+        "dec2018": {
+            "n_series": 2411,
+            "n_obs": 25090,
+            "all_certs_pass": true,
+            "median_ratio": 1.1839196970679566
+        }
     },
-    "gfc_2008": {
-      "n_series": null,
-      "all_certs_pass": null,
-      "median_ratio": null
-    },
-    "volm_2018": {
-      "n_series": null,
-      "all_certs_pass": null,
-      "median_ratio": null
-    },
-    "flash_2015": {
-      "n_series": null,
-      "all_certs_pass": null,
-      "median_ratio": null
-    }
-  },
-  "straddle_192_cost": 517074.5638,
-  "straddle_193_cost": 513253.3027,
-  "straddle_median_cost": 487461.50234999997,
-  "straddle_cost_std": 93115.1431867694,
-  "bull_spread_cost": -193298.6425,
-  "bull_spread_net_payoff": 400000.0,
-  "quantlib_within_3bp": true
+    "straddle_192_cost": 517074.5638,
+    "straddle_193_cost": 513253.3027,
+    "straddle_median_cost": 487461.50234999997,
+    "straddle_cost_std": 93115.1431867694,
+    "bull_spread_cost": -193298.6425,
+    "bull_spread_net_payoff": 400000.0,
+    "quantlib_within_3bp": true
 }
