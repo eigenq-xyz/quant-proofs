@@ -22,6 +22,10 @@ Built-in strategies
   (replaces the old ``run_delta_hedge`` implementation)
 - ``PortfolioStrategy``: delta-hedge for a multi-leg option portfolio
   (replaces the old ``run_portfolio_hedge`` implementation)
+- ``EquityStrategy``: hold N shares of an underlying with no hedging —
+  demonstrates instrument-agnostic accounting (no options-specific fields)
+- ``CoveredCallStrategy``: long N shares + short M calls — multi-leg demo
+  combining equity and option accounting under the same Lean kernel
 
 Convenience wrappers ``run_delta_hedge`` and ``run_portfolio_hedge``
 preserve the original call signatures for backward compatibility.
@@ -409,6 +413,118 @@ class PortfolioStrategy:
             for leg in self.legs
         )
         return round(-net_delta)
+
+
+@dataclass(frozen=True)
+class EquityStrategy:
+    """Hold N shares of an underlying — no delta hedging, no options.
+
+    Demonstrates that the Lean accounting kernel is instrument-agnostic: a
+    ``Position`` is ``(assetId, quantity, markPrice)`` with no options-specific
+    fields, so equity positions are governed by identical invariants
+    (``valueUpdateFormula``, ``selfFinancing``) without proof modification.
+
+    The portfolio value at every step equals ``n_shares × S``, and every step
+    certificate passes because ``valueUpdateFormula`` holds unconditionally for
+    any integer-representable trade — equity or options.
+
+    Implements ``HedgingStrategy`` with no option legs.
+    """
+
+    n_shares: int
+    r: float = 0.0
+
+    def option_legs(self) -> list[OptionLeg]:
+        return []
+
+    def initial_option_positions(
+        self, S0: float, T0: float
+    ) -> list[dict[str, int | str]]:
+        return []
+
+    def total_premium_bp(self, S0: float, T0: float) -> int:
+        return 0
+
+    def initial_hedge_qty(self, S0: float, T0: float) -> int:
+        return self.n_shares
+
+    def mark_prices(self, S: float, T_rem: float) -> dict[str, int]:
+        return {}
+
+    def target_hedge_qty(self, S: float, T_rem: float) -> int:
+        return self.n_shares
+
+
+@dataclass(frozen=True)
+class CoveredCallStrategy:
+    """Long N shares of an underlying + short M European call options.
+
+    The equity position is held constant (no delta hedging of the shares);
+    the call leg is marked to market at each step and settled at expiry via
+    ``settlement_value_formula``. This is the canonical covered-call payoff:
+    the equity provides the "cover" for the written call.
+
+    The total portfolio value at each step reflects both the equity mark-up
+    and the MTM change in the call position. Step certificates are emitted for
+    every rebalancing trade (equity unchanged → zero-quantity rebalance for
+    equity; option MTM updates via zero-quantity option trades).
+
+    Implements ``HedgingStrategy``.
+    """
+
+    n_shares: int
+    call_leg: OptionLeg
+    r: float
+
+    def option_legs(self) -> list[OptionLeg]:
+        return [self.call_leg]
+
+    def initial_option_positions(
+        self, S0: float, T0: float
+    ) -> list[dict[str, int | str]]:
+        price_bp = bs_price(
+            S=S0,
+            K=self.call_leg.K,
+            T=T0,
+            r=self.r,
+            sigma=self.call_leg.sigma,
+            option_type=self.call_leg.option_type,
+        ).value_bp
+        return [
+            {
+                "asset_id": self.call_leg.option_id,
+                "quantity": self.call_leg.n_contracts,
+                "mark_price": price_bp,
+            }
+        ]
+
+    def total_premium_bp(self, S0: float, T0: float) -> int:
+        price_bp = bs_price(
+            S=S0,
+            K=self.call_leg.K,
+            T=T0,
+            r=self.r,
+            sigma=self.call_leg.sigma,
+            option_type=self.call_leg.option_type,
+        ).value_bp
+        return price_bp * (-self.call_leg.n_contracts)
+
+    def initial_hedge_qty(self, S0: float, T0: float) -> int:
+        return self.n_shares
+
+    def mark_prices(self, S: float, T_rem: float) -> dict[str, int]:
+        price_bp = bs_price(
+            S=S,
+            K=self.call_leg.K,
+            T=T_rem,
+            r=self.r,
+            sigma=self.call_leg.sigma,
+            option_type=self.call_leg.option_type,
+        ).value_bp
+        return {self.call_leg.option_id: price_bp}
+
+    def target_hedge_qty(self, S: float, T_rem: float) -> int:
+        return self.n_shares
 
 
 # ---------------------------------------------------------------------------
