@@ -1,11 +1,18 @@
 # backtest-proofs
 
-[![Lean CI](https://github.com/eigenq-xyz/backtest-proofs/actions/workflows/lean.yml/badge.svg)](https://github.com/eigenq-xyz/backtest-proofs/actions/workflows/lean.yml)
-[![Python CI](https://github.com/eigenq-xyz/backtest-proofs/actions/workflows/python.yml/badge.svg)](https://github.com/eigenq-xyz/backtest-proofs/actions/workflows/python.yml)
-[![codecov](https://codecov.io/gh/eigenq-xyz/backtest-proofs/branch/main/graph/badge.svg)](https://codecov.io/gh/eigenq-xyz/backtest-proofs)
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/eigenq-xyz/backtest-proofs/main.svg)](https://results.pre-commit.ci/latest/github/eigenq-xyz/backtest-proofs/main)
+[![Lean CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/lean-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
+[![Python CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/python-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
+[![codecov](https://codecov.io/gh/eigenq-xyz/quant-proofs/branch/main/graph/badge.svg)](https://codecov.io/gh/eigenq-xyz/quant-proofs)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/eigenq-xyz/quant-proofs/main.svg)](https://results.pre-commit.ci/latest/github/eigenq-xyz/quant-proofs/main)
 
 > **Educational use only.** Research software, not production trading infrastructure. See [DISCLAIMER.md](DISCLAIMER.md).
+
+## Research Paper
+
+The formal verification methodology and empirical validation are described in:
+
+> **[Lean 4 Proof-Checked Delta-Hedging: Accounting Invariants with Empirical Validation Across Four Historical Regimes](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.html)**
+> [PDF](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf) · EigenQ Research Series · 2026
 
 Formally verified accounting invariants for options portfolio backtesting.
 
@@ -22,7 +29,7 @@ The following invariants are proved as Lean 4 theorems — not tested, *proved*.
 | Self-financing | Trading at the mark price changes PV only by the fee | `selfFinancing` |
 | Settlement | At expiry ΔPV = qty × (payoff − mark), unifying ITM and OTM | `settlement_value_formula` |
 
-18 theorems in BacktestProofs ([`Invariants.lean`](lean/BacktestProofs/Invariants.lean) (12) and [`SettlementInvariants.lean`](lean/BacktestProofs/SettlementInvariants.lean) (6)) plus 8 payoff theorems in QuantCore. 26 total across the dependency graph. See [docs/formal_guarantees.md](docs/formal_guarantees.md) for the full list.
+13 accounting theorems ([`Invariants.lean`](lean/BacktestProofs/Invariants.lean)) + 6 settlement theorems ([`SettlementInvariants.lean`](lean/BacktestProofs/SettlementInvariants.lean)) + 8 payoff theorems (`QuantCore.OptionInvariants`), zero `sorry`. 27 total across the dependency graph. See [docs/formal_guarantees.md](docs/formal_guarantees.md) for the full list.
 
 ## Status
 
@@ -64,7 +71,7 @@ backtest-proofs/
 │   └── BacktestProofs/
 │       ├── Basic.lean               # Portfolio, Position, Trade
 │       ├── Accounting.lean          # @[export hedge_*] FFI exports
-│       ├── Invariants.lean          # 12 accounting theorems
+│       ├── Invariants.lean          # 13 accounting theorems
 │       ├── Settlement.lean          # Settlement functions (ITM trade / OTM abandon)
 │       ├── SettlementInvariants.lean # 6 settlement theorems
 │       └── Tests/UnitTests.lean
@@ -90,8 +97,8 @@ backtest-proofs/
 ## Setup
 
 ```bash
-git clone https://github.com/eigenq-xyz/backtest-proofs
-cd backtest-proofs
+git clone https://github.com/eigenq-xyz/quant-proofs
+cd quant-proofs/backtest-proofs
 make setup      # elan + uv + Mathlib cache (~5 min first run)
 make test       # Lean proofs + Python tests
 ```
@@ -129,7 +136,7 @@ This matters as AI-generated trading code becomes common. A model that produces 
 
 ## Credibility roadmap
 
-The Lean accounting module is complete at v0.5 (26 theorems, zero `sorry`). The remaining
+The Lean accounting module is complete at v0.5 (27 theorems, zero `sorry`). The remaining
 work is empirical: showing the engine produces correct *numbers*, not just formally
 consistent accounting. Four credibility levers, ordered by effort:
 
