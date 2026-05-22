@@ -40,9 +40,9 @@ jobs:
           tinytex: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install docs + research dependencies (matplotlib, seaborn, QuantLib)
+      - name: Install docs + research dependencies (jupyter-book, matplotlib, QuantLib)
         working-directory: backtest-proofs/python
-        run: uv sync --group dev --group research
+        run: uv sync --extra docs --group dev --group research
 
       # Future: build Lean API docs with doc-gen4
       # - name: Build Lean API docs (backtest-proofs)
