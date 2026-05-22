@@ -239,7 +239,7 @@ class TestMCConvergence:
                 sigma=_MC_SIGMA,
                 T=_MC_T,
                 n_steps=_MC_N_STEPS,
-                seed=seed,
+                seed=20260519 + seed,
             )
             result = run_delta_hedge(
                 path=path,

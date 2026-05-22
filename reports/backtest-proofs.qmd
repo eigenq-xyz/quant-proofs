@@ -154,15 +154,17 @@ We present the first Lean 4 formalization of operational accounting invariants
 for a traditional-securities options delta-hedging backtester. Eleven theorems
 — covering NAV identity, trade accounting, cash-update correctness, quantity
 conservation, self-financing, well-formedness, option settlement, and option
-payoff non-negativity — are proved zero-sorry as of commit 5774760 and
+payoff non-negativity — are proved zero-sorry as of commit
+`{python} COMMIT_SHA` and
 compiled via Lean 4's LLVM backend to a native shared library called at
 runtime through a Cython FFI layer, closing the gap between proof and
 execution by construction. We pair the formalization with empirical validation
 on 500 seeded GBM paths and a WRDS OptionMetrics sample of 491,390
 option-day observations (2019–2024, six equity underlyings, ATM ±3%). The
 Monte Carlo running-mean hedging cost converges to the Black-Scholes price
-with a 2.34% final deviation; our Black-Scholes implementation agrees with
-QuantLib's analytic pricer to a maximum of 2.69 basis points across five
+with a `{python} f"{mc_mean_deviation_pct:.2f}"`% final deviation; our Black-Scholes
+implementation agrees with QuantLib's analytic pricer to a maximum of
+`{python} f"{ql_max_dev:.2f}"` basis points across five
 parameter scenarios. The accounting invariants hold unconditionally across
 four historical stress regimes (GFC 2008, Volmageddon 2018, Q4 2018, COVID
 2020) — a formal guarantee independent of empirical outcomes. Primary
@@ -786,8 +788,8 @@ analysis time.
 
 | Window | Dates | Regime | N observations |
 |---|---|---|---|
-| GFC peak | 2008-09-01 to 2008-12-31 | Liquidity crisis | 1,070 |
-| Volmageddon | 2017-12-01 to 2018-04-30 | Volatility spike | 26,332 |
+| GFC peak | 2008-09-01 to 2008-12-31 | Liquidity crisis | 527 |
+| Volmageddon | 2017-12-01 to 2018-04-30 | Volatility spike | 5,060 |
 | Q4 2018 selloff | 2018-09-20 to 2019-01-31 | Rate-driven drawdown | 25,090 |
 | COVID crash | 2020-02-01 to 2020-09-30 | Pandemic shock | — |
 
@@ -1017,12 +1019,11 @@ bkl_ll_slope, _, bkl_ll_r, _, _ = scipy_stats.linregress(log_inv_n, log_stds)
 bkl_ll_r_sq = bkl_ll_r ** 2
 
 # --- 4. Float precision bound ---
-import math as _math
 # to_bp rounds x*10000 to nearest int → max error 0.5 bp per call
 # Each rebalancing step makes ~2 to_bp calls (exec price, mark price).
 # Independent rounding: Var = N_calls * (0.5 bp)^2
 _rounding_var_bp2 = MC_N_STEPS * 2 * 0.25           # bp²
-_rounding_std_bp  = _math.sqrt(_rounding_var_bp2)   # ≈ 3.16 bp
+_rounding_std_bp  = math.sqrt(_rounding_var_bp2)    # ≈ 3.16 bp
 # Convert bp to dollars for 100K contracts on $50 underlying
 rounding_std_dollars = _rounding_std_bp * 1e-4 * MC_S0 * MC_N_CONTRACTS
 rounding_frac_of_std = rounding_std_dollars / np.std(costs) * 100
@@ -1444,11 +1445,14 @@ if WRDS_PRESENT:
     from backtest_proofs.backtest.stress import run_stress_window
 
     df_main = pd.read_parquet(DATA_ROOT / "portfolio_atm_options.parquet")
-    wrds_ratios, _wrds_n_obs, wrds_holdout_n = run_stress_window(
+    wrds_total_obs = len(df_main)
+    wrds_ratios, wrds_holdout_n_obs, wrds_holdout_n = run_stress_window(
         df_main, "2021-01-01", "2023-12-31", r=0.0165, label="WRDS-holdout",
     )
     wrds_holdout_median = float(np.median(wrds_ratios)) if wrds_ratios else None
 else:
+    wrds_total_obs = None
+    wrds_holdout_n_obs = None
     wrds_holdout_median = None
     wrds_holdout_n = None
 ```
@@ -1544,7 +1548,12 @@ if WRDS_PRESENT:
     plt.show()
     plt.close()
 else:
-    stress_metrics = {}
+    stress_metrics = {
+        "covid_2020":  {"n_obs": None, "n_series": None, "all_certs_pass": None, "median_ratio": None},
+        "gfc_2008":    {"n_obs": None, "n_series": None, "all_certs_pass": None, "median_ratio": None},
+        "volm_2018":   {"n_obs": None, "n_series": None, "all_certs_pass": None, "median_ratio": None},
+        "dec2018":     {"n_obs": None, "n_series": None, "all_certs_pass": None, "median_ratio": None},
+    }
     fig, ax = plt.subplots(figsize=(14, 5))
     ax.text(
         0.5, 0.5,
@@ -1664,7 +1673,7 @@ _mb_arr = np.array(_mean_biases)
 _ols_slope = float(np.dot(_dt_arr, _mb_arr) / np.dot(_dt_arr, _dt_arr))
 _fitted = [_ols_slope * dt for dt in _delta_ts]
 _ss_res = float(np.sum((_mb_arr - np.array(_fitted)) ** 2))
-_ss_tot = float(np.sum((_mb_arr - _mb_arr.mean()) ** 2))
+_ss_tot = float(np.dot(_mb_arr, _mb_arr))   # OLS through origin: SS around zero
 leland_bias_r_sq = 1.0 - _ss_res / _ss_tot
 leland_bias_slope = _ols_slope
 
@@ -1837,6 +1846,8 @@ After downloading WRDS data per `docs/wrds_data_download.md`, re-run
 metrics = {
     "commit_sha": COMMIT_SHA,
     "wrds_data_present": WRDS_PRESENT,
+    "wrds_total_obs": int(wrds_total_obs) if wrds_total_obs is not None else None,
+    "wrds_holdout_n_obs": int(wrds_holdout_n_obs) if wrds_holdout_n_obs is not None else None,
     "mc_mean_deviation_pct": float(mc_mean_deviation_pct),
     "mc_n_paths": MC_N_PATHS,
     "bkl_ratio_10_20": float(bkl_ratio_10_20),
@@ -1853,10 +1864,7 @@ metrics = {
     "quantlib_n_scenarios": int(ql_n_scenarios),
     "wrds_holdout_median": wrds_holdout_median,
     "wrds_holdout_n_series": wrds_holdout_n,
-    "stress": stress_metrics if stress_metrics else {
-        k: {"n_series": None, "all_certs_pass": None, "median_ratio": None}
-        for k in ["covid_2020", "gfc_2008", "volm_2018", "dec2018"]
-    },
+    "stress": stress_metrics,
     "straddle_192_cost": float(straddle_192_cost),
     "straddle_193_cost": float(straddle_193_cost),
     "straddle_median_cost": float(straddle_median_cost),
