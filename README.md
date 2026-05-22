@@ -1,26 +1,50 @@
 # quant-proofs — EigenQ Research Series
 
-Formally verified quantitative finance — Lean 4 proofs of correctness paired with production-quality Python execution.
+Formally verified quantitative finance — machine-checked Lean 4 proofs paired with production Python.
 
-## Projects
+[![Lean CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/lean-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
+[![Python CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/python-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
 
-| Project | Status | What it proves |
-|---------|--------|---------------|
-| [`quant-core/`](quant-core/) | v1.0 — 8 theorems, zero `sorry` | Shared option primitives: `EuropeanOption` type invariants, payoff non-negativity, ITM/OTM characterization, integer payoff identity |
-| [`backtest-proofs/`](backtest-proofs/) | v0.5 — 18 theorems + 8 from QuantCore, zero `sorry` | Options delta-hedging accounting: portfolio value identity, self-financing, settlement value formula |
-| [`ftap-proofs/`](ftap-proofs/) | Skeleton | Discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981): arbitrage-free ↔ equivalent martingale measure exists |
-| [`options-proofs/`](options-proofs/) | Skeleton — imports quant-core, depends on ftap-proofs | Put-call parity via Cox-Ross-Rubinstein binomial model |
-| [`mortgage-proofs/`](mortgage-proofs/) | Active — Lean 4 invariant checking | LangGraph multi-agent mortgage pipeline with formally verified routing invariants |
+## What this is
 
-## Why formal verification for quant finance?
+Before trusting a numerical result, prove the accounting correct. Each project here pairs a formal Lean 4 proof — zero `sorry`, machine-checked on every commit — with the Python code that calls into it at runtime via Cython FFI. The theorem statement is the spec; the proof is the test — and neither can drift silently from the other.
 
-Backtesting bugs, settlement errors, and compliance violations share a common root: the code does something subtly different from what the math says. Lean 4 proofs make that gap impossible — the theorem statement *is* the spec, and the proof *is* the test.
+## Modules
 
-`backtest-proofs` proves the accounting module correct once; Python calls into it via Cython FFI. No matter how complex the backtesting strategy gets, the accounting layer cannot silently mis-report portfolio value, misapply a trade, or mis-settle an option.
+| Module | What it proves | Status |
+|--------|----------------|--------|
+| [`quant-core/`](quant-core/) | Option type invariants, payoff non-negativity, ITM/OTM characterization | v1.0 — 8 theorems |
+| [`backtest-proofs/`](backtest-proofs/) | Delta-hedging accounting: NAV identity, self-financing, settlement value formula | v0.5 — 19 theorems |
+| [`ftap-proofs/`](ftap-proofs/) | Discrete FTAP (Harrison-Pliska 1981): arbitrage-free iff equivalent martingale measure exists | Skeleton |
+| [`options-proofs/`](options-proofs/) | Put-call parity via Cox-Ross-Rubinstein binomial model | Skeleton |
+| [`mortgage-proofs/`](mortgage-proofs/) | LangGraph multi-agent routing invariants, Lean 4-checked trace verification | Active |
 
-## Structure
+## Research Paper
 
-Each subdir is an independent project with its own Lake/Python build and its own CLAUDE.md. Namespaces: `QuantCore`, `BacktestProofs`, `FtapProofs`, `OptionsProofs`, `MortgageProofs`. `quant-core` sits at the base of the dependency graph; `backtest-proofs` and `options-proofs` import it.
+The paper proves 11 accounting theorems zero-sorry and validates them on 491,390 WRDS OptionMetrics observations across four historical stress regimes.
+
+- HTML: [eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.html](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.html)
+- PDF: [eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf)
+
+## Quick start
+
+```bash
+git clone https://github.com/eigenq-xyz/quant-proofs
+cd quant-proofs/backtest-proofs
+make setup   # install Lean (elan) + Python (uv)
+make test    # Lean proofs + Python tests
+make paper   # render research paper (requires uv sync --group research)
+```
+
+For modules without a root Makefile (`ftap-proofs`, `options-proofs`, `mortgage-proofs`), build with:
+
+```bash
+cd <module> && lake build
+```
+
+## Documentation
+
+Full documentation: [eigenq-xyz.github.io/quant-proofs](https://eigenq-xyz.github.io/quant-proofs)
 
 ## License
 
