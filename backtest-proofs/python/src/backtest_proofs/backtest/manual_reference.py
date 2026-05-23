@@ -41,10 +41,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
-
-from backtest_proofs.backtest.data_types import PricePath
 from quant_core.pricer.black_scholes import bs_greeks, bs_price
 from quant_core.pricer.conventions import to_bp
+
+from backtest_proofs.backtest.data_types import PricePath
 
 
 @dataclass(frozen=True)
