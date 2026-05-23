@@ -1,0 +1,71 @@
+# Pre-commit hooks for quant-proofs monorepo.
+#
+# Setup (one-time, per local checkout):
+#   uv pip install pre-commit
+#   pre-commit install
+#
+# Run manually on all files:
+#   pre-commit run --all-files
+#
+# Skip in CI runs (pre-commit.ci) where the build tools aren't available;
+# these are run by the per-project GitHub Actions workflows instead.
+ci:
+  skip: [mypy-backtest-proofs, mypy-quant-core, mypy-mortgage-proofs]
+
+repos:
+  # ─── General file-level hygiene ──────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ["--maxkb=2000"]
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+
+  # ─── Python lint + format (all subprojects) ──────────────────────────────
+  # Ruff config lives in each subproject's pyproject.toml; the hook runs
+  # against any Python file in the monorepo so a commit can't merge if any
+  # subdir's lint rules are violated.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # ─── Markdown linting ────────────────────────────────────────────────────
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.37.0
+    hooks:
+      - id: markdownlint
+        args: [--fix, --disable, MD013, MD033, MD041]
+
+  # ─── Per-subproject mypy (strict) ────────────────────────────────────────
+  # mypy is run per subproject so each gets its own venv and stub set.
+  # Each hook fires only when files under its subproject's python/ tree
+  # have changed.
+  - repo: local
+    hooks:
+      - id: mypy-backtest-proofs
+        name: mypy --strict (backtest-proofs)
+        entry: bash -c 'cd backtest-proofs/python && uv run mypy src/ --strict'
+        language: system
+        files: ^backtest-proofs/python/src/.*\.py$
+        pass_filenames: false
+
+      - id: mypy-quant-core
+        name: mypy --strict (quant-core)
+        entry: bash -c 'cd quant-core/python && uv run mypy src/ --strict'
+        language: system
+        files: ^quant-core/python/src/.*\.py$
+        pass_filenames: false
+
+      - id: mypy-mortgage-proofs
+        name: mypy --strict (mortgage-proofs)
+        entry: bash -c 'cd mortgage-proofs/python && uv run mypy src/ --strict'
+        language: system
+        files: ^mortgage-proofs/python/src/.*\.py$
+        pass_filenames: false
