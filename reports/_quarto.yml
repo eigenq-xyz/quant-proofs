@@ -32,7 +32,10 @@ format:
           \usepackage{titlesec}
           \usepackage{needspace}
           \usepackage{fvextra}
-          \newcommand{\sectionbreak}{\needspace{8\baselineskip}}
+          % Force each top-level \section to start on a new page,
+          % while keeping \subsection / \subsubsection inline.
+          \let\quantproofsoldsection\section
+          \renewcommand{\section}{\clearpage\quantproofsoldsection}
           \titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
           \titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
           \titleformat{\subsubsection}{\normalsize\itshape}{\thesubsubsection}{1em}{}
@@ -42,16 +45,6 @@ format:
     fig-pos: "tbp"
     fig-cap-location: bottom
     tbl-cap-location: top
-
-  html:
-    theme: cosmo
-    toc: true
-    toc-depth: 3
-    number-sections: true
-    code-fold: false
-    fig-cap-location: bottom
-    tbl-cap-location: top
-    html-math-method: katex
 
 bibliography: _references.bib
 csl: _journal-of-finance.csl
