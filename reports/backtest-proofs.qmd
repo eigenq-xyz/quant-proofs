@@ -204,18 +204,19 @@ Three contributions follow.
 
 3. An empirical demonstration that the step audit records pass on
    real-data inputs the synthetic test harness cannot replicate.
-   Across 491,390 WRDS OptionMetrics option-day observations and four
-   historical stress regimes (GFC 2008, Volmageddon 2018, Q4 2018,
-   COVID 2020), every step audit record passes. Separately, the
-   discrete-hedging implementation reproduces the standard benchmarks:
-   Monte Carlo hedging cost converges to the Black-Scholes price, the
-   Bertsimas-Kogan-Lo and Carr-Madan attributions hold within
-   bootstrap confidence intervals on a 100,000-simulation panel, and
-   the variance risk premium documented by @bakshikapadia2003 appears
-   in both the holdout median and the crisis-window reversal. These
-   are two distinct claims: the first is the framework guarantee, the
-   second is a sanity check on the discrete-hedging implementation
-   running on top of it.
+   Across 37,246 WRDS OptionMetrics option-day observations spanning
+   four historical stress regimes (GFC 2008, Volmageddon 2018, Q4
+   2018, COVID 2020) and 25,363 qualifying call series in a 2021–2023
+   calm-market holdout, every step audit record passes. Separately,
+   the discrete-hedging implementation reproduces the standard
+   benchmarks: Monte Carlo hedging cost converges to the Black-Scholes
+   price, the Bertsimas-Kogan-Lo and Carr-Madan attributions hold
+   within bootstrap confidence intervals on a 100,000-simulation
+   panel, and the variance risk premium documented by @bakshikapadia2003
+   appears in both the holdout median and the crisis-window reversal.
+   These are two distinct claims: the first is the framework
+   guarantee, the second is a sanity check on the discrete-hedging
+   implementation running on top of it.
 
 The position ledger is proved for any integer-representable instrument:
 cash flows, position quantities, and the portfolio-value identity hold
@@ -259,8 +260,8 @@ Modern reinforcement-learning extensions such as deep hedging
 position ledger to compute realized P&L from the policy's trades, so
 the verified ledger introduced here is composable with these recent
 approaches. Our
-empirical sections (@sec-mc, @sec-wrds) reproduce and extend the
-classical benchmarks on synthetic and real data using the verified
+empirical sections (@sec-wrds, @sec-mc) reproduce and extend the
+classical benchmarks on real and synthetic data using the verified
 position ledger.
 
 A third body of work supplies the institutional motivation for
@@ -479,10 +480,10 @@ raises an exception immediately with a diagnostic identifying the step
 and inputs at which the identity failed.
 
 A failure cannot be a market event. The trade-accounting identity is a
-proved theorem of the ledger, and the ledger holds unconditionally for
-all integer-valued inputs. A failure therefore indicates a bug in the
-Python execution layer or the runtime bridge that connects it to the
-ledger, never a property of the price path or trade sequence.
+proved theorem of the ledger, and the ledger holds, within the verified
+kernel, for every integer-valued input. A failure therefore indicates a
+bug in the Python execution layer or the runtime bridge that connects
+it to the ledger, never a property of the price path or trade sequence.
 
 Together, the step audit records for a backtest run form a
 machine-readable audit trail at every rebalancing step. For every step
@@ -495,10 +496,10 @@ rely on point-in-time validation.
 
 ## Scope: what is and is not formally verified {#sec-ledger-scope}
 
-The ledger proofs cover cash and position accounting unconditionally for
-all integer-valued inputs. They do not cover the Black-Scholes pricing
-computations, the geometric Brownian motion path simulation, the
-strategy logic, or the quality of the input data. These four sources of
+The ledger proofs cover cash and position accounting, within the
+verified kernel, for every integer-valued input. They do not cover the
+Black-Scholes pricing computations, the geometric Brownian motion path
+simulation, the strategy logic, or the quality of the input data. These four sources of
 risk are empirically evaluated in @sec-data through @sec-mc.
 
 The comparison class for the formal results is narrow but precise. The
@@ -1742,10 +1743,10 @@ exhibits are about finance theory.
 #| label: fig-leland
 #| fig-cap: "Rehedge-frequency variance sweep replicating Leland (1985) Table II. Blue dots: empirical std(cost) for N $\\in$ {5, 10, 20, 40, 80} rebalancing steps (500 paths each). Red dashed: BKL theory (std $\\propto 1/\\sqrt{N}$), anchored at N=20. Source: synthetic GBM, seed 20260519."
 
-# NOTE for next draft: fig-leland and fig-bkl display the same bkl_result data.
-# Consider differentiating fig-leland by adding the Leland (1985) modified-vol
-# theoretical curve, or merging the two into a single two-panel figure.
-# Reuse bkl_result computed above in fig-bkl
+# Reuse bkl_result computed above in fig-bkl. This appendix figure
+# adds N annotations to each point and uses a larger marker for
+# readability at the appendix scale; the underlying data and theory
+# line are identical to fig-bkl by design.
 inv_sqrt_n_leland = [1 / math.sqrt(n) for n in ns]
 theory_stds_leland = [bkl_result[anchor_n] * math.sqrt(anchor_n) / math.sqrt(n) for n in ns]
 
@@ -1774,7 +1775,7 @@ plt.close()
 ```
 
 Across N=5 to N=80, std(hedging cost) falls monotonically with
-rebalancing frequency, as Leland [-@leland1985] predicted. The
+rebalancing frequency, as BKL [@bertsimas2000] predicted. The
 empirical slope of the std vs. 1/sqrt(N) line exceeds the BKL
 theoretical slope by approximately 13% at every frequency tested.
 @kabanovSafarian1997 prove that the limiting variance under Leland's
@@ -1880,7 +1881,7 @@ form is missing some structure in the data.
 
 ```{python}
 #| label: fig-bootstrap-spec
-#| fig-cap: "Bootstrap specification test for BKL variance scaling (left two panels) and Leland O(Δt) mean-bias convergence (right two panels). Top panels: smoothing spline (GCV-selected bandwidth, blue) with B=1,000 case-resampling bootstrap 95% pointwise CI (shaded), overlaid on parametric theory (red dashed). Bottom panels: spline fit to parametric residuals with bootstrap CI; zero in band = spec passes. N=5,000 paths per frequency, 20 log-spaced frequencies N ∈ {3…400} (100,000 total simulations), B=1,000 bootstrap resamples."
+#| fig-cap: "Bootstrap specification test for BKL variance scaling (left two panels) and Boyle-Emanuel O(Δt) mean-bias convergence (right two panels). Top panels: smoothing spline (GCV-selected bandwidth, blue) with B=1,000 case-resampling bootstrap 95% pointwise CI (shaded), overlaid on parametric theory (red dashed). Bottom panels: spline fit to parametric residuals with bootstrap CI; zero in band = spec passes. N=5,000 paths per frequency, 20 log-spaced frequencies N ∈ {3…400} (100,000 total simulations), B=1,000 bootstrap resamples."
 
 import pickle
 import numpy as np
@@ -2019,7 +2020,7 @@ ax_lbias.plot(_x_fine_dt_boot, _spline_bias_curve,
               color="#7c3aed", lw=2, label="Smoothing spline (GCV)")
 ax_lbias.plot(_x_fine_dt_boot, _a_leland * _x_fine_dt_boot,
               color="#dc2626", ls="--", lw=1.5,
-              label=rf"Leland O($\Delta t$) theory (a={_a_leland:.3f})")
+              label=rf"Boyle-Emanuel O($\Delta t$) theory (a={_a_leland:.3f})")
 ax_lbias.scatter(_dt_vals, _emp_biases, color="#7c3aed", s=40, zorder=5)
 ax_lbias.axhline(0, color="#6b7280", lw=0.8, ls=":")
 ax_lbias.set_xlabel(r"$\Delta t = T/N$ (rebalancing interval, years)")
@@ -2047,7 +2048,7 @@ ax_rlbias.plot(_x_fine_dt_boot, _spline_resid_bias,
 ax_rlbias.axhline(0, color="#dc2626", ls="--", lw=1.5, label="Zero (theory correct)")
 ax_rlbias.scatter(_dt_vals, _resid_biases, color="#7c3aed", s=40, zorder=5)
 ax_rlbias.set_xlabel(r"$\Delta t = T/N$ (years)")
-ax_rlbias.set_ylabel("Residual: actual − Leland theory")
+ax_rlbias.set_ylabel("Residual: actual − Boyle-Emanuel theory")
 ax_rlbias.set_title("Boyle-Emanuel residuals (zero in band $\\Leftrightarrow$ spec passes)")
 ax_rlbias.legend(fontsize=8)
 
@@ -2101,10 +2102,11 @@ the residuals. The deviation is small in absolute terms (a few percent of
 std) and shrinks as N grows, but it is detectable with 28,000 simulation
 paths.
 
-**Leland O(Δt) bias:** The Leland linear-through-origin model fits within
-the bootstrap CI for `{python} f"{_leland_in_ci_frac:.0%}"` of
-frequencies, and passes the specification test over the practical range
-N ∈ [20, 80] (`{python} "PASS" if _leland_passes else "FAIL"`). The
+**Boyle-Emanuel O(Δt) bias:** The Boyle-Emanuel linear-through-origin
+model fits within the bootstrap CI for
+`{python} f"{_leland_in_ci_frac:.0%}"` of frequencies, and passes the
+specification test over the practical range N ∈ [20, 80]
+(`{python} "PASS" if _leland_passes else "FAIL"`). The
 residual panel shows that at very large $\Delta t$ (small N), the mean
 bias is less negative than the leading-order O($\Delta t$) prediction:
 the extreme discrete paths partially recover toward the continuous limit
