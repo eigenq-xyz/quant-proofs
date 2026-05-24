@@ -60,17 +60,16 @@ jobs:
         run: uv run jupyter-book build ../../backtest-proofs/docs/
 
       # Verify committed paper artifacts exist.
-      # The paper is rendered locally and committed to reports/ (HTML, PDF, and
+      # The paper is rendered locally and committed to reports/ (PDF and
       # the backtest-proofs_files/ asset bundle) because CI cannot execute the
       # paper chunks: it would require building Lean+Cython FFI and installing
       # WRDS data. The locally-rendered output is the source of truth.
+      # The paper is distributed as PDF only; no HTML output is generated.
       - name: Verify committed paper artifacts
         run: |
           test -f reports/backtest-proofs.pdf || (echo "ERROR: PDF missing" && exit 1)
-          test -f reports/backtest-proofs.html || (echo "ERROR: HTML missing" && exit 1)
           test -d reports/backtest-proofs_files || (echo "ERROR: _files dir missing" && exit 1)
           echo "Paper PDF: $(wc -c < reports/backtest-proofs.pdf) bytes"
-          echo "Paper HTML: $(wc -c < reports/backtest-proofs.html) bytes"
 
       # Embed backtest-proofs book inside the root artifact
       - name: Merge backtest-proofs build into root site
@@ -78,13 +77,11 @@ jobs:
           mkdir -p docs/_build/html/backtest-proofs
           cp -r backtest-proofs/docs/_build/html/. docs/_build/html/backtest-proofs/
 
-      # Deploy paper under /paper/ — copy the committed artifacts.
+      # Deploy paper under /paper/ — copy the committed PDF.
       - name: Copy paper to Pages artifact
         run: |
           mkdir -p docs/_build/html/paper
           cp reports/backtest-proofs.pdf docs/_build/html/paper/
-          cp reports/backtest-proofs.html docs/_build/html/paper/
-          cp -r reports/backtest-proofs_files docs/_build/html/paper/
 
       - name: Deployment summary
         run: |
@@ -92,7 +89,6 @@ jobs:
           echo "| Asset | Size |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|------|" >> $GITHUB_STEP_SUMMARY
           echo "| Paper PDF | $(wc -c < reports/backtest-proofs.pdf) bytes |" >> $GITHUB_STEP_SUMMARY
-          echo "| Paper HTML | $(wc -c < reports/backtest-proofs.html) bytes |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Published at: https://eigenq-xyz.github.io/quant-proofs/" >> $GITHUB_STEP_SUMMARY
 
