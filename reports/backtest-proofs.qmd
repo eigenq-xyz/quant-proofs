@@ -1,45 +1,36 @@
 ---
-title: "Lean 4 Proof-Checked Delta-Hedging: Accounting Invariants with Empirical Validation Across Four Historical Regimes"
-subtitle: "EigenQ Research Series"
+title: "Provably Correct Quantitative Backtesting"
+subtitle: "A Machine-Verified Position Ledger with Empirical Validation Across Four Historical Stress Regimes"
 author:
   - name: Akhil Karra
 date: today
 date-format: long
 abstract: |
-  Accounting bugs in backtesting systems are invisible to statistical
-  validation: a ledger error that uniformly inflates the reported Sharpe
-  ratio survives out-of-sample evaluation precisely because it applies to
-  every period, in-sample and out-of-sample alike. This paper proves the
-  ledger layer of an options backtester correct using
-  machine-checked proofs (formal verification) in Lean 4 and pairs that
-  guarantee with empirical validation on 491,390 WRDS OptionMetrics
-  option-day observations across four historical market regimes. Three
-  contributions follow. First, eleven accounting theorems covering NAV
-  identity, cash-update correctness, quantity conservation,
-  self-financing, option settlement, and payoff non-negativity are proved
-  with zero unverified placeholders; the proofs hold unconditionally over
-  all integer-representable inputs, not merely the inputs a test author
-  chose to include. Second, the proved theorems compile to a native shared
-  library that the Python backtester calls at runtime, so the same code
-  object that carries the machine-checked guarantees is the code object
-  that executes at runtime. Third, the formalization targets
-  traditional-securities accounting invariants, a layer that prior
-  proof-assistant work on financial systems has left unaddressed.
-  Empirically, 500 seeded GBM paths yield a running-mean hedging cost
-  converging to the Black-Scholes price with a 2.34% final deviation; the
-  Black-Scholes implementation agrees with QuantLib to a maximum of 2.69
-  basis points across five scenarios. The accounting invariants hold
-  unconditionally across all 491,390 WRDS observations with a 100%
-  step-certificate pass rate; stress-regime hedging-cost medians are 1.69
-  (COVID 2020), 1.23 (GFC 2008 and Volmageddon 2018), and 1.18 (Q4 2018)
-  as a fraction of the initial Black-Scholes premium. Primary results
-  assume flat per-series implied volatility and European-style payoffs
-  only; proportional transaction costs are left for future work.
+  Bugs in a backtester's accounting ledger produce plausible profit and
+  loss time series that statistical validation cannot diagnose: the test
+  takes the reported P&L as given. We build a backtesting framework
+  whose position ledger is machine-checked in Lean 4 and integrated into
+  Python at runtime, eliminating this class of error by construction.
+  The framework is asset-agnostic. Any trading strategy that produces
+  integer-valued trades inherits the same accounting guarantee. The
+  framework produces a machine-readable audit record at every
+  rebalancing step, directly addressing the ongoing-monitoring
+  requirement under SR 11-7 model risk management guidance. We validate
+  the framework using a discrete delta-hedging strategy on European
+  call options. Empirical hedging cost converges to the Black-Scholes
+  price within 2.34% across 500 Monte Carlo paths; the pricing
+  implementation agrees with QuantLib to within 2.69 basis points
+  across five canonical parameter scenarios; and the verified
+  accounting holds across four historical stress regimes (GFC 2008,
+  Volmageddon 2018, Q4 2018, COVID 2020). Primary results assume flat
+  per-series implied volatility and European-style payoffs. Extension
+  to a dynamic volatility surface and proportional transaction costs is
+  left for future work.
 keywords:
   - quantitative finance
   - formal verification
-  - Lean 4
-  - delta hedging
+  - backtesting
+  - model risk management
   - options
 jel:
   - G12
