@@ -25,7 +25,9 @@ format:
     urlcolor: NavyBlue
     link-citations: true
     number-sections: true
-    toc: false
+    toc: true
+    toc-depth: 2
+    toc-title: "Contents"
     include-in-header:
       - _eigenq.tex
       - text: |

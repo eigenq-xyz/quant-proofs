@@ -199,22 +199,12 @@ Three contributions follow.
    real market data, not a novel result about European vanilla options
    per se.
 
-Scope is worth stating plainly. The position ledger is proved for any
-integer-representable instrument: cash flows, position quantities, and
-the net-asset-value identity hold by construction. Black-Scholes
-pricing, GBM simulation, and all distributional claims about hedging
-cost are empirically validated, not formally proved. The contribution
-is the verification workflow and its empirical demonstration, not a
-novel result for European vanilla options.
-
-| Section | Content |
-|---------|---------|
-| §2      | The position ledger: architecture, machine-checked invariants, and the step audit record |
-| §3      | The delta-hedging strategy as the empirical demonstration vehicle |
-| §4      | Methods: data, simulation design, and empirical validation framework |
-| §5      | Empirical validation against Black-Scholes theory and canonical benchmarks |
-| §6      | Historical stress tests across four crisis regimes |
-| §7      | Discussion: limitations, regulatory connections, broader vision |
+The position ledger is proved for any integer-representable instrument:
+cash flows, position quantities, and the portfolio-value identity hold
+by construction. Black-Scholes pricing, GBM simulation, and all
+distributional claims about hedging cost are empirically validated, not
+formally proved. The contribution is the verification workflow and its
+empirical demonstration, not a novel result for European vanilla options.
 
 ## Related Work {#sec-related}
 
@@ -286,38 +276,51 @@ standalone proof artifacts.
 
 ## A Motivating Example {#sec-falsification}
 
-Consider a class of accounting bug that a careful test suite cannot
-detect: the cash deduction for a delta-hedge trade is set to zero
-when the trade quantity is recorded but the cash balance is not
-debited. This is exactly the kind of error a flawed basis-point
-conversion would introduce if the converter returned zero on
+Consider a class of accounting bug a careful test suite cannot detect: the
+cash deduction for a delta-hedge trade is silently set to zero. The trade
+quantity is recorded on the position correctly, but the cash balance
+remains unchanged. This is exactly the kind of error a flawed
+basis-point conversion would introduce if the converter returned zero on
 fractional cents instead of rounding to the nearest integer.
 
-A simple test of the ledger would exercise the trade-application
-function on a sample of trades and confirm the portfolio value
-changes by the expected amount. If the sample happens to include
-only trades where the pre-trade quantity is zero (the first
-purchase, for instance), the test does not catch the bug. The
-trade-accounting identity predicts $\Delta\text{PV} = q_{\text{pre}}
-\cdot (p_{\text{exec}} - p_{\text{mark}}) - \text{fee}$. When the
-pre-trade quantity is zero, the predicted change is zero regardless
-of the execution price. The bug produces a zero change. The
-predicted and observed values agree, and the test passes.
+The trade-accounting identity that the ledger enforces is
+$\Delta\text{PV} = q_{\text{pre}} \cdot (p_{\text{exec}} -
+p_{\text{mark}}) - \text{fee}$. Concretely, suppose the portfolio holds
+$100.00 in cash, the mark price is $49.00, and the execution price
+moves to $50.00 with no fee. Two trades happen in sequence: a first
+purchase from a zero starting position, then a subsequent purchase of
+500 more shares.
 
-The same bug is invisible to statistical validation of the
-backtest output: every reported P&L number is biased by exactly the
-same amount on every step, so the bias survives all subsample
+| | $q_{\text{pre}}$ | $p_{\text{exec}}$ | $p_{\text{mark}}$ | Predicted $\Delta\text{PV}$ |
+|---|---|---|---|---|
+| Trade 1 (first purchase) | 0 shares | $50.00 | $49.00 | $0 \times (50.00 - 49.00) = \$0$ |
+| Trade 2 (subsequent buy) | 500 shares | $50.00 | $49.00 | $500 \times (50.00 - 49.00) = \$500$ |
+
+On Trade 1, the predicted change is $\$0$ because the pre-trade quantity
+is zero. The bug produces a $\$0$ change too: cash was not debited but
+the identity does not require cash movement when $q_{\text{pre}}=0$.
+Predicted and observed values agree, the audit record passes, the test
+suite is satisfied.
+
+On Trade 2, the identity predicts $\Delta\text{PV} = \$500$. The bug
+still produces $\$0$ because cash is not debited. The audit record now
+records observed $\Delta\text{PV} = \$0$ and predicted $\Delta\text{PV}
+= \$500$; the mismatch surfaces immediately. The bug is caught.
+
+The class of bug the audit records catch generalizes: any error that
+breaks the trade-accounting identity surfaces on any step where the
+pre-trade quantity multiplied by the price change is nonzero, which the
+Monte Carlo simulation in Section 5 guarantees will occur on the
+overwhelming majority of steps in any realistic backtest. The same bug
+is invisible to statistical validation of the backtest output because
+the bias appears on every step, so it survives all subsample
 comparisons, robustness checks, and out-of-sample tests.
 
-A formal proof catches this bug because the proof quantifies over
-all integer-valued inputs simultaneously. The step audit record
-produced by the verified ledger records both the pre- and
-post-trade portfolio values and the trade-accounting prediction at
-every rebalancing step. The mismatch surfaces on any step where the
-pre-trade position is nonzero, which the Monte Carlo simulation
-guarantees will happen.
-
-The complete code exhibit is in Appendix A.
+A formal proof catches this bug because the proof quantifies over all
+integer-valued inputs simultaneously: there is no input under which the
+predicted and observed portfolio-value changes can disagree if the
+trade-accounting function is implemented correctly. The complete code
+exhibit and the full audit-record format are in Appendix A.
 
 # The Position Ledger {#sec-ledger}
 
@@ -1326,70 +1329,88 @@ ledger connect directly to the Leland [-@leland1985] modified
 volatility, yielding a verified replication-cost bound under
 proportional transaction costs.
 
-## Toward formally verified quant infrastructure {#sec-extensions}
+## Toward a provably correct research desk {#sec-extensions}
 
-This paper verifies the first layer of a larger program. The position
-ledger is the deepest and most reusable component of a backtester, and
-it is the layer where formal proof yields the largest marginal return.
-Mathlib4, the mathematical library underpinning Lean 4, has grown
-through late 2025 to cover substantial portions of measure theory,
-probability, and stochastic processes: conditional expectation in
-Banach spaces, filtrations and stopping times, Doob's martingale
-convergence theorems are now available, and a formalization of Brownian
-motion via the Kolmogorov extension theorem has been published as a
-preprint and is under active integration. Ito calculus and stochastic
-integration remain unformalized as of late 2025, so the immediate gap
-between the current library and a Lean-checkable proof of the
-Black-Scholes PDE is Ito's lemma. Discrete-time finance (binomial
-models, discrete delta-hedging, FTAP) is tractable today;
-continuous-time pricing awaits Ito.
+The position ledger is the first layer in a larger program: a
+quantitative research desk in which each tool the researcher uses has a
+machine-checked specification, and in which composing those tools
+produces a provably correct pipeline at the granularity a model
+validator or auditor would inspect.
 
-A research desk where formal verification is a routine part of the
-toolchain has different properties from one where it is not. Model
-validators inherit machine-readable evidence of model behavior at every
-state transition, addressing the ongoing-monitoring requirement of
-@sr117 directly rather than through reconstructed audit logs.
-Researchers can compose verified components without re-validating
-downstream layers: a verified ledger plus a verified pricer plus a
-verified risk decomposition produces a verified pipeline, with each
-piece checked once. Model audit reduces to verifying that the proved
-properties match the intended economic behavior, rather than
-re-deriving the implementation from first principles.
+The natural next layers, ordered by how silent and how compounding the
+errors are if uncaught:
+
+- **Reconciliation and trade booking**: the layer between order
+  execution and the position ledger. Bugs here produce position drift
+  that the verified ledger then propagates faithfully (the ledger is
+  correct; its inputs were already wrong). Specifying the booking layer
+  in Lean against the same integer arithmetic the ledger uses closes
+  the loop.
+
+- **Risk decomposition**: Greeks, P&L attribution, scenario analysis.
+  These are arithmetic on outputs of the verified ledger; their
+  specifications are clean (the chain rule, finite differencing,
+  factor decompositions) and naturally compose with the ledger's
+  guarantees. A verified Greek decomposition plus the verified ledger
+  yields a verified pipeline from trade to attributed P&L.
+
+- **Portfolio construction**: mean-variance, risk parity, factor
+  exposures. These are linear-algebraic optimizations whose
+  specifications (constraints satisfied, objective stationary at
+  reported optimum) are precise enough to verify; Mathlib4's linear
+  algebra is well-developed enough to support this today.
+
+- **Pricing models**: closed-form (Black-Scholes, binomial), and
+  eventually PDE and Monte Carlo. The discrete-time and lattice pricers
+  are formalizable today against the current Mathlib library; PDE and
+  Monte Carlo for continuous-time models await Ito calculus and
+  stochastic integration in Mathlib, which the Brownian motion work
+  cited above is making tractable.
+
+A research desk built this way has properties the current toolchain
+does not. The reconciliation layer is correct against the same integer
+arithmetic the ledger uses; the risk system inherits the ledger's
+audit trail directly; the pricing library and the simulation share
+proved invariants; the portfolio optimizer's output is a checked
+artifact rather than a black-box optimization result. The marginal
+cost of formalizing each layer drops as the upstream layers are
+already verified, because each new specification can assume the
+previous layer rather than re-prove it.
+
+Concrete reuse patterns are immediate. A deep hedging
+[@buehler2019] policy running on a verified ledger inherits the
+accounting guarantees regardless of how the policy was trained. A risk
+system emitting machine-readable audit records meets the documentation
+granularity that stress-testing and SR 11-7 [@sr117] ongoing-monitoring
+frameworks demand. A single verified ledger serving N strategies
+eliminates per-strategy accounting re-validation, collapsing N review
+burdens into one.
 
 Not every layer of a quant pipeline merits formal verification. The
 valuable targets are layers where bugs are silent (the output looks
 plausible), where bugs survive testing (they only manifest on inputs
 the test author did not consider), and where bugs compound (one ledger
 error contaminates every downstream Sharpe ratio, every regime test,
-every cross-strategy comparison). The position ledger meets all three
-criteria. The Black-Scholes pricer does not: a pricing bug produces
-visibly wrong prices that a QuantLib comparison catches in minutes. The
-strategy logic does not: a strategy bug produces visibly wrong trades.
-The empirical sections (Sections 5 and 6) confirm that the
-implementation works for these less-deep layers; formal proof is
-reserved for the layer where it is most needed.
-
-Adjacent applications follow from the same architecture. A deep hedging
-[@buehler2019] policy running on a verified ledger inherits the
-accounting guarantees regardless of how the policy was trained. A risk
-system emitting machine-readable audit records meets regulator
-documentation requirements at the granularity that stress-testing
-frameworks demand. A single verified ledger serving N strategies
-eliminates per-strategy accounting re-validation, collapsing N review
-burdens into one.
+every cross-strategy comparison). The position ledger, reconciliation,
+and risk decomposition meet all three criteria. The Black-Scholes
+pricer does not: a pricing bug produces visibly wrong prices that a
+QuantLib comparison catches in minutes. The strategy logic does not:
+a strategy bug produces visibly wrong trades. The empirical sections
+of this paper confirm that the implementation works for the
+less-deep layers; formal proof is reserved for the layers where it is
+most needed and where the marginal verification effort produces the
+most durable guarantees.
 
 ## Data availability {#sec-data-availability}
 
-Synthetic Monte Carlo results are fully reproducible from the public
-repository via `make paper` (base seed 20260519). WRDS OptionMetrics
-data is licensed and not redistributed under WRDS terms. The metrics
-snapshot in the appendix records every reported numerical value, and
-the PDF regenerates deterministically from the source when WRDS data is
-present.
+The synthetic Monte Carlo and deterministic-path results in this paper
+are fully reproducible from the public repository. WRDS OptionMetrics
+data is licensed and is not redistributed under WRDS terms; the
+licensed sample is required only to reproduce the stress-regime panels
+in Section 6. Replication instructions, exact parameter values, and
+the metrics snapshot are in the appendix.
 
-# Appendix {.appendix}
-
-## Falsification exhibit: code listing {#sec-appendix-falsification}
+# Falsification exhibit: code listing {.appendix #sec-appendix-falsification}
 
 The following code exhibit demonstrates the bug described in
 @sec-falsification. The complete exhibit is in
@@ -1431,7 +1452,7 @@ regardless of cash accounting. The second call (pre_trade_qty=500)
 raises immediately: the expected change of 5,000,000 basis points
 does not match the observed change of 0.
 
-## Theorem Statements {#sec-appendix-theorems}
+# Theorem Statements {.appendix #sec-appendix-theorems}
 
 Full Lean 4 theorem statements, proof commentary, and source file
 references for all eleven machine-checked theorems are available in the
@@ -1444,7 +1465,7 @@ Table 4.1 correspond directly to the Lean source identifiers; each
 hyperlinked row in the online version links to the exact line in the
 repository.
 
-## Proof Architecture {#sec-appendix-architecture}
+# Proof Architecture {.appendix #sec-appendix-architecture}
 
 *This section is a technical reference for developers wishing to inspect
 or extend the Python runtime bridge. QF/FM readers may skip to
@@ -1460,7 +1481,7 @@ basis-point integers ($\times 10{,}000$ of dollar values). See
 `backtest-proofs/DECISIONS.md` ADR-006 for the rationale behind the
 Cython FFI design choice.
 
-## Variance Scaling and Bootstrap Specification Test {#sec-appendix-bootstrap}
+# Variance Scaling and Bootstrap Specification Test {.appendix #sec-appendix-bootstrap}
 
 @bertsimas2000 and @leland1985 predict specific relationships between
 discrete delta-hedge cost variance, mean bias, and rebalancing frequency;
@@ -1856,7 +1877,7 @@ all 2,000 paths, regardless of which asymptotic regime the
 rebalancing frequency sits in.
 
 
-## Error decomposition {#sec-appendix-error-decomp}
+# Error decomposition {.appendix #sec-appendix-error-decomp}
 
 The four diagnostics below decompose the discrete-hedging error reported
 in @sec-mc and @sec-bkl-cm into a structural-bias component, a
@@ -1962,7 +1983,7 @@ $\$`{python} f"{rounding_std_dollars:,.0f}"`$
 hedging-cost standard deviation. Basis-point rounding contributes
 negligibly to observed variance.
 
-## Hull Table 19.2 / 19.3 deterministic cross-check {#sec-appendix-hull}
+# Hull Table 19.2 / 19.3 deterministic cross-check {.appendix #sec-appendix-hull}
 
 The Hull (2014) textbook tabulates a deterministic 20-step weekly
 hedge of a written ATM call ($S_0 = 49$, $K = 50$, $r = 5\%$,
@@ -2086,7 +2107,7 @@ fully explained by the textbook's three-decimal-place delta rounding
 and hundred-share rounding rules. All step audit records pass for both
 paths.
 
-## QuantLib pricing cross-check {#sec-appendix-quantlib}
+# QuantLib pricing cross-check {.appendix #sec-appendix-quantlib}
 
 QuantLib is an open-source C++ derivatives library widely used in
 quantitative finance. Comparing the basis-point integer Black-Scholes
@@ -2166,7 +2187,7 @@ distort the hedging-cost figures elsewhere in the paper would appear
 as a diagonal offset here; the maximum 2.69 bp deviation rules out
 pricing bias at the 3 bp threshold used by buy-side validation desks.
 
-## Equity and Covered-Call Demo {#sec-appendix-equity}
+# Equity and Covered-Call Demo {.appendix #sec-appendix-equity}
 
 ```{python}
 #| label: fig-equity
@@ -2281,7 +2302,7 @@ and `settlement_value_formula` compose
 across instrument types by construction.
 
 
-## Replication {#sec-replication}
+# Replication {.appendix #sec-replication}
 
 ```bash
 git clone https://github.com/eigenq-xyz/quant-proofs
@@ -2302,7 +2323,7 @@ make paper
 After downloading WRDS data per `docs/wrds_data_download.md`, re-run
 `make paper` to regenerate @fig-stress with real market data.
 
-## Metrics snapshot
+# Metrics snapshot {.appendix}
 
 Numerical results are archived in
 `backtest-proofs/results/metrics.json`; the file is regenerated on each
