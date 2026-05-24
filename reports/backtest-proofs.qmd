@@ -199,13 +199,12 @@ Three contributions follow.
    real market data, not a novel result about European vanilla options
    per se.
 
-Scope is worth stating plainly. The position ledger is proved for any
-integer-representable instrument: cash flows, position quantities, and
-the net-asset-value identity hold by construction. Black-Scholes
-pricing, GBM simulation, and all distributional claims about hedging
-cost are empirically validated, not formally proved. The contribution
-is the verification workflow and its empirical demonstration, not a
-novel result for European vanilla options.
+The position ledger is proved for any integer-representable instrument:
+cash flows, position quantities, and the portfolio-value identity hold
+by construction. Black-Scholes pricing, GBM simulation, and all
+distributional claims about hedging cost are empirically validated, not
+formally proved. The contribution is the verification workflow and its
+empirical demonstration, not a novel result for European vanilla options.
 
 ## Related Work {#sec-related}
 
@@ -1330,57 +1329,77 @@ ledger connect directly to the Leland [-@leland1985] modified
 volatility, yielding a verified replication-cost bound under
 proportional transaction costs.
 
-## Toward formally verified quant infrastructure {#sec-extensions}
+## Toward a provably correct research desk {#sec-extensions}
 
-This paper verifies the first layer of a larger program. The position
-ledger is the deepest and most reusable component of a backtester, and
-it is the layer where formal proof yields the largest marginal return.
-Mathlib4, the mathematical library underpinning Lean 4, has grown
-through late 2025 to cover substantial portions of measure theory,
-probability, and stochastic processes: conditional expectation in
-Banach spaces, filtrations and stopping times, Doob's martingale
-convergence theorems are now available, and a formalization of Brownian
-motion via the Kolmogorov extension theorem has been published as a
-preprint and is under active integration. Ito calculus and stochastic
-integration remain unformalized as of late 2025, so the immediate gap
-between the current library and a Lean-checkable proof of the
-Black-Scholes PDE is Ito's lemma. Discrete-time finance (binomial
-models, discrete delta-hedging, FTAP) is tractable today;
-continuous-time pricing awaits Ito.
+The position ledger is the first layer in a larger program: a
+quantitative research desk in which each tool the researcher uses has a
+machine-checked specification, and in which composing those tools
+produces a provably correct pipeline at the granularity a model
+validator or auditor would inspect.
 
-A research desk where formal verification is a routine part of the
-toolchain has different properties from one where it is not. Model
-validators inherit machine-readable evidence of model behavior at every
-state transition, addressing the ongoing-monitoring requirement of
-@sr117 directly rather than through reconstructed audit logs.
-Researchers can compose verified components without re-validating
-downstream layers: a verified ledger plus a verified pricer plus a
-verified risk decomposition produces a verified pipeline, with each
-piece checked once. Model audit reduces to verifying that the proved
-properties match the intended economic behavior, rather than
-re-deriving the implementation from first principles.
+The natural next layers, ordered by how silent and how compounding the
+errors are if uncaught:
+
+- **Reconciliation and trade booking**: the layer between order
+  execution and the position ledger. Bugs here produce position drift
+  that the verified ledger then propagates faithfully (the ledger is
+  correct; its inputs were already wrong). Specifying the booking layer
+  in Lean against the same integer arithmetic the ledger uses closes
+  the loop.
+
+- **Risk decomposition**: Greeks, P&L attribution, scenario analysis.
+  These are arithmetic on outputs of the verified ledger; their
+  specifications are clean (the chain rule, finite differencing,
+  factor decompositions) and naturally compose with the ledger's
+  guarantees. A verified Greek decomposition plus the verified ledger
+  yields a verified pipeline from trade to attributed P&L.
+
+- **Portfolio construction**: mean-variance, risk parity, factor
+  exposures. These are linear-algebraic optimizations whose
+  specifications (constraints satisfied, objective stationary at
+  reported optimum) are precise enough to verify; Mathlib4's linear
+  algebra is well-developed enough to support this today.
+
+- **Pricing models**: closed-form (Black-Scholes, binomial), and
+  eventually PDE and Monte Carlo. The discrete-time and lattice pricers
+  are formalizable today against the current Mathlib library; PDE and
+  Monte Carlo for continuous-time models await Ito calculus and
+  stochastic integration in Mathlib, which the Brownian motion work
+  cited above is making tractable.
+
+A research desk built this way has properties the current toolchain
+does not. The reconciliation layer is correct against the same integer
+arithmetic the ledger uses; the risk system inherits the ledger's
+audit trail directly; the pricing library and the simulation share
+proved invariants; the portfolio optimizer's output is a checked
+artifact rather than a black-box optimization result. The marginal
+cost of formalizing each layer drops as the upstream layers are
+already verified, because each new specification can assume the
+previous layer rather than re-prove it.
+
+Concrete reuse patterns are immediate. A deep hedging
+[@buehler2019] policy running on a verified ledger inherits the
+accounting guarantees regardless of how the policy was trained. A risk
+system emitting machine-readable audit records meets the documentation
+granularity that stress-testing and SR 11-7 [@sr117] ongoing-monitoring
+frameworks demand. A single verified ledger serving N strategies
+eliminates per-strategy accounting re-validation, collapsing N review
+burdens into one.
 
 Not every layer of a quant pipeline merits formal verification. The
 valuable targets are layers where bugs are silent (the output looks
 plausible), where bugs survive testing (they only manifest on inputs
 the test author did not consider), and where bugs compound (one ledger
 error contaminates every downstream Sharpe ratio, every regime test,
-every cross-strategy comparison). The position ledger meets all three
-criteria. The Black-Scholes pricer does not: a pricing bug produces
-visibly wrong prices that a QuantLib comparison catches in minutes. The
-strategy logic does not: a strategy bug produces visibly wrong trades.
-The empirical sections (Sections 5 and 6) confirm that the
-implementation works for these less-deep layers; formal proof is
-reserved for the layer where it is most needed.
-
-Adjacent applications follow from the same architecture. A deep hedging
-[@buehler2019] policy running on a verified ledger inherits the
-accounting guarantees regardless of how the policy was trained. A risk
-system emitting machine-readable audit records meets regulator
-documentation requirements at the granularity that stress-testing
-frameworks demand. A single verified ledger serving N strategies
-eliminates per-strategy accounting re-validation, collapsing N review
-burdens into one.
+every cross-strategy comparison). The position ledger, reconciliation,
+and risk decomposition meet all three criteria. The Black-Scholes
+pricer does not: a pricing bug produces visibly wrong prices that a
+QuantLib comparison catches in minutes. The strategy logic does not:
+a strategy bug produces visibly wrong trades. The empirical sections
+of this paper confirm that the implementation works for the
+less-deep layers; formal proof is reserved for the layers where it is
+most needed and where the marginal verification effort produces the
+most durable guarantees.
 
 ## Data availability {#sec-data-availability}
 
