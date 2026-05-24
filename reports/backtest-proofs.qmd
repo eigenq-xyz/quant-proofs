@@ -187,11 +187,11 @@ market makers); this paper formalizes the position ledger of a
 traditional-securities backtesting platform (the instrument-agnostic
 layer that tracks cash, positions, and NAV across any trading strategy).
 Second, prior Lean 4 financial proofs have no execution path to a running
-Python backtester; this paper bridges that gap via Cython FFI: the proved
-theorems compile via Lean 4's LLVM backend to a native shared library
-that the Python backtester calls at runtime, closing the gap between
-"proof complete" and "proof running in a backtester" by
-construction. The closest structural antecedent is @natarajan2021, who
+Python backtester; this paper bridges that gap via a compiled Python
+extension (Cython FFI — the interface that lets Python call compiled
+native code): the proved theorems compile to a native shared library
+that the Python backtester calls at runtime, so the same code that
+carries the machine-checked guarantees is the code that executes. The closest structural antecedent is @natarajan2021, who
 extract certified OCaml from Coq proofs of exchange matching algorithms and
 run the extracted code against live NSE data; that work targets matching
 mechanics, not the accounting invariants of a running position ledger.
@@ -279,11 +279,11 @@ Two bodies of quantitative finance literature bear directly on the
 empirical results. First, the discrete-hedging literature establishes the
 baseline against which the results here are evaluated: @figlewski1989
 measures hedging error across rebalancing frequencies and option
-characteristics; @hutchinson1994 estimate replication costs from market
-data and find that discrete adjustments impose economically significant
-costs relative to the continuous-limit Black-Scholes price. The BKL and
+characteristics; @hutchinson1994 develop a nonparametric learning-network approach to
+pricing and hedging derivatives from market data, providing a
+model-free baseline for replication-cost estimation. The BKL and
 Leland tests in Section 6 reproduce and extend these baseline results
-on synthetic data verified by the proved accounting kernel. Second, the
+on synthetic data verified by the proved position ledger. Second, the
 model risk management literature establishes that derivatives systems
 require machine-readable validation audit trails. SR 11-7 (Federal
 Reserve, 2011) and OCC Bulletin 2011-12 require that model validation
@@ -392,8 +392,8 @@ empirical analysis.
 
 The delta-hedging strategy is the demonstration vehicle. Every result
 in this paper that refers to ledger correctness is a property of the
-underlying kernel, not of this specific strategy; any strategy that
-produces integer-valued trades would receive the same accounting
+underlying position ledger, not of this specific strategy; any strategy
+that produces integer-valued trades would receive the same accounting
 guarantees.
 
 ## The position ledger {#sec-primitives}
@@ -491,10 +491,10 @@ non-negative, the economic statement that option holders bear no downside
 risk at expiry.
 
 @tbl-theorems maps each theorem to the accounting failure it prevents;
-Section 4 demonstrates with a falsification exhibit why formal proof
-catches a class of bugs that testing cannot.
+@sec-falsification demonstrated with a concrete exhibit why formal
+proof catches a class of bugs that testing cannot.
 
-# The Proof Catches What Testing Cannot {#sec-formalization}
+# Proof Artifacts and Scope {#sec-formalization}
 
 ## Lean 4 artifacts {#sec-artifacts}
 
