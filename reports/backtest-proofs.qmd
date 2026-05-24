@@ -1453,7 +1453,7 @@ the metrics snapshot are in the appendix.
 \appendix
 ```
 
-# Falsification exhibit: code listing {#sec-appendix-falsification}
+# Falsification exhibit: code listing {.appendix #sec-appendix-falsification}
 
 The following code exhibit demonstrates the bug described in
 @sec-falsification. The complete exhibit is in
