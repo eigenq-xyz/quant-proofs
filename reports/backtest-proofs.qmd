@@ -157,10 +157,10 @@ European call options, but delta-hedging is the validation vehicle, not
 the contribution.
 
 Formal verification is the practice of writing machine-checked proofs
-that code satisfies a mathematical specification. The approach has a
-short history in finance. @peytonjones2000 and @bahr2015 establish the
-foundational result: financial contracts can be expressed as algebraic
-combinators with composition laws that admit proof. The position
+that code satisfies a mathematical specification. @peytonjones2000 and
+@bahr2015 establish the foundational result for finance applications:
+financial contracts can be expressed as algebraic combinators with
+composition laws that admit proof. The position
 ledger is exactly this kind of algebraic structure. Trades compose
 into portfolio state under provable laws (cash flows aggregate
 additively, position quantities accumulate from the trade history, net
@@ -251,10 +251,10 @@ ongoing-monitoring requirement directly: every rebalancing step produces
 a machine-readable record certifying that the accounting invariants held
 for that specific trade.
 
-The methods we use to discharge those invariants come from a smaller
-literature applying formal verification to financial systems. The
-foundational work, @peytonjones2000 and @bahr2015, formalizes financial
-contracts as algebraic combinators in a domain-specific language (DSL).
+The methods we use to discharge those invariants come from the
+literature applying formal verification to financial systems.
+@peytonjones2000 and @bahr2015 formalize financial contracts as
+algebraic combinators in a domain-specific language (DSL).
 @annenkov2018 extends this with a Coq proof of contract cashflow
 semantics; Coq is a proof assistant similar to Lean 4. @echenim2021
 proves ledger identities for the Cox-Ross-Rubinstein binomial model in
