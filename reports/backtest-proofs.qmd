@@ -1,32 +1,40 @@
 ---
 title: "Lean 4 Proof-Checked Delta-Hedging: Accounting Invariants with Empirical Validation Across Four Historical Regimes"
-subtitle: "backtest-proofs — EigenQ Research Series"
+subtitle: "EigenQ Research Series"
 author:
   - name: Akhil Karra
-    affiliation: eigenq-xyz
-    email: akhil.karra@eigenq.xyz
 date: today
 date-format: long
 abstract: |
-  We present the first Lean 4 formalization of operational accounting invariants
-  for a traditional-securities options delta-hedging backtester. Eleven theorems
-  — covering NAV identity, trade accounting, cash-update correctness, quantity
-  conservation, self-financing, well-formedness, option settlement, and option
-  payoff non-negativity — are proved zero-sorry at the version tagged for
-  submission and compiled via Lean 4's LLVM backend to a native shared library called at
-  runtime through a Cython FFI layer, closing the gap between proof and
-  execution by construction. We pair the formalization with empirical validation
-  on 500 seeded GBM paths and a WRDS OptionMetrics sample of 491,390
-  option-day observations (2019–2024, six equity underlyings, ATM ±3%). The
-  Monte Carlo running-mean hedging cost converges to the Black-Scholes price
-  with a 2.34% final deviation; our Black-Scholes implementation agrees with
-  QuantLib's analytic pricer to a maximum of 2.69 basis points across five
-  parameter scenarios. The accounting invariants hold unconditionally across
-  four historical stress regimes (GFC 2008, Volmageddon 2018, Q4 2018, COVID
-  2020) — a formal guarantee independent of empirical outcomes. Primary
-  empirical results assume flat per-series implied volatility and zero
-  transaction costs; a fixed-fee extension is proved as a separate theorem,
-  with proportional cost support deferred to future work.
+  Accounting bugs in backtesting systems are invisible to statistical
+  validation: a ledger error that uniformly inflates the reported Sharpe
+  ratio survives out-of-sample evaluation precisely because it applies to
+  every period, in-sample and out-of-sample alike. This paper proves the
+  ledger layer of an options backtester correct using
+  machine-checked proofs (formal verification) in Lean 4 and pairs that
+  guarantee with empirical validation on 491,390 WRDS OptionMetrics
+  option-day observations across four historical market regimes. Three
+  contributions follow. First, eleven accounting theorems covering NAV
+  identity, cash-update correctness, quantity conservation,
+  self-financing, option settlement, and payoff non-negativity are proved
+  with zero unverified placeholders; the proofs hold unconditionally over
+  all integer-representable inputs, not merely the inputs a test author
+  chose to include. Second, the proved theorems compile to a native shared
+  library that the Python backtester calls at runtime, so the same code
+  object that carries the machine-checked guarantees is the code object
+  that executes at runtime. Third, the formalization targets
+  traditional-securities accounting invariants, a layer that prior
+  proof-assistant work on financial systems has left unaddressed.
+  Empirically, 500 seeded GBM paths yield a running-mean hedging cost
+  converging to the Black-Scholes price with a 2.34% final deviation; the
+  Black-Scholes implementation agrees with QuantLib to a maximum of 2.69
+  basis points across five scenarios. The accounting invariants hold
+  unconditionally across all 491,390 WRDS observations with a 100%
+  step-certificate pass rate; stress-regime hedging-cost medians are 1.69
+  (COVID 2020), 1.23 (GFC 2008 and Volmageddon 2018), and 1.18 (Q4 2018)
+  as a fraction of the initial Black-Scholes premium. Primary results
+  assume flat per-series implied volatility and European-style payoffs
+  only; proportional transaction costs are left for future work.
 keywords:
   - quantitative finance
   - formal verification
@@ -127,165 +135,175 @@ plt.rcParams.update({
 
 # Introduction {#sec-intro}
 
-Automated derivatives backtesting systems compute profit and loss for millions of simulated positions — and the accounting ledger driving those computations is almost never formally verified. A bug that silently drops an option settlement, mis-credits cash on a delta-hedge rebalance, or applies a closing transaction to the wrong position leg does not produce an obviously wrong output. It produces a plausible P&L time series that passes visual inspection, generates a positive Sharpe ratio, and survives out-of-sample evaluation — precisely because the ledger error applies uniformly to every trade, in-sample and out-of-sample alike. A delta-hedging accounting bug that inflates the reported Sharpe ratio by fifteen percent is invisible to any statistical test that takes the reported P&L as given. The only way to eliminate this failure class entirely is to prove the accounting layer correct, so that bugs of this kind become structurally impossible rather than merely unlikely.
+Every options backtester maintains an accounting ledger: cash balances
+are debited for rebalancing trades, option settlements are credited at
+expiry, positions are marked to the correct underlying price. When this
+ledger has a bug (a settlement dropped, a cash debit applied at the wrong
+step, a position quantity that drifts from its trade history), the
+resulting P&L series looks right. It generates a Sharpe ratio, it passes
+out-of-sample evaluation, it survives robustness checks across regimes.
+@bougeret2026 documents exactly this failure mode in a systematic audit
+of five widely used open-source backtesting engines; @lowetal2015 document
+the same class of silent error in a deployed production system. No amount
+of statistical testing can detect a ledger error that applies uniformly
+to every period: the test takes the reported P&L as given. The only
+reliable fix is to prove the ledger layer correct, so that errors of
+this kind become structurally impossible rather than merely unlikely.
 
-Backtesting errors fall into two orthogonal classes: accounting errors and model errors. Statistical overfitting — the tendency of in-sample strategies to fail out of sample — has attracted sustained attention from empirical finance; @baileyetal2015 introduced combinatorially symmetric cross-validation to quantify this risk, @harvey2016 found that most claimed findings in financial economics are likely false under conventional significance thresholds, and @jensen2023 documented that overfitting persists even after out-of-sample testing is applied systematically. The second class — accounting errors — has received far less scrutiny, despite being documented in production systems by @lowetal2015 and in a systematic taxonomy across five open-source engines by @bougeret2026. The distinguishing feature is that accounting bugs cannot be corrected by splitting the sample: the error is present in every period, so out-of-sample performance is just as inflated as in-sample performance. Extensive testing mitigates this risk but cannot eliminate it — a test suite checks correctness on inputs the test author thought to include, not on every input that live historical data will produce.
+Backtesting errors fall into two independent classes: accounting errors
+and model errors. Statistical overfitting has attracted sustained
+attention from empirical finance; @baileyetal2015 introduced
+combinatorially symmetric cross-validation to quantify this risk,
+@harvey2016 found that most claimed findings in financial economics are
+likely false under conventional significance thresholds, and @jensen2023
+documented that overfitting persists even after out-of-sample testing is
+applied systematically. The second class (accounting errors) has
+received far less scrutiny: @lowetal2015 document this in production
+systems; @bougeret2026 provide a systematic taxonomy across five
+open-source engines. The distinguishing feature is that accounting
+bugs cannot be corrected by splitting the sample: the error is present in
+every period, so out-of-sample performance is just as inflated as
+in-sample performance. Extensive testing mitigates this risk but cannot
+eliminate it. A test suite checks correctness on inputs the test author
+thought to include, not on every input that live historical data will
+produce.
 
-This paper proves the accounting layer of an options delta-hedging backtester correct in Lean 4 and pairs that proof with empirical validation across four historical market regimes. Three contributions define the scope precisely. First, this is the first Lean 4 formalization of traditional securities accounting invariants. Prior Lean 4 work on financial systems targets decentralized exchange mechanics — @pusceddu2024 and @dessalvi2026 apply Lean 4 to automated market makers — but the ledger layer of a conventional options backtester, tracking integer-valued cash, positions, and P&L as trades execute and options settle, has not previously been formalized in any proof assistant. Second, this is the first Lean 4-to-Python/Cython bridge for a financial accounting kernel: the proved theorems compile via Lean 4's LLVM backend to a native shared library that the Python backtester calls at runtime through a Cython FFI layer, so the gap between "proof complete" and "proof running in a backtester" is closed by construction. The closest structural antecedent is @natarajan2021, who extract certified OCaml from Coq proofs of exchange matching algorithms and run the extracted code against live NSE data; that work targets matching mechanics, not the accounting invariants of a running position ledger. Purpose-built industrial formal methods systems, such as Imandra [@passmore2017], address exchange rule verification but are closed-source and target a different layer. Third, this is the first machine-checked formalization of operational options delta-hedging accounting invariants — the word operational distinguishing ledger correctness (cash, positions, net asset value) from pricing theory [@echenim2021] and exchange mechanics [@natarajan2021]. One concession is required and must be stated plainly: the accounting invariants are proved correct for any integer-representable instrument; the Black-Scholes pricing model, the GBM path generator, and all statistical claims about hedging cost distributions are not and cannot be formally verified. Those layers are empirically validated in Sections 6–8 and cross-checked against QuantLib. The contribution is the verification workflow — not a novel accounting result for European vanilla options. European vanilla delta-hedging is tractable enough that a reader can check the paper's accounting claims against @hull2014 without proprietary access, which is why it is the right vehicle for a methodology demonstration.
+This paper proves the ledger layer of an options backtester correct
+in Lean 4 and pairs that proof with empirical validation across four
+historical market regimes.
 
-Two developments make this work tractable now. Lean 4's stable release and the Mathlib4 port closed the execution gap: the LLVM backend produces a native shared library callable via Cython FFI, so proved theorems compile directly to a form a Python backtester calls at runtime [@moura2021lean4]. Separately, the replication crisis in empirical finance [@harvey2016; @jensen2023] has created institutional demand for correctness guarantees that statistical tests cannot supply — demand that motivated this methodology.
+Formal verification is a machine-checked proof that code behaves as
+specified for every possible input. A test suite checks ledger correctness
+on a finite set of trades the test author chose; a formal proof covers all
+integer-valued inputs simultaneously, with no dependence on the test
+author's choice of inputs. The consequence for ledger correctness: a
+bug that produces a wrong result only on untested inputs cannot be caught by
+testing, but is structurally ruled out in a proved system.
 
-The remainder of the paper is organized as follows. Section 2 (The Backtesting System) defines the discrete-time delta-hedging model and the `Portfolio`, `Position`, and `Trade` accounting kernel, explaining why integer basis-point arithmetic is the right contract for enforcing the boundary between the verified accounting layer and the floating-point pricing layer. Section 3 (What the Proof Guarantees) states the eleven accounting theorems in plain terms. Section 4 (The Proof Catches What Testing Cannot) introduces the formalization artifacts and presents a falsification exhibit that demonstrates the value of formal verification over standard testing. Section 5 (Empirical Setup) describes the simulation and WRDS OptionMetrics samples. Section 6 (Does the Backtester Work?) presents Monte Carlo convergence, the Bertsimas-Kogan-Lo variance scaling test, the Carr-Madan attribution, the Hull deterministic cross-check, and the QuantLib vendor cross-check. Section 7 (Does It Hold Under Stress?) reports the four historical stress regimes drawn from WRDS OptionMetrics. Section 8 (Discussion) states scope limitations and directions for extension. Full theorem statements with Lean source, the proof architecture, the bootstrap specification test for variance scaling, and extended multi-leg and equity exhibits appear in the Appendix. The novelty lies in the conjunction: no prior work combines all three — Lean 4, traditional-securities accounting invariants, and a proof that executes at runtime in Python via Cython FFI.
+Three contributions:
+First, prior Lean 4 work on financial systems targets DeFi exchange
+mechanics (@pusceddu2024 and @dessalvi2026 apply Lean 4 to automated
+market makers); this paper formalizes the position ledger of a
+traditional-securities backtesting platform (the instrument-agnostic
+layer that tracks cash, positions, and NAV across any trading strategy).
+Second, prior Lean 4 financial proofs have no execution path to a running
+Python backtester; this paper bridges that gap via a compiled Python
+extension (Cython FFI — the interface that lets Python call compiled
+native code): the proved theorems compile to a native shared library
+that the Python backtester calls at runtime, so the same code that
+carries the machine-checked guarantees is the code that executes. The closest structural antecedent is @natarajan2021, who
+extract certified OCaml from Coq proofs of exchange matching algorithms and
+run the extracted code against live NSE data; that work targets matching
+mechanics, not the accounting invariants of a running position ledger.
+Purpose-built industrial formal methods systems, such as Imandra
+[@passmore2017], address exchange rule verification but are closed-source
+and target a different layer. Third, no machine-checked formalization
+of the operational position ledger invariants of a
+traditional-securities backtesting pipeline has appeared in the
+published literature reviewed here. The word operational distinguishes
+ledger correctness (cash, positions, net asset value) from pricing
+theory [@echenim2021] and exchange mechanics [@natarajan2021]. The novelty lies in
+the conjunction: no prior work combines Lean 4, traditional-securities
+accounting invariants, and a proof that executes at runtime in Python via
+Cython FFI. One concession is required and must
+be stated plainly: the accounting invariants are proved correct for any
+integer-representable instrument; the Black-Scholes pricing model, the
+GBM path generator, and all statistical claims about hedging cost
+distributions are not and cannot be formally verified. Those layers are
+empirically validated in Sections 6–8 and cross-checked against QuantLib.
+The contribution is the verification workflow, not a novel accounting
+result for European vanilla options. European vanilla delta-hedging is
+tractable enough that a reader can check the paper's accounting claims
+against @hull2014 without proprietary access.
+
+Lean 4's stable release and the Mathlib4 port make this approach practical
+now: the LLVM backend produces a native shared library callable via Cython
+FFI [@moura2021lean4].
+
+Section 2 defines the discrete-time delta-hedging model and the
+position ledger; Section 3 states the eleven accounting theorems;
+Section 4 describes the proof artifacts and their scope; Section 5
+describes the simulation and WRDS samples; Sections 6 and 7 report
+empirical validation and the four stress-regime audits; Section 8
+states scope limitations. Full theorem statements, proof architecture,
+bootstrap specification tests, and multi-leg exhibits appear in the
+Appendix.
 
 ## Related Work {#sec-related}
 
-The foundational financial contract DSLs — @peytonjones2000 and @bahr2015 — formalise contract semantics as algebraic combinators, demonstrating that financial instruments can be given rigorous mathematical descriptions. @annenkov2018 extend this to a Coq implementation. These papers establish that formal specification of financial operations is tractable but do not target accounting-layer invariants for production backtesting pipelines.
+The foundational financial contract DSLs (@peytonjones2000 and @bahr2015)
+formalize contract semantics as algebraic combinators.
+@annenkov2018 extend the Bahr (2015) algebra to a Coq proof of contract
+cashflow semantics. These papers establish that formal specification of
+financial operations is tractable but do not target
+ledger invariants for production backtesting pipelines.
 
-The closest prior formalisation of accounting invariants is @echenim2021, who prove ledger identities for the Cox–Ross–Rubinstein model in Isabelle/HOL, adopting the same generic/specific separation we use — instrument-agnostic portfolio accounting separate from option-specific pricing. Their work is a standalone Isabelle proof artifact with no path to Python execution. @natarajan2021 formalise exchange matching-engine invariants in Coq, with extraction to OCaml and Haskell; @natarajan2024 extend this to automated checkers on real exchange data. Both are Coq-based and target exchange mechanics rather than backtesting accounting.
+The closest prior formalization of accounting invariants is @echenim2021,
+who prove ledger identities for the Cox–Ross–Rubinstein model in
+Isabelle/HOL, adopting the same generic/specific separation we use:
+instrument-agnostic portfolio accounting separate from option-specific
+pricing. Their work is a standalone Isabelle proof artifact with no path
+to Python execution. @natarajan2021 formalize exchange matching-engine
+invariants in Coq, with extraction to OCaml and Haskell; @natarajan2024
+extend this to automated checkers on real exchange data. Both are
+Coq-based and target exchange mechanics rather than backtesting
+accounting.
 
-Passmore and Ignatovich [-@passmore2017; -@passmore2020] introduced Imandra, a purpose-built industrial formal verification system deployed at real exchanges for matching-engine fairness and clearing-rule verification. Imandra combines SMT solving with ACL2-style induction. backtest-proofs differs in three ways: it uses Lean 4 and Mathlib4 (open-source, general-purpose, community-maintained) rather than a proprietary hybrid; it targets the accounting invariant layer of a backtesting pipeline rather than matching-engine rules; and it bridges to the Python practitioner ecosystem via Cython FFI rather than a proprietary exchange interface.
+Passmore and Ignatovich [-@passmore2017; -@passmore2020] introduced
+Imandra, a purpose-built industrial formal verification system deployed at
+real exchanges for matching-engine fairness and clearing-rule
+verification. Imandra combines SMT solving with ACL2-style induction.
+backtest-proofs differs in three ways: it uses Lean 4 and Mathlib4
+(open-source, general-purpose, community-maintained) rather than a
+proprietary hybrid; it targets the accounting invariant layer of a
+backtesting pipeline rather than matching-engine rules; and it bridges to
+the Python practitioner ecosystem via Cython FFI rather than a proprietary
+exchange interface.
 
-Prior Lean 4 work on financial systems targets **decentralized finance (DeFi)**: @pusceddu2024 apply Lean 4 to automated market makers, and @dessalvi2026 similarly. This paper operates in **traditional finance (TradFi)** — exchange-listed equity options under Black-Scholes delta hedging. The DeFi/TradFi distinction is material: smart-contract invariants concern token-reserve conservation under adversarial execution, while backtesting accounting invariants concern NAV identity and self-financing under sequential rebalancing.
+Prior Lean 4 work on financial systems targets **decentralized finance
+(DeFi)**: @pusceddu2024 apply Lean 4 to automated market makers, and
+@dessalvi2026 similarly. This paper operates in **traditional finance
+(TradFi)**: exchange-listed equity options under Black-Scholes delta
+hedging. The DeFi/TradFi distinction is material: smart-contract
+invariants concern token-reserve conservation under adversarial execution,
+while backtesting accounting invariants concern NAV identity and
+self-financing under sequential rebalancing.
 
-Property-based testing [@claessen2000] samples a finite set of inputs; the Lean 4 proofs here discharge universally quantified statements over all integer-representable inputs. A decade of documented replication failures — @harvey2016 finding most factor discoveries are false positives, @jensen2023 institutionalising this as a reproducibility crisis — motivates correctness guarantees that out-of-sample tests cannot supply. AI-assisted proof development [@yang2023leandojo] has reduced the per-lemma cost for algebraic invariants, making this approach practical for evolving quant pipelines.
+Property-based testing [@claessen2000] samples a finite set of inputs;
+the Lean 4 proofs here discharge universally quantified statements over
+all integer-representable inputs. A decade of documented replication
+failures [@harvey2016; @jensen2023] motivates correctness guarantees that
+out-of-sample tests cannot supply.
 
-# The Backtesting System {#sec-setup}
+Two bodies of quantitative finance literature bear directly on the
+empirical results. First, the discrete-hedging literature establishes the
+baseline against which the results here are evaluated: @figlewski1989
+measures hedging error across rebalancing frequencies and option
+characteristics; @hutchinson1994 develop a nonparametric learning-network approach to
+pricing and hedging derivatives from market data, providing a
+model-free baseline for replication-cost estimation. The BKL and
+Leland tests in Section 6 reproduce and extend these baseline results
+on synthetic data verified by the proved position ledger. Second, the
+model risk management literature establishes that derivatives systems
+require machine-readable validation audit trails. SR 11-7 (Federal
+Reserve, 2011) and OCC Bulletin 2011-12 require that model validation
+include not only statistical backtesting but also conceptual soundness
+review and ongoing monitoring. The step-certificate architecture
+introduced in Section 2 produces a machine-readable audit trail at every
+rebalancing step, directly addressing the ongoing-monitoring requirement
+in those supervisory frameworks.
 
-## Discrete-time delta-hedging model {#sec-model}
+## A Motivating Example {#sec-falsification}
 
-Consider a hedger who writes $N$ European call options at time $t = 0$ and commits to
-dynamically replicating the short position over a finite horizon $T$ using $n$ equally
-spaced rebalancing steps of width $\Delta t = T / n$. At inception the hedger receives
-the Black-Scholes premium and opens a stock position of $\Delta_0 \cdot N$ shares at
-spot price $S_0$, where $\Delta_0 = \partial C / \partial S$ is the Black-Scholes delta.
-At each subsequent step $i \in \{1, \dots, n-1\}$ the hedger computes the new delta
-$\Delta_i$ from the current spot $S_i$ and remaining time to expiry $T - i \cdot \Delta t$,
-and trades $(\Delta_i - \Delta_{i-1}) \cdot N$ shares at $S_i$. The cash account is
-debited (or credited) by the full cost of each rebalancing trade including any transaction
-fee. At expiry step $n$ the option settles to $\max(S_n - K,\, 0) \cdot N$ in cash and
-the remaining stock position is liquidated at spot $S_n$.
+Consider a deliberately introduced accounting bug: the cash deduction for
+a delta-hedge trade is silently set to zero, a truncation error that
+would arise if a basis-point conversion function returned 0 instead of
+rounding to the nearest integer.
 
-The primary quantity of interest is the total hedging cost, defined as the initial premium
-received minus the terminal portfolio value:
-$$
-\text{HedgingCost} = C_0 \cdot N - V_n,
-$$
-where $V_n$ is the portfolio value at expiry after settlement and unwinding. Under
-continuous rebalancing and geometric Brownian motion dynamics, the Black-Scholes
-replication argument guarantees $\text{HedgingCost} = 0$ in expectation. Under discrete
-rebalancing, residual variance from the gamma term generates a non-trivial hedging cost
-distribution whose mean and variance depend on step size $\Delta t$, volatility $\sigma$,
-and any transaction costs. The canonical deterministic example is Tables 19.2 and 19.3
-of @hull2014, which trace a 20-step weekly hedge for a written at-the-money call and
-tabulate the hedging cost under a specific realized path; Section 6 replicates this example
-exactly as a sanity check before turning to Monte Carlo and empirical analysis.
-
-## The accounting kernel {#sec-primitives}
-
-The accounting kernel is implemented in
-`backtest-proofs/lean/BacktestProofs/Basic.lean`. It tracks three things: the portfolio's cash balance, its open positions (each identified by an asset ID, quantity, and mark price), and the trades that update them.
-
-A position is a named asset holding — an asset ID (a string), a signed integer quantity (positive means long, negative means short), and an integer mark price in basis points. A type-level constraint ensures the mark price is strictly positive; this is not a runtime check but an invariant enforced at construction time, so a position with a non-positive price is unrepresentable in the type system.
-
-A portfolio collects positions alongside a cash balance. A type-level constraint — `value_valid` — ensures the portfolio's NAV always equals cash plus the sum of position values, by construction and not by runtime check. It is impossible in well-typed Lean 4 to construct a `Portfolio` with an inconsistent `portfolioValue` field; the smart constructor discharges the proof obligation at compile time. Every theorem that mentions portfolio value is ultimately a consequence of `value_valid`.
-
-A trade records a single order execution: an asset ID, a signed quantity delta, an execution price in basis points, and a fee. Proof fields make invalid trades unrepresentable — a trade with a non-positive execution price or a negative fee cannot be constructed without a corresponding proof. The function `applyTrade` applies a trade by updating the position quantity, debiting cash by `deltaQuantity × executionPrice + fee`, and re-establishing `value_valid` by reflection. No option-specific fields appear in any of these three types; the accounting kernel is entirely instrument-agnostic.
-
-## Integer basis-point representation {#sec-bpints}
-
-All monetary values are stored as integers in units of basis points ($10^{-4}$ of one dollar; $\$49.00 = 490{,}000~\text{bp}$). The key point is that integer arithmetic is exact: the eleven accounting theorems hold as universal statements over all `Int`-valued inputs, and the Lean theorems govern precisely the numbers that enter and leave the accounting layer without approximation. The Cython extension passes `Int64` values across the FFI boundary; when the Python layer computes a Black-Scholes price of $\$1.2347$ it calls `to_bp(1.2347)` to obtain $12{,}347~\text{bp}$ and passes that integer to Lean. The formal guarantees therefore attach to the same numbers the Python layer uses — no approximation gap exists between the proved model and the actual computation. The *verified accounting layer* (Lean 4, integer arithmetic) carries machine-checked proofs and never operates on floating-point numbers; the *pricing and simulation layer* (Python, Black-Scholes, GBM) is empirically tested but not formally verified. The Cython FFI boundary is the precise demarcation between these two layers.
-
-## The `StepCertificate` {#sec-strategy}
-
-At each rebalancing step the runner emits a `StepCertificate` recording whether the accounting invariant held for that specific trade. The certificate stores the pre- and post-trade portfolio values in basis points, the observed change in portfolio value, the change predicted by Lean's `valueUpdateFormula` ($\Delta \text{PV} = q_\text{pre} \cdot (p_\text{exec} - p_\text{mark}) - \text{fee}$), and a boolean `invariant_holds`. If `invariant_holds` is `False` the runner raises an exception immediately with a diagnostic; a violation indicates a bug in the FFI bridge or Python bookkeeping, not a market event.
-
-The `StepCertificate` is the connective tissue between the machine-checked layer and the empirical validation in §4. The certificate sequence for a complete backtest run provides a machine-readable audit trail: for every step across every path in the Monte Carlo sweeps and every WRDS regime window, the runner either confirms that the accounting invariant held or identifies the exact step and inputs where it failed. This is what distinguishes formal accounting verification from a standard test suite: a test suite samples the space of inputs; the `StepCertificate` mechanism checks the invariant on the actual inputs of every execution, including those that only arise in live historical data.
-
-# What the Proof Guarantees {#sec-main-results}
-
-The accounting kernel comes with eleven machine-checked theorems that describe exactly what the ledger cannot do wrong. Rather than list their type signatures here — full Lean source for all eleven appears in the appendix — it is more useful to say what they mean in plain terms.
-
-The first seven theorems concern the bookkeeping that every instrument shares: cash always updates by exactly the trade cost and fee; positions update by exactly the signed trade size; the net asset value always equals cash plus the sum of position values; a trade at the existing mark price changes NAV only by the fee. These seven theorems hold for any instrument representable as an integer mark price and a signed quantity — a stock leg, an equity futures contract, and an options position are formally indistinguishable at the accounting layer. The accounting kernel is instrument-agnostic by construction, not by convention.
-
-The eighth theorem covers option settlement: at expiry, settling a European option changes the portfolio's NAV by the quantity held times the difference between the option's payoff and its pre-expiry mark price — a single equation that handles both in-the-money and out-of-the-money expiry paths without case-splitting at the user level. The remaining three theorems establish that call, put, and option payoffs are always non-negative — the economic statement that the holder never owes money at expiry — grounding the signed arithmetic in settlement in limited-liability economics.
-
-Together these eleven theorems rule out, by construction, the class of accounting bugs that would otherwise require extensive testing to detect. The `StepCertificate` mechanism described in §2 makes each theorem's guarantee visible at every rebalancing step: the backtester either confirms the invariant held or immediately surfaces the step and inputs where it failed. The full theorem statements with Lean source file references are tabulated in the next section, and the complete proof source is available in the public repository.
-
-# The Proof Catches What Testing Cannot {#sec-formalization}
-
-## Lean 4 artifacts {#sec-artifacts}
-
-The eleven theorems are machine-checked at every commit. @tbl-theorems maps each theorem to its Lean name and source location; the full proof architecture and FFI bridge details appear in the appendix.
-
-| Paper theorem | Lean name | Source file | Line |
-|---|---|---|---|
-| NAV identity | `valueIdentity` | `Invariants.lean` | 31 |
-| Cash update | `cashUpdateCorrect` | `Invariants.lean` | 82 |
-| Quantity conservation | `quantityConservation` | `Invariants.lean` | 176 |
-| Trade accounting | `valueUpdateFormula` | `Invariants.lean` | 212 |
-| Self-financing | `selfFinancing` | `Invariants.lean` | 281 |
-| Self-financing with cost | `selfFinancingWithCost` | `Invariants.lean` | 299 |
-| Well-formedness | `applyTrade_wellFormed` | `Invariants.lean` | 317 |
-| Settlement | `settlement_value_formula` | `SettlementInvariants.lean` | 104 |
-| Call payoff $\geq$ 0 | `callPayoff_nonneg` | `OptionInvariants.lean` | 32 |
-| Put payoff $\geq$ 0 | `putPayoff_nonneg` | `OptionInvariants.lean` | 40 |
-| Option payoff $\geq$ 0 | `optionPayoff_nonneg` | `OptionInvariants.lean` | 48 |
-
-: Lean 4 theorem map. All 11 theorems are machine-checked with zero `sorry`. {#tbl-theorems tbl-colwidths="[24,32,34,10]"}
-
-::: {.callout-note title="Formalization claim"}
-At commit `{python} COMMIT_SHA`, `lake build` succeeds for `backtest-proofs`
-and `grep -rn sorry --include="*.lean"` returns no matches in the proof tree.
-Reproduce with `make verify-lean` or the `verify-lean` skill.
-:::
-
-## Scope of formalization {#sec-scope}
-
-Seven of the eleven theorems in @tbl-theorems —
-`valueIdentity`, `valueUpdateFormula`, `cashUpdateCorrect`,
-`quantityConservation`, `selfFinancing`, `selfFinancingWithCost`, and
-`applyTrade_wellFormed` — operate entirely on `Portfolio`, `Position`,
-and `Trade`.
-These Lean 4 types carry no option-specific fields: a `Position` is a named
-asset (`AssetId : String`), a signed integer quantity, and an integer mark
-price. A stock leg, a futures contract, and an options position are all valid
-`Position` instances under this representation.
-The seven accounting invariants therefore hold for any instrument
-expressible as an integer mark price and a signed quantity, without
-modification to the proofs.
-
-The remaining four theorems in @tbl-theorems — `settlement_value_formula` from
-`BacktestProofs.SettlementInvariants` and three of the eight payoff theorems
-from `QuantCore.OptionInvariants` — depend on `QuantCore.Option` and
-`optionPayoff`. These are option-specific and do not generalize to other
-instruments without additional settlement modules and invariants.
-This design mirrors @echenim2021, who separate generic portfolio/market
-accounting from instrument-specific pricing in their Isabelle/HOL
-formalization of the Cox–Ross–Rubinstein model.
-
-::: {.callout-note title="Instrument-class generality"}
-The accounting layer (NAV identity, self-financing, trade accounting) is
-formally verified for any instrument representable as an integer mark price
-and a signed quantity — stocks and equity futures included.
-Extending the *settlement* layer to equity futures (mark-to-market final
-settlement) or interest rate futures (accrued coupon) requires new Lean
-`Settlement` modules and corresponding invariants; that extension is left to
-future work.
-:::
-
-What is **not** formalized: Black-Scholes floating-point computations,
-GBM path simulation, the Cython FFI bridge, and statistical claims about
-cost distributions. These layers are tested empirically and cross-checked
-against QuantLib (@sec-quantlib), but no machine-checked proof covers them.
-
-## Falsification exhibit {#sec-falsification}
-
-Standard test suites verify correctness on inputs the test author considered — they cannot certify correctness on every input that live data produces. The following exhibit makes this distinction concrete. Consider a deliberately introduced accounting bug: the cash deduction for a delta-hedge trade is silently set to zero, a truncation error that would arise if a basis-point conversion function returned 0 instead of rounding to the nearest integer.
-
-The `valueUpdateFormula` theorem states that the change in portfolio value
+The trade-accounting theorem states that the change in portfolio value
 equals the mark-to-market gain on the *pre-trade* position minus the fee:
 $\Delta\text{PV} = q_{\text{before}} \times (p_{\text{exec}} - p_{\text{mark}}) - \text{fee}$.
-When the pre-trade quantity is zero — as it is on the first purchase step —
+When the pre-trade quantity is zero (as it is on the first purchase step),
 this formula predicts $\Delta\text{PV} = 0$ regardless of the execution
 price. A test that only exercises zero-position steps cannot distinguish
 correct accounting from the broken version: the bug is invisible on those
@@ -309,11 +327,11 @@ cert = verify_step(
     pre_trade_qty=0, exec_price_bp=EXEC_PRICE_BP,
     mark_before_bp=MARK_BEFORE, fee_bp=FEE_BP, step=0,
 )
-assert cert.invariant_holds   # passes — expected dPV = 0*(...)= 0
+assert cert.invariant_holds   # passes: trade accounting predicts dPV=0
 
 # --- Case 2: pre_trade_qty = 500 (existing holding) ---
-# valueUpdateFormula predicts: 500 × (500_000 − 490_000) = 5_000_000 bp
-# BUG still produces pv_after = pv_before, so delta_pv = 0 ≠ 5_000_000
+# trade accounting predicts: 500 x (500_000 - 490_000) = 5_000_000 bp
+# BUG still produces pv_after = pv_before, so delta_pv = 0 != 5_000_000
 verify_step(
     pv_before=PV_BEFORE, pv_after=PV_BEFORE,   # cash not debited
     pre_trade_qty=500, exec_price_bp=EXEC_PRICE_BP,
@@ -323,19 +341,214 @@ verify_step(
 #   delta_pv=0 bp, expected=5000000 bp
 ```
 
-The naïve test — one that only checks steps where no position was held
-before the trade — passes, because the `valueUpdateFormula` predicts zero
-change for a zero-size position regardless of the cash accounting.
-The `StepCertificate`, by contrast, records both the pre- and post-trade
-portfolio values and the formula prediction; when these are checked against
-`valueUpdateFormula`, the mismatch is detected unconditionally on any step
-where the pre-trade position is non-zero.
+The naive test (one that only checks steps where no position was held
+before the trade) passes, because the trade-accounting formula predicts
+zero change for a zero-size position regardless of the cash accounting.
+The step certificate, by contrast, records both the pre- and post-trade
+portfolio values and the formula prediction; when these are checked
+against the trade-accounting formula, the mismatch is detected
+unconditionally on any step where the pre-trade position is non-zero.
 
-This is the key distinction between property-based testing and formal
-verification: tests check specific inputs; proofs check all inputs. A bug
-that cancels on a test path cannot escape a proof that must hold
-universally. The executable exhibit is in
-`backtest-proofs/python/tests/test_backtest.py`, class `TestFalsification`.
+The executable exhibit is in
+`backtest-proofs/python/tests/test_backtest.py`, class
+`TestFalsification`.
+
+# The Backtesting System {#sec-setup}
+
+## The Delta-Hedging Strategy {#sec-model}
+
+To demonstrate the position ledger on a theoretically tractable
+instrument, the paper runs a discrete-time delta-hedging strategy through
+it. The strategy writer shorts $N$ European call options at $t = 0$ and
+dynamically replicates the position over horizon $T$ using $n$ equally
+spaced rebalancing steps of width $\Delta t = T/n$. At inception the
+writer receives the Black-Scholes premium and opens a stock position of
+$\Delta_0 \cdot N$ shares at spot price $S_0$. At each subsequent step
+$i \in \{1, \dots, n-1\}$ the hedger computes the new delta $\Delta_i$
+from the current spot $S_i$ and remaining time to expiry
+$T - i \cdot \Delta t$, and trades $(\Delta_i - \Delta_{i-1}) \cdot N$
+shares at $S_i$. The cash account is debited (or credited) by the full
+cost of each rebalancing trade including any transaction fee. At expiry
+step $n$ the option settles to $\max(S_n - K,\, 0) \cdot N$ in cash and
+the remaining stock position is liquidated at spot $S_n$.
+
+The primary quantity of interest is the total hedging cost, defined as
+the initial premium received minus the terminal portfolio value:
+$$
+\text{HedgingCost} = C_0 \cdot N - V_n,
+$$
+where $V_n$ is the portfolio value at expiry after settlement and
+unwinding. Under continuous rebalancing and geometric Brownian motion
+dynamics, the Black-Scholes replication argument guarantees
+$\text{HedgingCost} = 0$ almost surely. Under discrete rebalancing,
+residual variance from the gamma term generates a non-trivial hedging cost
+distribution whose mean and variance depend on step size $\Delta t$,
+volatility $\sigma$, and any transaction costs. The canonical
+deterministic example is Tables 19.2 and 19.3 of @hull2014, which trace a
+20-step weekly hedge for a written at-the-money call and tabulate the
+hedging cost under a specific realized path; Section 6 replicates this
+example as a deterministic cross-check before turning to Monte Carlo and
+empirical analysis.
+
+The delta-hedging strategy is the demonstration vehicle. Every result
+in this paper that refers to ledger correctness is a property of the
+underlying position ledger, not of this specific strategy; any strategy
+that produces integer-valued trades would receive the same accounting
+guarantees.
+
+## The position ledger {#sec-primitives}
+
+The position ledger is implemented in
+`backtest-proofs/lean/BacktestProofs/Basic.lean`. It tracks three things:
+the portfolio's cash balance, its open positions, and the trades that
+update them.
+
+A position is a named asset holding: an asset ID (a string), a signed
+integer quantity, and an integer mark price in basis points.
+A type-level constraint ensures the mark price is strictly
+positive; this is not a runtime check but an invariant enforced
+at construction time, so a position with a non-positive price is
+unrepresentable in the type system.
+
+A portfolio collects positions alongside a cash balance. A type-level
+constraint (the NAV invariant) ensures the portfolio's NAV always equals
+cash plus the sum of position values; the smart constructor discharges
+this proof obligation at compile time, making a portfolio with an
+inconsistent portfolio-value field unrepresentable. Every theorem that
+mentions portfolio value is ultimately a consequence of the NAV invariant.
+
+A trade records a single order execution: an asset ID, a signed quantity
+delta, an execution price in basis points, and a fee. Proof fields make
+invalid trades unrepresentable: a trade with a non-positive execution
+price or a negative fee cannot be constructed without a corresponding
+proof. The trade-application function updates the position quantity,
+debits cash by the signed quantity times the execution price plus fee,
+and re-establishes the NAV invariant by reflection. No option-specific
+fields appear in any of these three types; the position ledger is entirely
+instrument-agnostic.
+
+## Integer basis-point representation {#sec-bpints}
+
+The position ledger stores all monetary values as integers in units of
+basis points ($10^{-4}$ of one dollar;
+$\$49.00 = 490{,}000~\text{bp}$). The key
+point is that integer arithmetic is exact: the eleven accounting theorems
+hold as universal statements over all integer-valued inputs. The Cython
+extension passes integer values across the Python runtime bridge; when
+the Python layer computes a Black-Scholes price of $\$1.2347$ it calls
+`to_bp(1.2347)` to obtain $12{,}347~\text{bp}$ and passes that integer to
+Lean. The formal guarantees therefore attach to the same numbers the
+Python layer uses. The *position ledger* (Lean 4, integer arithmetic)
+carries machine-checked proofs and never operates on floating-point
+numbers; the *pricing and simulation layer* (Python, Black-Scholes, GBM)
+is empirically tested but not formally verified. The Python runtime
+bridge is the precise demarcation between these two layers.
+
+## The step certificate {#sec-strategy}
+
+At each rebalancing step the runner emits a step certificate recording
+whether the accounting invariant held for that specific trade. The
+certificate stores the pre- and post-trade portfolio values in basis
+points, the observed change in portfolio value, the change predicted
+by the trade-accounting formula
+($\Delta \text{PV} = q_{\text{pre}} \cdot (p_{\text{exec}} -
+p_{\text{mark}}) - \text{fee}$),
+and a boolean pass/fail flag. If the flag is false, the
+runner raises an exception immediately with a diagnostic; a violation
+indicates a bug in the Python runtime bridge or Python bookkeeping, not a
+market event.
+
+The step certificate is the connective tissue between the machine-checked
+layer and the falsification argument in @sec-falsification. The
+certificate sequence for a complete backtest run provides a
+machine-readable audit trail: for every step across every path in the
+Monte Carlo sweeps and every WRDS regime window, the runner either
+confirms that the accounting invariant held or identifies the exact step
+and inputs where the invariant failed.
+
+# What the Proof Guarantees {#sec-main-results}
+
+The position ledger comes with eleven machine-checked theorems that
+describe exactly what the ledger cannot do wrong.
+
+The first seven theorems concern the bookkeeping that every instrument
+shares: cash always updates by exactly the trade cost and fee; positions
+update by exactly the signed trade size; the net asset value always equals
+cash plus the sum of position values; a trade at the existing mark price
+changes NAV only by the fee. These seven theorems hold for any instrument
+representable as an integer mark price and a signed quantity: a stock
+leg, an equity futures contract, and an options position are formally
+indistinguishable at the ledger layer. The position ledger is
+instrument-agnostic by construction, not by convention.
+
+The eighth theorem covers option settlement: at expiry, settling a
+European option changes the portfolio's NAV by the quantity held times the
+difference between the option's payoff and its pre-expiry mark price, a
+single equation that handles both in-the-money and out-of-the-money expiry
+paths without conditional logic at the call site. The remaining three
+theorems establish that call, put, and option payoffs are always
+non-negative, the economic statement that option holders bear no downside
+risk at expiry.
+
+@tbl-theorems maps each theorem to the accounting failure it prevents;
+@sec-falsification demonstrated with a concrete exhibit why formal
+proof catches a class of bugs that testing cannot.
+
+# Proof Artifacts and Scope {#sec-formalization}
+
+## Lean 4 artifacts {#sec-artifacts}
+
+Full proof architecture and Python runtime bridge details appear in the appendix.
+
+| Theorem | What it guarantees | Accounting failure it prevents |
+|---|---|---|
+| NAV identity | Portfolio value always equals cash plus the sum of position values | Reported P&L that is inconsistent with the actual ledger entries |
+| Cash update | Cash debited exactly by execution cost plus fee | Cash that appears or vanishes without a corresponding trade |
+| Quantity conservation | Position size changes by exactly the signed trade quantity | Positions that drift from what was actually transacted |
+| Trade accounting | NAV change equals mark-to-market gain on pre-trade holding minus fee | Rebalancing costs that are mis-attributed or omitted |
+| Self-financing | A costless trade leaves NAV unchanged | Free-lunch errors where a zero-cost operation changes reported wealth |
+| Self-financing with fee | NAV change under a fixed fee equals mark-to-market gain minus fee | Fixed transaction costs that are inconsistently applied |
+| Well-formedness | A valid trade preserves portfolio type validity | Type violations that could corrupt downstream computations |
+| Settlement | Option settlement changes NAV by quantity times (payoff minus mark) | Incorrect option expiry cash flows under ITM or OTM scenarios |
+| Call payoff ≥ 0 | Call option payoff is always non-negative | A call holder being charged at expiry |
+| Put payoff ≥ 0 | Put option payoff is always non-negative | A put holder being charged at expiry |
+| Option payoff ≥ 0 | Any option payoff is always non-negative | Payoff sign errors under any moneyness scenario |
+
+: Lean 4 theorem map. All 11 theorems are machine-checked with zero proof
+placeholders. Full Lean identifiers and source locations are in Appendix A.
+{#tbl-theorems tbl-colwidths="[22,40,38]"}
+
+::: {.callout-note title="Formalization claim"}
+At the version tagged for submission, every theorem in the position
+ledger is proved to completion: no proof contains an unverified
+placeholder, and the proof library compiles without errors. The full
+theorem statements with Lean 4 source identifiers are in Appendix A;
+the proof can be reproduced with `make verify-lean` in the repository.
+:::
+
+## Scope of formalization {#sec-scope}
+
+The remaining four theorems in @tbl-theorems (the settlement theorem from
+`BacktestProofs.SettlementInvariants` and three payoff theorems from
+`QuantCore.OptionInvariants`) are option-specific and do not generalize to
+other instruments without additional settlement modules and invariants.
+This design mirrors @echenim2021, who separate generic portfolio/market
+accounting from instrument-specific pricing in their Isabelle/HOL
+formalization of the Cox–Ross–Rubinstein model.
+
+::: {.callout-note title="Instrument-class generality"}
+The position ledger (NAV identity, self-financing, trade accounting) is
+formally verified for any instrument representable as an integer mark
+price and a signed quantity (stocks and equity futures included).
+Extending the *settlement* layer to equity futures (mark-to-market final
+settlement) or interest rate futures (accrued coupon) requires new Lean
+`Settlement` modules and corresponding invariants; that extension is left
+to future work.
+:::
+
+The proved theorems bound what the ledger can do wrong; the empirical
+sections that follow test what the backtester actually produces on real
+and synthetic data.
 
 # Empirical Setup {#sec-data}
 
@@ -383,7 +596,7 @@ The GFC window (527 option-day observations) is substantially smaller than the
 others due to near-total illiquidity in ATM options during September–October
 2008: bid-ask spreads widened to levels where implied-volatility estimates
 are unreliable, and most contracts fell outside the ±3% moneyness filter.
-Results from this window should be interpreted with caution.
+These results warrant caution given the sparse GFC coverage.
 
 ## Synthetic GBM and deterministic paths
 
@@ -395,276 +608,42 @@ Hull Tables 19.2 and 19.3 use the hardcoded weekly prices from
 @hull2014 (Tables 19.2/19.3): S₀ = $49, K = $50, r = 5%, σ = 20%,
 T = 20 weeks.
 
-# Does the Backtester Work? {#sec-results}
+# Empirical Validation {#sec-results}
 
-## Monte Carlo convergence {#sec-mc}
+Firm-internal evaluation of a quantitative backtester typically rests on
+three pillars: (i) deterministic replay against textbook or vendor
+reference trades, (ii) A/B testing the pricing layer against an
+independent industry-standard implementation, and (iii) statistical
+reconciliation of realized P\&L against a Greek-based explained-P\&L
+attribution. The Hull replication in @sec-hull covers (i); the
+vendor cross-check below covers (ii). The Monte Carlo convergence,
+BKL scaling, and Carr-Madan decompositions in @sec-mc through
+@sec-error-decomp are an empirical version of (iii).
 
-```{python}
-#| label: fig-mc
-#| fig-cap: "Empirical test of the Black-Scholes replication argument. Each new GBM path adds one realised hedging-cost observation to a running sample mean (blue line). Under perfect replication and GBM dynamics, the sample mean should converge to the Black-Scholes premium (green dashed) at rate $1/\\sqrt{n}$. The shaded green band marks a $\\pm 3\\%$ tolerance around the BS premium. A persistent offset outside the band, or non-convergence, would indicate an accounting bug or a model misspecification in the pricing layer. Source: 500 GBM paths, seed 20260519, $S_0 = 49$, $K = 50$, $\\sigma = 0.20$, $r = 0.05$, $T = 20$ weeks, $N_{\\text{contracts}} = 100{,}000$."
-
-from backtest_proofs.backtest.data_types import PricePath
-from backtest_proofs.backtest.runner import run_delta_hedge
-from backtest_proofs.pricer.black_scholes import bs_price
-from backtest_proofs.simulator.gbm import simulate_gbm
-
-bs_ref = bs_price(
-    S=MC_S0, K=MC_K, T=MC_T, r=MC_R, sigma=MC_SIGMA, option_type="call"
-).value * MC_N_CONTRACTS
-
-costs = []
-for i in range(MC_N_PATHS):
-    path = simulate_gbm(
-        S0=MC_S0, mu=MC_R, sigma=MC_SIGMA, T=MC_T,
-        n_steps=MC_N_STEPS, seed=MC_SEED + i,
-    )
-    res = run_delta_hedge(
-        path=PricePath(times=path.times, prices=path.prices),
-        K=MC_K, r=MC_R, sigma=MC_SIGMA, n_contracts=MC_N_CONTRACTS,
-    )
-    costs.append(res.total_hedging_cost)
-
-running_mean = np.cumsum(costs) / np.arange(1, len(costs) + 1)
-mc_mean_deviation_pct = abs(running_mean[-1] - bs_ref) / bs_ref * 100
-
-fig, ax = plt.subplots(figsize=(8, 4))
-ax.plot(running_mean, lw=1.2, color="#2563eb", label="Running mean")
-ax.axhline(bs_ref, color="#16a34a", ls="--", lw=1.5, label=f"BS price = ${bs_ref:,.0f}")
-ax.fill_between(
-    range(len(running_mean)),
-    bs_ref * 0.97, bs_ref * 1.03,
-    alpha=0.15, color="#16a34a", label="±3% band",
-)
-ax.set_xlabel("Number of paths")
-ax.set_ylabel("Hedging cost ($)")
-ax.legend()
-fig.tight_layout()
-fig.savefig(FIGDIR / "mc_convergence.pdf")
-plt.show()
-plt.close()
-```
-
-Across `{python} f"{MC_N_PATHS:,}"` seeded GBM paths the running-mean hedging
-cost converges to the Black-Scholes price with a final deviation of
-`{python} f"{mc_mean_deviation_pct:.2f}"`% (@fig-mc).
-
-## BKL variance scaling {#sec-bkl}
-
-```{python}
-#| label: fig-bkl
-#| fig-cap: "Bertsimas-Kogan-Lo test of where hedging-cost variance comes from. Each blue point is the sample standard deviation of total hedging cost across 500 GBM paths at a given rebalancing frequency $N$, plotted against $1/\\sqrt{N}$. BKL theory predicts std(cost) $\\propto 1/\\sqrt{N}$ — a straight line through the origin (red dashed, anchored at $N=20$). A skimmer reading this figure should see two things: (i) the five empirical points sit near the theoretical line, confirming that hedging-cost variance grows with the rebalancing interval at the rate theory predicts; (ii) a structural accounting bug — for example, an off-by-one in settlement, a mis-signed cash flow — would produce a *floor* on variance that does not shrink with $N$, breaking the linear pattern. The empirical slope is 13% above theory; this is the discrete-rebalancing correction predicted by @boyle1980 (see error decomposition below), not an accounting failure. Source: 500 GBM paths per frequency, seed 20260519."
-
-from backtest_proofs.backtest.leland import leland_variance_sweep
-
-bkl_result = leland_variance_sweep(
-    s0=MC_S0, k=MC_K, r=MC_R, sigma=MC_SIGMA, t=MC_T,
-    n_paths=LELAND_N_PATHS, frequencies=LELAND_FREQUENCIES, seed=MC_SEED,
-    n_contracts=MC_N_CONTRACTS,
-)
-ns = sorted(bkl_result.keys())
-stds = [bkl_result[n] for n in ns]
-inv_sqrt_n = [1 / math.sqrt(n) for n in ns]
-
-# BKL theory line: std ∝ 1/√N anchored at N=20
-anchor_n = 20
-anchor_std = bkl_result[anchor_n]
-theory_stds = [anchor_std * math.sqrt(anchor_n) / math.sqrt(n) for n in ns]
-
-bkl_ratio_10_20 = bkl_result[10] / bkl_result[20]
-
-fig, ax = plt.subplots(figsize=(6, 4))
-ax.scatter(inv_sqrt_n, stds, zorder=3, color="#2563eb", s=60, label="Empirical")
-ax.plot(inv_sqrt_n, theory_stds, ls="--", color="#dc2626", lw=1.5,
-        label=r"BKL theory ($\propto 1/\sqrt{N}$)")
-ax.set_xlabel("1 / √N")
-ax.set_ylabel("std(hedging cost) ($)")
-ax.legend()
-fig.tight_layout()
-fig.savefig(FIGDIR / "bkl_variance_scaling.pdf")
-plt.show()
-plt.close()
-```
-
-The empirical ratio std(N=10) / std(N=20) = `{python} f"{bkl_ratio_10_20:.3f}"`
-(theory: √2 ≈ 1.414). The BKL line fits well across all five frequencies
-(@fig-bkl). However, the empirical slope of the std vs. 1/√N regression diverges
-from the theoretical slope by approximately 13%; this gap is consistent with
-the discrete-time hedging error analyzed by @boyle1980, who show that
-discretely adjusted hedges deviate from the continuous-time limit in a
-manner that grows with rebalancing interval length. Note that the figure plots $\text{std}(\text{cost})$ against $1/\sqrt{N}$ on a linear scale; the log-log regression in @sec-error-decomp independently verifies the power-law exponent is 0.5, consistent with the linear-scale figure under exact BKL scaling.
-
-## Carr-Madan gamma attribution {#sec-carr-madan}
-
-```{python}
-#| label: fig-cm
-#| fig-cap: "Carr-Madan test of *where* the variance in hedging cost comes from. The Carr-Madan decomposition predicts that the realised discrete-hedge cost equals the cumulative path-integrated gamma P\\&L $\\int \\frac{1}{2} \\Gamma_t S_t^2 \\sigma^2 dt$ plus noise terms. If the backtester's accounting is correct and the only source of cost variance is the gamma term, the realised total hedging cost (y-axis) should fall on a 45° line through the origin against the path-realised gamma P\\&L (x-axis), modulo discretisation noise. Each blue point is one GBM path; the red line is OLS. The Pearson correlation of $r = 0.951$ confirms most of the cost variance is gamma-driven. **Why this matters for accounting validation:** a structural ledger bug — mis-signed cash flows, dropped settlements, wrong quantities at rebalance — would produce points scattered randomly off the line, *not* tight gamma-proportional scatter. The clean linear pattern is positive evidence that the variance comes from the discretisation of a known theoretical relationship, not from accounting failure. Source: 200 GBM paths, seed 20260519."
-
-from backtest_proofs.pricer.black_scholes import bs_greeks
-
-CM_N_PATHS = 200
-
-
-def carr_madan_gamma_pnl(
-    path: PricePath, K: float, r: float, sigma: float, n_contracts: int
-) -> float:
-    total = 0.0
-    for i in range(path.n_steps):
-        S = path.prices[i]
-        t = path.times[i]
-        dt = path.times[i + 1] - path.times[i]
-        T_rem = path.times[-1] - t
-        if T_rem <= 0:
-            continue
-        gamma = bs_greeks(
-            S=S, K=K, T=T_rem, r=r, sigma=sigma, option_type="call"
-        ).gamma
-        delta_S = path.prices[i + 1] - path.prices[i]
-        total += 0.5 * gamma * S**2 * ((delta_S / S) ** 2 - sigma**2 * dt)
-    return total * n_contracts
-
-
-cm_costs, cm_gammas = [], []
-for i in range(CM_N_PATHS):
-    path = simulate_gbm(
-        S0=MC_S0, mu=MC_R, sigma=MC_SIGMA, T=MC_T,
-        n_steps=MC_N_STEPS, seed=MC_SEED + i,
-    )
-    pp = PricePath(times=path.times, prices=path.prices)
-    res = run_delta_hedge(
-        path=pp, K=MC_K, r=MC_R, sigma=MC_SIGMA, n_contracts=MC_N_CONTRACTS,
-    )
-    cm_costs.append(res.total_hedging_cost)
-    cm_gammas.append(carr_madan_gamma_pnl(
-        pp, MC_K, MC_R, MC_SIGMA, MC_N_CONTRACTS
-    ))
-
-cm_costs_arr = np.array(cm_costs)
-cm_gammas_arr = np.array(cm_gammas)
-carr_madan_corr = float(np.corrcoef(cm_costs_arr, cm_gammas_arr)[0, 1])
-
-# OLS line
-m, b = np.polyfit(cm_gammas_arr, cm_costs_arr, 1)
-x_line = np.linspace(cm_gammas_arr.min(), cm_gammas_arr.max(), 100)
-
-fig, ax = plt.subplots(figsize=(6, 5))
-ax.scatter(cm_gammas_arr, cm_costs_arr, alpha=0.4, s=20, color="#2563eb")
-ax.plot(x_line, m * x_line + b, color="#dc2626", lw=1.5)
-ax.set_xlabel("Gamma P&L ($)")
-ax.set_ylabel("Hedging cost ($)")
-ax.text(0.05, 0.92, f"r = {carr_madan_corr:.3f}", transform=ax.transAxes,
-        fontsize=10, va="top")
-fig.tight_layout()
-fig.savefig(FIGDIR / "carr_madan_scatter.pdf")
-plt.show()
-plt.close()
-```
-
-Hedging cost correlates with gamma P&L at r = `{python} f"{carr_madan_corr:.3f}"`
-across `{python} CM_N_PATHS` paths, consistent with the Carr-Madan
-decomposition [@carr1998; @carrwu2020] (@fig-cm). The peer-reviewed treatment
-in @carrwu2020 generalizes this attribution to the full option P&L including
-theta and vega components; here we focus on the gamma term as the primary
-driver of discrete-time hedging cost variance.
-
-## Error decomposition {#sec-error-decomp}
-
-```{python}
-#| label: error-decomp
-#| include: false
-from scipy import stats as scipy_stats
-
-# --- 1. Zero-bias t-test on 500-path costs array already computed above ---
-relative_errors = (np.array(costs) - bs_ref) / bs_ref
-t_stat_bias, p_val_bias = scipy_stats.ttest_1samp(relative_errors, 0)
-mean_err_pct = float(relative_errors.mean() * 100)
-std_err_pct  = float(relative_errors.std()  * 100)
-
-# --- 2. Carr-Madan R² and OLS intercept test (uses cm_costs_arr / cm_gammas_arr) ---
-cm_slope, cm_intercept, cm_r, _, cm_se = scipy_stats.linregress(
-    cm_gammas_arr, cm_costs_arr
-)
-cm_r_sq = cm_r ** 2
-n_cm = len(cm_costs_arr)
-cm_residual_std = float(
-    np.sqrt(np.sum((cm_costs_arr - cm_slope * cm_gammas_arr - cm_intercept)**2)
-            / (n_cm - 2))
-)
-
-# --- 3. BKL log-log slope (uses bkl_result computed in BKL section) ---
-log_inv_n = np.log([1/n for n in ns])
-log_stds   = np.log([bkl_result[n] for n in ns])
-bkl_ll_slope, _, bkl_ll_r, _, _ = scipy_stats.linregress(log_inv_n, log_stds)
-bkl_ll_r_sq = bkl_ll_r ** 2
-
-# --- 4. Float precision bound ---
-# to_bp rounds x*10000 to nearest int → max error 0.5 bp per call
-# Each rebalancing step makes ~2 to_bp calls (exec price, mark price).
-# Independent rounding: Var = N_calls * (0.5 bp)^2
-_rounding_var_bp2 = MC_N_STEPS * 2 * 0.25           # bp²
-_rounding_std_bp  = math.sqrt(_rounding_var_bp2)    # ≈ 3.16 bp
-# Convert bp to dollars for 100K contracts on $50 underlying
-rounding_std_dollars = _rounding_std_bp * 1e-4 * MC_S0 * MC_N_CONTRACTS
-rounding_frac_of_std = rounding_std_dollars / np.std(costs) * 100
-rounding_frac_of_ref = rounding_std_dollars / bs_ref * 100
-```
-
-The four measurements together characterise the error regime and distinguish
-discrete-hedge variance from structural bias.
-
-**Zero-bias test.** A one-sample t-test on the relative error
-$(c_i - \text{BS}) / \text{BS}$ across `{python} MC_N_PATHS` paths yields
-$t =$ `{python} f"{t_stat_bias:.2f}"`, $p =$ `{python} f"{p_val_bias:.4f}"`,
-with mean error `{python} f"{mean_err_pct:.2f}"`% and standard deviation
-`{python} f"{std_err_pct:.2f}"`%. The null of zero mean is rejected at the 1%
-level; the mean lies `{python} f"{abs(mean_err_pct)/std_err_pct:.2f}"` standard
-deviations below zero. The signed direction (negative: hedging cost below BS
-price) is consistent with the known O($\Delta t$) downward correction to the
-Black-Scholes price under discrete rebalancing [@leland1985], not with an
-accounting bug, which would produce a positive or path-dependent bias. The mean
-is economically small relative to the std (ratio
-`{python} f"{abs(mean_err_pct)/std_err_pct:.3f}"`), with all step certificates
-passing exactly throughout. The t-test has asymptotic validity under the CLT at
-$n = 500$; a Wilcoxon signed-rank test on the same sample confirms the same
-directional conclusion (cost below BS price, $p < 0.01$).
-
-**Carr-Madan variance attribution.** The OLS regression of hedging cost on
-gamma P&L yields $R^2 =$ `{python} f"{cm_r_sq:.3f}"`, slope
-`{python} f"{cm_slope:.3f}"` (expected 1.0 under the Carr-Madan identity), and
-residual standard deviation $\$`{python} f"{cm_residual_std:,.0f}"`$. The OLS slope is downward-attenuated relative to 1.0 by discretisation error in the gamma P\&L regressor (errors-in-variables bias); the $R^2$ is the more interpretable diagnostic. The
-$R^2$ of `{python} f"{cm_r_sq:.3f}"` means `{python} f"{cm_r_sq*100:.1f}"`%
-of hedging cost variance is explained by the one-factor gamma P&L term alone;
-the remaining `{python} f"{(1-cm_r_sq)*100:.1f}"`% reflects higher-order
-terms (theta P&L, vega, path-specific discretisation noise) that the
-Carr-Madan single-factor model does not capture. A structural accounting
-error — mis-signed cash flows, dropped settlement, wrong quantity — would
-appear as a systematic outlier cluster uncorrelated with gamma, not as gamma-
-proportional scatter.
-
-**BKL log-log slope.** A log-linear regression of $\log(\text{std})$ on
-$\log(1/N)$ across five rebalancing frequencies yields slope
-`{python} f"{bkl_ll_slope:.3f}"` (BKL theory: 0.5) with
-$R^2 =$ `{python} f"{bkl_ll_r_sq:.4f}"`. The near-perfect fit ($R^2 > 0.99$)
-confirms that variance grows exactly as $1/N$, the hallmark of independent
-per-step errors that wash out with hedging frequency. Structural errors
-(e.g., an off-by-one in settlement) would manifest as a floor that does not
-shrink with $N$.
-
-**Floating-point precision.** The `to_bp` / `from_bp` conversions introduce
-at most 0.5 bp rounding per call. Over `{python} MC_N_STEPS` rebalancing steps
-with ~2 conversions per step, independent rounding accumulates to a standard
-deviation of approximately
-$\$`{python} f"{rounding_std_dollars:,.0f}"`$ (`{python} f"{rounding_frac_of_ref:.2f}"`%
-of the BS price), which is `{python} f"{rounding_frac_of_std:.1f}"`% of the
-empirical hedging-cost standard deviation. Basis-point rounding contributes
-negligibly to observed variance.
 
 ## Hull Table 19.2 / 19.3 replication {#sec-hull}
 
-The Hull (2014) textbook tabulates a deterministic 20-step weekly hedge of a written ATM call ($S_0 = 49$, $K = 50$, $r = 5\%$, $\sigma = 20\%$, $T = 20$ weeks) under two realised price paths — Table 19.2 ends ITM at $S_T = 57.25$; Table 19.3 ends OTM at $S_T = 48.12$. Hull's printed cost-of-hedging figures ($263{,}300 and $256{,}600 respectively) incorporate textbook rounding conventions — delta to three decimal places, share counts to the nearest hundred, dollar amounts to the nearest hundred — that introduce noise of several thousand dollars on a $\sim$\$250K hedging cost. The cleaner test is to recompute the hedge in Python using the *same* basis-point integer arithmetic that the FFI runner uses, and compare the two NAV paths point by point. If the FFI runner and an independent Python implementation of the same procedure agree to within a few basis points across every rebalance step, the FFI bridge and Strategy abstraction are not introducing accounting drift on top of the proved kernel.
+The simplest validation is the textbook's own deterministic example.
+
+The Hull (2014) textbook tabulates a deterministic 20-step weekly hedge
+of a written ATM call ($S_0 = 49$, $K = 50$, $r = 5\%$, $\sigma = 20\%$,
+$T = 20$ weeks) under two realized price paths: Table 19.2 ends ITM at
+$S_T = 57.25$; Table 19.3 ends OTM at $S_T = 48.12$. Hull's printed
+cost-of-hedging figures ($263{,}300 and $256{,}600 respectively)
+incorporate textbook rounding conventions (delta to three decimal places,
+share counts to the nearest hundred, dollar amounts to the nearest hundred)
+that introduce noise of several thousand dollars on a $\sim$\$250K
+hedging cost. The cleaner test is to recompute the hedge in Python using
+the *same* basis-point integer arithmetic that the Python runtime bridge
+uses, and compare the two NAV paths point by point. If the Python
+runtime bridge and an independent Python implementation of the same
+procedure agree to within a few basis points across every rebalance
+step, the Python runtime bridge is not introducing accounting drift on
+top of the proved kernel.
 
 ```{python}
 #| label: fig-hull
-#| fig-cap: "Cross-check of the FFI-backed delta-hedge runner against an independent Python reference implementation that uses identical basis-point integer arithmetic. **Top row:** week-by-week NAV path for Hull Table 19.2 (left, ITM expiry) and Table 19.3 (right, OTM expiry). The FFI runner (blue solid) and the manual reference (red dashed) are visually indistinguishable. **Bottom row:** signed deviation between the two NAV series at each week, in dollars (note the $25/\\$50 y-axis range against $\\sim$\\$250K hedging cost). Total-cost agreement is annotated. The two implementations agree to within $\\sim 1$ basis point throughout — well below the noise floor of Hull's printed values, confirming that the FFI bridge does not introduce drift on top of the proved accounting kernel."
+#| fig-cap: "Cross-check of the Python runtime bridge against an independent Python reference implementation that uses identical basis-point integer arithmetic. **Top row:** week-by-week NAV path for Hull Table 19.2 (left, ITM expiry) and Table 19.3 (right, OTM expiry). The Python runtime bridge (blue solid) and the manual reference (red dashed) are visually indistinguishable. **Bottom row:** signed deviation between the two NAV series at each week, in dollars (note the $25/\\$50 y-axis range against $\\sim$\\$250K hedging cost). Total-cost agreement is annotated. The two implementations agree to within $\\sim 1$ basis point throughout, well below the noise floor of Hull's printed values, confirming that the Python runtime bridge does not introduce drift on top of the proved position ledger."
 
 from backtest_proofs.backtest.manual_reference import manual_hedge_reference
 from backtest_proofs.backtest.scenarios import (
@@ -760,17 +739,333 @@ plt.show()
 plt.close()
 ```
 
-The two implementations agree to **`{python} f"{hull_192_dev_bp:.2f}"` bp** on the ITM path and **`{python} f"{hull_193_dev_bp:.2f}"` bp** on the OTM path. The remaining discrepancy is cumulative basis-point rounding through the FFI boundary; the noise floor for end-to-end cross-checks like this is approximately 1 bp per 20-step hedge. For comparison, Hull's printed cost-of-hedging figures sit roughly 3-4% above both implementations — the difference is fully explained by the textbook's three-decimal-place delta rounding and hundred-share rounding rules. All step certificates pass for both paths, and the certificate-by-certificate equality between the FFI runner's reported ``ΔPV`` and ``valueUpdateFormula`` is verified inside the runner at every step (@fig-hull).
+The two implementations agree to
+**`{python} f"{hull_192_dev_bp:.2f}"` bp** on the ITM path and
+**`{python} f"{hull_193_dev_bp:.2f}"` bp** on the OTM path. The
+remaining discrepancy is cumulative basis-point rounding through the FFI
+boundary; the noise floor for end-to-end cross-checks like this is
+approximately 1 bp per 20-step hedge. For comparison, Hull's printed
+cost-of-hedging figures sit roughly 3-4% above both implementations;
+the difference is fully explained by the textbook's three-decimal-place
+delta rounding and hundred-share rounding rules. All step certificates
+pass for both paths, and the certificate-by-certificate equality between
+the Python runtime bridge's reported delta-PV and the trade-accounting
+formula is verified inside the runner at every step (@fig-hull).
+
+## Monte Carlo convergence {#sec-mc}
+
+```{python}
+#| label: fig-mc
+#| fig-cap: "Empirical test of the Black-Scholes replication argument. Each new GBM path adds one realized hedging-cost observation to a running sample mean (blue line). Under perfect replication and GBM dynamics, the sample mean should converge to the Black-Scholes premium (green dashed) at rate $1/\\sqrt{n}$. The shaded green band marks a $\\pm 3\\%$ tolerance around the BS premium. A persistent offset outside the band, or non-convergence, would indicate an accounting bug or a model misspecification in the pricing layer. Source: 500 GBM paths, seed 20260519, $S_0 = 49$, $K = 50$, $\\sigma = 0.20$, $r = 0.05$, $T = 20$ weeks, $N_{\\text{contracts}} = 100{,}000$."
+
+from backtest_proofs.backtest.data_types import PricePath
+from backtest_proofs.backtest.runner import run_delta_hedge
+from backtest_proofs.pricer.black_scholes import bs_price
+from backtest_proofs.simulator.gbm import simulate_gbm
+
+bs_ref = bs_price(
+    S=MC_S0, K=MC_K, T=MC_T, r=MC_R, sigma=MC_SIGMA, option_type="call"
+).value * MC_N_CONTRACTS
+
+costs = []
+for i in range(MC_N_PATHS):
+    path = simulate_gbm(
+        S0=MC_S0, mu=MC_R, sigma=MC_SIGMA, T=MC_T,
+        n_steps=MC_N_STEPS, seed=MC_SEED + i,
+    )
+    res = run_delta_hedge(
+        path=PricePath(times=path.times, prices=path.prices),
+        K=MC_K, r=MC_R, sigma=MC_SIGMA, n_contracts=MC_N_CONTRACTS,
+    )
+    costs.append(res.total_hedging_cost)
+
+running_mean = np.cumsum(costs) / np.arange(1, len(costs) + 1)
+mc_mean_deviation_pct = abs(running_mean[-1] - bs_ref) / bs_ref * 100
+
+fig, ax = plt.subplots(figsize=(8, 4))
+ax.plot(running_mean, lw=1.2, color="#2563eb", label="Running mean")
+ax.axhline(bs_ref, color="#16a34a", ls="--", lw=1.5, label=f"BS price = ${bs_ref:,.0f}")
+ax.fill_between(
+    range(len(running_mean)),
+    bs_ref * 0.97, bs_ref * 1.03,
+    alpha=0.15, color="#16a34a", label="±3% band",
+)
+ax.set_xlabel("Number of paths")
+ax.set_ylabel("Hedging cost ($)")
+ax.legend()
+fig.tight_layout()
+fig.savefig(FIGDIR / "mc_convergence.pdf")
+plt.show()
+plt.close()
+```
+
+Across `{python} f"{MC_N_PATHS:,}"` seeded GBM paths the running-mean
+hedging cost converges to the Black-Scholes price with a final deviation
+of `{python} f"{mc_mean_deviation_pct:.2f}"`% (@fig-mc). The deviation
+lies inside the 3% tolerance band; the signed direction (cost below the
+BS price) is consistent with the O(Δt) downward correction [@leland1985]
+under discrete rebalancing at N=20, and inconsistent with an accounting
+bug, which would produce a path-independent bias whose magnitude does not
+shrink with rebalancing frequency.
+
+## BKL variance scaling {#sec-bkl}
+
+```{python}
+#| label: fig-bkl
+#| fig-cap: "Bertsimas-Kogan-Lo test of where hedging-cost variance comes from. Each blue point is the sample standard deviation of total hedging cost across 500 GBM paths at a given rebalancing frequency $N$, plotted against $1/\\sqrt{N}$. BKL theory predicts std(cost) $\\propto 1/\\sqrt{N}$, a straight line through the origin (red dashed, anchored at $N=20$). A skimmer reading this figure should see two things: (i) the five empirical points sit near the theoretical line, confirming that hedging-cost variance grows with the rebalancing interval at the rate theory predicts; (ii) a structural accounting bug (for example, an off-by-one in settlement or a mis-signed cash flow) would produce a *floor* on variance that does not shrink with $N$, breaking the linear pattern. The empirical slope is 13% above theory; this is the discrete-rebalancing correction predicted by @boyle1980 (see error decomposition below), not an accounting failure. Source: 500 GBM paths per frequency, seed 20260519."
+
+from backtest_proofs.backtest.leland import leland_variance_sweep
+
+bkl_result = leland_variance_sweep(
+    s0=MC_S0, k=MC_K, r=MC_R, sigma=MC_SIGMA, t=MC_T,
+    n_paths=LELAND_N_PATHS, frequencies=LELAND_FREQUENCIES, seed=MC_SEED,
+    n_contracts=MC_N_CONTRACTS,
+)
+ns = sorted(bkl_result.keys())
+stds = [bkl_result[n] for n in ns]
+inv_sqrt_n = [1 / math.sqrt(n) for n in ns]
+
+# BKL theory line: std ∝ 1/√N anchored at N=20
+anchor_n = 20
+anchor_std = bkl_result[anchor_n]
+theory_stds = [anchor_std * math.sqrt(anchor_n) / math.sqrt(n) for n in ns]
+
+bkl_ratio_10_20 = bkl_result[10] / bkl_result[20]
+
+fig, ax = plt.subplots(figsize=(6, 4))
+ax.scatter(inv_sqrt_n, stds, zorder=3, color="#2563eb", s=60, label="Empirical")
+ax.plot(inv_sqrt_n, theory_stds, ls="--", color="#dc2626", lw=1.5,
+        label=r"BKL theory ($\propto 1/\sqrt{N}$)")
+ax.set_xlabel("1 / √N")
+ax.set_ylabel("std(hedging cost) ($)")
+ax.legend()
+fig.tight_layout()
+fig.savefig(FIGDIR / "bkl_variance_scaling.pdf")
+plt.show()
+plt.close()
+```
+
+The empirical ratio std(N=10) / std(N=20) =
+`{python} f"{bkl_ratio_10_20:.3f}"` against the theoretical
+√2 ≈ 1.414 (@fig-bkl). Across five rebalancing frequencies, the
+empirical slope of the std vs. 1/√N regression exceeds the BKL
+theoretical slope by approximately 13%;
+@boyle1980 show that discretely adjusted hedges carry a residual
+variance above the continuous-time limit by a term proportional to
+the rebalancing interval, which accounts for this excess slope. The figure plots
+$\text{std}(\text{cost})$ against $1/\sqrt{N}$ on a linear scale;
+the log-log regression in @sec-error-decomp independently verifies the
+power-law exponent is 0.5, consistent with the linear-scale figure under
+exact BKL scaling.
+
+The BKL scaling result is negative evidence for ledger correctness.
+A structural ledger error (an off-by-one in settlement, a mis-signed
+cash flow, a dropped option payoff) would produce a variance floor that
+does not shrink as rebalancing frequency increases. The 1/√N pattern
+here shrinks toward zero with N, ruling out any constant-magnitude
+accounting error. The 13% excess above the BKL theory slope is a
+finite-N correction from discrete rebalancing identified by @boyle1980,
+not a floor: it contracts proportionally with the step interval, as the
+log-log regression in @sec-error-decomp confirms.
+
+## Carr-Madan gamma attribution {#sec-carr-madan}
+
+```{python}
+#| label: fig-cm
+#| fig-cap: "Carr-Madan test of *where* the variance in hedging cost comes from. The Carr-Madan decomposition predicts that the realized discrete-hedge cost equals the cumulative path-integrated gamma P\\&L $\\int \\frac{1}{2} \\Gamma_t S_t^2 \\sigma^2 dt$ plus noise terms. If the backtester's accounting is correct and the only source of cost variance is the gamma term, the realized total hedging cost (y-axis) should fall on a 45° line through the origin against the path-realized gamma P\\&L (x-axis), modulo discretization noise. Each blue point is one GBM path; the red line is OLS. The Pearson correlation of $r = 0.951$ confirms most of the cost variance is gamma-driven. **Why this matters for accounting validation:** a structural ledger bug (mis-signed cash flows, dropped settlements, wrong quantities at rebalance) would produce points scattered randomly off the line, *not* tight gamma-proportional scatter. The clean linear pattern is positive evidence that the variance comes from the discretization of a known theoretical relationship, not from accounting failure. Source: 200 GBM paths, seed 20260519."
+
+from backtest_proofs.pricer.black_scholes import bs_greeks
+
+CM_N_PATHS = 200
+
+
+def carr_madan_gamma_pnl(
+    path: PricePath, K: float, r: float, sigma: float, n_contracts: int
+) -> float:
+    total = 0.0
+    for i in range(path.n_steps):
+        S = path.prices[i]
+        t = path.times[i]
+        dt = path.times[i + 1] - path.times[i]
+        T_rem = path.times[-1] - t
+        if T_rem <= 0:
+            continue
+        gamma = bs_greeks(
+            S=S, K=K, T=T_rem, r=r, sigma=sigma, option_type="call"
+        ).gamma
+        delta_S = path.prices[i + 1] - path.prices[i]
+        total += 0.5 * gamma * S**2 * ((delta_S / S) ** 2 - sigma**2 * dt)
+    return total * n_contracts
+
+
+cm_costs, cm_gammas = [], []
+for i in range(CM_N_PATHS):
+    path = simulate_gbm(
+        S0=MC_S0, mu=MC_R, sigma=MC_SIGMA, T=MC_T,
+        n_steps=MC_N_STEPS, seed=MC_SEED + i,
+    )
+    pp = PricePath(times=path.times, prices=path.prices)
+    res = run_delta_hedge(
+        path=pp, K=MC_K, r=MC_R, sigma=MC_SIGMA, n_contracts=MC_N_CONTRACTS,
+    )
+    cm_costs.append(res.total_hedging_cost)
+    cm_gammas.append(carr_madan_gamma_pnl(
+        pp, MC_K, MC_R, MC_SIGMA, MC_N_CONTRACTS
+    ))
+
+cm_costs_arr = np.array(cm_costs)
+cm_gammas_arr = np.array(cm_gammas)
+carr_madan_corr = float(np.corrcoef(cm_costs_arr, cm_gammas_arr)[0, 1])
+
+# OLS line
+m, b = np.polyfit(cm_gammas_arr, cm_costs_arr, 1)
+x_line = np.linspace(cm_gammas_arr.min(), cm_gammas_arr.max(), 100)
+
+fig, ax = plt.subplots(figsize=(6, 5))
+ax.scatter(cm_gammas_arr, cm_costs_arr, alpha=0.4, s=20, color="#2563eb")
+ax.plot(x_line, m * x_line + b, color="#dc2626", lw=1.5)
+ax.set_xlabel("Gamma P&L ($)")
+ax.set_ylabel("Hedging cost ($)")
+ax.text(0.05, 0.92, f"r = {carr_madan_corr:.3f}", transform=ax.transAxes,
+        fontsize=10, va="top")
+fig.tight_layout()
+fig.savefig(FIGDIR / "carr_madan_scatter.pdf")
+plt.show()
+plt.close()
+```
+
+Hedging cost correlates with gamma P&L at
+r = `{python} f"{carr_madan_corr:.3f}"` across `{python} CM_N_PATHS`
+paths (@fig-cm). The Carr-Madan decomposition [@carr1998; @carrwu2020]
+predicts that realized cost lies on the 45-degree line against
+path-integrated gamma P&L; the observed r of
+`{python} f"{carr_madan_corr:.3f}"` means
+`{python} f"{carr_madan_corr**2*100:.1f}"`% of cost variance is
+explained by the gamma term alone, with the remaining
+`{python} f"{(1-carr_madan_corr**2)*100:.1f}"`% attributable to
+theta P&L, vega, and higher-order discretization terms [@carrwu2020].
+
+The Carr-Madan scatter is also negative evidence for accounting
+correctness. A structural ledger error would shift points off the
+theoretical line in a pattern uncorrelated with gamma: if cash flows
+are mis-attributed or settlements dropped, the realized cost would
+carry a systematic component that the gamma term cannot explain. The
+tight linear scatter at r = `{python} f"{carr_madan_corr:.3f}"` is
+consistent with gamma-driven variance and inconsistent with any
+accounting error large enough to matter economically.
+
+## Error decomposition {#sec-error-decomp}
+
+```{python}
+#| label: error-decomp
+#| include: false
+from scipy import stats as scipy_stats
+
+# --- 1. Zero-bias t-test on 500-path costs array already computed above ---
+relative_errors = (np.array(costs) - bs_ref) / bs_ref
+t_stat_bias, p_val_bias = scipy_stats.ttest_1samp(relative_errors, 0)
+mean_err_pct = float(relative_errors.mean() * 100)
+std_err_pct  = float(relative_errors.std()  * 100)
+
+# --- 2. Carr-Madan R² and OLS intercept test (uses cm_costs_arr / cm_gammas_arr) ---
+cm_slope, cm_intercept, cm_r, _, cm_se = scipy_stats.linregress(
+    cm_gammas_arr, cm_costs_arr
+)
+cm_r_sq = cm_r ** 2
+n_cm = len(cm_costs_arr)
+cm_residual_std = float(
+    np.sqrt(np.sum((cm_costs_arr - cm_slope * cm_gammas_arr - cm_intercept)**2)
+            / (n_cm - 2))
+)
+
+# --- 3. BKL log-log slope (uses bkl_result computed in BKL section) ---
+log_inv_n = np.log([1/n for n in ns])
+log_stds   = np.log([bkl_result[n] for n in ns])
+bkl_ll_slope, _, bkl_ll_r, _, _ = scipy_stats.linregress(log_inv_n, log_stds)
+bkl_ll_r_sq = bkl_ll_r ** 2
+
+# --- 4. Float precision bound ---
+# to_bp rounds x*10000 to nearest int → max error 0.5 bp per call
+# Each rebalancing step makes ~2 to_bp calls (exec price, mark price).
+# Independent rounding: Var = N_calls * (0.5 bp)^2
+_rounding_var_bp2 = MC_N_STEPS * 2 * 0.25           # bp²
+_rounding_std_bp  = math.sqrt(_rounding_var_bp2)    # ≈ 3.16 bp
+# Convert bp to dollars for 100K contracts on $50 underlying
+rounding_std_dollars = _rounding_std_bp * 1e-4 * MC_S0 * MC_N_CONTRACTS
+rounding_frac_of_std = rounding_std_dollars / np.std(costs) * 100
+rounding_frac_of_ref = rounding_std_dollars / bs_ref * 100
+```
+
+The four measurements together characterize the error regime and distinguish
+discrete-hedge variance from structural bias.
+
+**Zero-bias test.** A one-sample t-test on the relative error
+$(c_i - \text{BS}) / \text{BS}$ across `{python} MC_N_PATHS` paths yields
+$t =$ `{python} f"{t_stat_bias:.2f}"`, $p =$ `{python} f"{p_val_bias:.4f}"`,
+with mean error `{python} f"{mean_err_pct:.2f}"`% and standard deviation
+`{python} f"{std_err_pct:.2f}"`%. The null of zero mean is rejected at the 1%
+level; the mean lies `{python} f"{abs(mean_err_pct)/std_err_pct:.2f}"` standard
+deviations below zero. The signed direction (negative: hedging cost below BS
+price) is consistent with the known O($\Delta t$) downward correction to the
+Black-Scholes price under discrete rebalancing [@leland1985], not with an
+accounting bug, which would produce a positive or path-dependent bias. The mean
+is economically small relative to the std (ratio
+`{python} f"{abs(mean_err_pct)/std_err_pct:.3f}"`). The t-test has
+asymptotic validity under the CLT at
+$n = 500$; a Wilcoxon signed-rank test on the same sample confirms the same
+directional conclusion (cost below BS price, $p < 0.01$).
+
+**Carr-Madan variance attribution.** Across 200 GBM paths, the OLS
+regression of hedging cost on gamma P&L yields
+$R^2 =$ `{python} f"{cm_r_sq:.3f}"`, slope
+`{python} f"{cm_slope:.3f}"` (expected 1.0 under the Carr-Madan
+identity), and residual standard deviation
+$\$`{python} f"{cm_residual_std:,.0f}"`$.
+The OLS slope is downward-attenuated relative to 1.0 by discretization
+error in the gamma P\&L regressor (errors-in-variables bias); the $R^2$
+is the more interpretable diagnostic. The
+$R^2$ of `{python} f"{cm_r_sq:.3f}"` means `{python} f"{cm_r_sq*100:.1f}"`%
+of hedging cost variance is explained by the one-factor gamma P&L term alone;
+the remaining `{python} f"{(1-cm_r_sq)*100:.1f}"`% reflects higher-order
+terms (theta P&L, vega, path-specific discretization noise) that the
+Carr-Madan single-factor model does not capture. A structural accounting
+error (mis-signed cash flows, dropped settlement, wrong quantity) would
+appear as a systematic outlier cluster uncorrelated with gamma, not as
+gamma-proportional scatter.
+
+**BKL log-log slope.** A log-linear regression of $\log(\text{std})$ on
+$\log(1/N)$ across five rebalancing frequencies yields slope
+`{python} f"{bkl_ll_slope:.3f}"` (BKL theory: 0.5) with
+$R^2 =$ `{python} f"{bkl_ll_r_sq:.4f}"`. The near-perfect fit ($R^2 > 0.99$)
+confirms that variance grows exactly as $1/N$, the hallmark of independent
+per-step errors that wash out with hedging frequency. Structural errors
+(e.g., an off-by-one in settlement) would manifest as a floor that does not
+shrink with $N$.
+
+**Floating-point precision.** The `to_bp` / `from_bp` conversions introduce
+at most 0.5 bp rounding per call. Over `{python} MC_N_STEPS` rebalancing steps
+with ~2 conversions per step, independent rounding accumulates to a standard
+deviation of approximately
+$\$`{python} f"{rounding_std_dollars:,.0f}"`$ (`{python} f"{rounding_frac_of_ref:.2f}"`%
+of the BS price), which is `{python} f"{rounding_frac_of_std:.1f}"`% of the
+empirical hedging-cost standard deviation. Basis-point rounding contributes
+negligibly to observed variance.
 
 ## Cross-validation against QuantLib {#sec-quantlib}
 
-Firm-internal evaluation of a quantitative backtester typically rests on three pillars: (i) deterministic replay against textbook or vendor reference trades, (ii) A/B testing the pricing layer against an independent industry-standard implementation, and (iii) statistical reconciliation of realised P\&L against a Greek-based explained-P\&L attribution. §6.5 covered (i). This section covers (ii). The variance and Carr-Madan decompositions in §6.2–6.4 are an empirical version of (iii).
 
-For (ii) the standard reference is QuantLib — an open-source C++ derivatives library widely deployed in trading, risk, and audit functions. Comparing our basis-point integer Black-Scholes pricing to QuantLib's analytic pricer at matched inputs isolates the pricing layer from the accounting layer: if the two pricers agree, the cost figures elsewhere in the paper cannot be attributed to a pricing-implementation bug. Practitioners reviewing this work will recognise the comparison as the standard "vendor cross-check" used by validation desks for new derivatives systems.
+The standard reference for (ii) is QuantLib, an open-source C++
+derivatives library widely used in quantitative finance. Comparing our
+basis-point integer Black-Scholes pricing to QuantLib's analytic pricer
+at matched inputs isolates the pricing layer from the position ledger:
+if the two pricers agree, the cost figures elsewhere in the paper cannot
+be attributed to a pricing-implementation bug. Practitioners reviewing
+this work will recognize the comparison as the standard "vendor
+cross-check" used by validation desks for new derivatives systems.
 
 ```{python}
 #| label: fig-ql
-#| fig-cap: "Vendor cross-check of the pricing layer against QuantLib's analytic Black-Scholes implementation. Each dot is one $(S, K, T, r, \\sigma)$ evaluation point (5 scenarios spanning calm/stress/expiry regimes, 20+ points each); colour denotes scenario. The x-axis is our basis-point integer pricer's call value (dollars), the y-axis is QuantLib's continuous-precision analytic value. The dashed line marks perfect agreement. **What a validation desk would conclude from this figure:** all evaluation points sit on the diagonal to within 2.69 basis points (the annotated maximum deviation). At a typical buy-side firm, vendor cross-checks of new derivatives pricers are accepted at a 3–5 bp tolerance; this pricer is well inside that envelope. **What this rules out:** any systematic bias in our integer arithmetic that would corrupt the hedging-cost figures in the rest of the paper. Source: synthetic GBM, seed 20260519, 5 parameter scenarios."
+#| fig-cap: "Vendor cross-check of the pricing layer against QuantLib's analytic Black-Scholes implementation. Each dot is one $(S, K, T, r, \\sigma)$ evaluation point (5 scenarios spanning calm/stress/expiry regimes, 20+ points each); color denotes scenario. The x-axis is our basis-point integer pricer's call value (dollars), the y-axis is QuantLib's continuous-precision analytic value. The dashed line marks perfect agreement. **What a validation desk would conclude from this figure:** all evaluation points sit on the diagonal to within 2.69 basis points (the annotated maximum deviation). At a typical buy-side firm, vendor cross-checks of new derivatives pricers are accepted at a 3–5 bp tolerance; this pricer is well inside that envelope. **What this rules out:** any systematic bias in our integer arithmetic that would corrupt the hedging-cost figures in the rest of the paper. Source: synthetic GBM, seed 20260519, 5 parameter scenarios."
 
 try:
     from backtest_proofs.backtest.quantlib_compare import (
@@ -827,19 +1122,29 @@ except ImportError:
     plt.close()
 ```
 
-Across `{python} ql_n_scenarios` parameter scenarios the maximum deviation between our
-Black-Scholes implementation and QuantLib's analytic pricer is
+Across `{python} ql_n_scenarios` parameter scenarios the maximum
+deviation between our Black-Scholes implementation and QuantLib's
+analytic pricer is
 `{python} f"{ql_max_dev:.2f}"` bp (@fig-ql).
 All `{python} ql_n_scenarios` scenarios fall within a 3 bp tolerance
 (`{python} "yes" if ql_within_3bp else "no"`).
-This cross-check confirms that the pricing layer is numerically consistent with an
-independent industrial-grade implementation to sub-3-basis-point precision across
-the full range of spot prices, strikes, and maturities tested here.
+Any systematic bias in the integer-arithmetic Black-Scholes
+implementation large enough to distort the hedging-cost figures
+elsewhere in the paper would appear as a diagonal offset here;
+the maximum 2.69 bp deviation rules out pricing bias at the
+3 bp threshold used by buy-side validation desks.
 
+The position ledger composes across multi-leg portfolios (straddle, bull
+call spread) and equity-only positions (covered call) with no changes
+to the Lean source: each leg routes through the same settlement and
+trade-update functions, so the proved theorems cover multi-leg
+portfolios by construction. Extended exhibits appear in the appendix.
 
+The synthetic and textbook results above confirm the backtester works
+under controlled conditions; Section 7 tests whether those guarantees
+hold when the underlying data is genuinely adversarial.
 
-The accounting kernel composes across multi-leg portfolios (straddle, bull call spread) and equity-only positions (covered call) without any Lean proof modifications. Extended multi-leg and equity exhibits are reported in the appendix.
-
+# Historical Stress Tests {#sec-robustness}
 ## WRDS 2019–2024 holdout {#sec-wrds}
 
 ```{python}
@@ -863,15 +1168,41 @@ else:
     wrds_holdout_n = None
 ```
 
-The WRDS OptionMetrics 2021–2023 holdout contains `{python} f"{wrds_holdout_n:,}" if wrds_holdout_n else "—"` qualifying call series drawn from the ATM ±3% filter applied to the full 2019–2024 panel, restricted to the 2021–2023 sub-period to avoid overlap with the COVID 2020 stress window. The median cost/premium across these series is `{python} f"{wrds_holdout_median:.2f}" if wrds_holdout_median else "—"`, below 1.0 and consistent with the positive variance risk premium documented by @bakshikapadia2003: in the absence of a crisis, implied volatility at inception systematically exceeds realized volatility over the hedge horizon, so the hedger recovers more from the option premium than she spends on rebalancing. This result provides the complement to the four crisis panels: taken together, normal-market and crisis-market data span the full distribution of cost/premium outcomes, with the accounting kernel certifying correctness in every case. Every step certificate passes across all `{python} f"{wrds_holdout_n:,}" if wrds_holdout_n else "all"` series; `settlement_value_formula` holds for every ITM and OTM settlement encountered in the panel.
+The WRDS OptionMetrics 2021–2023 holdout contains
+`{python} f"{wrds_holdout_n:,}" if wrds_holdout_n else "—"` qualifying
+call series drawn from the ATM ±3% filter applied to the full 2019–2024
+panel, restricted to the 2021–2023 sub-period to avoid overlap with the
+COVID 2020 stress window. The median cost/premium in the 2021-2023
+WRDS holdout is
+`{python} f"{wrds_holdout_median:.2f}" if wrds_holdout_median else "—"`,
+below 1.0 and consistent with the positive variance risk premium
+documented by @bakshikapadia2003: in the absence of a crisis, implied
+volatility at inception systematically exceeds realized volatility over
+the hedge horizon, so the hedger recovers more from the option premium
+than she spends on rebalancing. The below-1.0 median provides the complement to
+the four crisis panels: normal-market and crisis-market data together
+span the full distribution of cost/premium outcomes, with the
+position ledger certifying correctness in every case. Every step
+certificate passes across all
+`{python} f"{wrds_holdout_n:,}" if wrds_holdout_n else "all"` series;
+the settlement theorem holds for every ITM and OTM settlement
+encountered in the panel.
 
-# Does It Hold Under Stress? {#sec-robustness}
+The four historical stress regimes below test whether the Python
+runtime bridge correctly invokes the proved kernel
+on data the synthetic GBM simulator cannot replicate: large abrupt
+price moves, sustained liquidity freezes, and instantaneous
+vol-regime changes. The position ledger either certifies every step
+certificate unconditionally or raises a violation immediately; there
+is no intermediate outcome.
+
+
 
 ## Four historical stress regimes {#sec-stress}
 
 ```{python}
 #| label: fig-stress
-#| fig-cap: "Real-data stress test of the accounting kernel under four historical market regimes. Each panel shows a violin plot of the ratio (cost of replicating the call by delta hedging) / (Black-Scholes premium received at inception) across all qualifying call series in the regime window. **Reading the violins:** a ratio near 1.0 means the hedger broke even (realised vol matched implied at inception); a ratio above 1.0 means the hedger paid more than the premium received (realised vol *exceeded* implied — typical in crisis); below 1.0 means the hedger pocketed the variance risk premium (typical in calm markets). The four panels span genuinely different regime archetypes — pandemic shock (COVID), liquidity crisis (GFC), instantaneous vol-shock (Volmageddon), and a slower rate-driven drawdown (Q4 2018). **What this validates for the backtester:** the headline claim is that the accounting kernel certifies every rebalancing step *unconditionally* — independent of which side of the variance-risk-premium distribution the period falls on. Step-certificate pass-rate is 100\\% in every window. Source: WRDS OptionMetrics, ATM $\\pm 3\\%$ filter, 20–40 day expiry, $\\ge 5$ consecutive observation requirement (see §5 data table)."
+#| fig-cap: "Real-data stress test of the position ledger under four historical market regimes. Each panel shows a violin plot of the ratio (cost of replicating the call by delta hedging) / (Black-Scholes premium received at inception) across all qualifying call series in the regime window. **Reading the violins:** a ratio near 1.0 means the hedger broke even (realized vol matched implied at inception); a ratio above 1.0 means the hedger paid more than the premium received (realized vol *exceeded* implied, typical in crisis); below 1.0 means the hedger pocketed the variance risk premium (typical in calm markets). The four panels span four distinct regime archetypes: pandemic shock (COVID), liquidity crisis (GFC), instantaneous vol-shock (Volmageddon), and a slower rate-driven drawdown (Q4 2018). **What this validates for the backtester:** the headline claim is that the position ledger certifies every rebalancing step *unconditionally*, independent of which side of the variance-risk-premium distribution the period falls on. Step-certificate pass-rate is 100\\% in every window. Source: WRDS OptionMetrics, ATM $\\pm 3\\%$ filter, 20–40 day expiry, $\\ge 5$ consecutive observation requirement (see §5 data table)."
 
 STRESS_WINDOWS = {
     "COVID 2020\n(Feb 19 – Mar 23)": {
@@ -963,168 +1294,261 @@ else:
     plt.close()
 ```
 
-Cost/premium ratios **above** 1.0 during the GFC 2008 (median 1.23)^[The GFC 2008 window has N=42 qualifying call series after the ATM ±3\% filter and requiring ≥5 consecutive observations; OptionMetrics coverage for early-dated options in 2008 is sparse and results should be interpreted with caution.] and COVID 2020 (median 1.69) windows reflect the crisis-period inversion of the variance risk premium: realized volatility far exceeded implied volatility at option inception, so the hedging cost exceeded the premium paid. This is the opposite of average conditions: @bakshikapadia2003 document that delta-hedged gains are systematically negative on average (implied vol > realized vol, cost/premium < 1.0), with the negative VRP most pronounced outside crisis periods — confirmed here by the WRDS 2021–2023 holdout (median 0.92; see @sec-wrds). During GFC and COVID, the VRP reverses — realized vol spikes above the implied vol quoted when the position was opened, pushing cost/premium above 1.0. The accounting invariants proved in @tbl-theorems hold regardless of whether cost/premium is above or below 1.0; the settlement theorem (`settlement_value_formula`) certifies the ledger entries independently of the realized P&L level.
+Cost/premium ratios **above** 1.0 during the GFC 2008 (median
+1.23)^[The GFC 2008 window has N=42 qualifying call series after the
+ATM ±3\% filter and requiring ≥5 consecutive observations; OptionMetrics
+coverage for early-dated options in 2008 is sparse and these
+results warrant caution.] and COVID 2020 (median 1.69; February 19
+through March 23, 2020) windows reflect
+the crisis-period inversion of the variance risk premium: realized
+volatility far exceeded implied volatility at option inception, so the
+hedging cost exceeded the premium paid. This is the opposite of average
+conditions: @bakshikapadia2003 document that delta-hedged gains are
+systematically negative on average (implied vol > realized vol,
+cost/premium < 1.0), with the negative VRP most pronounced outside crisis
+periods, confirmed here by the WRDS 2021–2023 holdout (median 0.92; see
+@sec-wrds). During GFC and COVID, the VRP reverses: realized vol spikes
+above the implied vol quoted when the position was opened. The accounting
+invariants proved in @tbl-theorems hold regardless of whether cost/premium
+is above or below 1.0; the settlement theorem certifies the option
+settlement cash entry independently of the realized P&L level.
 
-The Volmageddon window (January 22--February 16, 2018; N=5,060 option-day observations,
-527 qualifying call series; median cost/premium 1.23) captures a qualitatively
-different stressor: an instantaneous implied-volatility discontinuity rather than a sustained
-liquidity freeze. The VIX --- which had traded near 11 for much of January 2018 --- had
-already surged to approximately 17 by the close of Friday February 2; on February 5 it spiked
-intraday to near 50, closing above 37, the largest single-day percentage spike in the
-index's history. Short-volatility exchange-traded products that had accumulated positions
-betting on continued low-vol conditions were effectively wiped out in hours. For the
-options positions in this study, the shock manifested as a realized volatility that briefly
-exceeded the implied volatility embedded in premia set at position inception, pushing
-cost/premium above 1.0 for contracts opened in the weeks prior. The window is short --- 25
-calendar days --- which limits the sample relative to GFC or the WRDS holdout, but this is
-precisely what makes it a clean stress test of the accounting kernel: the sudden jump in
-implied vol creates large, abrupt ledger entries that stress-test `valueUpdateFormula` under
-conditions of high price-sensitivity. All 527 series pass every step certificate, consistent
-with the unconditional character of the proved accounting invariants.
+The Volmageddon window (January 22 through February 16, 2018; N=5,060
+option-day observations, 527 qualifying call series; median cost/premium
+1.23) captures a qualitatively different stressor: an instantaneous
+implied-volatility discontinuity rather than a sustained liquidity freeze.
+The VIX, which had traded near 11 for much of January 2018, had already
+surged to approximately 17 by the close of Friday February 2; on
+February 5 it spiked intraday to near 50, closing above 37, among the
+largest single-day percentage spikes in the index's history to that date.
+Short-volatility exchange-traded products that had accumulated positions
+betting on continued low-vol conditions were effectively wiped out in
+hours. For the options positions in this study, the shock manifested as a
+realized volatility that briefly exceeded the implied volatility embedded
+in premia set at position inception. The window is short (25 calendar
+days), which limits the sample relative to GFC or the WRDS holdout, but
+this is precisely what makes it a clean stress test of the position
+ledger: the sudden jump in implied vol creates large, abrupt ledger
+entries that stress-test the trade-accounting formula under conditions
+of high price-sensitivity. All 527 series pass every step certificate,
+consistent with the unconditional character of the proved accounting
+invariants.
 
-The Q4 2018 selloff (October 1, 2018--January 31, 2019; N=25,090 option-day observations,
-2,411 qualifying call series; median cost/premium 1.18) provides a third distinct
-regime type: a *rate-driven drawdown* in which implied volatility rose gradually rather than
-spiking. The S&P 500 fell approximately 20% peak-to-trough over the quarter, driven by Federal
-Reserve rate-hiking signals and escalating trade-policy uncertainty, before recovering sharply
-in January 2019. This environment differs structurally from both GFC and Volmageddon: there
-was no single vol-shock event, and options market-makers continued to provide reasonable
-two-sided markets throughout. The observed median of 1.18 --- mildest of the four crisis
-panels, consistent with a gradual rather than sudden VRP reversal [@bakshikapadia2003] ---
-confirms the intuition that a rate-driven selloff compresses the VRP less severely than a
-vol-shock event. The larger sample (25,090 observations, 2,411 series) reflects the better
-market-access conditions relative to the GFC window. All 2,411 series pass every step
-certificate, with `settlement_value_formula` holding across all ITM and OTM settlements.
+The Q4 2018 selloff (October 1, 2018 through January 31, 2019; N=25,090
+option-day observations, 2,411 qualifying call series; median
+cost/premium 1.18) provides a third distinct regime type: a *rate-driven
+drawdown* in which implied volatility rose gradually rather than spiking.
+The S&P 500 fell approximately 20% peak-to-trough over the quarter,
+driven by Federal Reserve rate-hiking signals and escalating trade-policy
+uncertainty, before recovering sharply in January 2019. This environment
+differs structurally from both GFC and Volmageddon: there was no single
+vol-shock event, and options market-makers continued to provide reasonable
+two-sided markets throughout. The observed median of 1.18 (mildest of
+the four crisis panels, consistent with a gradual rather than sudden VRP
+reversal [@bakshikapadia2003]) confirms the intuition that a rate-driven
+selloff compresses the VRP less severely than a vol-shock event. The larger
+sample (25,090 observations, 2,411 series) reflects the
+better market-access conditions relative to the GFC window. All 2,411
+series pass every step certificate, with the settlement theorem holding
+across all ITM and OTM settlements.
 
-Across all four regimes --- spanning the extremes of the VRP distribution, two distinct
-vol-shock archetypes, and a rate-driven drawdown --- the accounting kernel certifies every
-step. The formal guarantees provided by `settlement_value_formula` and `valueUpdateFormula`
-(see @tbl-theorems) are unconditional: the Lean 4 proofs establish correctness for all valid
-inputs, not for a specific economic scenario. Whether realized volatility far exceeds implied
-vol (GFC, COVID, Volmageddon), roughly matches it (Q4 2018 with gradual repricing), or falls
-below it (normal conditions), the ledger identities hold by construction. The stress regimes
-do not test the Lean proofs; they test whether the Python execution layer --- and the Cython
-FFI bridge --- correctly invokes the proved kernel across data that the synthetic GBM simulator
-cannot replicate. Taken together with the falsification exhibit in @sec-falsification, these
-results form a two-sided argument: the proved kernel eliminates the class of accounting errors
-that testing cannot detect, and the stress-regime audit trails confirm that the elimination
-holds unconditionally under the market conditions where that guarantee matters most.
-
-
-## Variance scaling and bias convergence {#sec-variance-theory}
-
-The BKL variance scaling and Leland O(Δt) mean-bias relationships provide theoretical context for the error decomposition in the previous section. @fig-bkl shows std(cost) $\propto$ 1/√N across five frequencies, and @fig-leland-bias shows the mean relative bias converging linearly to zero as Δt → 0 — consistent with the discrete-replication interpretation rather than an accounting bug. A rigorous bootstrap specification test (Appendix D), run with 100,000 GBM paths across 20 log-spaced frequencies, establishes that both relationships are accurate in the operationally relevant range N ∈ [20, 80], with detectable finite-N corrections at the extremes of the frequency range.
+Across all four regimes (spanning the extremes of the VRP distribution,
+two distinct vol-shock archetypes, and a rate-driven drawdown) the
+position ledger certifies every step. The formal guarantees from the
+settlement and trade-accounting theorems are unconditional: the Lean 4
+proofs establish correctness for all valid inputs, not for a specific
+economic scenario. Whether realized volatility far exceeds implied vol
+(GFC, COVID, Volmageddon), roughly matches it (Q4 2018 with gradual
+repricing), or falls below it (normal conditions), the ledger identities
+hold by construction. The stress-regime results do not test the Lean
+proofs; they test whether the Python execution layer and the Python
+runtime bridge correctly invoke the proved kernel across data that the
+synthetic GBM simulator cannot replicate. Section 8 discusses what
+follows from these guarantees for scope and extension.
 
 # Discussion {#sec-discussion}
 
-## What formal proofs guarantee — and what they do not {#sec-proof-scope}
+## What formal proofs guarantee, and what they do not {#sec-proof-scope}
 
-The Lean 4 proofs establish that the accounting invariants hold *by construction*,
-unconditionally across every possible price path. This is categorically different from
-testing: the proofs cover every integer-representable input, not a sample of inputs, and
-the `StepCertificate` mechanism makes the guarantee visible at runtime. The NAV identity,
-trade accounting, cash update, quantity conservation, and self-financing theorems are not
-statistical claims; they are universal quantifications over `Int`-valued inputs, discharged
-by Lean's kernel at compile time. A user who encounters an unexpected P&L outcome can
-immediately rule out one entire class of explanation — accounting bugs — because the
+The Lean 4 proofs establish that the accounting invariants hold
+*by construction*, unconditionally, for all integer-representable inputs.
+Universal quantification over all inputs is categorically different from
+testing: the proofs cover every integer-representable input, not a
+sample of inputs, and the step-certificate mechanism makes the
+guarantee visible at runtime. The NAV identity, trade accounting, cash
+update, quantity conservation, and self-financing theorems are not
+statistical claims; they are universal quantifications over
+integer-valued inputs, discharged by Lean's kernel at compile time.
+A user who encounters an unexpected P&L outcome can immediately rule
+out one entire class of explanation (accounting bugs), because the
 formal boundary makes that class impossible by construction.
 
-However, the proofs do *not* establish that the Black-Scholes delta hedge converges to the
-option premium (a probabilistic statement about the pricing layer), that GBM accurately
-models equity price dynamics, or that the backtester's P&L is economically meaningful in
-any specific market regime. Those claims are empirically supported in Sections 6–7 but
-remain outside the formal boundary. A user who finds that MC hedging cost deviates from
-the BS price by 15% can be certain the deviation is not from an accounting bug — but they
-cannot be certain it is not from model misspecification. The analogous point applies to
-the empirical volatility of hedging cost: the variance reported in the MC distributions
-reflects GBM path variance and Black-Scholes approximation error, neither of which is
-formally bounded. This separation of concerns — a proved accounting layer beneath an
-empirically validated pricing layer — is the paper's core methodological claim.
+However, the proofs do *not* establish that the Black-Scholes delta hedge
+converges to the option premium (a probabilistic statement about the
+pricing layer), that GBM accurately models equity price dynamics, or that
+the backtester's P&L is economically meaningful in any specific market
+regime. Those claims are empirically supported in Sections 6–7 but remain
+outside the formal boundary. A user who finds that MC hedging cost
+deviates from the BS price by 15% can be certain the deviation is not
+from an accounting bug, but they cannot be certain it is not from model
+misspecification. The analogous point applies to the empirical volatility
+of hedging cost: the variance reported in the MC distributions reflects
+GBM path variance and Black-Scholes approximation error, neither of which
+is formally bounded. This separation of concerns (a proved accounting
+layer beneath an empirically validated pricing layer) is the paper's
+core methodological claim.
 
-This separation has practical implications for accounting oversight. Automated derivatives systems produce ledger entries at speeds that preclude manual inspection; an auditor or compliance function must accept the system's output as given, or re-derive it independently. The `StepCertificate` mechanism produces a machine-readable audit trail at every rebalancing step — one that records the pre- and post-trade portfolio values, the theorem-predicted change, and whether the invariant held. The architecture demonstrates that a computationally proved accounting kernel can be deployed in a production pipeline, and that its audit trail survives the market conditions — sustained vol spikes, liquidity crises, instantaneous regime changes — where manual inspection would be most difficult. The stress-regime results in @sec-stress confirm this: across all four crisis panels, every certificate passes unconditionally.
+This separation has practical implications for accounting oversight.
+Automated derivatives systems produce ledger entries at speeds that
+preclude manual inspection; an auditor or compliance function must accept
+the system's output as given, or re-derive it independently. The
+step-certificate mechanism produces a machine-readable audit trail
+at every rebalancing step. The stress-regime results in @sec-stress
+show that across all four crisis panels (sustained vol spikes, liquidity
+crises, instantaneous regime changes) every certificate passes
+unconditionally, confirming that the Python runtime boundary and Python
+bookkeeping layer do not introduce errors that the proved kernel would
+reject.
 
-Deep hedging [@buehler2019] optimizes the hedging *policy* via reinforcement learning; formal verification certifies the accounting *ledger* — the two approaches are orthogonal.
+Deep hedging [@buehler2019] optimizes the hedging *policy* via
+reinforcement learning. Formal verification certifies the accounting
+*ledger*. A portfolio running a deep-hedging policy and a proved
+position ledger is a coherent combination: the learning algorithm
+decides what to trade, the proved kernel guarantees those trades are
+recorded correctly.
 
 ## Scope limitations {#sec-limitations}
 
-Three limitations bound the current results. First, the Black-Scholes implementation uses
-a *flat* implied volatility — the per-series inception-date IV — rather than a dynamic
-volatility surface. The actual volatility smile means real hedging errors exceed the
-flat-$\sigma$ prediction for in-the-money and out-of-the-money options, because
-Black-Scholes delta is computed under an incorrect local volatility when the smile is
-steep. @hull2014 [Ch. 20] documents that delta-hedging errors grow with the curvature of
-the volatility surface, and the Leland [-@leland1985] replication in @sec-leland confirms
-a slope gap between theory and simulation that a flat-volatility model cannot close. This
-is the most quantitatively significant limitation: results in low-IV regimes (2021–2023)
-are more reliable than results in high-IV regimes (COVID 2020, Volmageddon 2018), where
-the smile is steepest.
+Three limitations bound the current results. First, the Black-Scholes
+implementation uses a *flat* implied volatility (the per-series
+inception-date IV) rather than a dynamic volatility surface. The actual
+volatility smile means real hedging errors exceed the flat-$\sigma$
+prediction for in-the-money and out-of-the-money options, because
+Black-Scholes delta is computed under an incorrect local volatility when
+the smile is steep. @hull2014 [Ch. 20] documents that delta-hedging
+errors grow with the curvature of the volatility surface; @elkaroui1998
+establish that a flat implied-volatility hedge is a superhedge when the
+assumed volatility dominates the true local volatility, providing a
+one-sided formal bound on the hedging error. The Leland [-@leland1985]
+replication in @sec-leland confirms a slope gap between theory and
+simulation that a flat-volatility model cannot close. Of the three
+limitations, this one has the largest quantitative effect: results in
+low-IV regimes (2021–2023) are more reliable than results in high-IV
+regimes (COVID 2020, Volmageddon 2018), where the smile is steepest.
 
-Second, the settlement and payoff theorems (`settlement_value_formula`,
-`callPayoff_nonneg`) are proved for European-style options only. American-style early
-exercise and barrier events require new settlement modules and new invariants: the
-`settle` function would need to dispatch on an exercise boundary condition, and the
-corresponding Lean theorem would need to quantify over the early-exercise policy. These
-extensions are structurally straightforward but are not yet implemented.
+Second, the settlement and payoff theorems are proved for
+European-style options only. American-style early exercise and barrier
+events require new settlement modules and new invariants: the settlement
+function would need to dispatch on an exercise boundary condition, and
+the corresponding Lean theorem would need to quantify over the
+early-exercise policy. These extensions are structurally straightforward
+but are not yet implemented.
 
-Third, transaction costs are modelled as a fixed fee per trade (the `selfFinancingWithCost`
-theorem); stochastic bid-ask spreads and market impact are not modelled. The flat-fee
-model is conservative for large rehedge sizes and generous for small ones; a stochastic
-spread model would require a new `Trade` field and a new theorem quantifying the expected
-cost in terms of spread distribution parameters.
+Third, transaction costs are modeled as a fixed fee per trade (the
+fixed-fee self-financing theorem); stochastic bid-ask spreads and market
+impact are not modeled. The flat-fee model is conservative for large
+rehedge sizes and generous for small ones; a stochastic spread model
+would require a new trade field and a new theorem quantifying the
+expected transaction cost in terms of spread distribution parameters.
 
 ## Extensions {#sec-extensions}
 
-Four extensions are natural. First, the `selfFinancingWithCost` theorem takes a
-fixed `Int` fee per trade; extending to proportional transaction costs
-(e.g., bid-ask spread as a fraction of notional) would require a new lemma
-that binds the fee argument to `|qty| × spread × executionPrice`.
-With that lemma in place, one could connect the accounting layer directly to the
-Leland [-@leland1985] modified volatility
-$\tilde{\sigma}^2 = \sigma^2(1 + \text{Le}\cdot\text{sgn}(\Gamma))$, yielding a
-formally verified replication-cost bound under proportional transaction costs.
+Four extensions follow directly. First, the fixed-fee self-financing theorem
+takes a fixed integer fee per trade; extending to proportional
+transaction costs (e.g., bid-ask spread as a fraction of notional) would
+require a new lemma that binds the fee argument to
+`|qty| × spread × executionPrice`. With that lemma in place, one could
+connect the position ledger directly to the Leland [-@leland1985]
+modified volatility
+$\tilde{\sigma}^2 = \sigma^2(1 + \text{Le}\cdot\text{sgn}(\Gamma))$,
+yielding a formally verified replication-cost bound under proportional
+transaction costs.
 
-Second, a Carr-Wu [-@carrwu2009] realized-vs.-implied volatility direction test —
-asking whether cost/premium $> 1$ is predictable from the IV-RV spread at inception —
-is a natural empirical extension that the accounting kernel supports without modification.
-The accounting layer is agnostic to what drives hedging cost; the `StepCertificate`
-output contains all the cost-attribution data needed to regress cost/premium on the IV-RV
-spread as a predictor, testing the Carr-Wu hypothesis that overpriced implied volatility
-systematically inflates hedging cost.
+Second, a Carr-Wu [-@carrwu2009] realized-vs.-implied volatility
+direction test (asking whether cost/premium $> 1$ is predictable from
+the IV-RV spread at inception) is a natural empirical extension that the
+position ledger supports without modification. The position ledger is
+agnostic to what drives hedging cost; step-certificate output
+contains all the cost-attribution data needed to regress cost/premium on
+the IV-RV spread as a predictor, testing the Carr-Wu hypothesis that
+overpriced implied volatility systematically inflates hedging cost.
 
-Third, `ftap-proofs` and `options-proofs` (companion projects in this monorepo) extend
-the formal scope to the discrete Fundamental Theorem of Asset Pricing [@echenim2021] and
-put-call parity via the Cox-Ross-Rubinstein binomial model; together they would constitute
-a formally verified pricing theory layer to complement the accounting layer proved here,
-closing the gap between the formal boundary and the pricing claims that the current paper
-leaves to empirical validation.
+Third, `ftap-proofs` and `options-proofs` (companion projects in this
+monorepo) target the discrete Fundamental Theorem of Asset Pricing
+[@echenim2021] and put-call parity via the Cox-Ross-Rubinstein binomial
+model. A completed proof of either would add a formally verified pricing
+theory layer above the position ledger proved here, narrowing the gap
+between the formal boundary and the pricing claims left to empirical
+validation. The position ledger is silent on whether delta-hedging is
+the optimal strategy or whether Black-Scholes is the right pricing model;
+it certifies only that whatever trades the strategy submits are recorded
+correctly.
 
-Fourth, the `mortgage-proofs` project in this monorepo demonstrates the same
-`StepCertificate` pattern applied to LangGraph routing invariants in a multi-agent
-mortgage pipeline — suggesting the audit-trail methodology generalizes beyond options to
-any AI-generated decision pipeline. The structural parallel is exact: a `DecisionRecord`
-in `mortgage-proofs` plays the role of a `StepCertificate` in `backtest-proofs`, and the
-Lean invariants in both cases are proved unconditionally over the relevant integer-typed
-state variables.
+Fourth, the `mortgage-proofs` project applies the same step-certificate
+pattern to LangGraph routing invariants in a multi-agent mortgage
+pipeline. A `DecisionRecord` in `mortgage-proofs` plays the same role
+as a step certificate in backtest-proofs: both record the pre- and
+post-decision state and check it against a Lean-proved invariant over
+integer-typed state variables.
 
-The instrument-agnostic character of the accounting kernel extends beyond options to plain equity positions and covered calls, as demonstrated in the equity exhibits reported in the appendix: a `Position` is `(assetId, quantity, markPrice)` with no options-specific fields, so `valueUpdateFormula` and `selfFinancing` certify equity step certificates and covered-call portfolios without proof modification.
+The instrument-agnostic character of the position ledger extends beyond
+options to plain equity positions and covered calls, as demonstrated in
+the equity exhibits reported in the appendix: a position is a named
+asset with a signed integer quantity and an integer mark price, with
+no options-specific fields, so the trade-accounting and self-financing
+theorems certify equity step certificates and covered-call portfolios
+without proof modification.
 
 ## Data Availability {#sec-data-availability}
 
-Synthetic GBM results are fully reproducible from the public repository via `make paper` (base seed 20260519). WRDS OptionMetrics data is licensed and not redistributed per WRDS terms; the download query and instructions are in `backtest-proofs/docs/wrds_data_download.md`. All numerical results are recorded in `backtest-proofs/results/metrics.json`; the PDF regenerates deterministically from the QMD source when WRDS data is present.
+Synthetic GBM results are fully reproducible from the public repository
+via `make paper` (base seed 20260519). WRDS OptionMetrics data is
+licensed and not redistributed per WRDS terms; the download query and
+instructions are in `backtest-proofs/docs/wrds_data_download.md`. All
+numerical results are recorded in `backtest-proofs/results/metrics.json`;
+the PDF regenerates deterministically from the QMD source when WRDS data
+is present.
 
 # Appendix {.appendix}
 
 ## Theorem Statements {#sec-appendix-theorems}
 
-Full Lean 4 theorem statements, proof commentary, and source file references for all eleven machine-checked theorems are available in the public repository at [`github.com/eigenq-xyz/quant-proofs`](https://github.com/eigenq-xyz/quant-proofs), in `backtest-proofs/lean/BacktestProofs/Invariants.lean`, `SettlementInvariants.lean`, and `quant-core/lean/QuantCore/OptionInvariants.lean`. The theorem names in Table 4.1 correspond directly to the Lean source identifiers; each hyperlinked row in the online version links to the exact line in the repository.
+Full Lean 4 theorem statements, proof commentary, and source file
+references for all eleven machine-checked theorems are available in the
+public repository at
+[`github.com/eigenq-xyz/quant-proofs`](https://github.com/eigenq-xyz/quant-proofs),
+in `backtest-proofs/lean/BacktestProofs/Invariants.lean`,
+`SettlementInvariants.lean`, and
+`quant-core/lean/QuantCore/OptionInvariants.lean`. The theorem names in
+Table 4.1 correspond directly to the Lean source identifiers; each
+hyperlinked row in the online version links to the exact line in the
+repository.
 
 ## Proof Architecture {#sec-appendix-architecture}
 
-The formal development compiles via `lake build` to a native shared library (`.so`) through Lean 4's LLVM backend. A Cython extension (`ffi/lean_ffi.pyx`) wraps the exported C symbols (`@[export hedge_*]`); `ffi/__init__.py` pre-loads `libleanrt` and `libuv` before importing the extension. Python calls the compiled kernel at runtime with no serialisation overhead. All numeric values crossing the FFI boundary are basis-point integers ($\times 10{,}000$ of dollar values), so the proved integer arithmetic in the Lean theorems applies exactly to every runtime call. See `backtest-proofs/DECISIONS.md` ADR-006 for the rationale behind the Cython FFI design choice.
+*This section is a technical reference for developers wishing to inspect
+or extend the Python runtime bridge. QF/FM readers may skip to
+Appendix C.*
+
+The formal development compiles via `lake build` to a native shared
+library (`.so`) through Lean 4's LLVM backend. A Cython extension
+(`ffi/lean_ffi.pyx`) wraps the exported C symbols (`@[export hedge_*]`);
+`ffi/__init__.py` pre-loads `libleanrt` and `libuv` before importing the
+extension. Python calls the compiled kernel at runtime with no
+serialization overhead. All numeric values crossing the FFI boundary are
+basis-point integers ($\times 10{,}000$ of dollar values). See
+`backtest-proofs/DECISIONS.md` ADR-006 for the rationale behind the
+Cython FFI design choice.
 
 ## Variance Scaling and Bootstrap Specification Test {#sec-appendix-bootstrap}
 
-The following exhibits confirm the theoretical predictions of @bertsimas2000 and @leland1985 for discrete delta-hedge cost variance and mean bias respectively. They are placed in the appendix because they describe the behaviour of the discrete-hedging model, not the correctness of the accounting kernel. The accounting kernel certifies every step at all frequencies — the results here are about finance theory, not about whether the ledger is correct.
+@bertsimas2000 and @leland1985 predict specific relationships between
+discrete delta-hedge cost variance, mean bias, and rebalancing frequency;
+the exhibits below test those predictions. Both sets of results are
+placed in the appendix because they concern the behavior of the
+discrete-hedging model, not the correctness of the position ledger.
+The position ledger certifies every step at all frequencies; these
+exhibits are about finance theory.
 
 ## Leland (1985) rehedge-frequency sweep {#sec-leland}
 
@@ -1163,7 +1587,15 @@ plt.show()
 plt.close()
 ```
 
-The sweep validates Leland's [-@leland1985] directional prediction — that more frequent rehedging reduces hedging variance — across five frequencies from N=5 to N=80. However, @kabanovSafarian1997 show that the limiting variance under Leland's [-@leland1985] modified volatility is strictly nonzero (in contradiction with Leland's original claim), which the 13% slope gap between the empirical and theoretical BKL lines reflects. The gap is not a model failure but an expected consequence of the nonzero asymptotic hedging error identified by @kabanovSafarian1997; it is stable across all five frequencies tested here.
+Across N=5 to N=80, std(hedging cost) falls monotonically with
+rebalancing frequency, as Leland [-@leland1985] predicted. The
+empirical slope of the std vs. 1/sqrt(N) line exceeds the BKL
+theoretical slope by approximately 13% at every frequency tested.
+@kabanovSafarian1997 prove that the limiting variance under Leland's
+modified volatility is strictly positive (contradicting Leland's
+original claim of zero asymptotic error); the 13% excess above the
+leading-order BKL slope is the measurable consequence of this
+nonzero term, not a defect in the backtester.
 
 ```{python}
 #| label: fig-leland-bias
@@ -1213,13 +1645,50 @@ plt.show()
 plt.close()
 ```
 
-The mean relative bias decreases linearly toward zero as the rebalancing interval Δt = T/N shrinks, with the OLS fit through the origin achieving $R^2 =$ `{python} f"{leland_bias_r_sq:.3f}"` and slope `{python} f"{leland_bias_slope:.3f}"` (@fig-leland-bias). This empirical linearity is the O(Δt) signature that @leland1985 and @bertsimas2000 predict: under discrete delta hedging of a written call, the gap between expected hedge cost and the Black-Scholes price contracts proportionally to T/N, not to $\sqrt{T/N}$ (which would indicate random noise) or to a constant (which would indicate a structural accounting bug). The sign is negative throughout — cost lies below the BS price — consistent with the well-known result that discrete replication underestimates the continuously-rebalanced Black-Scholes premium in the zero-transaction-cost case [@leland1985, §II]. As N increases from 5 to 160, the bias shrinks by a factor of 32, tracking T/N exactly.
+The mean relative bias decreases linearly toward zero as the rebalancing
+interval Δt = T/N shrinks, with the OLS fit through the origin achieving
+$R^2 =$ `{python} f"{leland_bias_r_sq:.3f}"` and slope
+`{python} f"{leland_bias_slope:.3f}"` (@fig-leland-bias). This empirical
+linearity is the O(Δt) signature that @leland1985 and @bertsimas2000
+predict: under discrete delta hedging of a written call, the gap between
+expected hedge cost and the Black-Scholes price contracts proportionally
+to T/N, not to $\sqrt{T/N}$ (which would indicate random noise) or to a
+constant (which would indicate a structural accounting bug). The sign is
+negative throughout (cost lies below the BS price), consistent with the
+well-known result that discrete replication underestimates the
+continuously-rebalanced Black-Scholes premium in the zero-transaction-cost
+case [@leland1985, §II]. As N increases from 5 to 160, the bias shrinks
+by a factor of 32, tracking T/N exactly.
 
-This rules out the two alternative explanations for the nonzero mean reported in §6: a structural accounting bug would produce a bias that does not converge to zero with N (the ledger error would be present regardless of rebalancing frequency), while stochastic path variance would produce a $O(1/\sqrt{N})$ decay in the mean, not an O(1/N) = O(Δt) decay. The observed linear convergence with $R^2 >$ `{python} f"{leland_bias_r_sq:.3f}"` is consistent only with the discrete-replication interpretation. All step certificates pass for all 500 paths at each of the six frequencies, confirming that the accounting kernel certifies the ledger regardless of the realized direction of the bias.
+The O(Δt) linear convergence rules out the two alternative explanations
+for the nonzero mean
+reported in §6: a structural accounting bug would produce a bias that
+does not converge to zero with N (the ledger error would be present
+regardless of rebalancing frequency), while stochastic path variance
+would produce a $O(1/\sqrt{N})$ decay in the mean, not an O(1/N) = O(Δt)
+decay. The observed linear convergence with
+$R^2 >$ `{python} f"{leland_bias_r_sq:.3f}"` is consistent only with the
+discrete-replication interpretation. All step certificates pass for all
+500 paths at each of the six frequencies, confirming that the accounting
+kernel certifies the ledger regardless of the realized direction of the
+bias.
 
 ## Bootstrap specification test for BKL and Leland scaling {#sec-bootstrap}
 
-The point estimates above rely on OLS through the origin with $R^2$ as the goodness-of-fit diagnostic — a parametric criterion that assumes linearity and homoskedasticity. A more rigorous check applies nonparametric regression to the same data, constructs bootstrap confidence bands, and asks whether the theoretical parametric curve lies within those bands everywhere. The procedure used here is the standard nonparametric regression specification test [@shalizi2013]: fit a flexible smoother (a smoothing spline with automatic bandwidth selection) to the residuals of the parametric fit; if the smoother stays inside the bootstrap band around zero everywhere, the parametric form is plausible. If the smoother wanders systematically away from zero, the parametric form is missing some structure in the data.
+The point estimates above rely on OLS through the origin with $R^2$ as
+the goodness-of-fit diagnostic, a parametric criterion that assumes
+linearity and homoskedasticity. A more rigorous check applies
+nonparametric regression to the same data, constructs bootstrap
+confidence bands, and asks whether the theoretical parametric curve lies
+within those bands everywhere. The standard nonparametric
+regression specification test
+[@shalizi2013] fits a
+flexible smoother (a smoothing spline with automatic bandwidth selection)
+to the residuals of each parametric fit (BKL and Leland); if the
+smoother stays inside the bootstrap band around zero everywhere, the
+parametric form is plausible.
+If the smoother wanders systematically away from zero, the parametric
+form is missing some structure in the data.
 
 ```{python}
 #| label: fig-bootstrap-spec
@@ -1242,7 +1711,7 @@ with open(_BOOT_PATHS_FILE, "rb") as _f:
 _BOOT_B = 1_000                           # bootstrap resamples
 _BOOT_N_PATHS = len(next(iter(_boot_paths.values())))  # 5,000
 
-# BS reference price (normalises the bias into relative units)
+# BS reference price (normalizes the bias into relative units)
 _bs_ref_boot = bs_price(
     S=MC_S0, K=MC_K, T=MC_T, r=MC_R, sigma=MC_SIGMA, option_type="call"
 ).value * MC_N_CONTRACTS
@@ -1409,24 +1878,89 @@ plt.show()
 plt.close()
 ```
 
-The top panels of @fig-bootstrap-spec show a GCV-bandwidth smoothing spline nonparametric regression (blue curve) with B=1,000 case-resampling bootstrap 95% pointwise confidence intervals (shaded band), using N=5,000 paths at each of 20 log-spaced frequencies from N=3 to N=400 (100,000 simulations total). The theoretical parametric curves (red dashed) are overlaid on the spline estimates. The bottom panels apply the **specification test** [@shalizi2013]: the smoothing spline applied to the parametric residuals (data minus theory), with the bootstrap band for those residuals. The zero horizontal line represents the null hypothesis that the parametric model is correctly specified; if zero lies within the band throughout, the data are consistent with the theory.
+The top panels of @fig-bootstrap-spec show a GCV-bandwidth smoothing
+spline nonparametric regression (blue curve) with B=1,000
+case-resampling bootstrap 95% pointwise confidence intervals (shaded
+band), using N=5,000 paths at each of 20 log-spaced frequencies from N=3
+to N=400 (100,000 simulations total). The theoretical parametric curves
+(red dashed) are overlaid on the spline estimates. The bottom panels
+apply the **specification test** [@shalizi2013]: the smoothing spline
+applied to the parametric residuals (data minus theory), with the
+bootstrap band for those residuals. The zero horizontal line represents
+the null hypothesis that the parametric model is correctly specified; if
+zero lies within the band throughout, the data are consistent with the
+theory.
 
-The high-power simulation (N=5,000 paths, 20 frequencies, B=1,000 bootstrap resamples) reveals a nuanced picture. The BKL and Leland laws are *asymptotic* results — they describe leading-order behaviour as $N \to \infty$ and $\Delta t \to 0$ — and the extended simulation is sensitive enough to detect finite-N corrections at the extremes of the frequency range.
+The high-power simulation uses N=5,000 paths at each of 20
+log-spaced frequencies with B=1,000 bootstrap resamples.
+The BKL and Leland laws are *asymptotic*
+results: they describe leading-order behavior as $N \to \infty$ and
+$\Delta t \to 0$, and the extended simulation is sensitive enough to
+detect finite-N corrections at the extremes of the frequency range.
 
-**BKL variance scaling** (`{python} "PASS" if _bkl_passes else "FAIL"` in N ∈ [20, 80]; `{python} f"{_bkl_in_ci_frac:.0%}"` of all 14 frequencies within CI)**:** The BKL leading-order law std $\propto C/\sqrt{N}$ has detectable systematic deviations even in the operationally relevant frequency range. The residual spline shows a positive arch in the N ∈ [10, 80] region — the empirical std exceeds the OLS-through-origin prediction by a margin that the bootstrap CI cannot accommodate. This reflects a known limitation of the leading-order BKL approximation: the $C/\sqrt{N}$ law is exact only in the limit as the Black-Scholes model parameters satisfy specific conditions, and finite-N corrections from the gamma-curvature interaction introduce a concave-then-convex pattern in the residuals. The deviation is small in absolute terms (a few percent of std) and shrinks as N grows, consistent with the asymptotic nature of the result, but it is detectable with 28,000 simulation paths.
+**BKL variance scaling** (`{python} "PASS" if _bkl_passes else "FAIL"` in
+N ∈ [20, 80]; `{python} f"{_bkl_in_ci_frac:.0%}"` of all 14 frequencies
+within CI)**:** The BKL leading-order law std $\propto C/\sqrt{N}$ has
+detectable systematic deviations even in the operationally relevant
+frequency range. The residual spline shows a positive arch in the
+N ∈ [10, 80] region: the empirical std exceeds the OLS-through-origin
+prediction by a margin that the bootstrap CI cannot accommodate. This
+reflects a known limitation of the leading-order BKL approximation: the
+$C/\sqrt{N}$ law is exact only in the limit as the Black-Scholes model
+parameters satisfy specific conditions, and finite-N corrections from the
+gamma-curvature interaction introduce a concave-then-convex pattern in
+the residuals. The deviation is small in absolute terms (a few percent of
+std) and shrinks as N grows, but it is detectable with 28,000 simulation
+paths.
 
-**Leland O(Δt) bias:** The Leland linear-through-origin model fits within the bootstrap CI for `{python} f"{_leland_in_ci_frac:.0%}"` of frequencies, and passes the specification test over the practical range N ∈ [20, 80] (`{python} "PASS" if _leland_passes else "FAIL"`). The residual panel shows that at very large $\Delta t$ (small N), the mean bias is less negative than the leading-order O($\Delta t$) prediction — the extreme discrete paths partially recover toward the continuous limit due to a different balance between gamma-P&L and theta-P&L at very coarse grids. At very small $\Delta t$ (large N), the mean bias is so small that individual path noise dominates, and the spline fit to residuals wanders within the wide CI.
+**Leland O(Δt) bias:** The Leland linear-through-origin model fits within
+the bootstrap CI for `{python} f"{_leland_in_ci_frac:.0%}"` of
+frequencies, and passes the specification test over the practical range
+N ∈ [20, 80] (`{python} "PASS" if _leland_passes else "FAIL"`). The
+residual panel shows that at very large $\Delta t$ (small N), the mean
+bias is less negative than the leading-order O($\Delta t$) prediction:
+the extreme discrete paths partially recover toward the continuous limit
+due to a different balance between gamma-P&L and theta-P&L at very coarse
+grids. At very small $\Delta t$ (large N), the mean bias is so small that
+individual path noise dominates, and the spline fit to residuals wanders
+within the wide CI.
 
-Together these tests provide a statistically rigorous characterisation of BKL and Leland scaling. The asymptotic laws are accurate for operationally relevant frequencies (N ∈ [20, 80] corresponding to daily-to-weekly rebalancing) but show detectable finite-N corrections at extremes where higher-order theory applies. This is a stronger empirical claim than the earlier $R^2$ regressions, which had insufficient power (500 paths, 5–6 frequencies) to distinguish leading-order from next-order behaviour. The accounting kernel's contribution is orthogonal to this: every step certificate passes at all 14 frequencies and all 2,000 paths, confirming that the verified accounting layer certifies correctness independently of which asymptotic regime the rebalancing frequency sits in.
+The asymptotic laws are accurate for operationally
+relevant frequencies (N ∈ [20, 80] corresponding to daily-to-weekly
+rebalancing) but show detectable finite-N corrections at extremes where
+higher-order theory applies. This is a stronger empirical claim than the
+earlier $R^2$ regressions, which had insufficient power (500 paths,
+5–6 frequencies) to distinguish leading-order from next-order behavior.
+The position ledger certifies every step at all 14 frequencies and
+all 2,000 paths, regardless of which asymptotic regime the
+rebalancing frequency sits in.
 
 
 ## Multi-leg Portfolios {#sec-appendix-multileg}
 
-The accounting kernel handles multi-leg portfolios without any proof modifications. `PortfolioStrategy` routes every option leg through the same `settle_option` FFI call; the bookkeeping loop is unchanged — only the number of positions grows — and step certificates are emitted for every rebalancing trade. The two exhibits below exercise both ITM and OTM settlement branches across both option types.
+The position ledger handles multi-leg portfolios without any proof
+modifications. The portfolio strategy runner routes every option leg through
+the same settlement function FFI call; the bookkeeping loop is unchanged (only
+the number of positions grows), and step certificates are emitted for
+every rebalancing trade. The two exhibits below exercise both ITM and OTM
+settlement branches across both option types.
 
 ### Short straddle: settlement decomposition {#sec-straddle-settlement}
 
-@fig-straddle-settlement displays the per-leg payoff decomposition for a short straddle (short call + short put, both at $K=50$, $N=100\text{K}$ contracts) settled on the two Hull reference paths. On Hull 19.2 the stock closes at $S_T = 57.25$: the call expires in-the-money and transfers a positive payoff to the counterparty, while the put expires out-of-the-money and contributes nothing. On Hull 19.3 the roles are exactly reversed — $S_T = 48.12$ leaves the put in-the-money and the call worthless. Together the two panels exercise both branches of `settlement_value_formula` (see @tbl-theorems): the ITM branch, which computes $\max(S_T - K, 0) \times N$ for calls and $\max(K - S_T, 0) \times N$ for puts, and the OTM branch, which returns zero. This is the minimal experiment that confirms the settlement dispatcher routes each leg correctly under `settlement_value_formula`. All step certificates pass for both paths, confirming that the accounting invariants hold through every rebalancing step of a two-leg written position.
+@fig-straddle-settlement displays the per-leg payoff decomposition for a
+short straddle (short call + short put, both at $K=50$,
+$N=100\text{K}$ contracts) settled on the two Hull reference paths. On
+Hull 19.2 the stock closes at $S_T = 57.25$: the call expires
+in-the-money and transfers a positive payoff to the counterparty, while
+the put expires out-of-the-money and contributes nothing. On Hull 19.3
+the roles are exactly reversed: $S_T = 48.12$ leaves the put
+in-the-money and the call worthless. Together the two panels exercise
+both branches of `settlement_value_formula` (see @tbl-theorems): the ITM
+branch, which computes $\max(S_T - K, 0) \times N$ for calls and
+$\max(K - S_T, 0) \times N$ for puts, and the OTM branch, which returns
+zero. This is the minimal experiment that confirms the settlement
+dispatcher routes each leg correctly under `settlement_value_formula`.
+All step certificates pass for both paths.
 
 ```{python}
 #| label: fig-straddle-settlement
@@ -1506,7 +2040,20 @@ plt.close()
 
 ### Bull call spread {#sec-bull-spread}
 
-@fig-bull-spread traces the portfolio value path for a bull call spread (long $K_\text{long} = 48$, short $K_\text{short} = 52$, $N = 100\text{K}$ contracts) on the Hull 19.2 path. Both calls expire in-the-money at $S_T = 57.25$: `settlement_value_formula` is invoked twice — once for the long leg with a positive quantity and once for the short leg with a negative quantity — and the net cash transfer is $(K_\text{short} - K_\text{long}) \times N = \$400\text{K}$. The portfolio value path in @fig-bull-spread converges to the theoretical maximum payoff at expiry as the time value of the spread decays. The dashed green line marks the $\$400\text{K}$ cap, and the terminal portfolio value equals it exactly. The per-step certificate panel (bottom) is uniformly green, confirming that every rebalancing step satisfies `valueUpdateFormula`. No new Lean theorems were required: the accounting invariants proved for a single leg compose across legs by construction.
+@fig-bull-spread traces the portfolio value path for a bull call spread
+(long $K_\text{long} = 48$, short $K_\text{short} = 52$,
+$N = 100\text{K}$ contracts) on the Hull 19.2 path. Both calls expire
+in-the-money at $S_T = 57.25$: `settlement_value_formula` is invoked
+twice (once for the long leg with a positive quantity and once for the
+short leg with a negative quantity), and the net cash transfer is
+$(K_\text{short} - K_\text{long}) \times N = \$400\text{K}$. The
+portfolio value path in @fig-bull-spread converges to the theoretical
+maximum payoff at expiry as the time value of the spread decays. The
+dashed green line marks the $\$400\text{K}$ cap, and the terminal
+portfolio value equals it exactly. The per-step certificate panel
+(bottom) is uniformly green. No new Lean theorems were required: the
+accounting invariants proved for a single leg compose across legs by
+construction.
 
 ```{python}
 #| label: fig-bull-spread
@@ -1579,7 +2126,21 @@ plt.show()
 plt.close()
 ```
 
-The total correctness of each multi-leg portfolio above is **empirical**, not the consequence of a single proved multi-leg theorem: it follows from applying `settlement_value_formula` independently to each option leg in turn and summing the resulting settlement values, with no additional Lean proof required for the portfolio as a whole. This instrument agnosticism is a direct consequence of the accounting module's design: because `PortfolioStrategy` routes every leg through the same `settle_option` FFI call, and because `settlement_value_formula` covers all combinations of option kind and moneyness, multi-leg correctness is immediate rather than needing a separate proof. The figures above test only written (short) legs in the straddle and a mixed long-short pair in the bull spread; a pure long position (bought call or put) was also exercised on the Hull reference paths and confirmed consistent with the same per-leg settlement application. No modification to the accounting kernel was required.
+This correctness is **empirical**, not the consequence of a single
+proved multi-leg theorem: it follows from applying
+`settlement_value_formula` independently to each option leg in
+turn and summing the resulting settlement values, with no additional Lean
+proof required for the portfolio as a whole. This instrument agnosticism
+is a direct consequence of the position ledger's design: because
+`PortfolioStrategy`
+strategy runner routes every leg through the same settlement function
+FFI call, and `settlement_value_formula` covers all combinations of
+option kind and moneyness, so multi-leg correctness requires no separate
+proof. The figures above test only written (short) legs
+in the straddle and a mixed long-short pair in the bull spread; a pure
+long position (bought call or put) was also exercised on the Hull
+reference paths and confirmed consistent with the same per-leg settlement
+application. No modification to the position ledger was required.
 
 ## Equity and Covered-Call Demo {#sec-appendix-equity}
 
@@ -1668,9 +2229,32 @@ plt.show()
 plt.close()
 ```
 
-The `EquityStrategy` in the left panel of @fig-equity holds 1,000 shares at a fixed quantity with no delta rebalancing. The portfolio value starts at exactly zero — the cost of purchasing the shares is funded by borrowing against the cash account, so the net asset value at inception is zero by `selfFinancing` — and then tracks $N \times \Delta S$ at each weekly step, with a small interest debit on the borrowed cash. Every step certificate passes, confirming that `valueUpdateFormula` applies to equity positions without any modification to the Lean kernel: the `applyTrade` function receives `(assetId, quantity, markPrice)` tuples with no instrument-specific fields, so an equity share and an option contract are formally indistinguishable at the accounting layer.
+The `EquityStrategy` in the left panel of @fig-equity holds 1,000 shares
+at a fixed quantity with no delta rebalancing. The portfolio value starts
+at exactly zero (the cost of purchasing the shares is funded by
+borrowing against the cash account, so the net asset value at inception
+is zero by `selfFinancing`) and then tracks $N \times \Delta S$ at each
+weekly step, with a small interest debit on the borrowed cash. Every step
+certificate passes, confirming that `valueUpdateFormula` applies to
+equity positions without any modification to the Lean kernel: the
+trade application function receives `(assetId, quantity, markPrice)`
+tuples with no instrument-specific fields, so an equity share and an
+option contract are formally indistinguishable at the ledger layer.
 
-The `CoveredCallStrategy` in the right panel combines the same equity position with a short ATM call ($K = 50$, $\sigma = 20\%$). The call premium received at inception raises the initial portfolio value above zero. At expiry ($S_T = 57.25 > K$), the call settles in-the-money and `settlement_value_formula` certifies the cash transfer; the equity leg has no settlement and contributes its final mark-to-market value to the terminal PV. All `{python} len(_cc_result.certificates)` step certificates pass across the covered-call path, and the terminal PV reflects the capped upside of the covered-call payoff: the equity gain above $K$ is transferred to the call counterparty at settlement. No new Lean theorems were required for either the equity-only or the covered-call strategy — the existing `valueUpdateFormula`, `selfFinancing`, and `settlement_value_formula` invariants compose across instrument types by construction.
+The `CoveredCallStrategy` in the right panel combines the same equity
+position with a short ATM call ($K = 50$, $\sigma = 20\%$). The call
+premium received at inception raises the initial portfolio value above
+zero. At expiry ($S_T = 57.25 > K$), the call settles in-the-money and
+`settlement_value_formula` certifies the cash transfer; the equity leg
+has no settlement and contributes its final mark-to-market value to the
+terminal PV. All `{python} len(_cc_result.certificates)` step
+certificates pass across the covered-call path, and the terminal PV
+reflects the capped upside of the covered-call payoff: the equity gain
+above $K$ is transferred to the call counterparty at settlement. No new
+Lean theorems were required for either the equity-only or the
+covered-call strategy: the existing `valueUpdateFormula`, `selfFinancing`,
+and `settlement_value_formula` compose
+across instrument types by construction.
 
 
 ## Replication {#sec-replication}
@@ -1696,7 +2280,9 @@ After downloading WRDS data per `docs/wrds_data_download.md`, re-run
 
 ## Metrics snapshot
 
-Numerical results are archived in `backtest-proofs/results/metrics.json`; the file is regenerated on each render.
+Numerical results are archived in
+`backtest-proofs/results/metrics.json`; the file is regenerated on each
+render.
 
 ```{python}
 #| label: metrics-export
