@@ -6,9 +6,9 @@ author:
 date: today
 date-format: long
 abstract: |
-  Bugs in a backtester's accounting ledger produce plausible profit and
-  loss time series that statistical validation cannot diagnose: the test
-  takes the reported P&L as given. We build a backtesting framework
+  Bugs in a backtester's position ledger produce plausible profit and
+  loss time series that statistical validation cannot diagnose: the
+  test takes the reported P&L as given. We build a backtesting framework
   whose position ledger is machine-checked in Lean 4 and exposed to
   Python through a runtime bridge that emits a per-step audit record,
   ruling out accounting errors in the verified layer. The framework is
@@ -140,12 +140,12 @@ defect but in its structural cause: the obsolete code path executed on
 an input neighborhood the test author had not anticipated, and the test
 suite that had passed during deployment could not have caught it.
 Backtesters carry the same exposure in a quieter register. A flawed
-accounting ledger produces a plausible P&L time series rather than a
-flood of erroneous live orders, so the error can survive both in-sample
-and out-of-sample evaluation undetected. When the accounting ledger
-contains a bug (a settlement dropped, a cash debit applied at the wrong
-step, a position quantity that drifts from its trade history), the
-reported P&L is well-formed. It generates a Sharpe ratio, it passes
+position ledger produces a plausible P&L time series rather than a
+flood of erroneous live orders, so the error can survive both
+in-sample and out-of-sample evaluation undetected. When the ledger
+that produces realized P&L contains a bug (a settlement dropped, a
+cash debit applied at the wrong step, a position quantity that drifts
+from its trade history), the reported P&L is well-formed. It generates a Sharpe ratio, it passes
 out-of-sample evaluation, it survives robustness checks across regimes.
 The bug is invisible because the test takes the reported P&L as given.
 @bougeret2026 audited five widely used open-source backtesting engines
@@ -154,9 +154,10 @@ same class of silent error in a deployed production system. Testing
 inevitably checks correctness on the inputs the test author chose; live
 historical data presents inputs the test author did not anticipate.
 
-This paper builds a backtesting framework whose accounting layer (the
-position ledger) is machine-checked in Lean 4 and exposed to Python
-through a runtime bridge that emits a per-step audit record. The proved
+This paper builds a backtesting framework whose position ledger (the
+component that records trades, marks positions, and reconciles cash
+against portfolio value) is machine-checked in Lean 4 and exposed to
+Python through a runtime bridge that emits a per-step audit record. The proved
 kernel rules out accounting errors of the silent kind described above
 within the verified layer; the bridge that ferries integer-valued
 inputs across the FFI boundary is itself unproved, and the audit record
@@ -238,7 +239,7 @@ work qualifies this severity. @jensen2023 document that overfitting
 persists even after out-of-sample testing is applied systematically.
 This literature addresses the statistical correctness of the strategy
 selection process. Our concern is orthogonal: the correctness of the
-accounting layer that produces the P&L series the statistical tests
+position ledger that produces the P&L series the statistical tests
 rely on. The two are independent classes of error.
 
 A second body of work establishes the theoretical and empirical baseline
@@ -254,9 +255,10 @@ pricing and hedging derivatives from market data, providing a model-free
 baseline. @bakshikapadia2003 documents the negative variance risk
 premium that drives the cost-to-premium ratio in real options markets.
 Modern reinforcement-learning extensions such as deep hedging
-[@buehler2019] generalize the strategy layer but rely on the same
-accounting bookkeeping to compute realized P&L, so the verified ledger
-introduced here is composable with these recent approaches. Our
+[@buehler2019] generalize the strategy layer but still rely on a
+position ledger to compute realized P&L from the policy's trades, so
+the verified ledger introduced here is composable with these recent
+approaches. Our
 empirical sections (@sec-mc, @sec-wrds) reproduce and extend the
 classical benchmarks on synthetic and real data using the verified
 position ledger.
@@ -290,7 +292,7 @@ industrial verification system deployed at exchanges for matching-engine
 fairness and clearing-rule verification. Recent Lean 4 work in finance
 has focused on decentralized finance: @pusceddu2024 and @dessalvi2026
 apply Lean 4 to automated market makers. This paper differs in two
-ways. It targets the accounting layer of a backtesting framework rather
+ways. It targets the position ledger of a research backtester rather
 than a matching engine or smart contract, and it bridges to the Python
 quantitative-research ecosystem at runtime rather than producing
 standalone proof artifacts.
@@ -865,7 +867,7 @@ of `{python} f"{wrds_holdout_median:.2f}" if wrds_holdout_median else "—"`
 medians trace the crisis inversion. The ledger's settlement and
 trade-accounting theorems hold regardless of whether cost/premium is
 above or below 1.0: the realized P&L level is the strategy's economic
-outcome, not a property of the accounting layer.
+outcome, not a property of the position ledger.
 
 The Volmageddon window (January 22 through February 16, 2018; N=5,060
 option-day observations, 527 qualifying call series; median
@@ -883,7 +885,7 @@ exceeded the implied volatility embedded in premia set at position
 inception. The window is short (25 calendar days), which limits the
 sample relative to GFC or the WRDS holdout, but this is precisely what
 makes it a clean stress test of the position ledger: the sudden jump
-in implied vol creates large, abrupt ledger entries that test the
+in implied vol creates large, abrupt rebalancing trades that test the
 trade-accounting formula under conditions of high price-sensitivity.
 All 527 series pass every step audit record.
 
@@ -916,12 +918,12 @@ replicate.
 
 ## Multi-leg portfolios {#sec-multileg}
 
-Design claim. Any multi-leg portfolio that produces integer-valued trades
-in the basis-point representation inherits the verified position
-ledger's accounting guarantees without modification to the Lean
-sources. Each option leg routes through the same settlement and
-trade-update functions; the bookkeeping loop is identical regardless of
-how many legs the strategy holds. Two non-trivial exhibits, a short
+Design claim. Any multi-leg portfolio that produces integer-valued
+trades in the basis-point representation inherits the verified
+position ledger's guarantees without modification to the Lean sources.
+Each option leg routes through the same settlement and trade-update
+functions; the per-trade update is identical regardless of how many
+legs the strategy holds. Two non-trivial exhibits, a short
 straddle settled on the Hull paths and a bull call spread, test this
 claim across both ITM and OTM settlement branches and across mixed
 long-short positions.
@@ -1430,7 +1432,7 @@ regime changes.
 For a model validator operating under SR 11-7 [@sr117], the step audit
 record architecture provides machine-readable evidence of ledger
 behavior at every state transition, satisfying the standard's
-ongoing-monitoring requirement for the accounting layer without manual
+ongoing-monitoring requirement for the position ledger without manual
 re-derivation.
 
 ## Limitations {#sec-limitations}
@@ -1509,8 +1511,8 @@ use to validate them.
 
 The concrete next step is the reconciliation layer. Bugs there are the
 upstream analog of the position-ledger bugs catalogued in the
-introduction: they look like correct ledger entries until a downstream
-P&L attribution surfaces a discrepancy days or weeks later. Specifying
+introduction: they look like correct trades until a downstream P&L
+attribution surfaces a discrepancy days or weeks later. Specifying
 trade booking in Lean against the same integer-basis-point arithmetic
 the position ledger uses closes the loop between order execution and
 the verified accounting kernel. Beyond that, a verified risk
@@ -2437,7 +2439,7 @@ pricing bias at the 3 bp threshold used by buy-side validation desks.
 
 ```{python}
 #| label: fig-equity
-#| fig-cap: "Instrument-agnostic accounting demonstration. Left panel: long 1,000 shares on the Hull 19.2 price path. Portfolio value (blue) starts at 0 (self-financing: cash borrowed at inception to purchase shares) and tracks $N \\times \\Delta S$ at each step. All step audit records pass: the trade-accounting identity holds for equity positions without modification to the ledger. Right panel: covered call on the same path (long 1,000 shares plus short 1 ATM call, K=50, $\\sigma$=20%). The call premium received at inception raises the initial portfolio value above zero; at expiry the call settles ITM and the settlement identity certifies the cash transfer."
+#| fig-cap: "Instrument-agnostic position-ledger demonstration. Left panel: long 1,000 shares on the Hull 19.2 price path. Portfolio value (blue) starts at 0 (self-financing: cash borrowed at inception to purchase shares) and tracks $N \\times \\Delta S$ at each step. All step audit records pass: the trade-accounting identity holds for equity positions without modification to the ledger. Right panel: covered call on the same path (long 1,000 shares plus short 1 ATM call, K=50, $\\sigma$=20%). The call premium received at inception raises the initial portfolio value above zero; at expiry the call settles ITM and the settlement identity certifies the cash transfer."
 
 from backtest_proofs.backtest.runner import (
     CoveredCallStrategy,
