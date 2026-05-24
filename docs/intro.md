@@ -16,7 +16,7 @@ Options delta-hedging backtester with a Lean 4 accounting module. 19 BacktestPro
 
 See the [full documentation](https://eigenq-xyz.github.io/quant-proofs/backtest-proofs/intro.html) including formal guarantees, validation, and architecture.
 
-Read the research paper: [Lean 4 Proof-Checked Delta-Hedging (HTML)](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.html) · [PDF](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf)
+Read the research paper: [Provably Correct Quantitative Backtesting (PDF)](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf)
 
 ### ftap-proofs
 
@@ -44,7 +44,7 @@ LangGraph multi-agent mortgage pipeline (intake, risk, compliance, underwriter a
 | Project | Theorems | Status | Links |
 |---------|----------|--------|-------|
 | quant-core | 8 (zero sorry) | v1.0 — stable | [Docs](quant-core.html) |
-| backtest-proofs | 27 (zero sorry) | v0.5 — paper published | [Docs](https://eigenq-xyz.github.io/quant-proofs/backtest-proofs/intro.html) · [Paper (HTML)](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.html) · [Paper (PDF)](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf) |
+| backtest-proofs | 27 (zero sorry) | v0.5 — paper published | [Docs](https://eigenq-xyz.github.io/quant-proofs/backtest-proofs/intro.html) · [Paper (PDF)](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf) |
 | ftap-proofs | — | Skeleton | [Docs](ftap-proofs.html) |
 | options-proofs | — | Skeleton (depends on ftap-proofs) | [Docs](options-proofs.html) |
 | mortgage-proofs | — | Active development | [Docs](mortgage-proofs.html) |

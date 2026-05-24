@@ -11,7 +11,5 @@ parts:
       - file: mortgage-proofs
   - caption: Research Paper
     chapters:
-      - url: https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.html
-        title: "Lean 4 Proof-Checked Delta-Hedging (HTML)"
       - url: https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf
-        title: "Formally Verified Delta-Hedging (PDF)"
+        title: "Provably Correct Quantitative Backtesting (PDF)"
