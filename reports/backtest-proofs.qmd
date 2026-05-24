@@ -132,8 +132,11 @@ routing logic, sending millions of unintended orders into the market
 before the firm could halt trading. The failure is the canonical
 illustration of a class of bug that statistical validation cannot
 detect: the defect lives in code that only executes on inputs the test
-author did not anticipate. Backtesters exhibit the same failure mode
-in a quieter register. When the accounting ledger contains a bug (a
+author did not anticipate. Backtesters exhibit a structurally similar
+failure mode but in a quieter register: a flawed accounting ledger
+produces a plausible P&L time series rather than a flood of erroneous
+live orders, so the error can survive both in-sample and out-of-sample
+evaluation undetected. When the accounting ledger contains a bug (a
 settlement dropped, a cash debit applied at the wrong step, a position
 quantity that drifts from its trade history), the reported P&L is
 well-formed. It generates a Sharpe ratio, it passes out-of-sample
@@ -192,7 +195,9 @@ Three contributions follow.
    results consistent with Black-Scholes theory, with the
    discrete-hedging literature (@boyle1980; @leland1985), and with
    the variance risk premium pattern documented by @bakshikapadia2003.
-   The empirical results are the validation, not the contribution.
+   The contribution is the validation framework and its scale across
+   real market data, not a novel result about European vanilla options
+   per se.
 
 Scope is worth stating plainly. The position ledger is proved for any
 integer-representable instrument: cash flows, position quantities, and
@@ -325,24 +330,23 @@ positions alongside cash; a trade records one execution as an asset
 identifier, a signed quantity, an execution price, and a fee. All
 monetary values are integer basis points (one ten-thousandth of one
 dollar); the proved theorems hold as universal statements over
-integer-valued inputs, with no floating-point reasoning inside the
-verified layer.
+integer-valued inputs, with no floating-point arithmetic crossing the
+proved boundary.
 
-The ledger enforces validity at construction. A position with a
-non-positive mark price cannot be built; a trade with a non-positive
-execution price or a negative fee cannot be built; a portfolio whose
-reported value disagrees with cash plus the sum of position values
-cannot be built. The ledger therefore cannot represent an inconsistent
-state, and the central invariant that portfolio value equals cash plus
-the sum of position values holds by construction for every portfolio
-that exists in the type system.
+The ledger rejects at construction any position with a non-positive
+mark price, any trade with a non-positive execution price or a negative
+fee, and any portfolio whose reported value disagrees with cash plus
+the sum of position values. The ledger therefore cannot represent an
+inconsistent state, and the central invariant that portfolio value
+equals cash plus the sum of position values holds by construction for
+every portfolio the ledger admits.
 
 The ledger's update rule applies a single trade to a portfolio: it
 adjusts the position quantity by the signed trade size, debits cash by
 the signed quantity times the execution price plus the fee, and
 re-establishes the value invariant on the resulting portfolio. No
-option-specific fields appear in any of the three types. The ledger is
-instrument-agnostic by construction.
+option-specific fields appear in any of the three data structures. The
+ledger is instrument-agnostic by construction.
 
 ## What is machine-checked {#sec-ledger-proofs}
 
@@ -356,7 +360,7 @@ Eleven theorems describe what the ledger cannot do wrong.
 | Trade accounting | NAV change equals mark-to-market gain on pre-trade holding minus fee | Rebalancing costs that are mis-attributed or omitted |
 | Self-financing | A costless trade leaves NAV unchanged | Free-lunch errors where a zero-cost operation changes reported wealth |
 | Self-financing with fee | NAV change under a fixed fee equals mark-to-market gain minus fee | Fixed transaction costs that are inconsistently applied |
-| Well-formedness | A valid trade preserves portfolio type validity | Type violations that could corrupt downstream computations |
+| Well-formedness | A valid trade preserves the portfolio's validity invariant | State inconsistencies that could corrupt downstream P&L |
 | Settlement | Option settlement changes NAV by quantity times (payoff minus mark) | Incorrect option expiry cash flows under ITM or OTM scenarios |
 | Call payoff ≥ 0 | Call option payoff is always non-negative | A call holder being charged at expiry |
 | Put payoff ≥ 0 | Put option payoff is always non-negative | A put holder being charged at expiry |
@@ -373,8 +377,8 @@ exactly the signed trade size; portfolio value always equals cash plus
 the sum of position values; a trade at the prevailing mark price changes
 portfolio value only by the fee. Any asset representable as an integer
 mark price and a signed quantity inherits these guarantees. An equity
-position, a futures contract, and an options position are formally
-indistinguishable at the ledger layer.
+position, a futures contract, and an options position are treated
+identically by the position ledger.
 
 The remaining four theorems cover option settlement and payoff
 non-negativity. Settling a European option at expiry changes portfolio
@@ -819,7 +823,7 @@ Appendix C (@sec-appendix-bootstrap).
 
 ## Multi-leg portfolios {#sec-multileg}
 
-Hypothesis. Any multi-leg portfolio that produces integer-valued trades
+Design claim. Any multi-leg portfolio that produces integer-valued trades
 in the basis-point representation inherits the verified position
 ledger's accounting guarantees without modification to the Lean
 sources. Each option leg routes through the same settlement and
@@ -1331,11 +1335,12 @@ Mathlib4, the mathematical library underpinning Lean 4, has grown
 through late 2025 to cover substantial portions of measure theory,
 probability, and stochastic processes: conditional expectation in
 Banach spaces, filtrations and stopping times, Doob's martingale
-convergence theorems, and a formalization of Brownian motion via the
-Kolmogorov extension theorem are now available. Ito calculus and
-stochastic integration remain unformalized as of late 2025, so the
-immediate gap between the current library and a Lean-checkable proof of
-the Black-Scholes PDE is Ito's lemma. Discrete-time finance (binomial
+convergence theorems are now available, and a formalization of Brownian
+motion via the Kolmogorov extension theorem has been published as a
+preprint and is under active integration. Ito calculus and stochastic
+integration remain unformalized as of late 2025, so the immediate gap
+between the current library and a Lean-checkable proof of the
+Black-Scholes PDE is Ito's lemma. Discrete-time finance (binomial
 models, discrete delta-hedging, FTAP) is tractable today;
 continuous-time pricing awaits Ito.
 
@@ -1347,9 +1352,9 @@ state transition, addressing the ongoing-monitoring requirement of
 Researchers can compose verified components without re-validating
 downstream layers: a verified ledger plus a verified pricer plus a
 verified risk decomposition produces a verified pipeline, with each
-piece checked once. Code review reduces to checking that the formal
-specification matches the intended economic model, rather than to
-checking the implementation against the specification.
+piece checked once. Model audit reduces to verifying that the proved
+properties match the intended economic behavior, rather than
+re-deriving the implementation from first principles.
 
 Not every layer of a quant pipeline merits formal verification. The
 valuable targets are layers where bugs are silent (the output looks
