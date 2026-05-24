@@ -277,38 +277,51 @@ standalone proof artifacts.
 
 ## A Motivating Example {#sec-falsification}
 
-Consider a class of accounting bug that a careful test suite cannot
-detect: the cash deduction for a delta-hedge trade is set to zero
-when the trade quantity is recorded but the cash balance is not
-debited. This is exactly the kind of error a flawed basis-point
-conversion would introduce if the converter returned zero on
+Consider a class of accounting bug a careful test suite cannot detect: the
+cash deduction for a delta-hedge trade is silently set to zero. The trade
+quantity is recorded on the position correctly, but the cash balance
+remains unchanged. This is exactly the kind of error a flawed
+basis-point conversion would introduce if the converter returned zero on
 fractional cents instead of rounding to the nearest integer.
 
-A simple test of the ledger would exercise the trade-application
-function on a sample of trades and confirm the portfolio value
-changes by the expected amount. If the sample happens to include
-only trades where the pre-trade quantity is zero (the first
-purchase, for instance), the test does not catch the bug. The
-trade-accounting identity predicts $\Delta\text{PV} = q_{\text{pre}}
-\cdot (p_{\text{exec}} - p_{\text{mark}}) - \text{fee}$. When the
-pre-trade quantity is zero, the predicted change is zero regardless
-of the execution price. The bug produces a zero change. The
-predicted and observed values agree, and the test passes.
+The trade-accounting identity that the ledger enforces is
+$\Delta\text{PV} = q_{\text{pre}} \cdot (p_{\text{exec}} -
+p_{\text{mark}}) - \text{fee}$. Concretely, suppose the portfolio holds
+$100.00 in cash, the mark price is $49.00, and the execution price
+moves to $50.00 with no fee. Two trades happen in sequence: a first
+purchase from a zero starting position, then a subsequent purchase of
+500 more shares.
 
-The same bug is invisible to statistical validation of the
-backtest output: every reported P&L number is biased by exactly the
-same amount on every step, so the bias survives all subsample
+| | $q_{\text{pre}}$ | $p_{\text{exec}}$ | $p_{\text{mark}}$ | Predicted $\Delta\text{PV}$ |
+|---|---|---|---|---|
+| Trade 1 (first purchase) | 0 shares | $50.00 | $49.00 | $0 \times (50.00 - 49.00) = \$0$ |
+| Trade 2 (subsequent buy) | 500 shares | $50.00 | $49.00 | $500 \times (50.00 - 49.00) = \$500$ |
+
+On Trade 1, the predicted change is $\$0$ because the pre-trade quantity
+is zero. The bug produces a $\$0$ change too: cash was not debited but
+the identity does not require cash movement when $q_{\text{pre}}=0$.
+Predicted and observed values agree, the audit record passes, the test
+suite is satisfied.
+
+On Trade 2, the identity predicts $\Delta\text{PV} = \$500$. The bug
+still produces $\$0$ because cash is not debited. The audit record now
+records observed $\Delta\text{PV} = \$0$ and predicted $\Delta\text{PV}
+= \$500$; the mismatch surfaces immediately. The bug is caught.
+
+The class of bug the audit records catch generalizes: any error that
+breaks the trade-accounting identity surfaces on any step where the
+pre-trade quantity multiplied by the price change is nonzero, which the
+Monte Carlo simulation in Section 5 guarantees will occur on the
+overwhelming majority of steps in any realistic backtest. The same bug
+is invisible to statistical validation of the backtest output because
+the bias appears on every step, so it survives all subsample
 comparisons, robustness checks, and out-of-sample tests.
 
-A formal proof catches this bug because the proof quantifies over
-all integer-valued inputs simultaneously. The step audit record
-produced by the verified ledger records both the pre- and
-post-trade portfolio values and the trade-accounting prediction at
-every rebalancing step. The mismatch surfaces on any step where the
-pre-trade position is nonzero, which the Monte Carlo simulation
-guarantees will happen.
-
-The complete code exhibit is in Appendix A.
+A formal proof catches this bug because the proof quantifies over all
+integer-valued inputs simultaneously: there is no input under which the
+predicted and observed portfolio-value changes can disagree if the
+trade-accounting function is implemented correctly. The complete code
+exhibit and the full audit-record format are in Appendix A.
 
 # The Position Ledger {#sec-ledger}
 
@@ -1371,16 +1384,14 @@ burdens into one.
 
 ## Data availability {#sec-data-availability}
 
-Synthetic Monte Carlo results are fully reproducible from the public
-repository via `make paper` (base seed 20260519). WRDS OptionMetrics
-data is licensed and not redistributed under WRDS terms. The metrics
-snapshot in the appendix records every reported numerical value, and
-the PDF regenerates deterministically from the source when WRDS data is
-present.
+The synthetic Monte Carlo and deterministic-path results in this paper
+are fully reproducible from the public repository. WRDS OptionMetrics
+data is licensed and is not redistributed under WRDS terms; the
+licensed sample is required only to reproduce the stress-regime panels
+in Section 6. Replication instructions, exact parameter values, and
+the metrics snapshot are in the appendix.
 
-# Appendix {.appendix}
-
-## Falsification exhibit: code listing {#sec-appendix-falsification}
+# Falsification exhibit: code listing {.appendix #sec-appendix-falsification}
 
 The following code exhibit demonstrates the bug described in
 @sec-falsification. The complete exhibit is in
@@ -1422,7 +1433,7 @@ regardless of cash accounting. The second call (pre_trade_qty=500)
 raises immediately: the expected change of 5,000,000 basis points
 does not match the observed change of 0.
 
-## Theorem Statements {#sec-appendix-theorems}
+# Theorem Statements {.appendix #sec-appendix-theorems}
 
 Full Lean 4 theorem statements, proof commentary, and source file
 references for all eleven machine-checked theorems are available in the
@@ -1435,7 +1446,7 @@ Table 4.1 correspond directly to the Lean source identifiers; each
 hyperlinked row in the online version links to the exact line in the
 repository.
 
-## Proof Architecture {#sec-appendix-architecture}
+# Proof Architecture {.appendix #sec-appendix-architecture}
 
 *This section is a technical reference for developers wishing to inspect
 or extend the Python runtime bridge. QF/FM readers may skip to
@@ -1451,7 +1462,7 @@ basis-point integers ($\times 10{,}000$ of dollar values). See
 `backtest-proofs/DECISIONS.md` ADR-006 for the rationale behind the
 Cython FFI design choice.
 
-## Variance Scaling and Bootstrap Specification Test {#sec-appendix-bootstrap}
+# Variance Scaling and Bootstrap Specification Test {.appendix #sec-appendix-bootstrap}
 
 @bertsimas2000 and @leland1985 predict specific relationships between
 discrete delta-hedge cost variance, mean bias, and rebalancing frequency;
@@ -1847,7 +1858,7 @@ all 2,000 paths, regardless of which asymptotic regime the
 rebalancing frequency sits in.
 
 
-## Error decomposition {#sec-appendix-error-decomp}
+# Error decomposition {.appendix #sec-appendix-error-decomp}
 
 The four diagnostics below decompose the discrete-hedging error reported
 in @sec-mc and @sec-bkl-cm into a structural-bias component, a
@@ -1953,7 +1964,7 @@ $\$`{python} f"{rounding_std_dollars:,.0f}"`$
 hedging-cost standard deviation. Basis-point rounding contributes
 negligibly to observed variance.
 
-## Hull Table 19.2 / 19.3 deterministic cross-check {#sec-appendix-hull}
+# Hull Table 19.2 / 19.3 deterministic cross-check {.appendix #sec-appendix-hull}
 
 The Hull (2014) textbook tabulates a deterministic 20-step weekly
 hedge of a written ATM call ($S_0 = 49$, $K = 50$, $r = 5\%$,
@@ -2077,7 +2088,7 @@ fully explained by the textbook's three-decimal-place delta rounding
 and hundred-share rounding rules. All step audit records pass for both
 paths.
 
-## QuantLib pricing cross-check {#sec-appendix-quantlib}
+# QuantLib pricing cross-check {.appendix #sec-appendix-quantlib}
 
 QuantLib is an open-source C++ derivatives library widely used in
 quantitative finance. Comparing the basis-point integer Black-Scholes
@@ -2157,7 +2168,7 @@ distort the hedging-cost figures elsewhere in the paper would appear
 as a diagonal offset here; the maximum 2.69 bp deviation rules out
 pricing bias at the 3 bp threshold used by buy-side validation desks.
 
-## Equity and Covered-Call Demo {#sec-appendix-equity}
+# Equity and Covered-Call Demo {.appendix #sec-appendix-equity}
 
 ```{python}
 #| label: fig-equity
@@ -2272,7 +2283,7 @@ and `settlement_value_formula` compose
 across instrument types by construction.
 
 
-## Replication {#sec-replication}
+# Replication {.appendix #sec-replication}
 
 ```bash
 git clone https://github.com/eigenq-xyz/quant-proofs
@@ -2293,7 +2304,7 @@ make paper
 After downloading WRDS data per `docs/wrds_data_download.md`, re-run
 `make paper` to regenerate @fig-stress with real market data.
 
-## Metrics snapshot
+# Metrics snapshot {.appendix}
 
 Numerical results are archived in
 `backtest-proofs/results/metrics.json`; the file is regenerated on each
