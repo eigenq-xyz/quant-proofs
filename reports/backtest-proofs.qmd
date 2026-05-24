@@ -475,6 +475,32 @@ about ledger correctness in this paper is a property of the underlying
 ledger, not of this specific strategy; any strategy that produces
 integer-valued trades would receive the same accounting guarantees.
 
+The empirical results of this paper rest on four scope assumptions about
+the strategy and its execution. The position ledger proofs hold without
+any of these assumptions; the assumptions bound only the empirical
+validation in Sections 5 and 6.
+
+> **Assumption A1 (Flat implied volatility).** The Black-Scholes pricing
+> calculation for each contract uses a single per-series implied
+> volatility taken from the contract's first observed quote. A dynamic
+> volatility surface is not modeled.
+
+> **Assumption A2 (European-style payoffs).** Options are exercised only
+> at expiry. American-style early exercise and barrier events are not
+> modeled.
+
+> **Assumption A3 (Fixed-fee transaction costs).** Transaction costs are
+> modeled as a fixed integer fee per trade. Proportional costs (bid-ask
+> spreads, market impact) are not modeled.
+
+> **Assumption A4 (Integer-valued trades).** Trade quantities and prices
+> are representable as 64-bit integers in basis-point units. This is the
+> condition under which the position ledger proofs apply.
+
+Sections 6 and 7 evaluate the empirical consequences of A1 and A3.
+Section 7 discusses extensions to American-style settlement (A2) and
+stochastic transaction costs (A3 relaxed).
+
 # Empirical Setup {#sec-data}
 
 ## Main sample
@@ -492,12 +518,31 @@ integer-valued trades would receive the same accounting guarantees.
 
 : Main sample characteristics. {#tbl-main-sample}
 
-These filters impose no restriction on the formal results; the Lean theorems
-hold for arbitrary strike prices and expiry dates. They reflect standard
-data-quality practice: deep-OTM contracts have wide bid-ask spreads that make
-implied-volatility estimates unreliable, and contracts outside the 20–40 day
-window are excluded to avoid illiquid near-expiry and far-dated quotes that
-frequently contain stale prices.
+These filters impose no restriction on the formal results; the position
+ledger proofs hold for arbitrary strike prices and expiry dates. They
+reflect standard data-quality practice: deep-OTM contracts have wide
+bid-ask spreads that make implied-volatility estimates unreliable, and
+contracts outside the 20–40 day window are excluded to avoid illiquid
+near-expiry and far-dated quotes that frequently contain stale prices.
+
+## Train and holdout split
+
+The 2019–2024 main sample is partitioned in advance: the 2019–2020
+sub-period is treated as in-sample, and the 2021–2023 sub-period is
+the out-of-sample holdout used for the empirical validation in
+Section 5. The 2020 calendar year is excluded from the holdout to
+maintain clean separation from the COVID stress regime evaluated in
+Section 6. No parameters are tuned on either sub-period: the
+Black-Scholes pricer takes the per-series inception-date implied
+volatility as input (see Assumption A1), and the Monte Carlo
+simulation uses a fixed seed (20260519) declared at the top of the
+analysis script.
+
+The four crisis windows in Section 6 are out-of-period checks. GFC
+2008, Volmageddon 2018, and Q4 2018 all precede the in-sample window
+and are drawn from a separate WRDS pull. The COVID 2020 window is
+drawn from the same parquet file as the main sample but is the
+calendar year excluded from both the in-sample and holdout periods.
 
 ## Stress-period samples
 
@@ -973,6 +1018,21 @@ controlled conditions; @sec-robustness tests whether those guarantees
 hold when the underlying data is genuinely adversarial.
 
 # Historical Stress Tests {#sec-robustness}
+
+This section evaluates the framework on real market data under four
+robustness axes: out-of-sample period (the 2021–2023 WRDS holdout),
+regime conditioning (four historical crisis windows spanning different
+volatility regimes), specification alternative (the bootstrap
+specification test in Appendix C, which tests the parametric
+discrete-hedging predictions against nonparametric bands), and a
+data-source check (the QuantLib pricing comparison in Appendix D). The
+worst-case median cost-to-premium ratio across the four crisis windows
+is 1.69 (COVID 2020), corresponding to a 69% expenditure above the
+inception-date Black-Scholes premium received; the best is 0.92 in the
+calm holdout. Every step audit record passes across all panels,
+including the 1.69 worst case, which is the operationally relevant
+finding for the position ledger.
+
 ## WRDS 2019–2024 holdout {#sec-wrds}
 
 ```{python}
