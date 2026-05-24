@@ -17,7 +17,7 @@ abstract: |
   the ongoing-monitoring requirement under SR 11-7 model risk
   management guidance. We exercise the framework using a discrete
   delta-hedging strategy on European call options, with per-series
-  implied volatility held flat at the inception date. Across 30,917
+  implied volatility held flat at the inception date. Across 37,246
   OptionMetrics option-day observations spanning four historical stress
   regimes (GFC 2008, Volmageddon 2018, Q4 2018, COVID 2020) and 25,363
   qualifying series in a 2021–2023 calm-market holdout, every step
@@ -607,10 +607,10 @@ stress regime evaluated in @sec-stress. No parameters are tuned on
 either sub-period: the Black-Scholes pricer takes the per-series
 inception-date implied volatility as input (see Assumption A1), and
 the Monte Carlo simulation uses a fixed seed (20260519) declared at
-the top of the analysis script. This protocol — train/holdout
+the top of the analysis script. This protocol (train/holdout
 partition declared before any empirical statistic is computed, a
 single seed for the simulation, no parameter tuning on either
-sub-period — is the design distinction between this validation and a
+sub-period) is the design distinction between this validation and a
 backtest-overfitting exercise of the kind catalogued by
 @baileyetal2015.
 
@@ -624,18 +624,26 @@ calendar year excluded from both the in-sample and holdout periods.
 
 Four supplementary WRDS OptionMetrics downloads use the same schema and
 ticker universe (@tbl-stress-samples). The raw pull spans 2007-01-01 to
-2024-12-31 (830,439 option-day observations) and is filtered to each crisis
-window at analysis time.
+2024-12-31 (830,439 option-day observations) and is filtered to each
+analysis window below at render time. The N column reports the
+option-day count after the ATM ±3% moneyness filter and the
+≥5-consecutive-observations-per-series filter applied by
+`run_stress_window`. The total across all four crisis windows is
+37,246 option-day observations spanning 3,289 qualifying call series.
 
-| Window | Dates | Regime | N observations |
-|---|---|---|---|
-| GFC peak | 2008-09-01 to 2008-12-31 | Liquidity crisis | 527 |
-| Volmageddon | 2017-12-01 to 2018-04-30 | Volatility spike | 5,060 |
-| Q4 2018 selloff | 2018-09-20 to 2019-01-31 | Rate-driven drawdown | 25,090 |
-| COVID crash | 2020-02-01 to 2020-09-30 | Pandemic shock | — |
+| Window | Analysis dates | Regime | N observations | N series |
+|---|---|---|---|---|
+| GFC peak | 2008-09-15 to 2008-11-21 | Liquidity crisis | 527 | 42 |
+| Volmageddon | 2018-01-22 to 2018-02-16 | Volatility spike | 5,060 | 527 |
+| Q4 2018 selloff | 2018-10-01 to 2019-01-31 | Rate-driven drawdown | 25,090 | 2,411 |
+| COVID 2020 | 2020-02-19 to 2020-03-23 | Pandemic shock | 6,569 | 309 |
 
-: Stress-period sample characteristics. COVID window uses the same
-portfolio_atm_options.parquet filtered to the 2020-02 to 2020-09 window.
+: Stress-period sample characteristics. COVID rows are filtered from
+`portfolio_atm_options.parquet` (the same file used for the
+2021–2023 calm-market holdout); GFC, Volmageddon, and Q4 2018 are
+separate pulls. The COVID analysis window is restricted to the
+February 19 – March 23 vol-shock period rather than the full pandemic
+year.
 {#tbl-stress-samples}
 
 The GFC window (527 option-day observations) is substantially smaller than the
@@ -673,7 +681,7 @@ OptionMetrics calm-market holdout (@sec-wrds), four historical stress
 regimes spanning crisis archetypes (@sec-stress), and a battery of
 multi-leg portfolios composed of long and short positions across both
 option kinds (@sec-multileg). Every step audit record passes in every
-panel: 25,363 qualifying calm-market series in the holdout, 30,917
+panel: 25,363 qualifying calm-market series in the holdout, 37,246
 option-day observations across GFC 2008, Volmageddon 2018, Q4 2018,
 and COVID 2020 in the crisis windows, and every multi-leg exhibit. The
 ledger's proved invariants are not tested by these results; what is
@@ -718,10 +726,10 @@ the settlement theorem holds for every ITM and OTM settlement
 encountered in the panel. This is the framework guarantee verified on
 calm-market real data.
 
-The accompanying economic statistic — median cost/premium in the
-holdout is
-`{python} f"{wrds_holdout_median:.2f}" if wrds_holdout_median else "—"`,
-below 1.0 — places the holdout in the calm-market half of the
+The accompanying economic statistic, median cost/premium in the
+holdout of
+`{python} f"{wrds_holdout_median:.2f}" if wrds_holdout_median else "—"`
+(below 1.0), places the holdout in the calm-market half of the
 cost/premium distribution. The interpretation is that the hedger
 captures the variance risk premium: outside crisis windows, implied
 volatility at inception systematically exceeds realized volatility over
@@ -828,16 +836,16 @@ else:
 
 The framework guarantee. Across the four crisis windows the step audit
 record pass rate is 100% in every panel (@fig-stress). The total
-observation count across the four crisis windows is 30,917 option-day
-observations spanning 2,980 qualifying call series; the ledger
+observation count across the four crisis windows is 37,246 option-day
+observations spanning 3,289 qualifying call series; the ledger
 certifies every step. This is the strongest single piece of empirical
 evidence for the framework claim: the runtime bridge correctly invokes
 the proved kernel on price paths that the synthetic GBM simulator
-cannot produce — sudden vol-regime shifts, sustained liquidity freezes,
-abrupt rate-driven drawdowns. The Lean proofs hold without side
+cannot produce, including sudden vol-regime shifts, sustained
+liquidity freezes, and abrupt rate-driven drawdowns. The Lean proofs hold without side
 conditions on the input distribution; the empirical question is
 whether the bridge can break that guarantee in practice, and on the
-30,917 option-days tested it cannot.
+37,246 option-days tested it cannot.
 
 The economic statistic. Cost/premium ratios **above** 1.0 during the
 GFC 2008 (median 1.23)^[The GFC 2008 window has N=42 qualifying call
@@ -897,9 +905,9 @@ larger sample reflects the better market-access conditions relative to
 the GFC window. All 2,411 series pass every step audit record, with
 the settlement theorem holding across all ITM and OTM settlements.
 
-Across all four regimes — spanning the extremes of the VRP
+Across all four regimes (spanning the extremes of the VRP
 distribution, two distinct vol-shock archetypes, and a rate-driven
-drawdown — the position ledger certifies every step. The Lean 4 proofs
+drawdown) the position ledger certifies every step. The Lean 4 proofs
 hold without side conditions on the input distribution. The
 stress-regime results do not test the Lean proofs; they test whether
 the Python execution layer and the runtime bridge correctly invoke the
@@ -982,7 +990,7 @@ for ax, (title, cp, pp, res) in zip(axes, _panels, strict=True):
     ax.set_ylabel("Payoff ($M)")
     ax.text(
         0.5, 0.97,
-        f"{n_pass}/{len(res.certificates)} certs pass",
+        f"{n_pass}/{len(res.certificates)} audit records pass",
         ha="center", va="top", transform=ax.transAxes, fontsize=8,
     )
 
@@ -1427,7 +1435,7 @@ re-derivation.
 
 ## Limitations {#sec-limitations}
 
-Three limitations bound the current results. First, the Black-Scholes
+Four limitations bound the current results. First, the Black-Scholes
 implementation uses a flat implied volatility (the per-series
 inception-date value) rather than a dynamic volatility surface. The
 empirical volatility smile means real hedging errors exceed the
@@ -1438,10 +1446,12 @@ errors grow with the curvature of the volatility surface;
 @elkaroui1998 establish the formal superhedging bound: a flat
 implied-volatility hedge is a superhedge when the assumed volatility
 dominates the true local volatility, providing a one-sided bound on the
-hedging error. Of the three limitations, this one has the largest
-quantitative effect. Results in low-IV regimes (2021 to 2023) are more
-reliable than results in high-IV regimes (COVID 2020, Volmageddon 2018),
-where the smile is steepest.
+hedging error. Of the four limitations, this one has the largest
+quantitative effect on the discrete-hedging sanity checks. Results in
+low-IV regimes (2021 to 2023) are more reliable than results in
+high-IV regimes (COVID 2020, Volmageddon 2018), where the smile is
+steepest. The position ledger's per-step audit records hold regardless
+of the IV assumption.
 
 Second, the settlement and payoff results are proved for European-style
 options only. American-style early exercise and barrier events require
@@ -1458,77 +1468,57 @@ ledger connect directly to the Leland [-@leland1985] modified
 volatility, yielding a verified replication-cost bound under
 proportional transaction costs.
 
+Fourth, the runtime bridge between the proved Lean kernel and the
+Python execution layer is itself not formally verified. The bridge
+marshals integer-basis-point inputs across the FFI boundary, applies
+the type-level invariants of `Portfolio`, `Position`, and `Trade`
+before invoking the kernel, and emits the step audit record by
+comparing the proved prediction to the observed P&L change. A bug in
+the bridge therefore surfaces as a step audit record failure rather
+than as silent ledger corruption, but the bridge could in principle
+fail to invoke the kernel at all on a given step, in which case the
+audit record would not be emitted. The replication test suite
+(@sec-replication) exercises the bridge across every supported
+strategy and asserts that the per-step record is produced; this is
+empirical evidence rather than a proof. Verifying the bridge itself
+would require either CakeML-style certified extraction
+[@kumar2014] or a proof in a dependently typed FFI layer, both of
+which are open engineering problems beyond the present scope.
+
 ## Toward a provably correct research desk {#sec-extensions}
-
-The position ledger is the first layer in a larger program: a
-quantitative research desk in which each tool the researcher uses has a
-machine-checked specification, and in which composing those tools
-produces a provably correct pipeline at the granularity a model
-validator or auditor would inspect.
-
-The natural next layers, ordered by how silent and how compounding the
-errors are if uncaught:
-
-- **Reconciliation and trade booking**: the layer between order
-  execution and the position ledger. Bugs here produce position drift
-  that the verified ledger then propagates faithfully (the ledger is
-  correct; its inputs were already wrong). Specifying the booking layer
-  in Lean against the same integer arithmetic the ledger uses closes
-  the loop.
-
-- **Risk decomposition**: Greeks, P&L attribution, scenario analysis.
-  These are arithmetic on outputs of the verified ledger; their
-  specifications are clean (the chain rule, finite differencing,
-  factor decompositions) and naturally compose with the ledger's
-  guarantees. A verified Greek decomposition plus the verified ledger
-  yields a verified pipeline from trade to attributed P&L.
-
-- **Portfolio construction**: mean-variance, risk parity, factor
-  exposures. These are linear-algebraic optimizations whose
-  specifications (constraints satisfied, objective stationary at
-  reported optimum) are precise enough to verify; Mathlib4's linear
-  algebra is well-developed enough to support this today.
-
-- **Pricing models**: closed-form (Black-Scholes, binomial), and
-  eventually PDE and Monte Carlo. The discrete-time and lattice pricers
-  are formalizable today against the current Mathlib library; PDE and
-  Monte Carlo for continuous-time models await Ito calculus and
-  stochastic integration in Mathlib, which the Brownian motion work
-  cited above is making tractable.
-
-A research desk built this way has properties the current toolchain
-does not. The reconciliation layer is correct against the same integer
-arithmetic the ledger uses; the risk system inherits the ledger's
-audit trail directly; the pricing library and the simulation share
-proved invariants; the portfolio optimizer's output is a checked
-artifact rather than a black-box optimization result. The marginal
-cost of formalizing each layer drops as the upstream layers are
-already verified, because each new specification can assume the
-previous layer rather than re-prove it.
-
-Concrete reuse patterns are immediate. A deep hedging
-[@buehler2019] policy running on a verified ledger inherits the
-accounting guarantees regardless of how the policy was trained. A risk
-system emitting machine-readable audit records meets the documentation
-granularity that stress-testing and SR 11-7 [@sr117] ongoing-monitoring
-frameworks demand. A single verified ledger serving N strategies
-eliminates per-strategy accounting re-validation, collapsing N review
-burdens into one.
 
 Not every layer of a quant pipeline merits formal verification. The
 valuable targets are layers where bugs are silent (the output looks
-plausible), where bugs survive testing (they only manifest on inputs
-the test author did not consider), and where bugs compound (one ledger
-error contaminates every downstream Sharpe ratio, every regime test,
-every cross-strategy comparison). The position ledger, reconciliation,
-and risk decomposition meet all three criteria. The Black-Scholes
-pricer does not: a pricing bug produces visibly wrong prices that a
-QuantLib comparison catches in minutes. The strategy logic does not:
-a strategy bug produces visibly wrong trades. The empirical sections
-of this paper confirm that the implementation works for the
-less-deep layers; formal proof is reserved for the layers where it is
-most needed and where the marginal verification effort produces the
-most durable guarantees.
+plausible), survive testing (they manifest only on inputs the test
+author did not anticipate), and compound downstream (one ledger error
+contaminates every Sharpe ratio, every regime test, every
+cross-strategy comparison). The position ledger meets all three
+criteria. So does the reconciliation layer that sits upstream of it
+(trade-booking bugs produce position drift that a correct ledger then
+propagates faithfully), and so does the risk-decomposition layer that
+sits downstream, where verified Greeks and P&L attribution compose
+with the ledger's audit trail into a checked pipeline from trade to
+reported risk number. The Black-Scholes pricer, by contrast, does
+not: a pricing bug produces visibly wrong prices that a QuantLib
+comparison catches in minutes (@sec-appendix-quantlib). The strategy
+logic does not either: a strategy bug produces visibly wrong trades.
+The empirical sections of this paper confirm that the implementation
+of these less-deep layers works on real data without proof, and the
+QuantLib cross-check formalizes the operational tolerance practitioners
+use to validate them.
+
+The concrete next step is the reconciliation layer. Bugs there are the
+upstream analog of the position-ledger bugs catalogued in the
+introduction: they look like correct ledger entries until a downstream
+P&L attribution surfaces a discrepancy days or weeks later. Specifying
+trade booking in Lean against the same integer-basis-point arithmetic
+the position ledger uses closes the loop between order execution and
+the verified accounting kernel. Beyond that, a verified risk
+decomposition (Greeks, P&L attribution) composes naturally with the
+ledger's audit trail; a deep hedging [@buehler2019] policy running on
+the verified ledger inherits the accounting guarantees regardless of
+how the policy was trained. We sketch the reconciliation specification
+in a companion note; the rest is left to future work.
 
 ## Data availability {#sec-data-availability}
 
@@ -1590,16 +1580,133 @@ does not match the observed change of 0.
 
 # Theorem Statements {.appendix #sec-appendix-theorems}
 
-Full Lean 4 theorem statements, proof commentary, and source file
-references for all eleven machine-checked theorems are available in the
-public repository at
-[`github.com/eigenq-xyz/quant-proofs`](https://github.com/eigenq-xyz/quant-proofs),
-in `backtest-proofs/lean/BacktestProofs/Invariants.lean`,
-`SettlementInvariants.lean`, and
-`quant-core/lean/QuantCore/OptionInvariants.lean`. The theorem names in
-Table 4.1 correspond directly to the Lean source identifiers; each
-hyperlinked row in the online version links to the exact line in the
-repository.
+The eight substantive theorems and the three payoff-sign obligations
+summarised in @tbl-theorems are reproduced below in their Lean 4 form,
+verbatim from the repository at commit
+`{python} COMMIT_SHA`. All eleven compile under `lake build` with
+zero `sorry` placeholders. Source: `backtest-proofs/lean/BacktestProofs/`
+(`Invariants.lean`, `SettlementInvariants.lean`) and
+`quant-core/lean/QuantCore/OptionInvariants.lean`.
+
+**Portfolio-value identity.** Every ledger-admissible portfolio
+satisfies `portfolioValue = cash + Σ position_values`. The right-hand
+side is a fold over the position HashMap.
+
+```lean
+theorem valueIdentity (p : Portfolio) :
+    p.portfolioValue = p.cash + sumPositionValues p.positions
+```
+
+**Cash update.** Applying a trade debits cash by the signed quantity
+times the execution price plus the fee. The statement is definitional
+(`rfl`), reflecting that the `applyTrade` function is specified by
+this equation.
+
+```lean
+theorem cashUpdateCorrect (p : Portfolio) (t : Trade) :
+    (applyTrade p t).cash =
+      p.cash - (t.deltaQuantity * t.executionPrice + t.fee) := rfl
+```
+
+**Quantity conservation.** The post-trade quantity for the traded
+asset equals the pre-trade quantity plus the signed trade size; all
+other position quantities are untouched.
+
+```lean
+theorem quantityConservation (p : Portfolio) (t : Trade) :
+    (applyTrade p t).getQuantity t.assetId =
+      p.getQuantity t.assetId + t.deltaQuantity
+```
+
+**Trade-accounting identity.** The change in portfolio value under a
+single trade is the pre-trade quantity times the spread between the
+execution price and the prevailing mark, minus the fee. This is the
+identity the step audit record checks at runtime.
+
+```lean
+theorem valueUpdateFormula (p : Portfolio) (t : Trade) :
+    (applyTrade p t).portfolioValue =
+      p.portfolioValue
+        + p.getQuantity t.assetId
+          * (t.executionPrice - p.getMarkPrice_orZero t.assetId)
+        - t.fee
+```
+
+**Self-financing (fee-free).** A costless trade at the prevailing mark
+leaves portfolio value unchanged.
+
+```lean
+theorem selfFinancing (p : Portfolio) (t : Trade) (pos : Position)
+    (hPos   : p.getPosition t.assetId = some pos)
+    (hPrice : t.executionPrice = pos.markPrice) :
+    (applyTrade p t).portfolioValue = p.portfolioValue - t.fee
+```
+
+**Self-financing with a fixed fee.** A trade at the prevailing mark
+reduces portfolio value by exactly the fee. The current formalization
+takes the fee as a fixed integer per trade; extending to proportional
+costs $\text{fee} = c \cdot |q| \cdot p_{\text{exec}}$ requires a new
+lemma binding `t.fee` to the proportional rate, which is sketched in
+@sec-limitations.
+
+```lean
+theorem selfFinancingWithCost (p : Portfolio) (t : Trade) (fee : Int)
+    (pos : Position)
+    (h_fee  : t.fee = fee)
+    (hPos   : p.getPosition t.assetId = some pos)
+    (hPrice : t.executionPrice = pos.markPrice) :
+    (applyTrade p t).portfolioValue = p.portfolioValue - fee
+```
+
+**Well-formedness preservation.** Applying any trade to a well-formed
+portfolio yields a well-formed portfolio. `WellFormed` packages the
+type-level invariants: positive mark prices, non-negative fees, and
+the value-identity equation.
+
+```lean
+theorem applyTrade_wellFormed (p : Portfolio) (t : Trade)
+    (hw : p.WellFormed) :
+    (applyTrade p t).WellFormed
+```
+
+**Settlement.** Settling a European option at expiry changes portfolio
+value by the position quantity times the spread between the option's
+payoff and its pre-expiry mark.
+
+```lean
+theorem settlement_value_formula (p : Portfolio) (opt : EuropeanOption)
+    (pos : Position)
+    (hPos : p.getPosition opt.assetId = some pos)
+    (spot : Int) :
+    (applySettlement p opt
+        (settleEuropeanOption opt spot pos.quantity)).portfolioValue =
+      p.portfolioValue
+        + pos.quantity * (optionPayoff opt spot - pos.markPrice)
+```
+
+**Payoff non-negativity (three obligations).** Call, put, and the
+dispatched `optionPayoff` are non-negative for all integer-valued
+inputs. These follow from the `max(·, 0)` definition of payoff and are
+the type-level economic guarantee that the option holder is never
+charged at expiry.
+
+```lean
+theorem callPayoff_nonneg (spot strike : Int) :
+    callPayoff spot strike ≥ 0
+
+theorem putPayoff_nonneg (spot strike : Int) :
+    putPayoff spot strike ≥ 0
+
+theorem optionPayoff_nonneg (opt : EuropeanOption) (spot : Int) :
+    optionPayoff opt spot ≥ 0
+```
+
+Together these eleven results discharge every property a step audit
+record can check at runtime. A failure of the audit-record check is
+therefore necessarily a runtime-bridge failure (a value crossed the
+FFI boundary that did not satisfy `Portfolio.WellFormed` or
+`Trade`'s structural invariants) rather than a counterexample to any
+of the theorems above.
 
 # Proof Architecture {.appendix #sec-appendix-architecture}
 
@@ -1900,7 +2007,7 @@ ax_bkl.plot(_x_fine_sqrt_boot, _C_bkl * _x_fine_sqrt_boot,
 ax_bkl.scatter(_inv_sqrt_n, _emp_stds, color="#2563eb", s=40, zorder=5)
 ax_bkl.set_xlabel(r"$1/\sqrt{N}$ (rebalancing frequency)")
 ax_bkl.set_ylabel("std(hedging cost) ($)")
-ax_bkl.set_title(f"BKL variance scaling — {'PASS: theory within CI' if _bkl_passes else 'FAIL: theory outside CI'}")
+ax_bkl.set_title(f"BKL variance scaling: {'PASS, theory within CI' if _bkl_passes else 'FAIL, theory outside CI'}")
 ax_bkl.legend(fontsize=8)
 
 # ── Leland bias vs Δt ────────────────────────────────────────────────────────
@@ -1915,7 +2022,7 @@ ax_lbias.scatter(_dt_vals, _emp_biases, color="#7c3aed", s=40, zorder=5)
 ax_lbias.axhline(0, color="#6b7280", lw=0.8, ls=":")
 ax_lbias.set_xlabel(r"$\Delta t = T/N$ (rebalancing interval, years)")
 ax_lbias.set_ylabel("Mean relative bias (cost − BS) / BS")
-ax_lbias.set_title(f"Leland bias convergence — {'PASS: theory within CI' if _leland_passes else 'FAIL: theory outside CI'}")
+ax_lbias.set_title(f"Boyle-Emanuel O($\\Delta t$) bias: {'PASS, theory within CI' if _leland_passes else 'FAIL, theory outside CI'}")
 ax_lbias.legend(fontsize=8)
 
 # ── Residuals: BKL ───────────────────────────────────────────────────────────
@@ -1927,7 +2034,7 @@ ax_rbkl.axhline(0, color="#dc2626", ls="--", lw=1.5, label="Zero (theory correct
 ax_rbkl.scatter(_inv_sqrt_n, _resid_stds, color="#2563eb", s=40, zorder=5)
 ax_rbkl.set_xlabel(r"$1/\sqrt{N}$")
 ax_rbkl.set_ylabel("Residual: actual − BKL theory ($)")
-ax_rbkl.set_title("BKL residuals — zero in band ↔ spec passes")
+ax_rbkl.set_title("BKL residuals (zero in band $\\Leftrightarrow$ spec passes)")
 ax_rbkl.legend(fontsize=8)
 
 # ── Residuals: Leland bias ───────────────────────────────────────────────────
@@ -1939,16 +2046,16 @@ ax_rlbias.axhline(0, color="#dc2626", ls="--", lw=1.5, label="Zero (theory corre
 ax_rlbias.scatter(_dt_vals, _resid_biases, color="#7c3aed", s=40, zorder=5)
 ax_rlbias.set_xlabel(r"$\Delta t = T/N$ (years)")
 ax_rlbias.set_ylabel("Residual: actual − Leland theory")
-ax_rlbias.set_title("Leland residuals — zero in band ↔ spec passes")
+ax_rlbias.set_title("Boyle-Emanuel residuals (zero in band $\\Leftrightarrow$ spec passes)")
 ax_rlbias.legend(fontsize=8)
 
 fig.suptitle(
-    f"Nonparametric spec test (smoothing spline, GCV) — "
-    f"BKL in-CI: {_bkl_in_ci_frac:.0%} of freqs | "
-    f"Leland in-CI: {_leland_in_ci_frac:.0%} of freqs\n"
-    f"Practical range N∈[20,80]: BKL {'PASS' if _bkl_passes else 'FAIL'}, "
-    f"Leland {'PASS' if _leland_passes else 'FAIL'} — "
-    f"N=5,000 paths × 20 freqs (100K total), B=1,000 bootstraps",
+    f"Nonparametric spec test (smoothing spline, GCV). "
+    f"BKL in-CI: {_bkl_in_ci_frac:.0%} of freqs. "
+    f"Boyle-Emanuel in-CI: {_leland_in_ci_frac:.0%} of freqs.\n"
+    f"Practical range N$\\in$[20,80]: BKL {'PASS' if _bkl_passes else 'FAIL'}, "
+    f"Boyle-Emanuel {'PASS' if _leland_passes else 'FAIL'}. "
+    f"N=5,000 paths $\\times$ 20 freqs (100K total), B=1,000 bootstraps.",
     fontsize=9,
 )
 fig.tight_layout()
@@ -2197,7 +2304,7 @@ ax_192.plot(weeks, bt_192_usd, color="#2563eb", lw=1.8,
 ax_192.plot(weeks, ref_192_usd, color="#dc2626", lw=1.2, ls="--",
             label="Manual Python reference")
 ax_192.set_title(
-    f"Hull Table 19.2 (ITM, $S_T = 57.25$) — agreement: {hull_192_dev_bp:.2f} bp",
+    f"Hull Table 19.2 (ITM, $S_T = 57.25$). Agreement {hull_192_dev_bp:.2f} bp",
     fontsize=10,
 )
 ax_192.set_ylabel("Portfolio value ($)")
@@ -2210,7 +2317,7 @@ ax_193.plot(weeks, bt_193_usd, color="#2563eb", lw=1.8,
 ax_193.plot(weeks, ref_193_usd, color="#dc2626", lw=1.2, ls="--",
             label="Manual Python reference")
 ax_193.set_title(
-    f"Hull Table 19.3 (OTM, $S_T = 48.12$) — agreement: {hull_193_dev_bp:.2f} bp",
+    f"Hull Table 19.3 (OTM, $S_T = 48.12$). Agreement {hull_193_dev_bp:.2f} bp",
     fontsize=10,
 )
 ax_193.legend(fontsize=8, loc="lower left")
@@ -2380,7 +2487,7 @@ ax_eq.set_ylabel("Portfolio value ($)")
 ax_eq.set_title("Long 1,000 shares (equity only)", fontsize=10)
 ax_eq.text(
     0.05, 0.95,
-    f"All {len(_eq_result.certificates)} certs pass",
+    f"All {len(_eq_result.certificates)} audit records pass",
     transform=ax_eq.transAxes, fontsize=9, va="top", color="#16a34a",
 )
 
@@ -2403,7 +2510,7 @@ ax_cc.set_title(
 )
 ax_cc.text(
     0.05, 0.95,
-    f"All {len(_cc_result.certificates)} certs pass",
+    f"All {len(_cc_result.certificates)} audit records pass",
     transform=ax_cc.transAxes, fontsize=9, va="top", color="#16a34a",
 )
 
@@ -2413,32 +2520,38 @@ plt.show()
 plt.close()
 ```
 
-The `EquityStrategy` in the left panel of @fig-equity holds 1,000 shares
-at a fixed quantity with no delta rebalancing. The portfolio value starts
-at exactly zero (the cost of purchasing the shares is funded by
-borrowing against the cash account, so the net asset value at inception
-is zero by `selfFinancing`) and then tracks $N \times \Delta S$ at each
-weekly step, with a small interest debit on the borrowed cash. Every step
-certificate passes, confirming that `valueUpdateFormula` applies to
-equity positions without any modification to the Lean kernel: the
-trade application function receives `(assetId, quantity, markPrice)`
-tuples with no instrument-specific fields, so an equity share and an
-option contract are formally indistinguishable at the ledger layer.
+Funding assumption. Both panels of @fig-equity model the equity
+position as self-financing at inception: the cost of purchasing the
+$N$ shares is borrowed against the cash account, so the net asset
+value at $t=0$ is set to zero. This is a modelling choice that lets
+the panels display the path-wise $N \cdot \Delta S$ tracking error and
+the call premium received at inception against a common zero
+reference. The ledger's `valueIdentity` theorem holds for any positive
+initial cash balance, so the assumption is purely a presentation
+convention.
 
-The `CoveredCallStrategy` in the right panel combines the same equity
-position with a short ATM call ($K = 50$, $\sigma = 20\%$). The call
-premium received at inception raises the initial portfolio value above
-zero. At expiry ($S_T = 57.25 > K$), the call settles in-the-money and
-`settlement_value_formula` certifies the cash transfer; the equity leg
-has no settlement and contributes its final mark-to-market value to the
-terminal PV. All `{python} len(_cc_result.certificates)` step
-certificates pass across the covered-call path, and the terminal PV
-reflects the capped upside of the covered-call payoff: the equity gain
-above $K$ is transferred to the call counterparty at settlement. No new
-Lean theorems were required for either the equity-only or the
-covered-call strategy: the existing `valueUpdateFormula`, `selfFinancing`,
-and `settlement_value_formula` compose
-across instrument types by construction.
+Equity-only panel (left). The `EquityStrategy` holds 1,000 shares at a
+fixed quantity with no delta rebalancing. The portfolio value tracks
+$N \times \Delta S$ at each weekly step, with a small interest debit
+on the borrowed cash, and every step audit record passes. This
+confirms that `valueUpdateFormula` applies to equity positions without
+modification to the Lean kernel: the trade application function
+receives `(assetId, quantity, markPrice)` tuples with no
+instrument-specific fields, so an equity share and an option contract
+are indistinguishable at the ledger layer.
+
+Covered-call panel (right). The `CoveredCallStrategy` combines the
+same equity position with a short ATM call ($K = 50$, $\sigma = 20\%$).
+The call premium received at inception raises the initial portfolio
+value above zero. At expiry ($S_T = 57.25 > K$), the call settles
+in-the-money and `settlement_value_formula` certifies the cash
+transfer; the equity leg has no settlement and contributes its final
+mark-to-market value to the terminal PV. All
+`{python} len(_cc_result.certificates)` step audit records pass across
+the covered-call path, and the terminal PV reflects the capped upside
+of the covered-call payoff: the equity gain above $K$ is transferred
+to the call counterparty at settlement. No new Lean theorems were
+required for either strategy.
 
 
 # Replication {.appendix #sec-replication}
@@ -2459,8 +2572,18 @@ cd ..
 make paper
 ```
 
-After downloading WRDS data per `docs/wrds_data_download.md`, re-run
-`make paper` to regenerate @fig-stress with real market data.
+Toolchain pinning. The Lean toolchain is pinned in
+`backtest-proofs/lean/lean-toolchain` to
+`leanprover/lean4:v4.30.0-rc2`; the Mathlib commit is locked in
+`lake-manifest.json`. The Python environment is pinned by
+`python/pyproject.toml` and `python/uv.lock` and requires Python
+$\geq$ 3.12. The compiled FFI artifact (`libleanbacktest.so`) is
+platform-specific (built on macOS arm64 and Linux x86_64; other
+targets require a fresh `lake build`). The metrics-snapshot JSON
+records the git SHA at render time so each numerical claim in the
+paper can be traced back to a specific commit. After downloading WRDS
+data per `docs/wrds_data_download.md`, re-run `make paper` to
+regenerate @fig-stress with real market data.
 
 # Metrics snapshot {.appendix}
 
