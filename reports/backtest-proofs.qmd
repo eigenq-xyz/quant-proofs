@@ -207,15 +207,6 @@ cost are empirically validated, not formally proved. The contribution
 is the verification workflow and its empirical demonstration, not a
 novel result for European vanilla options.
 
-| Section | Content |
-|---------|---------|
-| §2      | The position ledger: architecture, machine-checked invariants, and the step audit record |
-| §3      | The delta-hedging strategy as the empirical demonstration vehicle |
-| §4      | Methods: data, simulation design, and empirical validation framework |
-| §5      | Empirical validation against Black-Scholes theory and canonical benchmarks |
-| §6      | Historical stress tests across four crisis regimes |
-| §7      | Discussion: limitations, regulatory connections, broader vision |
-
 ## Related Work {#sec-related}
 
 A first body of work concerns backtest overfitting and the statistical
