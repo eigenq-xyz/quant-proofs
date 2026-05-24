@@ -307,14 +307,35 @@ still produces $\$0$ because cash is not debited. The audit record now
 records observed $\Delta\text{PV} = \$0$ and predicted $\Delta\text{PV}
 = \$500$; the mismatch surfaces immediately. The bug is caught.
 
-The class of bug the audit records catch generalizes: any error that
-breaks the trade-accounting identity surfaces on any step where the
-pre-trade quantity multiplied by the price change is nonzero, which the
-Monte Carlo simulation in Section 5 guarantees will occur on the
-overwhelming majority of steps in any realistic backtest. The same bug
-is invisible to statistical validation of the backtest output because
-the bias appears on every step, so it survives all subsample
-comparisons, robustness checks, and out-of-sample tests.
+A test suite cannot reliably catch this bug for two structural reasons.
+First, the trade-accounting identity has a removable singularity at
+$q_{\text{pre}}=0$: when the pre-trade quantity is zero, the predicted
+change in portfolio value is zero regardless of the execution price, so
+a test that constructs inputs from a zero starting position cannot
+distinguish a correct cash debit from no cash debit at all. A natural
+test author writes the first test as "buy 500 shares at \$50 from an
+empty position and check the result" exactly because that is the
+simplest input to construct. The simplest test is also the test the bug
+survives.
+
+Second, even a test that exercises $q_{\text{pre}}>0$ inputs only
+catches the bug on the specific input values it chose to construct.
+There is no algorithmic guarantee that the test set is representative
+of the inputs the live system will see. The bug we constructed is
+trivial to add a second test for once an audit record has flagged it,
+but the next bug a future change introduces will sit in a different
+input neighborhood, and the test suite will need to be extended again
+each time. Testing is reactive: it covers the inputs the author
+remembered to include. The proof is exhaustive: it covers every
+integer-valued input the type system admits, which is the same set of
+inputs the Python execution layer can pass.
+
+Statistical validation of the backtest output is also blind to this
+class of bug. The bias the bug introduces appears on every rebalancing
+step, so the reported P\&L curve is shifted by exactly the same amount
+in every period. Cross-validation, out-of-sample evaluation, and
+regime-conditional comparisons all subtract the bias from itself; the
+bug is invisible to any test that takes the reported P\&L as given.
 
 A formal proof catches this bug because the proof quantifies over all
 integer-valued inputs simultaneously: there is no input under which the
@@ -612,6 +633,24 @@ without modification to the verified ledger.
 Each subsection states its hypothesis, presents the relevant figure,
 and interprets the result as evidence about whether the framework works.
 
+A reader scanning the results will see that none of the empirical
+checks produce perfect agreement with theory: the Monte Carlo mean
+sits 2.34% below the Black-Scholes price, the BKL slope exceeds the
+theoretical line by 13%, the Carr-Madan correlation is 0.951 rather
+than 1.000, and the QuantLib vendor cross-check shows a 2.69 bp
+maximum deviation. Perfect agreement is not the target. Discrete
+delta-hedging differs from continuous delta-hedging by terms of order
+$\Delta t$ that theory predicts and characterizes; integer
+basis-point arithmetic differs from double-precision floating-point
+by bounded rounding error; a single-factor gamma regression cannot
+capture theta or vega P&L. The right question is not whether each
+deviation is zero but whether each deviation has the form that
+discrete-rebalancing theory predicts. An accounting bug in the
+position ledger would not produce a deviation that converges as
+$1/\sqrt{N}$, scatters tightly along the gamma line, or shrinks
+linearly with $\Delta t$. The signature of correct accounting is
+exactly the set of imperfect agreements documented below.
+
 ## Monte Carlo convergence to Black-Scholes {#sec-mc}
 
 Hypothesis. Under Black-Scholes assumptions and GBM dynamics, the
@@ -695,7 +734,7 @@ frequency and the dominant source of dispersion at a fixed frequency.
 
 ```{python}
 #| label: fig-bkl
-#| fig-cap: "Bertsimas-Kogan-Lo test of where hedging-cost variance comes from. Each blue point is the sample standard deviation of total hedging cost across 500 GBM paths at a given rebalancing frequency $N$, plotted against $1/\\sqrt{N}$. BKL theory predicts std(cost) $\\propto 1/\\sqrt{N}$, a straight line through the origin (red dashed, anchored at $N=20$). A skimmer reading this figure should see two things: (i) the five empirical points sit near the theoretical line, confirming that hedging-cost variance grows with the rebalancing interval at the rate theory predicts; (ii) a structural accounting bug (for example, an off-by-one in settlement or a mis-signed cash flow) would produce a *floor* on variance that does not shrink with $N$, breaking the linear pattern. The empirical slope is 13% above theory; this is the discrete-rebalancing correction predicted by @boyle1980 (see error decomposition below), not an accounting failure. Source: 500 GBM paths per frequency, seed 20260519."
+#| fig-cap: "Bertsimas-Kogan-Lo variance scaling test. Each blue point is the sample standard deviation of total hedging cost across 500 GBM paths at a given rebalancing frequency $N$, plotted against $1/\\sqrt{N}$. BKL theory predicts std(cost) $\\propto 1/\\sqrt{N}$, a straight line through the origin (red dashed, anchored at $N=20$). The empirical slope exceeds the theoretical line by 13%, the discrete-rebalancing correction characterized by @boyle1980. An accounting bug would instead produce a variance floor that does not shrink with $N$. Source: 500 GBM paths per frequency."
 
 from backtest_proofs.backtest.leland import leland_variance_sweep
 
@@ -738,7 +777,7 @@ accounting failure.
 
 ```{python}
 #| label: fig-cm
-#| fig-cap: "Carr-Madan test of *where* the variance in hedging cost comes from. The Carr-Madan decomposition predicts that the realized discrete-hedge cost equals the cumulative path-integrated gamma P\\&L $\\int \\frac{1}{2} \\Gamma_t S_t^2 \\sigma^2 dt$ plus noise terms. If the backtester's accounting is correct and the only source of cost variance is the gamma term, the realized total hedging cost (y-axis) should fall on a 45° line through the origin against the path-realized gamma P\\&L (x-axis), modulo discretization noise. Each blue point is one GBM path; the red line is OLS. The Pearson correlation of $r = 0.951$ confirms most of the cost variance is gamma-driven. **Why this matters for accounting validation:** a structural ledger bug (mis-signed cash flows, dropped settlements, wrong quantities at rebalance) would produce points scattered randomly off the line, *not* tight gamma-proportional scatter. The clean linear pattern is positive evidence that the variance comes from the discretization of a known theoretical relationship, not from accounting failure. Source: 200 GBM paths, seed 20260519."
+#| fig-cap: "Carr-Madan gamma attribution. The decomposition predicts that the realized discrete-hedge cost equals the cumulative path-integrated gamma P\\&L $\\int \\frac{1}{2} \\Gamma_t S_t^2 \\sigma^2 dt$ plus higher-order terms (theta, vega, path noise). Each blue point is one GBM path; the red line is OLS. The Pearson correlation $r = 0.951$ implies a single-factor gamma regression explains 90.4% of the variance in realized cost; the remaining 10% sits in the higher-order terms the single-factor model omits. A structural ledger bug would scatter points off the line in a pattern uncorrelated with gamma. Source: 200 GBM paths."
 
 from backtest_proofs.pricer.black_scholes import bs_greeks
 
@@ -1097,7 +1136,7 @@ is no intermediate outcome.
 
 ```{python}
 #| label: fig-stress
-#| fig-cap: "Real-data stress test of the position ledger under four historical market regimes. Each panel shows a violin plot of the ratio (cost of replicating the call by delta hedging) / (Black-Scholes premium received at inception) across all qualifying call series in the regime window. **Reading the violins:** a ratio near 1.0 means the hedger broke even (realized vol matched implied at inception); a ratio above 1.0 means the hedger paid more than the premium received (realized vol *exceeded* implied, typical in crisis); below 1.0 means the hedger pocketed the variance risk premium (typical in calm markets). The four panels span four distinct regime archetypes: pandemic shock (COVID), liquidity crisis (GFC), instantaneous vol-shock (Volmageddon), and a slower rate-driven drawdown (Q4 2018). **What this validates for the backtester:** the headline claim is that the position ledger certifies every rebalancing step *unconditionally*, independent of which side of the variance-risk-premium distribution the period falls on. Step-certificate pass-rate is 100\\% in every window. Source: WRDS OptionMetrics, ATM $\\pm 3\\%$ filter, 20–40 day expiry, $\\ge 5$ consecutive observation requirement (see §5 data table)."
+#| fig-cap: "Real-data stress test under four historical market regimes. Each panel shows a violin plot of the cost-to-premium ratio (cost of replicating the call by delta hedging divided by the Black-Scholes premium received at inception) across all qualifying call series in the regime window. A ratio near 1.0 means the hedger broke even; above 1.0 means realized volatility exceeded the implied volatility quoted at inception (typical in crisis); below 1.0 means the hedger retained the variance risk premium (typical in calm markets). The four panels span four distinct regime archetypes: pandemic shock (COVID 2020), liquidity crisis (GFC 2008), instantaneous vol-shock (Volmageddon 2018), and a rate-driven drawdown (Q4 2018). The step audit record pass rate is 100% in every window, including the worst-case 1.69 median in COVID 2020. Source: WRDS OptionMetrics, ATM ±3% filter, 20–40 day expiry, ≥5 consecutive observations per series."
 
 STRESS_WINDOWS = {
     "COVID 2020\n(Feb 19 – Mar 23)": {
@@ -1410,7 +1449,11 @@ licensed sample is required only to reproduce the stress-regime panels
 in Section 6. Replication instructions, exact parameter values, and
 the metrics snapshot are in the appendix.
 
-# Falsification exhibit: code listing {.appendix #sec-appendix-falsification}
+```{=latex}
+\appendix
+```
+
+# Falsification exhibit: code listing {#sec-appendix-falsification}
 
 The following code exhibit demonstrates the bug described in
 @sec-falsification. The complete exhibit is in
@@ -2120,7 +2163,7 @@ validation desks for new derivatives systems.
 
 ```{python}
 #| label: fig-ql
-#| fig-cap: "Vendor cross-check of the pricing layer against QuantLib's analytic Black-Scholes implementation. Each dot is one $(S, K, T, r, \\sigma)$ evaluation point (5 scenarios spanning calm/stress/expiry regimes, 20+ points each); color denotes scenario. The x-axis is our basis-point integer pricer's call value (dollars), the y-axis is QuantLib's continuous-precision analytic value. The dashed line marks perfect agreement. **What a validation desk would conclude from this figure:** all evaluation points sit on the diagonal to within 2.69 basis points (the annotated maximum deviation). At a typical buy-side firm, vendor cross-checks of new derivatives pricers are accepted at a 3–5 bp tolerance; this pricer is well inside that envelope. **What this rules out:** any systematic bias in our integer arithmetic that would corrupt the hedging-cost figures in the rest of the paper. Source: synthetic GBM, seed 20260519, 5 parameter scenarios."
+#| fig-cap: "Vendor cross-check of the pricing layer against QuantLib's analytic Black-Scholes implementation. Each dot is one $(S, K, T, r, \\sigma)$ evaluation point across five scenarios spanning calm, stress, and near-expiry regimes; color denotes scenario. The x-axis is the basis-point integer pricer's call value, the y-axis is QuantLib's double-precision value. The dashed line marks identical pricing. Maximum deviation across all scenarios is 2.69 basis points, attributable to the rounding band of basis-point integer arithmetic versus double-precision floating point and to differences between the two libraries' implementations of erf, log, and exp. A bug in integer arithmetic would produce a systematic offset, not a 2.69 bp noise band. Source: 5 parameter scenarios, 20+ evaluation points each."
 
 try:
     from backtest_proofs.backtest.quantlib_compare import (
@@ -2191,7 +2234,7 @@ pricing bias at the 3 bp threshold used by buy-side validation desks.
 
 ```{python}
 #| label: fig-equity
-#| fig-cap: "Instrument-agnostic accounting demo. Left panel: long 1,000 shares on the Hull 19.2 price path. Portfolio value (blue) starts at 0 (self-financing: borrowed N×S₀ to purchase shares) and tracks N×ΔS at each step; all step audit records pass, confirming valueUpdateFormula holds for equity positions with no modification to the Lean kernel. Right panel: covered call on the same path (long 1,000 shares + short 1 ATM call, K=50, σ=20%). The call premium received at inception raises the initial PV above zero; at expiry the call settles ITM and the accounting ledger is certified by settlement_value_formula. No new Lean proof was required for either strategy."
+#| fig-cap: "Instrument-agnostic accounting demonstration. Left panel: long 1,000 shares on the Hull 19.2 price path. Portfolio value (blue) starts at 0 (self-financing: cash borrowed at inception to purchase shares) and tracks $N \\times \\Delta S$ at each step. All step audit records pass: the trade-accounting identity holds for equity positions without modification to the ledger. Right panel: covered call on the same path (long 1,000 shares plus short 1 ATM call, K=50, $\\sigma$=20%). The call premium received at inception raises the initial portfolio value above zero; at expiry the call settles ITM and the settlement identity certifies the cash transfer."
 
 from backtest_proofs.backtest.runner import (
     CoveredCallStrategy,
