@@ -11,8 +11,7 @@
 
 The formal verification methodology and empirical validation are described in:
 
-> **[Lean 4 Proof-Checked Delta-Hedging: Accounting Invariants with Empirical Validation Across Four Historical Regimes](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.html)**
-> [PDF](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf) · EigenQ Research Series · 2026
+> **[Provably Correct Quantitative Backtesting](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf)** (PDF) · EigenQ Research Series · 2026
 
 Formally verified accounting invariants for options portfolio backtesting.
 

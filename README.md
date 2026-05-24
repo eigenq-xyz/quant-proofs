@@ -23,7 +23,6 @@ Before trusting a numerical result, prove the accounting correct. Each project h
 
 The paper proves 11 accounting theorems zero-sorry and validates them on 491,390 WRDS OptionMetrics observations across four historical stress regimes.
 
-- HTML: [eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.html](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.html)
 - PDF: [eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf)
 
 ## Quick start
