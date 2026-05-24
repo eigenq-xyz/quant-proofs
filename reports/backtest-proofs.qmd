@@ -9,23 +9,28 @@ abstract: |
   Bugs in a backtester's accounting ledger produce plausible profit and
   loss time series that statistical validation cannot diagnose: the test
   takes the reported P&L as given. We build a backtesting framework
-  whose position ledger is machine-checked in Lean 4 and integrated into
-  Python at runtime, eliminating this class of error by construction.
-  The framework is asset-agnostic. Any trading strategy that produces
-  integer-valued trades inherits the same accounting guarantee. The
-  framework produces a machine-readable audit record at every
-  rebalancing step, directly addressing the ongoing-monitoring
-  requirement under SR 11-7 model risk management guidance. We validate
-  the framework using a discrete delta-hedging strategy on European
-  call options. Empirical hedging cost converges to the Black-Scholes
-  price within 2.34% across 500 Monte Carlo paths; the pricing
-  implementation agrees with QuantLib to within 2.69 basis points
-  across five canonical parameter scenarios; and the verified
-  accounting holds across four historical stress regimes (GFC 2008,
-  Volmageddon 2018, Q4 2018, COVID 2020). Primary results assume flat
-  per-series implied volatility and European-style payoffs. Extension
-  to a dynamic volatility surface and proportional transaction costs is
-  left for future work.
+  whose position ledger is machine-checked in Lean 4 and exposed to
+  Python through a runtime bridge that emits a per-step audit record,
+  ruling out accounting errors in the verified layer. The framework is
+  asset-agnostic: any strategy that produces integer-valued trades
+  inherits the same accounting guarantee, and the audit records address
+  the ongoing-monitoring requirement under SR 11-7 model risk
+  management guidance. We exercise the framework using a discrete
+  delta-hedging strategy on European call options, with per-series
+  implied volatility held flat at the inception date. Across 30,917
+  OptionMetrics option-day observations spanning four historical stress
+  regimes (GFC 2008, Volmageddon 2018, Q4 2018, COVID 2020) and 25,363
+  qualifying series in a 2021–2023 calm-market holdout, every step
+  audit record passes on real-data inputs the synthetic test harness
+  cannot replicate. Separately, the discrete-hedging implementation
+  reproduces the standard benchmarks: realized hedging cost converges
+  to within 2.34% of the Black-Scholes price across 500 Monte Carlo
+  paths, the integer pricer agrees with QuantLib to within 2.69 basis
+  points across five canonical scenarios, and the Bertsimas-Kogan-Lo
+  variance-scaling and Carr-Madan gamma-attribution predictions hold
+  within bootstrap confidence intervals on a 100,000-simulation panel.
+  Extension to a dynamic volatility surface, proportional transaction
+  costs, and American-style payoffs is left for future work.
 keywords:
   - quantitative finance
   - formal verification
@@ -129,19 +134,20 @@ plt.rcParams.update({
 On 1 August 2012, Knight Capital lost roughly $440 million in 45 minutes
 when a deployment activated an obsolete code path alongside new order
 routing logic, sending millions of unintended orders into the market
-before the firm could halt trading. The failure is the canonical
-illustration of a class of bug that statistical validation cannot
-detect: the defect lives in code that only executes on inputs the test
-author did not anticipate. Backtesters exhibit a structurally similar
-failure mode but in a quieter register: a flawed accounting ledger
-produces a plausible P&L time series rather than a flood of erroneous
-live orders, so the error can survive both in-sample and out-of-sample
-evaluation undetected. When the accounting ledger contains a bug (a
-settlement dropped, a cash debit applied at the wrong step, a position
-quantity that drifts from its trade history), the reported P&L is
-well-formed. It generates a Sharpe ratio, it passes out-of-sample
-evaluation, it survives robustness checks across regimes. The bug is
-invisible because the test takes the reported P&L as given.
+before the firm could halt trading. The bug routed orders, not P&L
+entries, so the analogy to backtesting is not in the location of the
+defect but in its structural cause: the obsolete code path executed on
+an input neighborhood the test author had not anticipated, and the test
+suite that had passed during deployment could not have caught it.
+Backtesters carry the same exposure in a quieter register. A flawed
+accounting ledger produces a plausible P&L time series rather than a
+flood of erroneous live orders, so the error can survive both in-sample
+and out-of-sample evaluation undetected. When the accounting ledger
+contains a bug (a settlement dropped, a cash debit applied at the wrong
+step, a position quantity that drifts from its trade history), the
+reported P&L is well-formed. It generates a Sharpe ratio, it passes
+out-of-sample evaluation, it survives robustness checks across regimes.
+The bug is invisible because the test takes the reported P&L as given.
 @bougeret2026 audited five widely used open-source backtesting engines
 and documented exactly this class of error; @lowetal2015 documented the
 same class of silent error in a deployed production system. Testing
@@ -149,12 +155,18 @@ inevitably checks correctness on the inputs the test author chose; live
 historical data presents inputs the test author did not anticipate.
 
 This paper builds a backtesting framework whose accounting layer (the
-position ledger) is machine-checked, eliminating this class of error by
-construction. The framework is asset-agnostic. Any strategy that
-produces integer-valued trades inherits the same accounting guarantee.
-We demonstrate the framework using a discrete delta-hedging strategy on
-European call options, but delta-hedging is the validation vehicle, not
-the contribution.
+position ledger) is machine-checked in Lean 4 and exposed to Python
+through a runtime bridge that emits a per-step audit record. The proved
+kernel rules out accounting errors of the silent kind described above
+within the verified layer; the bridge that ferries integer-valued
+inputs across the FFI boundary is itself unproved, and the audit record
+is the artifact that closes the loop (a mismatch between the proved
+prediction and the runtime state surfaces as a record failure rather
+than as silent ledger corruption). The framework is asset-agnostic. Any
+strategy that produces integer-valued trades inherits the same
+accounting guarantee. We demonstrate the framework using a discrete
+delta-hedging strategy on European call options, but delta-hedging is
+the validation vehicle, not the contribution.
 
 Formal verification is the practice of writing machine-checked proofs
 that code satisfies a mathematical specification. @peytonjones2000 and
@@ -175,29 +187,34 @@ not confined to specialist demonstrations.
 Three contributions follow.
 
 1. An open-source backtesting framework whose position ledger is
-   machine-checked. Any practitioner deploying it receives an
-   unconditional guarantee that a specific class of accounting errors
-   (cash flows, position quantities, portfolio-value reconciliation)
-   cannot occur. The guarantee holds regardless of the strategy
+   machine-checked. Cash flows, position quantities, and the
+   portfolio-value identity are discharged by Lean's kernel for every
+   integer-valued input the runtime bridge can pass. The guarantee
+   holds within the verified layer regardless of the strategy
    implemented on top of the ledger.
 
 2. An integration of formal verification into the Python
-   quantitative-research ecosystem. The verified ledger runs in the
-   Python process via a Python runtime bridge, and the framework
-   produces a machine-readable audit record at every rebalancing step.
-   This directly addresses the ongoing-monitoring requirement under
-   SR 11-7 model risk management guidance [@sr117] and OCC Bulletin
-   2011-12.
+   quantitative-research ecosystem. The verified kernel runs in the
+   Python process via a runtime bridge, and the framework produces a
+   machine-readable step audit record at every rebalancing step that
+   compares the proved prediction to the observed P&L change. This
+   directly addresses the ongoing-monitoring requirement under SR 11-7
+   model risk management guidance [@sr117] and OCC Bulletin 2011-12.
 
-3. Empirical validation across 491,390 WRDS OptionMetrics option-day
-   observations and four historical stress regimes (GFC 2008,
-   Volmageddon 2018, Q4 2018, COVID 2020). The framework produces
-   results consistent with Black-Scholes theory, with the
-   discrete-hedging literature (@boyle1980; @leland1985), and with
-   the variance risk premium pattern documented by @bakshikapadia2003.
-   The contribution is the validation framework and its scale across
-   real market data, not a novel result about European vanilla options
-   per se.
+3. An empirical demonstration that the step audit records pass on
+   real-data inputs the synthetic test harness cannot replicate.
+   Across 491,390 WRDS OptionMetrics option-day observations and four
+   historical stress regimes (GFC 2008, Volmageddon 2018, Q4 2018,
+   COVID 2020), every step audit record passes. Separately, the
+   discrete-hedging implementation reproduces the standard benchmarks:
+   Monte Carlo hedging cost converges to the Black-Scholes price, the
+   Bertsimas-Kogan-Lo and Carr-Madan attributions hold within
+   bootstrap confidence intervals on a 100,000-simulation panel, and
+   the variance risk premium documented by @bakshikapadia2003 appears
+   in both the holdout median and the crisis-window reversal. These
+   are two distinct claims: the first is the framework guarantee, the
+   second is a sanity check on the discrete-hedging implementation
+   running on top of it.
 
 The position ledger is proved for any integer-representable instrument:
 cash flows, position quantities, and the portfolio-value identity hold
@@ -236,9 +253,13 @@ across rebalancing frequencies and option characteristics in real data.
 pricing and hedging derivatives from market data, providing a model-free
 baseline. @bakshikapadia2003 documents the negative variance risk
 premium that drives the cost-to-premium ratio in real options markets.
-Our empirical sections (@sec-mc, @sec-wrds) reproduce and extend these
-benchmarks on synthetic and real data using the verified position
-ledger.
+Modern reinforcement-learning extensions such as deep hedging
+[@buehler2019] generalize the strategy layer but rely on the same
+accounting bookkeeping to compute realized P&L, so the verified ledger
+introduced here is composable with these recent approaches. Our
+empirical sections (@sec-mc, @sec-wrds) reproduce and extend the
+classical benchmarks on synthetic and real data using the verified
+position ledger.
 
 A third body of work supplies the institutional motivation for
 machine-readable audit trails. Supervisory guidance on model risk
@@ -337,10 +358,25 @@ in every period. Cross-validation, out-of-sample evaluation, and
 regime-conditional comparisons all subtract the bias from itself; the
 bug is invisible to any test that takes the reported P\&L as given.
 
-A formal proof catches this bug because the proof quantifies over all
-integer-valued inputs simultaneously: there is no input under which the
-predicted and observed portfolio-value changes can disagree if the
-trade-accounting function is implemented correctly. The complete code
+A natural reader will ask what the Lean proof contributes that a
+carefully written runtime assertion in Python could not. The bug above
+is caught at the audit-record check, which is a runtime comparison of
+the predicted change in portfolio value against the observed change.
+The same comparison could in principle be coded as a Python assertion
+without any proof assistant. The proof's contribution is upstream of
+that comparison. It establishes two things a hand-written assertion
+cannot. First, the formula on the right-hand side of the audit-record
+check ($q_{\text{pre}} \cdot (p_{\text{exec}} - p_{\text{mark}}) -
+\text{fee}$) is the specification of the trade-accounting identity for
+the verified ledger, machine-checked to be the unique formula that the
+ledger's trade-update function satisfies for every integer-valued
+input. Without the proof, the assertion's right-hand side is a hand
+transcription, itself prone to the same class of bug it is meant to
+catch. Second, the proof quantifies over every integer-valued input the
+type system admits; the bridge cannot pass an input the proof does not
+cover. The audit record is therefore not a sample of the input space
+but a witness, on every step the runtime actually executes, that the
+proved prediction matches the observed P&L change. The complete code
 exhibit and the full audit-record format are in Appendix A.
 
 # The Position Ledger {#sec-ledger}
@@ -357,13 +393,18 @@ dollar); the proved theorems hold as universal statements over
 integer-valued inputs, with no floating-point arithmetic crossing the
 proved boundary.
 
-The ledger rejects at construction any position with a non-positive
-mark price, any trade with a non-positive execution price or a negative
-fee, and any portfolio whose reported value disagrees with cash plus
-the sum of position values. The ledger therefore cannot represent an
-inconsistent state, and the central invariant that portfolio value
-equals cash plus the sum of position values holds by construction for
-every portfolio the ledger admits.
+The three data types carry structural invariants at the Lean type
+level. A position requires a positive mark price; a trade requires a
+positive execution price and a non-negative fee; a portfolio requires
+its reported value to equal cash plus the sum of position values. A
+value of any of the three types whose components do not satisfy these
+invariants cannot be constructed: the Lean elaborator rejects it. The
+runtime bridge applies the same invariants to integer inputs crossing
+the FFI boundary before passing them to the proved kernel, so any
+inconsistent runtime input is rejected at the boundary rather than
+propagated. The central identity, that portfolio value equals cash
+plus the sum of position values, is therefore a typing invariant
+rather than a runtime check.
 
 The ledger's update rule applies a single trade to a portfolio: it
 adjusts the position quantity by the signed trade size, debits cash by
@@ -374,49 +415,50 @@ ledger is instrument-agnostic by construction.
 
 ## What is machine-checked {#sec-ledger-proofs}
 
-Eleven theorems describe what the ledger cannot do wrong.
+Eight substantive theorems describe what the ledger cannot do wrong,
+together with three payoff-sign obligations that the type system
+discharges as immediate consequences of the payoff definition.
 
 | Theorem | What it guarantees | Accounting failure it prevents |
 |---|---|---|
-| NAV identity | Portfolio value always equals cash plus the sum of position values | Reported P&L that is inconsistent with the actual ledger entries |
-| Cash update | Cash debited exactly by execution cost plus fee | Cash that appears or vanishes without a corresponding trade |
-| Quantity conservation | Position size changes by exactly the signed trade quantity | Positions that drift from what was actually transacted |
-| Trade accounting | NAV change equals mark-to-market gain on pre-trade holding minus fee | Rebalancing costs that are mis-attributed or omitted |
-| Self-financing | A costless trade leaves NAV unchanged | Free-lunch errors where a zero-cost operation changes reported wealth |
-| Self-financing with fee | NAV change under a fixed fee equals mark-to-market gain minus fee | Fixed transaction costs that are inconsistently applied |
-| Well-formedness | A valid trade preserves the portfolio's validity invariant | State inconsistencies that could corrupt downstream P&L |
-| Settlement | Option settlement changes NAV by quantity times (payoff minus mark) | Incorrect option expiry cash flows under ITM or OTM scenarios |
-| Call payoff ≥ 0 | Call option payoff is always non-negative | A call holder being charged at expiry |
-| Put payoff ≥ 0 | Put option payoff is always non-negative | A put holder being charged at expiry |
-| Option payoff ≥ 0 | Any option payoff is always non-negative | Payoff sign errors under any moneyness scenario |
+| NAV identity | Portfolio value equals cash plus the sum of position values | Portfolio value drifts from cash plus marked positions |
+| Cash update | Cash debited by execution cost plus fee | Cash flows that do not match the trade ledger |
+| Quantity conservation | Position size changes by the signed trade quantity | Positions drift from transacted quantities |
+| Trade accounting | NAV change equals pre-trade quantity × (exec − mark) − fee | Rebalancing P&L mis-attributed or partially recorded |
+| Self-financing | A costless trade leaves NAV unchanged | Free-lunch P&L from zero-cost operations |
+| Self-financing with fee | NAV change under a fixed fee equals mark-to-market gain minus fee | Fixed transaction costs inconsistently applied |
+| Well-formedness | A valid trade preserves the portfolio's validity invariant | Inconsistent ledger state propagates downstream |
+| Settlement | Option settlement changes NAV by quantity × (payoff − mark) | Incorrect ITM/OTM expiry cash flows |
+| Payoff well-formedness | Call, put, and generic option payoffs are non-negative | Sign error at expiry charges the option holder |
 
-: Lean 4 theorem map. All 11 theorems are machine-checked with zero
-proof placeholders. Full theorem statements and source identifiers are
-in Appendix A.
+: Lean 4 theorem map. Eight substantive theorems plus three
+payoff-sign obligations (folded into the last row) are machine-checked
+with zero proof placeholders. Full Lean type signatures are in
+Appendix B (@sec-appendix-theorems).
 {#tbl-theorems tbl-colwidths="[22,40,38]"}
 
 The first seven theorems govern instrument-agnostic accounting. Cash
-always updates by exactly the trade cost and fee; positions update by
-exactly the signed trade size; portfolio value always equals cash plus
-the sum of position values; a trade at the prevailing mark price changes
-portfolio value only by the fee. Any asset representable as an integer
-mark price and a signed quantity inherits these guarantees. An equity
-position, a futures contract, and an options position are treated
-identically by the position ledger.
+updates by the trade cost and fee; positions update by the signed
+trade size; portfolio value equals cash plus position values; a trade
+at the prevailing mark price changes portfolio value only by the fee.
+Any asset representable as an integer mark price and a signed quantity
+inherits these guarantees. An equity position, a futures contract, and
+an options position are treated identically by the position ledger.
 
-The remaining four theorems cover option settlement and payoff
-non-negativity. Settling a European option at expiry changes portfolio
-value by the quantity held times the difference between the option's
-payoff and its pre-expiry mark price, a single equation that handles
-in-the-money and out-of-the-money paths without case logic at the call
-site. The three payoff theorems establish that call, put, and generic
-option payoffs are always non-negative, the economic statement that
-option holders bear no downside risk at expiry. Extending the
-formalization to instruments with different settlement conventions, such
-as mark-to-market for futures or accrued coupon for bonds, would require
-analogous settlement invariants; this is left to future work, and
-mirrors the separation of portfolio accounting from instrument-specific
-settlement in the Isabelle/HOL formalization of @echenim2021.
+The settlement theorem covers European option expiry: settling at
+expiry changes portfolio value by the quantity held times the
+difference between the option's payoff and its pre-expiry mark price,
+one equation that handles in-the-money and out-of-the-money paths
+without case logic at the call site. The payoff well-formedness
+obligations (call, put, and generic option payoffs are non-negative)
+are the economic statement that option holders bear no downside risk
+at expiry; the type system discharges them from the max-with-zero
+definition of payoff. Extending the formalization to instruments with
+different settlement conventions, such as mark-to-market for futures or
+accrued coupon for bonds, would require analogous settlement
+invariants; this is left to future work, and mirrors the separation of
+portfolio accounting from instrument-specific settlement in the
+Isabelle/HOL formalization of @echenim2021.
 
 The proofs hold for any integer-representable input. They do not, and
 cannot, guarantee correctness of the upstream pricing model, the price
@@ -458,10 +500,11 @@ strategy logic, or the quality of the input data. These four sources of
 risk are empirically evaluated in @sec-data through @sec-mc.
 
 The comparison class for the formal results is narrow but precise. The
-ledger proofs eliminate accounting errors that no statistical test can
-detect, because any test takes the reported P&L as an input. They do not
-address model risk or strategy risk, and they do not substitute for the
-empirical validation that the remainder of the paper provides.
+ledger proofs rule out, within the verified kernel, the class of
+accounting errors that no statistical test can detect, because any test
+takes the reported P&L as an input. They do not address model risk or
+strategy risk, and they do not substitute for the empirical validation
+that the remainder of the paper provides.
 
 # The Delta-Hedging Strategy {#sec-strategy}
 
@@ -712,13 +755,21 @@ inside the 3% tolerance band typically used to validate discrete-hedging
 implementations against the continuous-time benchmark.
 
 Interpretation. The signed direction (running-mean cost below the BS
-price) is the qualitative signature of the O($\Delta t$) downward
-correction predicted by @leland1985 for discrete rebalancing at $N=20$
-steps. It is not the signature of an accounting error, which would
-produce a sign-and-magnitude-independent bias whose size does not
-shrink with rebalancing frequency. Convergence inside the tolerance
-band is consistent with the running-mean cost reflecting the GBM
-hedging error alone, with no residual contribution from the ledger.
+price) is the qualitative signature of the discrete-rebalancing bias
+documented by @boyle1980: under GBM with no transaction costs, discrete
+delta hedging at $N=20$ steps under-replicates the
+continuously-rebalanced premium by an amount of order $\Delta t$ from
+the gamma-curvature interaction with discrete price increments. (The
+@leland1985 modified-volatility correction is the transaction-cost
+analog and does not apply here, since the Monte Carlo sweep is run
+with zero fees.) The signature is not that of an accounting error,
+which would produce a sign-and-magnitude-independent bias whose size
+does not shrink with rebalancing frequency; the linear-in-$\Delta t$
+convergence to zero is documented in @sec-appendix-error-decomp and
+revisited under bootstrap confidence intervals in
+@sec-appendix-bootstrap. Convergence inside the tolerance band is
+consistent with the running-mean cost reflecting the GBM hedging error
+alone, with no residual contribution from the ledger.
 
 ## BKL variance scaling and Carr-Madan attribution {#sec-bkl-cm}
 
@@ -1304,10 +1355,11 @@ follows from these guarantees for scope and extension.
 
 ## What the proofs guarantee {#sec-proof-scope}
 
-The Lean 4 proofs hold unconditionally, by construction, for every
-integer-representable input. This is categorically different from
-testing. Testing samples the input space; the proofs quantify over it.
-The portfolio-value identity, trade accounting, cash update, quantity
+The Lean 4 proofs hold for every integer-representable input, with no
+side conditions on the input distribution or the strategy that produces
+the inputs. This is categorically different from testing. Testing
+samples the input space; the proofs quantify over it. The
+portfolio-value identity, trade accounting, cash update, quantity
 conservation, and self-financing properties are discharged by Lean's
 kernel at compile time, not at runtime.
 
@@ -1450,7 +1502,10 @@ in Section 6. Replication instructions, exact parameter values, and
 the metrics snapshot are in the appendix.
 
 ```{=latex}
+\clearpage
 \appendix
+\part*{Appendix}
+\addcontentsline{toc}{part}{Appendix}
 ```
 
 # Falsification exhibit: code listing {.appendix #sec-appendix-falsification}
@@ -1583,7 +1638,7 @@ nonzero term, not a defect in the backtester.
 
 ```{python}
 #| label: fig-leland-bias
-#| fig-cap: "Mean relative bias (E[cost] − BS) / BS vs. rebalancing interval Δt = T/N for N $\\in$ {5, 10, 20, 40, 80, 160} steps (500 paths each). Blue dots: empirical mean bias. Red dashed: OLS fit through the origin (mean_bias = a × Δt). The negative sign is consistent with the O(Δt) downward correction to BS under discrete rebalancing predicted by @leland1985. Source: synthetic GBM, seed 20260519."
+#| fig-cap: "Mean relative bias (E[cost] − BS) / BS vs. rebalancing interval Δt = T/N for N $\\in$ {5, 10, 20, 40, 80, 160} steps (500 paths each). Blue dots: empirical mean bias. Red dashed: OLS fit through the origin (mean_bias = a × Δt). The negative sign and linear-in-Δt convergence to zero are consistent with the discrete-rebalancing bias documented by @boyle1980 for GBM dynamics with zero transaction costs; the Leland (1985) modified-volatility correction is the transaction-cost analog and does not apply at zero TC. Source: synthetic GBM, seed 20260519."
 
 from backtest_proofs.backtest.leland import leland_bias_sweep as _leland_bias_sweep
 
@@ -1633,16 +1688,18 @@ The mean relative bias decreases linearly toward zero as the rebalancing
 interval Δt = T/N shrinks, with the OLS fit through the origin achieving
 $R^2 =$ `{python} f"{leland_bias_r_sq:.3f}"` and slope
 `{python} f"{leland_bias_slope:.3f}"` (@fig-leland-bias). This empirical
-linearity is the O(Δt) signature that @leland1985 and @bertsimas2000
-predict: under discrete delta hedging of a written call, the gap between
-expected hedge cost and the Black-Scholes price contracts proportionally
-to T/N, not to $\sqrt{T/N}$ (which would indicate random noise) or to a
-constant (which would indicate a structural accounting bug). The sign is
-negative throughout (cost lies below the BS price), consistent with the
-well-known result that discrete replication underestimates the
-continuously-rebalanced Black-Scholes premium in the zero-transaction-cost
-case [@leland1985, §II]. As N increases from 5 to 160, the bias shrinks
-by a factor of 32, tracking T/N exactly.
+linearity is the O(Δt) signature documented by @boyle1980 for GBM
+dynamics with zero transaction costs and consistent with the
+higher-order treatment of @bertsimas2000: under discrete delta hedging
+of a written call, the gap between expected hedge cost and the
+Black-Scholes price contracts proportionally to T/N, not to $\sqrt{T/N}$
+(which would indicate random noise) or to a constant (which would
+indicate a structural accounting bug). The sign is negative throughout
+(cost lies below the BS price), consistent with the well-known result
+that discrete replication under-replicates the continuously-rebalanced
+Black-Scholes premium in the zero-transaction-cost case [@boyle1980].
+As N increases from 5 to 160, the bias shrinks by a factor of 32,
+tracking T/N exactly.
 
 The O(Δt) linear convergence rules out the two alternative explanations
 for the nonzero mean
@@ -1978,9 +2035,10 @@ $p =$ `{python} f"{p_val_bias:.4f}"`, with mean error
 the 1% level; the mean lies
 `{python} f"{abs(mean_err_pct)/std_err_pct:.2f}"` standard deviations
 below zero. The signed direction (negative: hedging cost below BS
-price) is consistent with the O($\Delta t$) downward correction under
-discrete rebalancing [@leland1985], not with an accounting bug, which
-would produce a positive or path-dependent bias. The mean is
+price) is consistent with the O($\Delta t$) discrete-rebalancing bias
+documented by @boyle1980 under GBM with zero transaction costs, not
+with an accounting bug, which would produce a positive or
+path-dependent bias. The mean is
 economically small relative to the standard deviation (ratio
 `{python} f"{abs(mean_err_pct)/std_err_pct:.3f}"`). The t-test has
 asymptotic validity under the CLT at $n = 500$; a Wilcoxon signed-rank
