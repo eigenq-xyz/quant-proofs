@@ -6,20 +6,31 @@ Monorepo for formally verified quantitative finance. Lean 4 proofs + Python/Cyth
 
 | Dir | What | Build | Test |
 |-----|------|-------|------|
+| `ftap-proofs/` | Discrete FTAP (Harrison-Pliska 1981): no arbitrage iff EMM exists | `cd ftap-proofs && lake build` | `grep -rn sorry --include="*.lean" ftap-proofs/` |
+| `options-proofs/` | Put-call parity via Cox-Ross-Rubinstein; depends on ftap-proofs | `cd options-proofs && lake build` | same |
 | `quant-core/` | Shared pricing primitives (OptionKind, payoffs, Black-Scholes, GBM) | `cd quant-core/lean && lake build` | `cd quant-core/python && pytest` |
-| `backtest-proofs/` | Options delta-hedging backtester with Lean 4 accounting module | `cd backtest-proofs/lean && lake build` | `cd backtest-proofs/python && pytest` |
-| `ftap-proofs/` | Discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981) | `cd ftap-proofs && lake build` | `grep -rn sorry --include="*.lean" ftap-proofs/` |
-| `options-proofs/` | Put-call parity via Cox-Ross-Rubinstein binomial model | `cd options-proofs && lake build` | same |
 | `mortgage-proofs/` | LangGraph multi-agent mortgage pipeline + Lean 4 invariant checking | `cd mortgage-proofs && lake build` | `cd mortgage-proofs && pytest` |
+| `archive/` | Superseded work — do not build or extend | — | — |
 
-Each subdir has its own CLAUDE.md with architecture details. Read that before working in a subdir.
+Planned: `backtest-proofs/` (event-driven backtester, $\mathcal{F}_t$-measurability proofs, after FTAP).
+
+Each active subdir has its own CLAUDE.md with architecture details. Read that before working in a subdir.
 
 ## Hard rules
 
 - Zero `sorry` on main. No exceptions.
 - `mypy --strict` clean on all Python in `src/`.
-- Licensed data (OptionMetrics/WRDS, Polygon paid) never committed. See `/source-financial-data`.
+- Licensed data (OptionMetrics/WRDS, Polygon paid) never committed.
 - No private content: no GPA, grades, target firm names in strategy context, resume paths, or application timelines.
+- Never extend or reference `archive/` as active code. It is read-only history.
+
+## Summer 2026 sequence
+
+1. **FTAP proof** (`ftap-proofs/`) — Harrison-Pliska 1981. Complete the Lean 4 proof. This is the theoretical spine everything else cites.
+2. **Put-call parity** (`options-proofs/`) — CRR binomial model; proof cites FTAP.
+3. **Real backtester** (new `backtest-proofs/`) — event-driven engine with $\mathcal{F}_t$-measurability proofs. Cites ftap-proofs results.
+
+Read López de Prado (AFML Ch 1–4, 8–11) and Grinold & Kahn (Ch 1–6) in parallel with FTAP work.
 
 ## Planning
 
@@ -31,12 +42,9 @@ gh issue list --state open
 gh api repos/eigenq-xyz/quant-proofs/milestones --jq '.[] | {number,title,due_on,open_issues}'
 ```
 
-Active milestones: #1 SSRN preprint (2026-08-01) · #2 JAR submission (2026-11-30).
-
 ## Skills and agents
 
 Run `/onboard-to-eigenq` for the full codebase briefing.
-Run `/write-lean4-proofs` or `/write-python-code` before writing code.
 
 ## Why this repo exists
 

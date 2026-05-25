@@ -1021,16 +1021,14 @@ class TestHoldoutValidation:
 # ---------------------------------------------------------------------------
 
 # Period-specific approximate risk-free rates
-_R_COVID_2020 = 0.0025   # Fed cut to ~0 % by Mar 15, 2020; average ≈ 0.25 %
-_R_GFC_2008 = 0.01       # Fed funds fell 2 % → 0.25 % during window
-_R_VOLM_2018 = 0.015     # Fed funds ~1.5 % early 2018
-_R_DEC2018 = 0.0225      # Fed funds ~2.25 % (last hike Dec 19, 2018)
+_R_COVID_2020 = 0.0025  # Fed cut to ~0 % by Mar 15, 2020; average ≈ 0.25 %
+_R_GFC_2008 = 0.01  # Fed funds fell 2 % → 0.25 % during window
+_R_VOLM_2018 = 0.015  # Fed funds ~1.5 % early 2018
+_R_DEC2018 = 0.0225  # Fed funds ~2.25 % (last hike Dec 19, 2018)
 
-_STRESS_MIN_SERIES = 5   # minimum qualifying option series to run assertions
+_STRESS_MIN_SERIES = 5  # minimum qualifying option series to run assertions
 
 _DATA_ROOT = Path(__file__).parent.parent.parent / "data"
-
-
 
 
 class TestStressCovid2020:
@@ -1071,8 +1069,11 @@ class TestStressCovid2020:
         if not self._data_available():
             pytest.skip("portfolio_atm_options.parquet not present")
         ratios, _n_obs, n = _run_stress_window(
-            self._load(), self._DATE_START, self._DATE_END,
-            _R_COVID_2020, "COVID-2020",
+            self._load(),
+            self._DATE_START,
+            self._DATE_END,
+            _R_COVID_2020,
+            "COVID-2020",
         )
         assert n >= _STRESS_MIN_SERIES, (
             f"Only {n} qualifying series in COVID window — check data coverage"
@@ -1089,8 +1090,11 @@ class TestStressCovid2020:
         if not self._data_available():
             pytest.skip("portfolio_atm_options.parquet not present")
         ratios, _n_obs, n = _run_stress_window(
-            self._load(), self._DATE_START, self._DATE_END,
-            _R_COVID_2020, "COVID-2020",
+            self._load(),
+            self._DATE_START,
+            self._DATE_END,
+            _R_COVID_2020,
+            "COVID-2020",
         )
         assert n >= _STRESS_MIN_SERIES
         import numpy as np
@@ -1135,8 +1139,10 @@ class TestStressGFC2008:
 
         ratios, _n_obs, n = _run_stress_window(
             pd.read_parquet(self._DATA_FILE),
-            self._DATE_START, self._DATE_END,
-            _R_GFC_2008, "GFC-2008",
+            self._DATE_START,
+            self._DATE_END,
+            _R_GFC_2008,
+            "GFC-2008",
         )
         assert n >= _STRESS_MIN_SERIES, (
             f"Only {n} qualifying series in GFC window — check data coverage"
@@ -1151,8 +1157,10 @@ class TestStressGFC2008:
 
         ratios, _n_obs, n = _run_stress_window(
             pd.read_parquet(self._DATA_FILE),
-            self._DATE_START, self._DATE_END,
-            _R_GFC_2008, "GFC-2008",
+            self._DATE_START,
+            self._DATE_END,
+            _R_GFC_2008,
+            "GFC-2008",
         )
         assert n >= _STRESS_MIN_SERIES
         assert float(np.median(ratios)) > 1.0, (
@@ -1193,8 +1201,10 @@ class TestStressVolmageddon2018:
 
         ratios, _n_obs, n = _run_stress_window(
             pd.read_parquet(self._DATA_FILE),
-            self._DATE_START, self._DATE_END,
-            _R_VOLM_2018, "Volmageddon-2018",
+            self._DATE_START,
+            self._DATE_END,
+            _R_VOLM_2018,
+            "Volmageddon-2018",
         )
         assert n >= _STRESS_MIN_SERIES, (
             f"Only {n} qualifying series in Volmageddon window — check data coverage"
@@ -1215,8 +1225,10 @@ class TestStressVolmageddon2018:
 
         ratios, _n_obs, n = _run_stress_window(
             pd.read_parquet(self._DATA_FILE),
-            self._DATE_START, self._DATE_END,
-            _R_VOLM_2018, "Volmageddon-2018",
+            self._DATE_START,
+            self._DATE_END,
+            _R_VOLM_2018,
+            "Volmageddon-2018",
         )
         assert n >= _STRESS_MIN_SERIES
         median_ratio = float(np.median(ratios))
@@ -1262,8 +1274,10 @@ class TestStressDecember2018:
 
         ratios, _n_obs, n = _run_stress_window(
             pd.read_parquet(self._DATA_FILE),
-            self._DATE_START, self._DATE_END,
-            _R_DEC2018, "Dec 2018 Q4 Selloff",
+            self._DATE_START,
+            self._DATE_END,
+            _R_DEC2018,
+            "Dec 2018 Q4 Selloff",
         )
         assert n >= _STRESS_MIN_SERIES, (
             f"Only {n} qualifying series in Dec 2018 window — check data coverage"
@@ -1285,8 +1299,10 @@ class TestStressDecember2018:
 
         ratios, _n_obs, n = _run_stress_window(
             pd.read_parquet(self._DATA_FILE),
-            self._DATE_START, self._DATE_END,
-            _R_DEC2018, "Dec 2018 Q4 Selloff",
+            self._DATE_START,
+            self._DATE_END,
+            _R_DEC2018,
+            "Dec 2018 Q4 Selloff",
         )
         assert n >= _STRESS_MIN_SERIES
         median_ratio = float(np.median(ratios))
@@ -1437,11 +1453,11 @@ class TestEquityStrategy:
         for i in range(1, len(pvs)):
             if prices[i] > prices[i - 1]:
                 assert pvs[i] > pvs[i - 1], (
-                    f"Step {i}: price rose but PV fell: {pvs[i]} < {pvs[i-1]}"
+                    f"Step {i}: price rose but PV fell: {pvs[i]} < {pvs[i - 1]}"
                 )
             elif prices[i] < prices[i - 1]:
                 assert pvs[i] < pvs[i - 1], (
-                    f"Step {i}: price fell but PV rose: {pvs[i]} > {pvs[i-1]}"
+                    f"Step {i}: price fell but PV rose: {pvs[i]} > {pvs[i - 1]}"
                 )
 
     def test_no_option_legs(self) -> None:
@@ -1487,8 +1503,12 @@ class TestCoveredCallStrategy:
         from backtest_proofs.simulator.gbm import simulate_gbm
 
         gbm = simulate_gbm(
-            S0=49.0, mu=self._R, sigma=self._SIGMA,
-            T=self._T, n_steps=20, seed=20260519,
+            S0=49.0,
+            mu=self._R,
+            sigma=self._SIGMA,
+            T=self._T,
+            n_steps=20,
+            seed=20260519,
         )
         return PricePath(times=gbm.times, prices=gbm.prices)
 

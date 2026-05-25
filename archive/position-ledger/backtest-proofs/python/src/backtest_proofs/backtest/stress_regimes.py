@@ -141,8 +141,6 @@ def run_synthetic_stress(
             n_contracts=n_contracts,
         )
         if premium > 0:
-            ratios.append(
-                result.total_hedging_cost / (premium * n_contracts)
-            )
+            ratios.append(result.total_hedging_cost / (premium * n_contracts))
 
     return ratios, n_paths

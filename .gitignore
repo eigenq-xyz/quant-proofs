@@ -1,5 +1,8 @@
-# Claude Code — local settings (API keys, personal hooks)
+# Claude Code — local settings, worktrees, and project memory (not for public repo)
 .claude/settings.local.json
+.claude/worktrees/
+.claude/projects/
+.claude/scheduled_tasks.lock
 
 # Lean build artifacts
 **/.lake/
@@ -32,7 +35,8 @@
 # Jupyter
 **/.ipynb_checkpoints/
 **/*_files/
-!reports/backtest-proofs_files/
+# (no exceptions — backtest-proofs_files has been archived)
 
 # macOS
 **/.DS_Store
+.claude/worktrees/

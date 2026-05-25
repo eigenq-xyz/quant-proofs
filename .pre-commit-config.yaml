@@ -10,7 +10,10 @@
 # Skip in CI runs (pre-commit.ci) where the build tools aren't available;
 # these are run by the per-project GitHub Actions workflows instead.
 ci:
-  skip: [mypy-backtest-proofs, mypy-quant-core, mypy-mortgage-proofs]
+  skip: [mypy-quant-core, mypy-mortgage-proofs, lean-sorry-check, lean-import-order]
+
+# Exclude archived work from all hooks — archive/ is read-only history
+exclude: ^archive/
 
 repos:
   # ─── General file-level hygiene ──────────────────────────────────────────
@@ -43,19 +46,36 @@ repos:
       - id: markdownlint
         args: [--fix, --disable, MD013, MD033, MD041]
 
+  # ─── Lean 4 checks ───────────────────────────────────────────────────────
+  # Skipped in CI (pre-commit.ci) — CI runs lake build which is more thorough.
+  # Runs locally to catch mistakes before pushing.
+  - repo: local
+    hooks:
+      - id: lean-sorry-check
+        name: Lean zero-sorry
+        language: system
+        entry: >-
+          bash -c
+          'found=$(grep -n "\bsorry\b" "$@" | grep -v "^\s*--");
+          if [ -n "$found" ]; then echo "sorry found -- $found"; exit 1; fi'
+        files: \.lean$
+        exclude: "(^archive/|\\.lake/)"
+        pass_filenames: true
+
+      - id: lean-import-order
+        name: Lean import ordering
+        language: system
+        entry: python3 .github/scripts/lean_import_order.py
+        files: \.lean$
+        exclude: "(^archive/|\\.lake/)"
+        pass_filenames: true
+
   # ─── Per-subproject mypy (strict) ────────────────────────────────────────
   # mypy is run per subproject so each gets its own venv and stub set.
   # Each hook fires only when files under its subproject's python/ tree
   # have changed.
   - repo: local
     hooks:
-      - id: mypy-backtest-proofs
-        name: mypy --strict (backtest-proofs)
-        entry: bash -c 'cd backtest-proofs/python && uv run mypy src/ --strict'
-        language: system
-        files: ^backtest-proofs/python/src/.*\.py$
-        pass_filenames: false
-
       - id: mypy-quant-core
         name: mypy --strict (quant-core)
         entry: bash -c 'cd quant-core/python && uv run mypy src/ --strict'

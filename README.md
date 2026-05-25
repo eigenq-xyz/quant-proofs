@@ -7,38 +7,31 @@ Formally verified quantitative finance — machine-checked Lean 4 proofs paired 
 
 ## What this is
 
-Before trusting a numerical result, prove the accounting correct. Each project here pairs a formal Lean 4 proof — zero `sorry`, machine-checked on every commit — with the Python code that calls into it at runtime via Cython FFI. The theorem statement is the spec; the proof is the test — and neither can drift silently from the other.
+The durable skill in quantitative research is not running backtests — it is knowing whether to trust them. Each project here takes a named result from financial theory or a computational procedure from quantitative research, and makes it formally verifiable: theorem statement as spec, Lean 4 proof as test, zero `sorry` on main.
 
-## Modules
+## Active projects
 
 | Module | What it proves | Status |
 |--------|----------------|--------|
-| [`quant-core/`](quant-core/) | Option type invariants, payoff non-negativity, ITM/OTM characterization | v1.0 — 8 theorems |
-| [`backtest-proofs/`](backtest-proofs/) | Delta-hedging accounting: NAV identity, self-financing, settlement value formula | v0.5 — 19 theorems |
-| [`ftap-proofs/`](ftap-proofs/) | Discrete FTAP (Harrison-Pliska 1981): arbitrage-free iff equivalent martingale measure exists | Skeleton |
-| [`options-proofs/`](options-proofs/) | Put-call parity via Cox-Ross-Rubinstein binomial model | Skeleton |
+| [`ftap-proofs/`](ftap-proofs/) | Discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981): no arbitrage iff equivalent martingale measure exists | In progress |
+| [`options-proofs/`](options-proofs/) | Put-call parity via Cox-Ross-Rubinstein binomial model; depends on `ftap-proofs` | Planned |
+| [`quant-core/`](quant-core/) | Shared pricing primitives: option type invariants, payoff bounds, Black-Scholes, GBM | v1.0 — 8 theorems |
 | [`mortgage-proofs/`](mortgage-proofs/) | LangGraph multi-agent routing invariants, Lean 4-checked trace verification | Active |
 
-## Research Paper
+## Planned
 
-The paper proves 11 accounting theorems zero-sorry and validates them on 491,390 WRDS OptionMetrics observations across four historical stress regimes.
+**Formally verified backtester** — an event-driven backtesting engine where the central formal claim is $\mathcal{F}_t$-measurability of signals: provably no look-ahead bias, enforced by the Lean 4 type system. Correctness proofs will cite `ftap-proofs`. Scoped for after the FTAP proof is complete.
 
-- PDF: [eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf)
+## Archive
+
+[`archive/position-ledger/`](archive/) — earlier work on a verified position ledger (26 theorems on P&L accounting). Preserved but superseded. See [`archive/README.md`](archive/README.md) for context.
 
 ## Quick start
 
 ```bash
 git clone https://github.com/eigenq-xyz/quant-proofs
-cd quant-proofs/backtest-proofs
-make setup   # install Lean (elan) + Python (uv)
-make test    # Lean proofs + Python tests
-make paper   # render research paper (requires uv sync --group research)
-```
-
-For modules without a root Makefile (`ftap-proofs`, `options-proofs`, `mortgage-proofs`), build with:
-
-```bash
-cd <module> && lake build
+cd quant-proofs/ftap-proofs && lake build   # primary active project
+cd quant-proofs/quant-core/lean && lake build
 ```
 
 ## Documentation
