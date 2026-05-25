@@ -35,7 +35,8 @@
 # Jupyter
 **/.ipynb_checkpoints/
 **/*_files/
-# (no exceptions — backtest-proofs_files has been archived)
+# Quarto rendered output (scenarios): committed so GitHub renders the markdown
+!portfolio-proofs/scenarios/**/*_files/
 
 # macOS
 **/.DS_Store
