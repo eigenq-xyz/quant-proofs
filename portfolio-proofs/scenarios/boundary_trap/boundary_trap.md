@@ -304,7 +304,7 @@ print(res_tc)
                 method: tr_interior_point
             optimality: 3.7000243999138685e-13
       constr_violation: 2.220446049250313e-16
-        execution_time: 0.01689910888671875
+        execution_time: 0.017068147659301758
              tr_radius: 55337450.4474261
         constr_penalty: 1.0
      barrier_parameter: 1.0240000000000006e-08
@@ -747,11 +747,11 @@ steps.
 |  | PGD (ms) | trust-constr (ms) | Gurobi (ms) | PGD iterations | Speedup vs trust-constr | Speedup vs Gurobi |
 |----|----|----|----|----|----|----|
 | N |  |  |  |  |  |  |
-| 10 | 0.1 | 13.0 | 0.2 | 2 | 217× | 3× |
-| 50 | 0.1 | 59.1 | 1.7 | 2 | 425× | 12× |
-| 100 | 0.4 | 149.3 | 6.5 | 3 | 412× | 18× |
-| 250 | 2.2 | 934.9 | 44.1 | 3 | 419× | 20× |
-| 500 | 10.7 | 6172.1 | 155.3 | 14 | 578× | 15× |
+| 10 | 0.1 | 13.2 | 0.2 | 2 | 178× | 3× |
+| 50 | 0.2 | 61.2 | 1.8 | 2 | 383× | 11× |
+| 100 | 0.4 | 161.2 | 6.6 | 3 | 415× | 17× |
+| 250 | 2.2 | 932.0 | 43.6 | 3 | 422× | 20× |
+| 500 | 10.9 | 6353.1 | 159.0 | 14 | 583× | 15× |
 
 </div>
 
@@ -781,6 +781,17 @@ call costs more in dispatch than the 10-element arithmetic. The
 algorithmic advantage of PGD over interior-point methods is best read
 from the scaling table above at $N \geq 100$, where the $O(N^2)$
 vs. $O(N^3)$ difference dominates over language-level constant factors.
+
+**Cython FFI round trip.** Calling the Lean 4 PGD from Python via Cython
+FFI (`ffi/pgd_ffi.pyx`) takes **31.8 ms** per solve (1,000-run average).
+The Lean computation itself remains 14.8 ns; the 31.8 ms overhead is
+entirely marshalling: $N \times N + N = 110$ calls to `lean_box_float`,
+each of which heap-allocates a Lean Float object. A production FFI would
+replace `Array Float` with `FloatArray` (Lean’s unboxed flat double
+array), which lays out doubles contiguously in memory and reduces the
+marshalling to a single `memcpy`. The current FFI demonstrates that the
+Lean solver is callable from Python and returns the correct answer; it
+is not yet optimised for low-latency batch use.
 
 ## The global minimum: KKT derivation
 

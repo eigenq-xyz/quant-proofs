@@ -586,6 +586,16 @@ actual floating-point work — at $N = 10$ each numpy call costs more in dispatc
 best read from the scaling table above at $N \geq 100$, where the $O(N^2)$ vs.\ $O(N^3)$
 difference dominates over language-level constant factors.
 
+**Cython FFI round trip.** Calling the Lean 4 PGD from Python via Cython FFI
+(`ffi/pgd_ffi.pyx`) takes **31.8 ms** per solve (1,000-run average). The Lean
+computation itself remains 14.8 ns; the 31.8 ms overhead is entirely marshalling:
+$N \times N + N = 110$ calls to `lean_box_float`, each of which heap-allocates a
+Lean Float object. A production FFI would replace `Array Float` with `FloatArray`
+(Lean's unboxed flat double array), which lays out doubles contiguously in memory
+and reduces the marshalling to a single `memcpy`. The current FFI demonstrates that
+the Lean solver is callable from Python and returns the correct answer; it is not
+yet optimised for low-latency batch use.
+
 ## The global minimum: KKT derivation
 
 The true minimum is derived algebraically and verified by checking the KKT
