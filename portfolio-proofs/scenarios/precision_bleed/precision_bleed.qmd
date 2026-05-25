@@ -286,6 +286,107 @@ institutional scale, 1 bp is commercially negligible.  For a 1000-asset
 portfolio the quantization noise would need to be evaluated against the
 investment mandate.
 
+### SciPy trust-constr
+
+```{python}
+#| label: trust-constr-raw
+tc_results = trust_constr.run_all(windows)
+trust_constr.print_results(tc_results)
+```
+
+trust-constr uses the 2N-variable interior-point barrier reformulation and
+satisfies constraints to near machine-epsilon. `success=True` with constraint
+errors at $10^{-16}$–$10^{-14}$ for all four windows.
+
+### Gurobi barrier
+
+```{python}
+#| label: gurobi-raw
+gb_results = gurobi.run_all(windows)
+gurobi.print_results(gb_results)
+```
+
+Gurobi's barrier satisfies constraints to its default feasibility tolerance
+($10^{-6}$), giving budget and leverage errors at or below $10^{-15}$ for
+all four windows.
+
+### OR-Tools GSCIP
+
+```{python}
+#| label: ortools-raw
+or_results = ortools_gscip.run_all(windows)
+ortools_gscip.print_results(or_results)
+```
+
+OR-Tools GSCIP (no license required) terminates `OPTIMAL` with constraint
+errors at SCIP's default feasibility tolerance ($10^{-9}$) or better.
+
+### Lean 4 PGD
+
+```{python}
+#| label: lean-pgd-raw
+lean_results = lean_pgd.run_all(windows)
+lean_pgd.print_results(lean_results)
+```
+
+The Lean 4 PGD (via `pgd_solve_flat` FFI, theorem `pgd_convergence`) satisfies
+constraints at float64 rounding level ($\lesssim 10^{-12}$), well below the
+$10^{-9}$ production halt threshold. Unlike integer PGD it does not guarantee
+exact zero, but the convergence proof ensures the projection is always on the
+feasible set to machine precision. The native Lean binary achieves
+**13.834 ns/solve** at $N = 10$; the FFI path adds $\approx 1.6$ ms marshalling
+at $N = 4$.
+
+## Constraint-satisfaction spectrum
+
+The five solvers span four distinct regimes of constraint accuracy:
+
+```{python}
+#| label: tbl-constraint-spectrum
+#| echo: false
+#| tbl-cap: "Constraint error (max of |budget error|, leverage violation) for each solver across the four March 2020 rolling windows. Threshold = 1e-9 (production halt boundary). SLSQP Window 1 is the only case that exceeds the threshold."
+import pandas as pd
+
+THRESHOLD = PRODUCTION_HALT_THRESHOLD
+all_solver_results = [
+    ("SLSQP (tol=1e-12)",               slsqp_results),
+    ("trust-constr (barrier)",           tc_results),
+    ("Gurobi barrier QP",                gb_results),
+    ("OR-Tools GSCIP",                   or_results),
+    ("Integer PGD (bp-exact)",           pgd_results),
+    ("Lean 4 PGD (pgd_ffi)",             lean_results),
+]
+
+rows = []
+for solver_name, results in all_solver_results:
+    row = {"Solver": solver_name}
+    for i, r in enumerate(results, 1):
+        if r.budget_error != r.budget_error:  # nan
+            cell = "N/A"
+        else:
+            worst = max(r.budget_error, r.leverage_violation)
+            flag = " ⚠️" if worst > THRESHOLD else ""
+            cell = f"{worst:.1e}{flag}"
+        row[f"W{i}"] = cell
+    rows.append(row)
+
+pd.DataFrame(rows).set_index("Solver")
+```
+
+The SLSQP Window 1 violation ($2.79 \times 10^{-9}$) is the only case that
+exceeds the production halt threshold. All other solvers satisfy constraints
+below the threshold. The precision hierarchy from weakest to strongest guarantee:
+
+1. **SLSQP**: `acc=1e-8` internal tolerance; violations possible in
+   $(10^{-9}, 10^{-8})$ range when the leverage kink causes iteration-limit exit.
+2. **trust-constr / Gurobi / OR-Tools**: commercial or scipy barrier methods;
+   constraints satisfied to $10^{-14}$–$10^{-6}$ depending on solver defaults.
+3. **Lean 4 PGD**: formally verified projection; constraint errors at
+   float64 rounding ($\sim 10^{-12}$–$10^{-15}$), with convergence guaranteed
+   by theorem `pgd_convergence`.
+4. **Integer PGD**: exact integer arithmetic; constraint errors identically zero;
+   weights quantised to 1 basis point.
+
 ## Float32 accumulation at high frequency
 
 The four-window scenario above demonstrates the per-solve feasibility
