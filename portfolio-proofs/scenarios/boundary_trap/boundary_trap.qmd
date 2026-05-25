@@ -62,7 +62,7 @@ under stressed covariance matrices. This document demonstrates the resulting fai
 
 ## Why August 2007 is the stress scenario
 
-Khandani and Lo (2011) document that systematic long-short equity funds operating in
+Khandani and Lo[^kl2011] document that systematic long-short equity funds operating in
 August 2007 used gross leverage in the 150–200% range and estimated covariance
 matrices over short rolling windows to capture the rapidly changing market regime.
 Cross-sector correlations compressed sharply and volatility (VIX) spiked from
@@ -72,7 +72,7 @@ These are precisely the conditions — short lookback window ($T < N$), spiking
 cross-asset correlations, binding gross leverage cap — that make the standard solver
 reformulation numerically unstable. We use the five trading days ending August 9,
 2007 (the day BNP Paribas froze three funds) from the Ken French 10 Industry
-Portfolio daily returns as a concrete, reproducible instance.
+Portfolio daily returns[^french] as a concrete, reproducible instance.
 
 We do not claim that any specific fund ran this optimization or that optimizer
 suboptimality contributed to the August 2007 losses. We claim that under the market
@@ -83,6 +83,7 @@ exhibits the failure demonstrated below.
 
 ```{python}
 #| label: fig-vix
+#| echo: false
 #| fig-cap: "VIX daily close, July–September 2007. The three-day spike on August 7–9 is the period reconstructed in this scenario. Data: Yahoo Finance."
 
 vix = yf.download("^VIX", start="2007-07-01", end="2007-09-28",
@@ -117,6 +118,7 @@ plt.show()
 
 ```{python}
 #| label: fig-returns-heatmap
+#| echo: false
 #| fig-cap: "Daily returns (%) for 10 US industry portfolios, August 3–9, 2007. Health Care (Hlth) held up best; Consumer Discretionary (Shops) and Materials/Other fell hardest. Source: Ken French Data Library, value-weighted returns."
 
 ret_pct = p.window * 100
@@ -147,6 +149,7 @@ plt.show()
 
 ```{python}
 #| label: tbl-means
+#| echo: false
 #| tbl-cap: "Five-day mean returns and return ranking. Hlth and NoDur are the only industries with positive mean returns during the window."
 
 mean_pct = (p.window.mean() * 100).rename("Mean return (%/day)")
@@ -159,6 +162,7 @@ tbl
 
 ```{python}
 #| label: fig-corr
+#| echo: false
 #| fig-cap: "Pearson correlation matrix of the five-day August 2007 returns. Near-uniform positive correlations (0.93–0.99) across all sectors indicate the risk-off regime where rank deficiency arises (T=5 < N=10)."
 
 corr = p.window.corr()
@@ -188,8 +192,8 @@ plt.show()
 ## Covariance structure
 
 Let $S \in \mathbb{R}^{N \times N}$ denote the sample covariance matrix of the
-five-day return window. With $T = 5 < N = 10$, $S$ has rank at most $T - 1 = 4$
-(Marčenko and Pastur 1967; Anderson 2003, Ch. 7): the remaining six eigenvalues
+five-day return window. With $T = 5 < N = 10$, $S$ has rank at most $T - 1 = 4$[^mp1967][^anderson2003]:
+the remaining six eigenvalues
 are zero in exact arithmetic and appear as small negative values ($-1.11 \times
 10^{-19}$) under float64 rounding.
 
@@ -208,6 +212,7 @@ $\alpha \in (0, 1)$.
 
 ```{python}
 #| label: tbl-cov
+#| echo: false
 #| tbl-cap: "Covariance matrix properties before and after shrinkage."
 
 eigvals_S = np.linalg.eigvalsh(p.S)
@@ -396,7 +401,7 @@ region and stopped.
 
 OR-Tools is not installed in this environment. The cell below documents the
 expected output based on the OR-Tools MathOpt API reference and PDLP solver
-behavior (Applegate et al. 2021).
+behavior.[^applegate2021]
 
 ```{python}
 #| label: ortools-raw
@@ -432,7 +437,7 @@ except ImportError:
 The PDLP iteration log shows the primal-dual gap narrowing slowly and
 never closing. PDLP is a first-order method: its step size is bounded by
 $1 / \lVert \hat\Sigma \rVert_2 = 1 / \lambda_{\max}(\hat\Sigma)$
-(Applegate et al. 2021, Theorem 1). With $\lambda_{\max} = 4.57 \times
+[^applegate2021] With $\lambda_{\max} = 4.57 \times
 10^{-3}$, the step size ceiling is large, but the condition number 86.4
 means the convergence rate is governed by $(1 - 1/86.4)^k$ per iteration,
 requiring thousands of steps to close the gap fully. Under the default
@@ -461,13 +466,13 @@ along directions where $u_i$ and $v_i$ are simultaneously near zero. Under
 condition number 86.4, such directions are plentiful. Interior-point methods add a
 log-barrier penalty $-\frac{1}{\mu}\sum(\log u_i + \log v_i)$; the gradient of
 this penalty dominates in flat regions and causes the Newton direction to satisfy
-the stopping criterion far from the true minimum (Wright 1997, §4).
+the stopping criterion far from the true minimum.[^wright1997]
 
 ## The global minimum: KKT derivation
 
 The true minimum is derived algebraically and verified by checking the KKT
 optimality conditions, which are necessary and sufficient for strictly convex
-problems (Boyd and Vandenberghe 2004, §5.5.3).
+problems.[^boyd2004]
 
 **Step 1 — Support.** The candidate long-short pair is the industry with the
 highest mean return (Hlth, $\mu = +0.00136$/day) as the long leg and the industry
@@ -484,12 +489,14 @@ w_{\text{Hlth}} = 1.25,\quad w_{\text{Telcm}} = -0.25$$
 
 ```{python}
 #| label: kkt-certificate
+#| echo: false
 
 kkt_optimum.print_certificate(cert, res_kkt, p)
 ```
 
 ```{python}
 #| label: fig-weights
+#| echo: false
 #| fig-cap: "Optimal weights vs. trust-constr weights. The KKT optimum concentrates entirely on Health Care (long 125%) and Telecom (short 25%). trust-constr distributes 25% of the long leg to Consumer Staples, leaving the portfolio underallocated to the highest-return industry."
 
 industries = p.industries
@@ -518,25 +525,16 @@ fig.tight_layout()
 plt.show()
 ```
 
-## References
+[^kl2011]: Khandani, A. E. and Lo, A. W. (2011). "What happened to the quants in August 2007? Evidence from factors and transactions data." *Journal of Financial Markets* 14(1): 1–46. DOI: [10.1016/j.finmar.2010.10.005](https://doi.org/10.1016/j.finmar.2010.10.005).
 
-- Khandani, A. E. and Lo, A. W. (2011). "What happened to the quants in August
-  2007? Evidence from factors and transactions data." *Journal of Financial
-  Markets* 14(1): 1–46. DOI: [10.1016/j.finmar.2010.10.005](https://doi.org/10.1016/j.finmar.2010.10.005).
-- French, K. R. Data Library: 10 Industry Portfolios (daily, value-weighted).
-  <https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html>. Public domain.
-- Boyd, S. and Vandenberghe, L. (2004). *Convex Optimization*. Cambridge University
-  Press. §5.5.3 (KKT sufficiency for convex problems).
-  <https://web.stanford.edu/~boyd/cvxbook/>.
-- Duchi, J., Shalev-Shwartz, S., Singer, Y., and Chandra, T. (2008). "Efficient
-  projections onto the $\ell_1$-ball for learning in high dimensions." *ICML 2008*,
-  pp. 272–279. DOI: [10.1145/1390156.1390191](https://doi.org/10.1145/1390156.1390191).
-- Nocedal, J. and Wright, S. J. (2006). *Numerical Optimization*, 2nd ed. Springer.
-  Ch. 16 (active-set SQP) and Ch. 19 (penalty and augmented Lagrangian methods).
-- Wright, S. J. (1997). *Primal-Dual Interior-Point Methods*. SIAM.
-  DOI: [10.1137/1.9781611971453](https://doi.org/10.1137/1.9781611971453). §4:
-  complementarity gap tolerances and premature termination in flat barrier landscapes.
-- Marčenko, V. A. and Pastur, L. A. (1967). "Distribution of eigenvalues for some
-  sets of random matrices." *Mathematics of the USSR-Sbornik* 1(4): 457–483.
-- Anderson, T. W. (2003). *An Introduction to Multivariate Statistical Analysis*,
-  3rd ed. Wiley. Ch. 7 (Wishart distribution; rank deficiency when $T < N$).
+[^french]: French, K. R. Data Library: 10 Industry Portfolios (daily, value-weighted). <https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html>. Public domain.
+
+[^mp1967]: Marčenko, V. A. and Pastur, L. A. (1967). "Distribution of eigenvalues for some sets of random matrices." *Mathematics of the USSR-Sbornik* 1(4): 457–483. Establishes the limiting spectral distribution when $N/T > 1$; eigenvalues collapse to zero, making rank deficiency structurally unavoidable.
+
+[^anderson2003]: Anderson, T. W. (2003). *An Introduction to Multivariate Statistical Analysis*, 3rd ed. Wiley. Ch. 7 (Wishart distribution). Finite-sample result: the sample covariance is singular with probability one when $T < N$.
+
+[^wright1997]: Wright, S. J. (1997). *Primal-Dual Interior-Point Methods*. SIAM. DOI: [10.1137/1.9781611971453](https://doi.org/10.1137/1.9781611971453). §4 covers complementarity gap tolerances and why barrier algorithms halt before the true minimum in flat penalty landscapes.
+
+[^boyd2004]: Boyd, S. and Vandenberghe, L. (2004). *Convex Optimization*. Cambridge University Press. §5.5.3. Available free at <https://web.stanford.edu/~boyd/cvxbook/>. KKT conditions are necessary and sufficient for strictly convex problems satisfying constraint qualification (Slater's condition holds here since the interior of the feasible set is non-empty).
+
+[^applegate2021]: Applegate, D., Díaz, M., Hinder, O., Lu, H., Lubin, M., O'Donoghue, B., and Schudy, W. (2021). "Practical large-scale linear programming using primal-dual hybrid gradient." *NeurIPS 2021*. Theorem 1 establishes the $O(1/k)$ convergence rate for PDLP on LP and convex QP; the rate constant is governed by the condition number of the constraint matrix, explaining slow convergence when $\text{cond}(\hat\Sigma) = 86.4$.

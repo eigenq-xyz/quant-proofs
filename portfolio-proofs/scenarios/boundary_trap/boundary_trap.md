@@ -19,7 +19,6 @@
 - [Why the reformulation fails](#why-the-reformulation-fails)
 - [The global minimum: KKT
   derivation](#the-global-minimum-kkt-derivation)
-- [References](#references)
 
 ## The mathematical problem
 
@@ -43,7 +42,7 @@ covariance matrices. This document demonstrates the resulting failure.
 
 ## Why August 2007 is the stress scenario
 
-Khandani and Lo (2011) document that systematic long-short equity funds
+Khandani and Lo[^1] document that systematic long-short equity funds
 operating in August 2007 used gross leverage in the 150–200% range and
 estimated covariance matrices over short rolling windows to capture the
 rapidly changing market regime. Cross-sector correlations compressed
@@ -54,7 +53,7 @@ These are precisely the conditions — short lookback window ($T < N$),
 spiking cross-asset correlations, binding gross leverage cap — that make
 the standard solver reformulation numerically unstable. We use the five
 trading days ending August 9, 2007 (the day BNP Paribas froze three
-funds) from the Ken French 10 Industry Portfolio daily returns as a
+funds) from the Ken French 10 Industry Portfolio daily returns[^2] as a
 concrete, reproducible instance.
 
 We do not claim that any specific fund ran this optimization or that
@@ -63,35 +62,6 @@ that under the market conditions Khandani and Lo document, a standard QP
 solver solving this problem exhibits the failure demonstrated below.
 
 ### VIX during the crisis
-
-``` python
-vix = yf.download("^VIX", start="2007-07-01", end="2007-09-28",
-                  auto_adjust=True, progress=False)["Close"].squeeze()
-
-fig, ax = plt.subplots(figsize=(9, 3.5))
-ax.plot(vix.index, vix.values, color="#2c7bb6", linewidth=1.5)
-
-crisis_start = pd.Timestamp("2007-08-07")
-crisis_end   = pd.Timestamp("2007-08-09")
-ax.axvspan(crisis_start, crisis_end, color="#d7191c", alpha=0.18,
-           label="Aug 7–9 (BNP Paribas freeze)")
-
-ax.axhline(vix.loc["2007-08-09"].item(), color="#d7191c",
-           linestyle="--", linewidth=0.8, alpha=0.6)
-ax.annotate(
-    f"VIX = {vix.loc['2007-08-09'].item():.1f}\n(Aug 9)",
-    xy=(pd.Timestamp("2007-08-09"), vix.loc["2007-08-09"].item()),
-    xytext=(pd.Timestamp("2007-08-20"), vix.loc["2007-08-09"].item() + 1.5),
-    fontsize=9, color="#d7191c",
-    arrowprops=dict(arrowstyle="->", color="#d7191c", lw=0.8),
-)
-ax.set_ylabel("VIX (daily close)")
-ax.set_title("CBOE Volatility Index, Jul–Sep 2007")
-ax.legend(fontsize=9)
-ax.yaxis.set_minor_locator(mticker.AutoMinorLocator())
-fig.tight_layout()
-plt.show()
-```
 
 <div id="fig-vix">
 
@@ -105,33 +75,6 @@ Finance.
 
 ## The five-day return window
 
-``` python
-ret_pct = p.window * 100
-
-fig, ax = plt.subplots(figsize=(11, 3.2))
-cmap = sns.diverging_palette(10, 133, as_cmap=True)
-sns.heatmap(
-    ret_pct,
-    ax=ax,
-    cmap=cmap,
-    center=0,
-    annot=True,
-    fmt=".2f",
-    linewidths=0.4,
-    linecolor="white",
-    cbar_kws={"label": "Return (%)"},
-)
-ax.set_xlabel("")
-ax.set_ylabel("")
-ax.set_yticklabels(
-    [d.strftime("Aug %d") for d in p.window.index], rotation=0, fontsize=9
-)
-ax.set_xticklabels(p.industries, rotation=45, ha="right", fontsize=9)
-ax.set_title("Five-day Industry Returns Around the August 2007 Liquidity Event")
-fig.tight_layout()
-plt.show()
-```
-
 <div id="fig-returns-heatmap">
 
 ![](boundary_trap_files/figure-commonmark/fig-returns-heatmap-output-1.png)
@@ -142,13 +85,6 @@ and Materials/Other fell hardest. Source: Ken French Data Library,
 value-weighted returns.
 
 </div>
-
-``` python
-mean_pct = (p.window.mean() * 100).rename("Mean return (%/day)")
-rank = mean_pct.rank(ascending=False).rename("Rank").astype(int)
-tbl = pd.concat([mean_pct.round(4), rank], axis=1).sort_values("Mean return (%/day)", ascending=False)
-tbl
-```
 
 <div id="tbl-means">
 
@@ -191,31 +127,6 @@ the only industries with positive mean returns during the window.
 
 ### Cross-sector correlation during the crisis
 
-``` python
-corr = p.window.corr()
-
-fig, ax = plt.subplots(figsize=(8, 6.5))
-mask = np.triu(np.ones_like(corr, dtype=bool), k=1)
-sns.heatmap(
-    corr,
-    ax=ax,
-    cmap="RdYlGn",
-    center=0,
-    vmin=-1, vmax=1,
-    annot=True,
-    fmt=".2f",
-    linewidths=0.3,
-    linecolor="white",
-    mask=mask,
-    cbar_kws={"label": "Pearson correlation"},
-)
-ax.set_title("Cross-Sector Correlation, Aug 3–9 2007")
-ax.set_xticklabels(p.industries, rotation=45, ha="right", fontsize=9)
-ax.set_yticklabels(p.industries, rotation=0, fontsize=9)
-fig.tight_layout()
-plt.show()
-```
-
 <div id="fig-corr">
 
 ![](boundary_trap_files/figure-commonmark/fig-corr-output-1.png)
@@ -231,9 +142,8 @@ sectors indicate the risk-off regime where rank deficiency arises (T=5
 
 Let $S \in \mathbb{R}^{N \times N}$ denote the sample covariance matrix
 of the five-day return window. With $T = 5 < N = 10$, $S$ has rank at
-most $T - 1 = 4$ (Marčenko and Pastur 1967; Anderson 2003, Ch. 7): the
-remaining six eigenvalues are zero in exact arithmetic and appear as
-small negative values ($-1.11 \times
+most $T - 1 = 4$[^3][^4]: the remaining six eigenvalues are zero in
+exact arithmetic and appear as small negative values ($-1.11 \times
 10^{-19}$) under float64 rounding.
 
 Minimal Ledoit-Wolf shrinkage toward the scaled identity
@@ -249,29 +159,6 @@ eigenvalue equals the average variance across all industries. Shrinking
 $S$ toward $F$ lifts the near-zero eigenvalues of $S$ by $\alpha \cdot
 \frac{\operatorname{tr}(S)}{N}$, guaranteeing $\hat\Sigma \succ 0$ for
 any $\alpha \in (0, 1)$.
-
-``` python
-eigvals_S = np.linalg.eigvalsh(p.S)
-eigvals   = np.linalg.eigvalsh(p.Sigma)
-rank_S    = int(np.linalg.matrix_rank(p.S))
-
-pd.DataFrame({
-    "Property": [
-        "Sample rank",
-        "Min eigenvalue (raw S)",
-        "Min eigenvalue (shrunk Σ̂)",
-        "Max eigenvalue (shrunk Σ̂)",
-        "Condition number (shrunk Σ̂)",
-    ],
-    "Value": [
-        f"{rank_S} of {p.N}",
-        f"{eigvals_S[0]:.2e}",
-        f"{eigvals[0]:.2e}",
-        f"{eigvals[-1]:.2e}",
-        f"{eigvals[-1]/eigvals[0]:.1f}",
-    ],
-}).set_index("Property")
-```
 
 <div id="tbl-cov">
 
@@ -413,7 +300,7 @@ print(res_tc)
                 method: tr_interior_point
             optimality: 2.964253191864441e-13
       constr_violation: 1.0658141036401503e-14
-        execution_time: 0.017094850540161133
+        execution_time: 0.019800186157226562
              tr_radius: 10949349.317141823
         constr_penalty: 1.0
      barrier_parameter: 5.120000000000003e-08
@@ -568,7 +455,7 @@ region and stopped.
 
 OR-Tools is not installed in this environment. The cell below documents
 the expected output based on the OR-Tools MathOpt API reference and PDLP
-solver behavior (Applegate et al. 2021).
+solver behavior.[^5]
 
 ``` python
 try:
@@ -620,8 +507,8 @@ except ImportError:
 
 The PDLP iteration log shows the primal-dual gap narrowing slowly and
 never closing. PDLP is a first-order method: its step size is bounded by
-$1 / \lVert \hat\Sigma \rVert_2 = 1 / \lambda_{\max}(\hat\Sigma)$
-(Applegate et al. 2021, Theorem 1). With $\lambda_{\max} = 4.57 \times
+$1 / \lVert \hat\Sigma \rVert_2 = 1 / \lambda_{\max}(\hat\Sigma)$ [^6]
+With $\lambda_{\max} = 4.57 \times
 10^{-3}$, the step size ceiling is large, but the condition number 86.4
 means the convergence rate is governed by $(1 - 1/86.4)^k$ per
 iteration, requiring thousands of steps to close the gap fully. Under
@@ -679,13 +566,13 @@ zero. Under condition number 86.4, such directions are plentiful.
 Interior-point methods add a log-barrier penalty
 $-\frac{1}{\mu}\sum(\log u_i + \log v_i)$; the gradient of this penalty
 dominates in flat regions and causes the Newton direction to satisfy the
-stopping criterion far from the true minimum (Wright 1997, §4).
+stopping criterion far from the true minimum.[^7]
 
 ## The global minimum: KKT derivation
 
 The true minimum is derived algebraically and verified by checking the
 KKT optimality conditions, which are necessary and sufficient for
-strictly convex problems (Boyd and Vandenberghe 2004, §5.5.3).
+strictly convex problems.[^8]
 
 **Step 1 — Support.** The candidate long-short pair is the industry with
 the highest mean return (Hlth, $\mu = +0.00136$/day) as the long leg and
@@ -700,10 +587,6 @@ w_{\text{Hlth}} - w_{\text{Telcm}} = 1.5
 w_{\text{Hlth}} = 1.25,\quad w_{\text{Telcm}} = -0.25$$
 
 **Step 3 — KKT verification.**
-
-``` python
-kkt_optimum.print_certificate(cert, res_kkt, p)
-```
 
     Long leg  : Hlth    w = +1.2500  (μ = +0.1360%/day, highest)
     Short leg : Telcm   w = -0.2500  (μ = -0.8280%/day, lowest)
@@ -732,33 +615,6 @@ kkt_optimum.print_certificate(cert, res_kkt, p)
 
        f(w*) = -0.003576587456
 
-``` python
-industries = p.industries
-x = np.arange(len(industries))
-w_tc_full = w_tc          # extracted in the trust-constr-weights cell above
-w_kkt = res_kkt.weights   # from kkt_optimum.derive()
-
-fig, axes = plt.subplots(1, 2, figsize=(11, 3.8), sharey=True)
-bar_kw = dict(width=0.6, edgecolor="white")
-
-for ax, weights, title, color_pos, color_neg in [
-    (axes[0], w_kkt,    "KKT Global Optimum",      "#1a9641", "#d7191c"),
-    (axes[1], w_tc_full, "trust-constr (Converged=True)", "#74add1", "#f46d43"),
-]:
-    colors = [color_pos if wi >= 0 else color_neg for wi in weights]
-    ax.bar(x, weights, color=colors, **bar_kw)
-    ax.axhline(0, color="black", linewidth=0.7)
-    ax.set_xticks(x)
-    ax.set_xticklabels(industries, rotation=45, ha="right", fontsize=9)
-    ax.set_ylabel("Portfolio weight")
-    ax.set_title(title)
-    ax.yaxis.set_minor_locator(mticker.AutoMinorLocator())
-
-fig.suptitle("Optimal vs. trust-constr Weights — August 2007 Parameters", y=1.02)
-fig.tight_layout()
-plt.show()
-```
-
 <div id="fig-weights">
 
 ![](boundary_trap_files/figure-commonmark/fig-weights-output-1.png)
@@ -770,33 +626,52 @@ leaving the portfolio underallocated to the highest-return industry.
 
 </div>
 
-## References
+[^1]: Khandani, A. E. and Lo, A. W. (2011). “What happened to the quants
+    in August 2007? Evidence from factors and transactions data.”
+    *Journal of Financial Markets* 14(1): 1–46. DOI:
+    [10.1016/j.finmar.2010.10.005](https://doi.org/10.1016/j.finmar.2010.10.005).
 
-- Khandani, A. E. and Lo, A. W. (2011). “What happened to the quants in
-  August 2007? Evidence from factors and transactions data.” *Journal of
-  Financial Markets* 14(1): 1–46. DOI:
-  [10.1016/j.finmar.2010.10.005](https://doi.org/10.1016/j.finmar.2010.10.005).
-- French, K. R. Data Library: 10 Industry Portfolios (daily,
-  value-weighted).
-  <https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html>.
-  Public domain.
-- Boyd, S. and Vandenberghe, L. (2004). *Convex Optimization*. Cambridge
-  University Press. §5.5.3 (KKT sufficiency for convex problems).
-  <https://web.stanford.edu/~boyd/cvxbook/>.
-- Duchi, J., Shalev-Shwartz, S., Singer, Y., and Chandra, T. (2008).
-  “Efficient projections onto the $\ell_1$-ball for learning in high
-  dimensions.” *ICML 2008*, pp. 272–279. DOI:
-  [10.1145/1390156.1390191](https://doi.org/10.1145/1390156.1390191).
-- Nocedal, J. and Wright, S. J. (2006). *Numerical Optimization*, 2nd
-  ed. Springer. Ch. 16 (active-set SQP) and Ch. 19 (penalty and
-  augmented Lagrangian methods).
-- Wright, S. J. (1997). *Primal-Dual Interior-Point Methods*. SIAM. DOI:
-  [10.1137/1.9781611971453](https://doi.org/10.1137/1.9781611971453).
-  §4: complementarity gap tolerances and premature termination in flat
-  barrier landscapes.
-- Marčenko, V. A. and Pastur, L. A. (1967). “Distribution of eigenvalues
-  for some sets of random matrices.” *Mathematics of the USSR-Sbornik*
-  1(4): 457–483.
-- Anderson, T. W. (2003). *An Introduction to Multivariate Statistical
-  Analysis*, 3rd ed. Wiley. Ch. 7 (Wishart distribution; rank deficiency
-  when $T < N$).
+[^2]: French, K. R. Data Library: 10 Industry Portfolios (daily,
+    value-weighted).
+    <https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html>.
+    Public domain.
+
+[^3]: Marčenko, V. A. and Pastur, L. A. (1967). “Distribution of
+    eigenvalues for some sets of random matrices.” *Mathematics of the
+    USSR-Sbornik* 1(4): 457–483. Establishes the limiting spectral
+    distribution when $N/T > 1$; eigenvalues collapse to zero, making
+    rank deficiency structurally unavoidable.
+
+[^4]: Anderson, T. W. (2003). *An Introduction to Multivariate
+    Statistical Analysis*, 3rd ed. Wiley. Ch. 7 (Wishart distribution).
+    Finite-sample result: the sample covariance is singular with
+    probability one when $T < N$.
+
+[^5]: Applegate, D., Díaz, M., Hinder, O., Lu, H., Lubin, M.,
+    O’Donoghue, B., and Schudy, W. (2021). “Practical large-scale linear
+    programming using primal-dual hybrid gradient.” *NeurIPS 2021*.
+    Theorem 1 establishes the $O(1/k)$ convergence rate for PDLP on LP
+    and convex QP; the rate constant is governed by the condition number
+    of the constraint matrix, explaining slow convergence when
+    $\text{cond}(\hat\Sigma) = 86.4$.
+
+[^6]: Applegate, D., Díaz, M., Hinder, O., Lu, H., Lubin, M.,
+    O’Donoghue, B., and Schudy, W. (2021). “Practical large-scale linear
+    programming using primal-dual hybrid gradient.” *NeurIPS 2021*.
+    Theorem 1 establishes the $O(1/k)$ convergence rate for PDLP on LP
+    and convex QP; the rate constant is governed by the condition number
+    of the constraint matrix, explaining slow convergence when
+    $\text{cond}(\hat\Sigma) = 86.4$.
+
+[^7]: Wright, S. J. (1997). *Primal-Dual Interior-Point Methods*. SIAM.
+    DOI:
+    [10.1137/1.9781611971453](https://doi.org/10.1137/1.9781611971453).
+    §4 covers complementarity gap tolerances and why barrier algorithms
+    halt before the true minimum in flat penalty landscapes.
+
+[^8]: Boyd, S. and Vandenberghe, L. (2004). *Convex Optimization*.
+    Cambridge University Press. §5.5.3. Available free at
+    <https://web.stanford.edu/~boyd/cvxbook/>. KKT conditions are
+    necessary and sufficient for strictly convex problems satisfying
+    constraint qualification (Slater’s condition holds here since the
+    interior of the feasible set is non-empty).
