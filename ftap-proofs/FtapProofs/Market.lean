@@ -1,5 +1,6 @@
 import Mathlib.Probability.Process.Adapted
 import Mathlib.MeasureTheory.Group.Arithmetic
+import Mathlib.MeasureTheory.Measure.MeasureSpace
 
 /-!
 # Market Model
@@ -7,11 +8,17 @@ import Mathlib.MeasureTheory.Group.Arithmetic
 A finite-state, discrete-time financial market for the discrete FTAP (Harrison-Pliska 1981).
 
 We work with:
+- A **finite** state space `Ω` with `[Fintype Ω]` and measurable singletons
 - A finite time horizon `T : ℕ` (times run from `0` to `T`)
 - `n` risky assets with price processes `S : Fin n → Fin (T+1) → Ω → ℝ`
 - A deterministic numeraire `B : Fin (T+1) → ℝ` with `B 0 = 1` and `B t > 0`
 - A filtration `𝒻 : MeasureTheory.Filtration (Fin (T+1)) m` encoding information flow
+- A reference probability measure `P : MeasureTheory.Measure Ω`
 - Discounted prices `S̃ i t ω := S i t ω / B t`
+
+The finiteness of `Ω` is load-bearing for the Harrison-Pliska proof: the Farkas/separating-
+hyperplane argument for `NA ↔ EMM` uses linear algebra on `ℝ^Ω`. Measurable singletons
+are required for the equivalent martingale measure condition `Q {ω} > 0 ↔ P {ω} > 0`.
 
 ## Contents
 
@@ -26,20 +33,27 @@ namespace FtapProofs
 
 /-! ### M1.1 — Market structure -/
 
-/-- A discrete-time financial market on a measurable space `(Ω, m)`.
+/-- A discrete-time financial market on a **finite** probability space `(Ω, m, P)`.
 
 A `FinancialMarket Ω` bundles together all the data of a Harrison-Pliska market:
+- A **finite** state space `Ω` (required for the Farkas/separation argument in Phase 5)
 - A finite time horizon `T` (trading occurs at times `0, 1, …, T`)
 - `n` risky assets with adapted price processes `S`
 - A deterministic, strictly positive numeraire `B` (the risk-free bond) with `B 0 = 1`
 - A filtration `𝒻` on `Ω` encoding the information available at each time
+- A reference probability measure `P` (used for the no-arbitrage and EMM conditions)
 
 The filtration is indexed by `Fin (T + 1)` so that `𝒻 t : MeasurableSpace Ω` is `ℱ_t`.
 Asset prices are adapted: `S i t` is `ℱ_t`-measurable for all assets `i` and times `t`.
 
+The measurable-singletons assumption `[MeasurableSingletonClass Ω]` ensures that events
+of the form `{ω}` are in the sigma-algebra, which is needed for the equivalence condition
+`Q {ω} > 0 ↔ P {ω} > 0` in Phase 4 (`MartingaleMeasure.lean`).
+
 **M1.1, M1.2**
 -/
-structure FinancialMarket (Ω : Type*) [MeasurableSpace Ω] where
+structure FinancialMarket (Ω : Type*) [MeasurableSpace Ω] [Fintype Ω]
+    [MeasurableSingletonClass Ω] where
   /-- Finite time horizon: trading occurs at times `0, 1, …, T` -/
   T : ℕ
   /-- Number of risky assets -/
@@ -56,8 +70,12 @@ structure FinancialMarket (Ω : Type*) [MeasurableSpace Ω] where
   B_pos : ∀ t, 0 < B t
   /-- Numeraire starts at 1 (standard normalization) -/
   B_zero : B ⟨0, Nat.zero_lt_succ T⟩ = 1
+  /-- Reference probability measure on `Ω` -/
+  P : MeasureTheory.Measure Ω
+  /-- `P` is a probability measure: `P Set.univ = 1` -/
+  P_prob : MeasureTheory.IsProbabilityMeasure P
 
-variable {Ω : Type*} [MeasurableSpace Ω]
+variable {Ω : Type*} [MeasurableSpace Ω] [Fintype Ω] [MeasurableSingletonClass Ω]
 
 /-! ### M1.3 — Discounted prices -/
 
@@ -66,7 +84,8 @@ variable {Ω : Type*} [MeasurableSpace Ω]
 Discounting converts asset prices to units of the numeraire (risk-free bond).
 All no-arbitrage and martingale arguments in the FTAP use discounted prices.
 The discounting is well-defined since `B t > 0` for all `t` (see `numeraire_pos`). -/
-noncomputable def discountedPrice (m : FinancialMarket Ω) (i : Fin m.n) (t : Fin (m.T + 1)) (ω : Ω) : ℝ :=
+noncomputable def discountedPrice (m : FinancialMarket Ω) (i : Fin m.n) (t : Fin (m.T + 1))
+    (ω : Ω) : ℝ :=
   m.S i t ω / m.B t
 
 /-! ### M1.4 — Numeraire positivity -/

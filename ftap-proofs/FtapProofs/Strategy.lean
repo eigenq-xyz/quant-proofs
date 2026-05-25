@@ -30,24 +30,27 @@ namespace FtapProofs
 
 open BigOperators
 
-variable {Ω : Type*} [MeasurableSpace Ω]
+variable {Ω : Type*} [MeasurableSpace Ω] [Fintype Ω] [MeasurableSingletonClass Ω]
 
 /-! ### S2.1 — Trading strategy structure -/
 
 /-- The previous time in the filtration: `prevTime t = t - 1` for `t > 0`, and `0` for `t = 0`.
 
-Used to state the predictability condition: `θ i t` is `ℱ_{prevTime t}`-measurable,
-meaning the rebalancing decision for period `[t-1, t)` is made before observing `S t`. -/
-private def prevTime {T : ℕ} (t : Fin (T + 1)) : Fin (T + 1) :=
+Used to state the predictability condition: `holdings i t` is `ℱ_{prevTime t}`-measurable,
+meaning the rebalancing decision for period `[t-1, t)` is made before observing `S t`.
+
+`protected` (not `private`) so that downstream modules can refer to `FtapProofs.prevTime`
+by name when writing proofs about `TradingStrategy.predictable`. -/
+protected def prevTime {T : ℕ} (t : Fin (T + 1)) : Fin (T + 1) :=
   ⟨t.val.pred, Nat.lt_of_le_of_lt (Nat.pred_le t.val) t.isLt⟩
 
 @[simp]
-private lemma prevTime_zero {T : ℕ} : prevTime (⟨0, Nat.zero_lt_succ T⟩ : Fin (T + 1)) =
+protected lemma prevTime_zero {T : ℕ} : FtapProofs.prevTime (⟨0, Nat.zero_lt_succ T⟩ : Fin (T + 1)) =
     ⟨0, Nat.zero_lt_succ T⟩ := Fin.ext rfl
 
 @[simp]
-private lemma prevTime_succ {T : ℕ} (t : Fin T) : prevTime t.succ = t.castSucc :=
-  Fin.ext (by simp [prevTime, Fin.val_succ])
+protected lemma prevTime_succ {T : ℕ} (t : Fin T) : FtapProofs.prevTime t.succ = t.castSucc :=
+  Fin.ext (by simp [FtapProofs.prevTime, Fin.val_succ])
 
 /-- **S2.1** A trading strategy in the market `m`.
 
@@ -62,7 +65,7 @@ structure TradingStrategy (m : FinancialMarket Ω) where
   /-- Holdings process: `holdings i t ω` is the number of units of asset `i` held over `[t-1, t)` -/
   holdings : Fin m.n → Fin (m.T + 1) → Ω → ℝ
   /-- **Predictability**: `holdings i t` is `ℱ_{t-1}`-measurable — decided before seeing `S t` -/
-  predictable : ∀ i t, @Measurable Ω ℝ (m.𝒻 (prevTime t)) _ (holdings i t)
+  predictable : ∀ i t, @Measurable Ω ℝ (m.𝒻 (FtapProofs.prevTime t)) _ (holdings i t)
 
 /-! ### S2.2 — Value process -/
 
