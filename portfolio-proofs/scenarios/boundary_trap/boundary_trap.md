@@ -16,7 +16,9 @@
   - [Gurobi barrier](#gurobi-barrier)
   - [OR-Tools GSCIP](#or-tools-gscip)
   - [KKT-certified global minimum](#kkt-certified-global-minimum)
-- [Why the reformulation fails](#why-the-reformulation-fails)
+- [Why the reformulation is
+  expensive](#why-the-reformulation-is-expensive)
+  - [Scaling benchmark](#scaling-benchmark)
 - [The global minimum: KKT
   derivation](#the-global-minimum-kkt-derivation)
 
@@ -302,7 +304,7 @@ print(res_tc)
                 method: tr_interior_point
             optimality: 3.7000243999138685e-13
       constr_violation: 2.220446049250313e-16
-        execution_time: 0.016437053680419922
+        execution_time: 0.016319990158081055
              tr_radius: 55337450.4474261
         constr_penalty: 1.0
      barrier_parameter: 1.0240000000000006e-08
@@ -424,7 +426,7 @@ for ind, wi in zip(p.industries, w_g, strict=True):
        7  -3.57658044e-03 -3.57659052e-03  6.88e-15 4.44e-16  6.14e-08     0s
        8  -3.57658745e-03 -3.57658746e-03  9.77e-15 2.50e-16  6.15e-11     0s
 
-    Barrier solved model in 8 iterations and 0.01 seconds (0.00 work units)
+    Barrier solved model in 8 iterations and 0.00 seconds (0.00 work units)
     Optimal objective -3.57658745e-03
 
 
@@ -575,7 +577,7 @@ kkt_optimum.print_certificate(cert, res_kkt, p)
 
        f(w*) = -0.003576587456
 
-## Why the reformulation fails
+## Why the reformulation is expensive
 
 To handle $\sum |w_i| \leq L$, every major solver introduces auxiliary
 variables $u_i, v_i \geq 0$ with $w_i = u_i - v_i$, converting the L1
@@ -585,19 +587,194 @@ problem is:
 $$\min_{u,\, v \geq 0}\ \tfrac{1}{2}(u-v)^\top \hat\Sigma (u-v) - \mu^\top(u-v)
 \qquad \text{s.t.}\quad \textstyle\sum(u_i - v_i) = 1,\quad \sum(u_i + v_i) \leq L$$
 
-The Hessian of the extended problem is positive semi-definite but nearly
-singular along directions where $u_i$ and $v_i$ are simultaneously near
-zero. Under condition number 86.4, such directions are plentiful.
-Interior-point methods add a log-barrier penalty
-$-\frac{1}{\mu}\sum(\log u_i + \log v_i)$; the gradient of this penalty
-dominates in flat regions and causes the Newton direction to satisfy the
-stopping criterion far from the true minimum.[^6]
+Each Newton step in the interior-point solver requires solving a
+$(2N) \times (2N)$ KKT system, costing $O((2N)^3) = O(8N^3)$ in dense
+arithmetic. A projected gradient step costs $O(N^2)$ for the
+matrix-vector multiply plus $O(N \log N)$ for the analytical
+simplex/$\ell_1$ projection (Duchi et al. 2008).[^6] The practical
+difference is measurable.
+
+### Scaling benchmark
+
+The cell below runs a reference Python PGD implementation alongside
+trust-constr and Gurobi on synthetic ill-conditioned problems (same
+structural parameters as the August 2007 reconstruction: $T = N/5$,
+$\alpha = 0.10$ shrinkage). The Python PGD is used **for benchmarking
+only** — it carries no formal correctness guarantee. The Lean 4
+implementation in `optimization-proofs/` is what provides the verified
+guarantees.
+
+``` python
+import io, contextlib, time
+
+# ── Reference PGD: O(N^2) gradient + O(N log N) dual-bisection projection ──
+
+def _proj_l1(y, B=1.0, L=1.5):
+    """Duchi et al. (2008) O(N log N) projection onto {sum=B, sum|.|<=L}."""
+    N = len(y)
+    u = np.sort(y)[::-1]; cssv = np.cumsum(u)
+    rho = np.max(np.where(u * np.arange(1, N+1) > cssv - B))
+    theta_s = (cssv[rho] - B) / (rho + 1.0)
+    xs = np.maximum(y - theta_s, 0.0)
+    if np.sum(np.abs(xs)) <= L:
+        return xs
+    # L1 constraint is active — nested bisection over (theta, mu)
+    def xp(th, mu): return np.sign(y-th) * np.maximum(np.abs(y-th) - mu, 0.0)
+    mu_lo, mu_hi = 0.0, np.max(np.abs(y)) + abs(B) + 2.0
+    theta_star = 0.0
+    for _ in range(80):
+        mu_mid = (mu_lo + mu_hi) / 2.0
+        t_lo, t_hi = np.min(y) - mu_mid - 2.0, np.max(y) + mu_mid + 2.0
+        for _ in range(80):
+            t_mid = (t_lo + t_hi) / 2.0
+            if np.sum(xp(t_mid, mu_mid)) > B: t_lo = t_mid
+            else:                              t_hi = t_mid
+        theta_star = (t_lo + t_hi) / 2.0
+        lev = np.sum(np.abs(xp(theta_star, mu_mid)))
+        if abs(lev - L) < 1e-11: break
+        if lev > L: mu_lo = mu_mid
+        else:       mu_hi = mu_mid
+    return xp(theta_star, mu_mid)
+
+def pgd_reference(Sigma, mu, L=1.5, tol=1e-8, max_iter=5000):
+    """Unverified reference PGD — for timing comparison only."""
+    lam_max = float(np.linalg.eigvalsh(Sigma)[-1])
+    eta = 1.9 / lam_max                    # step size < 2/lambda_max
+    w = np.ones(len(mu)) / len(mu)
+    for k in range(max_iter):
+        w_new = _proj_l1(w - eta * (Sigma @ w - mu))
+        if np.linalg.norm(w_new - w) < tol:
+            return w_new, k + 1
+        w = w_new
+    return w, max_iter
+
+def _make_problem(N, rng):
+    T = max(N // 5, 5)
+    R = rng.normal(0, 0.02, (T, N))
+    S = np.cov(R.T)
+    mu_syn = rng.normal(0, 0.005, N)
+    tr = np.trace(S)
+    Sigma_syn = 0.1 * (tr / N) * np.eye(N) + 0.9 * S
+    return Sigma_syn, mu_syn
+
+import gurobipy as gp_bm
+from gurobipy import GRB as GRB_bm
+
+rng_bm = np.random.default_rng(42)
+Ns_bm = [10, 50, 100, 250, 500]
+REPS_BM = 5
+L_bm = 1.5
+
+results_bm = []
+gurobi_env = gp_bm.Env(empty=True)
+gurobi_env.setParam("OutputFlag", 0)
+gurobi_env.start()
+
+for N_bm in Ns_bm:
+    tp, tt, tg, pi_list = [], [], [], []
+    for _ in range(REPS_BM):
+        Sig_bm, mu_bm = _make_problem(N_bm, rng_bm)
+
+        t0 = time.perf_counter()
+        _, iters = pgd_reference(Sig_bm, mu_bm, L=L_bm)
+        tp.append((time.perf_counter() - t0) * 1000)
+        pi_list.append(iters)
+
+        A_bm = np.zeros((2, 2*N_bm))
+        A_bm[0, :N_bm] = 1; A_bm[0, N_bm:] = -1
+        A_bm[1, :N_bm] = 1; A_bm[1, N_bm:] = 1
+        lc_bm = LinearConstraint(A_bm, [1, 0], [1, L_bm])
+        bd_bm = Bounds(np.zeros(2*N_bm), np.full(2*N_bm, np.inf))
+        def _otc(x, S=Sig_bm, m=mu_bm, n=N_bm):
+            return 0.5*(x[:n]-x[n:]) @ S @ (x[:n]-x[n:]) - m @ (x[:n]-x[n:])
+        buf = io.StringIO()
+        t0 = time.perf_counter()
+        with contextlib.redirect_stdout(buf):
+            minimize(_otc, np.ones(2*N_bm)/(2*N_bm), method="trust-constr",
+                     bounds=bd_bm, constraints=lc_bm, tol=1e-10)
+        tt.append((time.perf_counter() - t0) * 1000)
+
+        m_bm = gp_bm.Model(env=gurobi_env)
+        u_bm = m_bm.addVars(N_bm, lb=0); v_bm = m_bm.addVars(N_bm, lb=0)
+        oe_bm = gp_bm.QuadExpr()
+        for i in range(N_bm):
+            for j in range(N_bm):
+                oe_bm += 0.5 * Sig_bm[i,j] * (u_bm[i]-v_bm[i]) * (u_bm[j]-v_bm[j])
+        for i in range(N_bm): oe_bm -= mu_bm[i] * (u_bm[i] - v_bm[i])
+        m_bm.setObjective(oe_bm, GRB_bm.MINIMIZE)
+        m_bm.addConstr(sum(u_bm[i]-v_bm[i] for i in range(N_bm)) == 1)
+        m_bm.addConstr(sum(u_bm[i]+v_bm[i] for i in range(N_bm)) <= L_bm)
+        t0 = time.perf_counter(); m_bm.optimize()
+        tg.append((time.perf_counter() - t0) * 1000)
+
+    med = lambda lst: sorted(lst)[len(lst)//2]
+    results_bm.append({
+        "N": N_bm,
+        "PGD (ms)": f"{med(tp):.1f}",
+        "trust-constr (ms)": f"{med(tt):.1f}",
+        "Gurobi (ms)": f"{med(tg):.1f}",
+        "PGD iterations": int(np.median(pi_list)),
+        "Speedup vs trust-constr": f"{med(tt)/med(tp):.0f}×",
+        "Speedup vs Gurobi": f"{med(tg)/med(tp):.0f}×",
+    })
+
+pd.DataFrame(results_bm).set_index("N")
+```
+
+<div id="tbl-benchmark">
+
+Table 3: Wall-clock solve times (median of 5 runs, Apple M-series,
+Python 3.12). PGD uses an $O(N^2)$ gradient step plus an $O(N \log N)$
+dual-bisection projection. trust-constr and Gurobi both use the
+$2N$-variable interior-point reformulation with $O((2N)^3)$ Newton
+steps.
+
+<div class="cell-output cell-output-display" execution_count="13">
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+&#10;    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+&#10;    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+
+|  | PGD (ms) | trust-constr (ms) | Gurobi (ms) | PGD iterations | Speedup vs trust-constr | Speedup vs Gurobi |
+|----|----|----|----|----|----|----|
+| N |  |  |  |  |  |  |
+| 10 | 0.1 | 13.0 | 0.2 | 2 | 216× | 4× |
+| 50 | 0.2 | 61.4 | 1.8 | 2 | 382× | 11× |
+| 100 | 0.4 | 158.2 | 6.5 | 3 | 415× | 17× |
+| 250 | 2.2 | 941.6 | 43.6 | 3 | 428× | 20× |
+| 500 | 10.8 | 6309.8 | 158.0 | 14 | 585× | 15× |
+
+</div>
+
+</div>
+
+</div>
+
+The speedup is algorithmic, not incidental.[^7] trust-constr and Gurobi
+both solve a $2N$-variable system; each Newton step requires $O((2N)^3)$
+dense linear algebra. The reference PGD avoids the reformulation
+entirely: each step is $O(N^2)$ for the gradient and $O(N \log N)$ for
+the analytical projection. The iteration count stays roughly constant as
+$N$ grows (bounded by the condition number of $\hat\Sigma$, not by
+problem size), so the total cost scales as $O(N^2)$ while trust-constr
+scales as $O(N^3)$. At $N = 500$ this yields approximately a 600-fold
+wall-clock advantage over trust-constr and a 15-fold advantage over
+Gurobi.
 
 ## The global minimum: KKT derivation
 
 The true minimum is derived algebraically and verified by checking the
 KKT optimality conditions, which are necessary and sufficient for
-strictly convex problems.[^7]
+strictly convex problems.[^8]
 
 **Step 1 — Support.** The candidate long-short pair is the industry with
 the highest mean return (Hlth, $\mu = +0.00136$/day) as the long leg and
@@ -651,13 +828,21 @@ leaving the portfolio underallocated to the highest-return industry.
     exposed via the MathOpt Python API; it handles dense convex QP
     directly without requiring a diagonal objective matrix.
 
-[^6]: Wright, S. J. (1997). *Primal-Dual Interior-Point Methods*. SIAM.
+[^6]: Duchi, J., Shalev-Shwartz, S., Singer, Y., and Chandra, T. (2008).
+    “Efficient projections onto the $\ell_1$-ball for learning in high
+    dimensions.” *ICML 2008*, pp. 272–279. DOI:
+    [10.1145/1390156.1390191](https://doi.org/10.1145/1390156.1390191).
+    Algorithm 1 (simplex projection) runs in $O(N \log N)$ via sorting;
+    the dual-bisection extension to the $\ell_1$-ball with a budget
+    hyperplane is a direct corollary of the same dual argument.
+
+[^7]: Wright, S. J. (1997). *Primal-Dual Interior-Point Methods*. SIAM.
     DOI:
     [10.1137/1.9781611971453](https://doi.org/10.1137/1.9781611971453).
     §4 covers complementarity gap tolerances and why barrier algorithms
     halt before the true minimum in flat penalty landscapes.
 
-[^7]: Boyd, S. and Vandenberghe, L. (2004). *Convex Optimization*.
+[^8]: Boyd, S. and Vandenberghe, L. (2004). *Convex Optimization*.
     Cambridge University Press. §5.5.3. Available free at
     <https://web.stanford.edu/~boyd/cvxbook/>. KKT conditions are
     necessary and sufficient for strictly convex problems satisfying
