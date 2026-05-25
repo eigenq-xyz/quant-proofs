@@ -39,7 +39,7 @@ Our solver solves these three structural failures at the **compiler level** by d
 
 ## 🏁 Empirical Head-to-Head Benchmark
 
-We stress-tested SciPy's SLSQP (Active-Set) and `trust-constr` (Interior-Point) solvers against our specialized PGD solver under **historical March 2020 liquidity shock parameters** ($N = 10$ sectors, $T = 5$ days lookback, leverage cap $L = 1.5$):
+We stress-tested SciPy's SLSQP (Active-Set) and `trust-constr` (Interior-Point) solvers against our specialized PGD solver on the **L1 boundary-trap scenario** (August 2007, $N = 10$ industries, gross leverage cap $L = 1.5$, Ledoit-Wolf shrinkage applied so $\hat\Sigma \succ 0$). The failure mode here is the non-differentiable L1 leverage constraint, not rank deficiency — see `scenarios/cholesky_crash/` for the rank-deficiency crash:
 
 | Solver | Mathematical Family | Convergence | Objective Value | Leverage Violation | Practical Behavior |
 | :--- | :--- | :--- | :--- | :--- | :--- |

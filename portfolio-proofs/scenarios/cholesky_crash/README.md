@@ -68,7 +68,14 @@ Objective:
 
 $$f(w) = \tfrac{1}{2}\, w^T S\, w \;-\; \mu^T w$$
 
-Constraints: $\sum_i w_i = 1$, $\sum_i |w_i| \leq 1.5$, $w_i \in [-1, 1]$.
+Constraints: $\sum_i w_i = 1$, $\sum_i |w_i| \leq 1.5$.
+
+> **Note.** The flat scripts in this directory (`scipy_slsqp.py`, `gurobi_non_psd.py`,
+> `cvxpy_osqp.py`) are legacy artifacts that additionally enforce per-asset box bounds
+> $w_i \in [-1, 1]$ and use synthetic data (`np.random.seed(42)`).  The canonical
+> scenario formulation is `cholesky_crash.qmd` — no box bounds, real March 9–13 2020
+> Ken French 10-industry returns.  The KKT certificate in the `.qmd` is derived without
+> box bounds; solutions with $|w_i| > 1$ are therefore feasible and expected.
 
 Expected returns $\mu$:
 
