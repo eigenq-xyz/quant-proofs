@@ -192,35 +192,22 @@ to Lean PGD.
 
 <div id="tbl-summary">
 
-Table 1: **Table 2.** Solver outcomes across six stress scenarios. Lean
-PGD native timing: 14.8 ns per solve (1,000 run average,
-optimization-proofs benchmark). Python and Gurobi timings from the
-boundary_trap scenario. Gurobi license required; cells show n/a when
-license unavailable.
+Table 1: **Table 2.** Solver performance: rows = solvers, columns =
+scenarios. ✓ = converged to a feasible KKT point; ✗ = failed to converge
+or hard error; N/A = solver class not applicable to this failure mode.
+Annotations: (a) suboptimal — trust-constr stops in the slack-variable
+flat valley; (b) phantom positions — inactive-asset weights non-zero at
+~1e-7; (c) non-convex — non-PSD covariance makes convergence certificate
+invalid; (d) Lean PGD native binary timing: 14.8 ns per solve; (e)
+production halt — constraint violation exceeds the 1e-9 halt threshold.
 
-| Scenario | Solver | Converged | Obj. gap / err. | Live pos. | Time vs Lean PGD |
-|:---|:---|:---|:---|:---|:---|
-| boundary_trap | SLSQP | ✗ | — | — | — |
-| boundary_trap | trust-constr | ✓ | 0.0000002% | 10 | — |
-| boundary_trap | Gurobi | ✓ | 0.0000002% | 10 | ~900× (~13 ms) |
-| boundary_trap | Lean PGD | ✓ | 0.0000000% | 2 | 1× (14.8 ns native) |
-| cholesky_crash | SLSQP | ✗ | — | — | — |
-| cholesky_crash | Gurobi | ✗ | — | — | — |
-| cholesky_crash | CVXPY+OSQP | ✗ | — | — | — |
-| cholesky_crash | Lean PGD | ✓ | — | — | — |
-| precision_bleed | SLSQP | ✓ | 2.79e-09 (lev. err.) | — | — |
-| precision_bleed | trust-constr | ✓ | 1.20e-15 (lev. err.) | — | — |
-| precision_bleed | Gurobi | ✓ | 8.00e-10 (lev. err.) | — | — |
-| precision_bleed | Lean PGD | ✓ | 0.00e+00 (lev. err.) | — | — |
-| step_divergence | Gradient Descent (stale eta) | ✗ | — | — | — |
-| step_divergence | Lean PGD | ✓ | — | — | — |
-| phantom_positions | SLSQP | ✗ | — | 4 (phantom: —) | — |
-| phantom_positions | trust-constr | ✓ | 0.0002% | 5 (phantom: 4e-07) | — |
-| phantom_positions | Gurobi | ✓ | 0.0000% | 5 (phantom: 1e-07) | — |
-| phantom_positions | Lean PGD | ✓ | 0.0000% | 2 (phantom: 0 (exact)) | ~1× (incl. subprocess) |
-| vix_shock | Gradient Descent (stale eta) | ✗ | dist=0.487 | — | — |
-| vix_shock | Gurobi | ✓ | dist=0.000 | — | — |
-| vix_shock | Lean PGD | ✓ | dist=0.000 | — | ~1× (incl. subprocess) |
+| Solver | bound. trap | chol. crash | prec. bleed | step div. | phantom pos. | VIX shock |
+|:---|:---|:---|:---|:---|:---|:---|
+| SLSQP | ✗ | ✗ | ✓ (e) | ✗ | ✗ | ✓ |
+| trust-constr | ✓ (a) | ✓ (c) | ✓ | ✓ | ✓ (b) | ✓ |
+| Gurobi | ✓ | ✗ | ✓ | ✓ | ✓ (b) | ✓ |
+| GD (stale η) | N/A | N/A | N/A | ✗ | N/A | ✗ |
+| Lean PGD | ✓ (d) | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 </div>
 

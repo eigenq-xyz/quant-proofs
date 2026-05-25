@@ -197,79 +197,62 @@ wall-clock solve time relative to Lean PGD.
 ```{python}
 #| label: tbl-summary
 #| output: asis
-#| tbl-cap: "**Table 2.** Solver outcomes across six stress scenarios. Lean PGD native timing: 14.8 ns per solve (1,000 run average, optimization-proofs benchmark). Python and Gurobi timings from the boundary_trap scenario. Gurobi license required; cells show n/a when license unavailable."
+#| tbl-cap: "**Table 2.** Solver performance: rows = solvers, columns = scenarios. ✓ = converged to a feasible KKT point; ✗ = failed to converge or hard error; N/A = solver class not applicable to this failure mode. Annotations: (a) suboptimal — trust-constr stops in the slack-variable flat valley; (b) phantom positions — inactive-asset weights non-zero at ~1e-7; (c) non-convex — non-PSD covariance makes convergence certificate invalid; (d) Lean PGD native binary timing: 14.8 ns per solve; (e) production halt — constraint violation exceeds the 1e-9 halt threshold."
+
+# Ordered solver rows (display names map to JSON keys)
+SOLVER_DISPLAY = [
+    ("SLSQP",        "SLSQP"),
+    ("trust-constr", "trust-constr"),
+    ("Gurobi",       "Gurobi"),
+    ("GD_stale",     "GD (stale η)"),
+    ("Lean PGD",     "Lean PGD"),
+]
+
+# Ordered scenario columns
+SCENARIOS = [
+    ("boundary_trap",    "bound. trap"),
+    ("cholesky_crash",   "chol. crash"),
+    ("precision_bleed",  "prec. bleed"),
+    ("step_divergence",  "step div."),
+    ("phantom_positions","phantom pos."),
+    ("vix_shock",        "VIX shock"),
+]
+
+def cell(sv: dict) -> str:  # type: ignore[type-arg]
+    """Format one matrix cell from a solver entry."""
+    conv = sv.get("converged")
+    note = sv.get("note", "")
+    if conv is None:
+        return "N/A"
+    base = "✓" if conv else "✗"
+    # (a) suboptimal: stops in slack-variable flat valley (boundary_trap specific)
+    if "flat valley" in note:
+        base += " (a)"
+    # (b) phantom positions: inactive-asset weights non-zero
+    if "phantom" in note.lower() and conv:
+        base += " (b)"
+    # (c) non-convex convergence: cholesky_crash non-PSD case
+    if "non-convex" in note.lower() or "non-PSD" in note or "unreliable" in note:
+        base += " (c)"
+    # (d) Lean PGD native 14.8 ns timing
+    if "14.8 ns" in note:
+        base += " (d)"
+    # (e) production halt: converged but constraint violation exceeds halt threshold
+    if sv.get("above_halt") is True:
+        base += " (e)"
+    return base
 
 rows = []
+for json_key, display_name in SOLVER_DISPLAY:
+    row: list[str] = [display_name]
+    for scenario_key, _ in SCENARIOS:
+        sv = data[scenario_key]["solvers"].get(json_key, {"converged": None, "note": "N/A"})
+        row.append(cell(sv))
+    rows.append(row)
 
-# boundary_trap
-bt = data["boundary_trap"]
-bt_lean_ns = bt["solvers"]["Lean PGD"].get("time_ns", 14.8)
-for solver, sv in bt["solvers"].items():
-    conv = "✓" if sv.get("converged") else "✗"
-    gap = f'{sv["gap_pct"]:.7f}%' if sv.get("gap_pct") is not None and sv.get("converged") else "—"
-    pos = str(sv.get("pos_1e9", "—")) if sv.get("pos_1e9") is not None else "—"
-    if solver == "Lean PGD":
-        timing = "1× (14.8 ns native)"
-    elif solver == "Gurobi":
-        timing = "~900× (~13 ms)"
-    elif solver == "SLSQP":
-        timing = "—"
-    else:
-        timing = "—"
-    rows.append(["boundary_trap", solver, conv, gap, pos, timing])
-
-# cholesky_crash
-cc = data["cholesky_crash"]
-for solver, sv in cc["solvers"].items():
-    conv = "✓" if sv.get("converged") else "✗"
-    rows.append(["cholesky_crash", solver, conv, "—", "—", "—"])
-
-# precision_bleed
-pb = data["precision_bleed"]
-for solver, sv in pb["solvers"].items():
-    conv = "✓" if sv.get("converged") else "✗"
-    viol = sv.get("leverage_violation")
-    gap = f'{viol:.2e}' if viol is not None else "—"
-    rows.append(["precision_bleed", solver, conv, gap + " (lev. err.)", "—", "—"])
-
-# step_divergence
-sd = data["step_divergence"]
-for solver, sv in sd["solvers"].items():
-    conv = "✓" if sv.get("converged") else "✗"
-    rows.append(["step_divergence", solver, conv, "—", "—", "—"])
-
-# phantom_positions
-pp = data["phantom_positions"]
-pp_lean_ns = 14.8  # native binary
-for solver, sv in pp["solvers"].items():
-    conv = "✓" if sv.get("converged") else "✗"
-    gap = f'{sv["gap_pct"]:.4f}%' if sv.get("gap_pct") is not None and sv.get("converged") else "—"
-    pos = str(sv.get("pos_1e9", "—")) if sv.get("pos_1e9") is not None else "—"
-    phantom = sv.get("phantom_mag")
-    phantom_str = f'{phantom:.0e}' if phantom is not None and phantom > 0 else ("0 (exact)" if phantom == 0.0 else "—")
-    if solver == "Lean PGD":
-        timing = "~1× (incl. subprocess)"
-    else:
-        timing = "—"
-    rows.append(["phantom_positions", solver, conv, gap, pos + f" (phantom: {phantom_str})", timing])
-
-# vix_shock
-vs = data["vix_shock"]
-for solver, sv in vs["solvers"].items():
-    conv = "✓" if sv.get("converged") else "✗"
-    dist = sv.get("dist_to_wstar")
-    gap = f'dist={dist:.3f}' if dist is not None else "—"
-    if solver == "Lean PGD":
-        timing = "~1× (incl. subprocess)"
-    else:
-        timing = "—"
-    rows.append(["vix_shock", solver, conv, gap, "—", timing])
-
-df = pd.DataFrame(rows, columns=[
-    "Scenario", "Solver", "Converged", "Obj. gap / err.", "Live pos.", "Time vs Lean PGD"
-])
-
-print(df.to_markdown(index=False))
+col_names = ["Solver"] + [col for _, col in SCENARIOS]
+df = pd.DataFrame(rows, columns=col_names).set_index("Solver")
+print(df.to_markdown())
 ```
 
 The Lean PGD timing in the table is the native compiled binary (14.8 nanoseconds
