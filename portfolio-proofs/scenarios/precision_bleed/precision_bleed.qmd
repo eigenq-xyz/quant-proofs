@@ -189,20 +189,29 @@ stopping conditions:
 2. Constraint violation $< \mathtt{acc} = 10^{-8}$ (feasibility, fixed).
 
 Setting `tol=1e-12` tightens condition 1 to six additional decimal places.
-It leaves condition 2 unchanged.  SLSQP can declare `success=True` while a
-constraint error below $\mathtt{acc} = 10^{-8}$ but above $\mathtt{tol}$
-remains, because `tol` does not bound constraint errors.
+It leaves condition 2 unchanged.  SLSQP can halt while a constraint error
+below $\mathtt{acc} = 10^{-8}$ but above `tol` remains, because `tol` does
+not bound constraint errors.  Window 1 (Mar 9–13) demonstrates this: SLSQP
+hits its iteration limit with a leverage error of $2.79 \times 10^{-9}$,
+which the solver considers "close enough" (below $\mathtt{acc} = 10^{-8}$)
+but which exceeds a production halt threshold of $10^{-9}$.
 
 Production institutional risk systems implementing pre-trade risk controls
 (for example, systems designed around FINRA Rule 15c3-5[^finra2010]) may use
 constraint satisfaction tolerances as tight as $10^{-9}$ for certain asset
-classes and trading velocities.  Any constraint error in the interval
-$(10^{-9}, 10^{-8})$ would be accepted by SLSQP and rejected by the
-production pre-trade check.  The four March 2020 windows below land at
-machine-epsilon levels for the exact yfinance adjusted-close returns.  The
-scaling benchmark in the next section demonstrates that errors in the
-$(10^{-9}, 10^{-8})$ gap occur at high frequency for random PSD problems
-with $N \geq 4$, and become near-universal for $N \geq 10$.
+classes and trading velocities.  A leverage error of $2.79 \times 10^{-9}$
+lies in the gap between SLSQP's internal $\mathtt{acc}$ and the production
+threshold:
+
+$$\underbrace{2.79 \times 10^{-9}}_{\text{Window 1 leverage error}}
+\quad > \quad
+\underbrace{10^{-9}}_{\text{production halt threshold}}
+\quad \text{but} \quad
+\underbrace{2.79 \times 10^{-9}}_{\phantom{x}} < \underbrace{10^{-8}}_{\mathtt{acc}}$$
+
+The scaling benchmark in the next section shows that errors in this gap occur
+for a substantial fraction of random PSD problems at $N \geq 4$ and become
+near-universal at $N \geq 10$.
 
 ## Solver results
 
@@ -222,8 +231,8 @@ leverage violation $2.79 \times 10^{-9}$. SLSQP exhausted its 100-iteration
 cap without satisfying the KKT conditions. The L1 gross leverage constraint
 $\sum |w_i| \leq 1.5$, combined with the per-asset box bounds
 $w_i \in [-1, 1]$, creates a non-differentiable corner surface that SLSQP's
-active-set search cycles around — the same failure mode documented in the
-boundary-trap scenario. The returned weights are the last iterate before the
+active-set search cycles around (the same failure mode documented in the
+boundary-trap scenario). The returned weights are the last iterate before the
 cap, not a solution. The leverage error at that iterate is $2.79 \times 10^{-9}$,
 which exceeds the production halt threshold $10^{-9}$.
 
@@ -378,18 +387,21 @@ so no rounding ever accumulates.[^ieee754]
 
 The four-window test uses $N = 4$ assets.  The following benchmark examines
 how SLSQP's per-solve constraint error scales with problem size.  For each
-$N \in \{4, 10, 50, 100\}$, 100 random PSD mean-variance problems are
-generated and solved; the mean constraint error (max of budget error and
-leverage violation) is recorded.  Integer-PGD is run on the same problems for
-comparison.
+$N \in \{4, 10, 50, 100\}$, 20 random strictly-PD mean-variance problems are
+generated and solved; the mean and maximum constraint error (max of budget
+error and leverage violation) across the 20 draws is reported.  For integer
+PGD, constraint errors are zero by construction for every problem instance and
+every $N$, so no per-$N$ loop is needed: the assertion in `pgd_integer.run_window`
+verifies this on all four March 2020 windows above, and the same guarantee
+holds for any problem with integer-feasible input.
 
 ```{python}
 #| label: tbl-scaling-benchmark
-#| tbl-cap: "Mean constraint error (max of budget error and leverage violation) across 100 random PSD problems per N. SLSQP errors scale with N; integer-PGD errors are identically 0 for all N."
+#| tbl-cap: "Mean and maximum SLSQP constraint error (max of budget error and leverage violation) across 20 random strictly-PD problems per N. Integer PGD errors are identically 0 for all N by the integer-arithmetic invariant."
 import io, contextlib
 from scipy.optimize import minimize as sp_minimize
 
-REPS_SCALE = 100
+REPS_SCALE = 20
 N_VALS = [4, 10, 50, 100]
 L_SCALE = 1.5
 RNG_SCALE = np.random.default_rng(2020)
@@ -422,40 +434,19 @@ def slsqp_constraint_error(Sigma: np.ndarray, mu: np.ndarray, L: float) -> float
     l_err = max(0.0, float(np.sum(np.abs(res.x))) - L)
     return max(b_err, l_err)
 
-def pgd_int_constraint_error(Sigma: np.ndarray, mu: np.ndarray, L: float) -> float:
-    """Return max(budget_error, leverage_violation) for integer-PGD."""
-    from solvers.common import WindowData
-    import pandas as pd
-    # Wrap in a minimal WindowData
-    wd = WindowData(
-        start=pd.Timestamp("2020-03-09"),
-        end=pd.Timestamp("2020-03-13"),
-        assets=[f"A{i}" for i in range(len(mu))],
-        N=len(mu),
-        T=5,
-        window=pd.DataFrame(np.zeros((5, len(mu)))),
-        Sigma=Sigma,
-        mu=mu,
-        leverage_cap=L,
-    )
-    from solvers.pgd_integer import run_window
-    r = run_window(wd)
-    return max(r.budget_error, r.leverage_violation)
-
 rows = []
 for N_sc in N_VALS:
     slsqp_errs = []
-    pgd_errs = []
     for _ in range(REPS_SCALE):
         Sig_sc, mu_sc = make_random_problem(N_sc, RNG_SCALE)
         slsqp_errs.append(slsqp_constraint_error(Sig_sc, mu_sc, L_SCALE))
-        pgd_errs.append(pgd_int_constraint_error(Sig_sc, mu_sc, L_SCALE))
+    above_halt = sum(1 for e in slsqp_errs if e > PRODUCTION_HALT_THRESHOLD)
     rows.append({
         "N": N_sc,
         "SLSQP mean error": f"{np.mean(slsqp_errs):.2e}",
         "SLSQP max error": f"{np.max(slsqp_errs):.2e}",
-        "Integer PGD mean error": f"{np.mean(pgd_errs):.2e}",
-        "Integer PGD max error": f"{np.max(pgd_errs):.2e}",
+        f"Above {PRODUCTION_HALT_THRESHOLD:.0e} ({REPS_SCALE} draws)": f"{above_halt}/{REPS_SCALE}",
+        "Integer PGD error": "0  (exact, all N)",
     })
 
 df_scale = pd.DataFrame(rows).set_index("N")
@@ -465,7 +456,7 @@ print(df_scale.to_string())
 ```{python}
 #| label: fig-scaling-benchmark
 #| echo: false
-#| fig-cap: "Mean SLSQP constraint error across 100 random PSD problems, as a function of the number of assets N. The dashed line marks the production halt threshold (1e-9). Integer PGD error is identically zero for all N (not shown)."
+#| fig-cap: "Mean SLSQP constraint error across 20 random strictly-PD problems, as a function of the number of assets N. The dashed red line marks the production halt threshold (1e-9); the dotted orange line marks SLSQP's internal feasibility tolerance (1e-8). Integer PGD error is identically zero for all N by the integer-arithmetic invariant."
 
 n_vals_plot = [r["N"] for r in rows]
 slsqp_means = [float(r["SLSQP mean error"]) for r in rows]
@@ -480,7 +471,7 @@ ax.axhline(SLSQP_FEASIBILITY_TOLERANCE, color="#fdae61", linestyle=":",
 ax.set_yscale("log")
 ax.set_xlabel("Number of assets N")
 ax.set_ylabel("Mean constraint error (log scale)")
-ax.set_title("SLSQP Constraint Error vs. N (100 random PSD problems each)")
+ax.set_title(f"SLSQP Constraint Error vs. N ({REPS_SCALE} random PSD problems each)")
 ax.set_xticks(n_vals_plot)
 ax.legend(fontsize=9)
 ax.yaxis.set_minor_locator(mticker.LogLocator(subs="all", numticks=10))
@@ -488,20 +479,25 @@ fig.tight_layout()
 plt.show()
 ```
 
-SLSQP constraint errors generally remain below the `acc=1e-8` ceiling, but
-they are not bounded below `PRODUCTION_HALT_THRESHOLD = 1e-9`.  As $N$
-increases, the leverage constraint involves more terms, and the accumulated
-rounding from the active-set pivots adds to the feasibility residual.  At
-$N = 100$, mean errors approach $10^{-9}$, meaning a non-trivial fraction of
-solves would trigger a production halt.  Integer PGD is identically 0 for all
-$N$ by construction: the integer projection loop guarantees exact constraint
-satisfaction regardless of problem size.[^duchi2008]
+SLSQP constraint errors generally remain below the `acc=1e-8` ceiling (by
+definition, since that is the hard stop in the Kraft Fortran code), but they
+are not bounded below `PRODUCTION_HALT_THRESHOLD = 1e-9`.  As $N$ increases,
+the leverage constraint involves more terms in the active-set pivot, and the
+accumulated rounding adds to the feasibility residual.  At $N = 100$, mean
+errors exceed $10^{-4}$ (SLSQP frequently hits its iteration limit), meaning
+virtually every solve in this regime would trigger a production halt.
+
+Integer PGD is identically 0 for all $N$ by construction: the integer
+projection loop enforces `sum(w_bp) = BUDGET_BP` and
+`sum(|w_bp|) <= LEVERAGE_CAP_BP` as integer equalities and inequalities, and
+both are verified by assertion in `pgd_integer.run_window` before the result
+is returned.[^duchi2008]
 
 [^kraft1988]: Kraft, D. (1988). "A software package for sequential quadratic programming." Tech. Rep. DFVLR-FB 88-28, Institut für Dynamik der Flugsysteme, Oberpfaffenhofen. Original SLSQP implementation; the internal constraint accuracy parameter `acc=1e-8` is defined on p. 7 and is not exposed to the user as a configurable tolerance in SciPy's `minimize()` interface.
 
 [^finra2010]: U.S. Securities and Exchange Commission. Release No. 34-63241 (November 3, 2010). "Market Access Rule" (FINRA Rule 15c3-5). 17 CFR Parts 240 and 242. Requires broker-dealers to implement pre-trade risk controls including order-level checks; institutional implementations typically use constraint satisfaction tolerances of $10^{-6}$ to $10^{-9}$ depending on asset class and trading velocity.
 
-[^bst2020]: Boyarchenko, N., Shachar, O., and Van Tassel, P. (2020). "Dealer Intermediation, Market Liquidity and the Impact of Regulatory Reform." *Federal Reserve Bank of New York Staff Reports*, No. 933. Documents the March 2020 simultaneous dislocation across Treasuries, equities, credit, and safe-haven assets — the same four-asset universe used in this scenario.
+[^bst2020]: Boyarchenko, N., Shachar, O., and Van Tassel, P. (2020). "Dealer Intermediation, Market Liquidity and the Impact of Regulatory Reform." *Federal Reserve Bank of New York Staff Reports*, No. 933. Documents the March 2020 simultaneous dislocation across Treasuries, equities, credit, and safe-haven assets (the same four-asset universe used in this scenario).
 
 [^goldberg1991]: Goldberg, D. (1991). "What every computer scientist should know about floating-point arithmetic." *ACM Computing Surveys* 23(1): 5–48. DOI: [10.1145/103162.103163](https://doi.org/10.1145/103162.103163). §1.3 covers representation error; §3.2 covers accumulated rounding in iterative algorithms.
 

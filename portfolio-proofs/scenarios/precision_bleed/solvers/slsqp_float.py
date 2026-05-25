@@ -3,9 +3,9 @@
 Runs SciPy SLSQP with ``tol=1e-12`` (optimality tolerance) on each rolling
 5-day window.  The optimality tolerance controls when SLSQP declares the
 objective converged; it does NOT control the internal constraint satisfaction
-accuracy.  SciPy inherits the Fortran SLSQP code by Kraft (1988) — Tech.
+accuracy.  SciPy inherits the Fortran SLSQP code by Kraft (1988), Tech.
 Rep. DFVLR-FB 88-28, Institut für Dynamik der Flugsysteme, Oberpfaffenhofen
-(DFVLR, the predecessor to today's DLR) — which hard-codes ``acc=1e-8`` as
+(DFVLR, the predecessor to today's DLR), which hard-codes ``acc=1e-8`` as
 the feasibility tolerance.
 
 Consequence: SLSQP may report ``success=True`` while violating constraints at
@@ -42,7 +42,7 @@ def run_window(w: WindowData) -> WindowResult:
         either ``budget_error`` or ``leverage_violation`` exceeds
         ``PRODUCTION_HALT_THRESHOLD``; ``"PERFECT"`` otherwise.
     """
-    # Capture leverage cap via default argument — same pattern as original script.
+    # Box bounds and leverage cap matching the original flat script.
     lev = w.leverage_cap
     constraints = [
         {"type": "eq", "fun": lambda x: np.sum(x) - 1.0},
