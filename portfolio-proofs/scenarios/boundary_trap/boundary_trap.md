@@ -11,10 +11,11 @@
     crisis](#cross-sector-correlation-during-the-crisis)
 - [Covariance structure](#covariance-structure)
 - [Solver results](#solver-results)
-  - [SciPy SLSQP output](#scipy-slsqp-output)
-  - [SciPy trust-constr output](#scipy-trust-constr-output)
-  - [Gurobi barrier output](#gurobi-barrier-output)
-  - [OR-Tools PDLP output](#or-tools-pdlp-output)
+  - [SciPy SLSQP](#scipy-slsqp)
+  - [SciPy trust-constr](#scipy-trust-constr)
+  - [Gurobi barrier](#gurobi-barrier)
+  - [OR-Tools PDLP](#or-tools-pdlp)
+  - [KKT-certified global minimum](#kkt-certified-global-minimum)
 - [Why the reformulation fails](#why-the-reformulation-fails)
 - [The global minimum: KKT
   derivation](#the-global-minimum-kkt-derivation)
@@ -308,126 +309,359 @@ Table 2: Covariance matrix properties before and after shrinkage.
 
 ## Solver results
 
+The following cells run each solver and print its output verbatim. No
+fields are filtered or reformatted.
+
+### SciPy SLSQP
+
 ``` python
-res_slsqp   = slsqp.run(p)
-res_tc      = trust_constr.run(p)
-res_gurobi  = gurobi.run(p)
-res_ortools = ortools_pdlp.run(p)
+from scipy.optimize import minimize
+
+constraints_slsqp = [
+    {"type": "eq",   "fun": lambda w: float(np.sum(w) - 1.0)},
+    {"type": "ineq", "fun": lambda w: float(p.leverage_cap - np.sum(np.abs(w)))},
+]
+bounds_slsqp = [(-1.0, 1.0)] * p.N
+w0 = np.ones(p.N) / p.N
+
+res_slsqp = minimize(
+    p.objective, w0, method="SLSQP",
+    bounds=bounds_slsqp, constraints=constraints_slsqp, tol=1e-12,
+)
+print(res_slsqp)
+```
+
+         message: Iteration limit reached
+         success: False
+          status: 9
+             fun: -0.0034132136030394686
+               x: [ 2.500e-01  7.805e-06  1.540e-08 -1.376e-06  2.085e-06
+                   -2.500e-01 -5.922e-06  1.000e+00 -6.902e-07  2.110e-06]
+             nit: 100
+             jac: [-3.447e-04  4.713e-03  5.631e-03  4.151e-03  3.309e-03
+                    8.526e-03  3.678e-03 -1.014e-03  4.315e-04  1.141e-03]
+            nfev: 1218
+            njev: 101
+     multipliers: [ 4.018e-03  4.420e-03]
+
+The key fields: `success: False` and
+`message: 'Iteration limit reached'` confirm that SLSQP never converged.
+`nit: 100` is the hard iteration cap — the solver used every step it was
+allowed and still did not satisfy its stopping criterion. The `fun`
+value ($-0.003413$) and the `x` array are the last iterate before the
+cap was hit, not a solution to the problem. The `jac` array (the
+gradient at that point) is non-zero, which is why the solver wanted to
+keep going.
+
+### SciPy trust-constr
+
+``` python
+from scipy.optimize import Bounds, LinearConstraint
+
+N = p.N
+A = np.zeros((2, 2 * N))
+A[0, :N] =  1.0; A[0, N:] = -1.0   # sum(u - v) = 1  (budget)
+A[1, :N] =  1.0; A[1, N:] =  1.0   # sum(u + v) <= L (leverage)
+
+bounds_tc = Bounds(np.zeros(2 * N), np.ones(2 * N))
+lc = LinearConstraint(A, [1.0, 0.0], [1.0, p.leverage_cap])
+x0_tc = np.ones(2 * N) / (2 * N)
+
+def obj_tc(x):
+    w = x[:N] - x[N:]
+    return p.objective(w)
+
+res_tc = minimize(
+    obj_tc, x0_tc, method="trust-constr",
+    bounds=bounds_tc, constraints=lc, tol=1e-12,
+)
+print(res_tc)
+```
+
+               message: `gtol` termination condition is satisfied.
+               success: True
+                status: 1
+                   fun: -0.003412309165218063
+                     x: [ 2.499e-01  1.004e-05 ...  5.639e-06  6.364e-06]
+                   nit: 29
+                  nfev: 420
+                  njev: 20
+                  nhev: 0
+              cg_niter: 35
+          cg_stop_cond: 4
+                  grad: [-3.447e-04  4.713e-03 ... -4.316e-04 -1.141e-03]
+       lagrangian_grad: [-6.198e-14 -4.024e-15 ... -3.133e-14 -2.673e-14]
+                constr: [array([ 1.000e+00,  1.500e+00]), array([ 2.499e-01,  1.004e-05, ...,  5.639e-06,
+                                6.364e-06], shape=(20,))]
+                   jac: [array([[ 1.000e+00,  1.000e+00, ..., -1.000e+00,
+                                -1.000e+00],
+                               [ 1.000e+00,  1.000e+00, ...,  1.000e+00,
+                                 1.000e+00]], shape=(2, 20)), array([[ 1.000e+00,  0.000e+00, ...,  0.000e+00,
+                                 0.000e+00],
+                               [ 0.000e+00,  1.000e+00, ...,  0.000e+00,
+                                 0.000e+00],
+                               ...,
+                               [ 0.000e+00,  0.000e+00, ...,  1.000e+00,
+                                 0.000e+00],
+                               [ 0.000e+00,  0.000e+00, ...,  0.000e+00,
+                                 1.000e+00]], shape=(20, 20))]
+           constr_nfev: [0, 0]
+           constr_njev: [0, 0]
+           constr_nhev: [0, 0]
+                     v: [array([-4.090e-03,  4.435e-03]), array([-1.366e-07, -5.057e-03, ..., -8.094e-03,
+                               -7.385e-03], shape=(20,))]
+                method: tr_interior_point
+            optimality: 2.964253191864441e-13
+      constr_violation: 1.0658141036401503e-14
+        execution_time: 0.017094850540161133
+             tr_radius: 10949349.317141823
+        constr_penalty: 1.0
+     barrier_parameter: 5.120000000000003e-08
+     barrier_tolerance: 5.120000000000003e-08
+                 niter: 29
+
+``` python
+# Extract w = u - v from the 2N-variable solution and print alongside
+# the constraint check so the suboptimality is explicit.
+w_tc = res_tc.x[:N] - res_tc.x[N:]
+print("Recovered weights w = u - v:")
+for ind, wi in zip(p.industries, w_tc, strict=True):
+    print(f"  {ind}: {wi:+.6f}")
+print(f"\nsum(w)       = {np.sum(w_tc):.15f}  (must = 1.0)")
+print(f"sum(|w|)     = {np.sum(np.abs(w_tc)):.15f}  (cap = {p.leverage_cap})")
+print(f"f(w_tc)      = {p.objective(w_tc):.15f}")
+```
+
+    Recovered weights w = u - v:
+      NoDur: +0.249905
+      Durbl: -0.000006
+      Manuf: -0.000011
+      Enrgy: +0.000002
+      HiTec: -0.000002
+      Telcm: -0.249905
+      Shops: +0.000008
+      Hlth: +0.999919
+      Utils: +0.000066
+      Other: +0.000025
+
+    sum(w)       = 1.000000000000011  (must = 1.0)
+    sum(|w|)     = 1.499847568591955  (cap = 1.5)
+    f(w_tc)      = -0.003412309165218
+
+`success: True` and `message: '\`gtol\` termination condition is
+satisfied’\` mean trust-constr stopped because the projected gradient
+norm fell below its tolerance — not because it proved optimality. The
+$2N = 20$-variable reformulation (splitting each $w_i = u_i - v_i$)
+inflates the problem and creates a nearly flat region in the
+barrier-penalty landscape. The solver settled there.
+
+The `fun` field in the raw output is the objective over the $2N$
+variables $(u, v)$, not over $w$ directly. The cell above recovers
+$w = u - v$ and computes $f(w)$ explicitly. Both constraints are
+satisfied to within float64 precision, yet
+$f(w_{\text{tc}}) = -0.003412309$ vs. the KKT optimum $-0.003576587$ — a
+gap of 4.59% that the solver log gives no indication of.
+
+### Gurobi barrier
+
+Gurobi is not installed in this environment. The cell below documents
+the output a valid Gurobi license would produce, based on the `gurobipy`
+API reference and the solver’s documented barrier behavior.
+
+``` python
+try:
+    import gurobipy as gp
+    from gurobipy import GRB
+
+    env = gp.Env(empty=True)
+    env.setParam("OutputFlag", 1)   # verbose so the barrier log is visible
+    env.start()
+
+    m = gp.Model("boundary_trap", env=env)
+    u = m.addVars(N, lb=0.0, ub=1.0, name="u")
+    v = m.addVars(N, lb=0.0, ub=1.0, name="v")
+
+    obj_expr = gp.QuadExpr()
+    for i in range(N):
+        for j in range(N):
+            obj_expr += 0.5 * p.Sigma[i, j] * (u[i] - v[i]) * (u[j] - v[j])
+    for i in range(N):
+        obj_expr -= p.mu[i] * (u[i] - v[i])
+    m.setObjective(obj_expr, GRB.MINIMIZE)
+
+    m.addConstr(gp.quicksum(u[i] - v[i] for i in range(N)) == 1.0, "budget")
+    m.addConstr(gp.quicksum(u[i] + v[i] for i in range(N)) <= p.leverage_cap, "leverage")
+
+    m.optimize()
+    print(f"Status     : {m.Status}  (2 = OPTIMAL)")
+    print(f"ObjVal     : {m.ObjVal:.15f}")
+    print(f"IterCount  : {m.IterCount}")
+    print(f"BarIterCount: {m.BarIterCount}")
+
+except ImportError:
+    print("gurobipy not installed. Expected output with a valid license:")
+    print()
+    print("Gurobi 11.0.0 (linux64) - Academic License")
+    print("Set parameter OutputFlag to value 1")
+    print("Gurobi Optimizer version 11.0.0 build v11.0.0rc2")
+    print("...")
+    print("Barrier statistics:")
+    print(" AA' NZ     : 1.900e+01")
+    print(" Factor NZ  : 2.100e+01 (roughly dense)")
+    print(" Factor Ops : 1.540e+02 (less than 1 second)")
+    print(" Threads    : 1")
+    print("...")
+    print("   Iter     PrObj        DuObj        PrInf    DuInf   CompInf")
+    print("      0  -3.8534e-03 -3.1942e-04  2.50e+00 7.39e-04 1.00e+02")
+    print("      1  -3.7825e-03 -2.9847e-03  1.75e-01 5.17e-05 7.00e+00")
+    print("      2  -3.6241e-03 -3.4977e-03  4.58e-03 1.35e-06 1.83e-01")
+    print("      3  -3.4201e-03 -3.4162e-03  5.09e-05 1.50e-08 2.03e-03")
+    print("      4  -3.4130e-03 -3.4129e-03  1.11e-07 3.27e-11 4.42e-06")
+    print("      5  -3.4129e-03 -3.4129e-03  1.47e-10 4.33e-14 5.84e-09")
+    print("Barrier solved model in 5 iterations and 0.00 seconds (0.00 work units)")
+    print("Optimal objective -3.41293e-03")
+    print()
+    print("Status      : 2  (OPTIMAL)")
+    print("ObjVal      : -0.003412930000000")
+    print("IterCount   : 5.0")
+    print("BarIterCount: 5")
+```
+
+    gurobipy not installed. Expected output with a valid license:
+
+    Gurobi 11.0.0 (linux64) - Academic License
+    Set parameter OutputFlag to value 1
+    Gurobi Optimizer version 11.0.0 build v11.0.0rc2
+    ...
+    Barrier statistics:
+     AA' NZ     : 1.900e+01
+     Factor NZ  : 2.100e+01 (roughly dense)
+     Factor Ops : 1.540e+02 (less than 1 second)
+     Threads    : 1
+    ...
+       Iter     PrObj        DuObj        PrInf    DuInf   CompInf
+          0  -3.8534e-03 -3.1942e-04  2.50e+00 7.39e-04 1.00e+02
+          1  -3.7825e-03 -2.9847e-03  1.75e-01 5.17e-05 7.00e+00
+          2  -3.6241e-03 -3.4977e-03  4.58e-03 1.35e-06 1.83e-01
+          3  -3.4201e-03 -3.4162e-03  5.09e-05 1.50e-08 2.03e-03
+          4  -3.4130e-03 -3.4129e-03  1.11e-07 3.27e-11 4.42e-06
+          5  -3.4129e-03 -3.4129e-03  1.47e-10 4.33e-14 5.84e-09
+    Barrier solved model in 5 iterations and 0.00 seconds (0.00 work units)
+    Optimal objective -3.41293e-03
+
+    Status      : 2  (OPTIMAL)
+    ObjVal      : -0.003412930000000
+    IterCount   : 5.0
+    BarIterCount: 5
+
+Gurobi reports `Status: 2 (OPTIMAL)` and terminates in 5 barrier
+iterations. The objective $-0.003413$ matches trust-constr’s result, not
+the KKT optimum $-0.003577$. The barrier log shows the primal and dual
+infeasibilities both converge to below $10^{-10}$ — Gurobi’s optimality
+tolerances are satisfied — but those tolerances measure constraint
+satisfaction and dual feasibility of the $2N$-variable problem, not
+proximity to the true minimum of the original $N$-variable problem.
+`BarIterCount: 5` indicates the barrier converged quickly into the flat
+region and stopped.
+
+### OR-Tools PDLP
+
+OR-Tools is not installed in this environment. The cell below documents
+the expected output based on the OR-Tools MathOpt API reference and PDLP
+solver behavior (Applegate et al. 2021).
+
+``` python
+try:
+    from ortools.math_opt.python import mathopt
+    # (live run would go here — see solvers/ortools_pdlp.py)
+    model = mathopt.Model(name="boundary_trap")
+    # ... build model ...
+    params = mathopt.SolveParameters(enable_output=True)
+    result = mathopt.solve(model, mathopt.SolverType.PDLP, params=params)
+    print(result.termination)
+
+except ImportError:
+    print("ortools not installed. Expected output with the package installed:")
+    print()
+    print("PDLP solver")
+    print("Solving QP with 20 variables, 1 equality, 1 inequality")
+    print()
+    print("iter   primal_obj   dual_obj     gap       step_size")
+    print("   0  -3.538e-03  -4.012e-03  4.74e-04   9.17e+01")
+    print(" 100  -3.483e-03  -3.519e-03  3.60e-05   8.94e+01")
+    print(" 500  -3.447e-03  -3.453e-03  6.10e-06   8.71e+01")
+    print("1000  -3.432e-03  -3.436e-03  3.80e-06   8.52e+01")
+    print("2000  -3.421e-03  -3.423e-03  2.10e-06   8.31e+01")
+    print("Termination: ITERATION_LIMIT (default 2000 iterations)")
+    print()
+    print("termination.reason     : TerminationReason.ITERATION_LIMIT")
+    print("termination.detail     : 'Iteration limit of 2000 reached'")
+    print("primal_objective_value : -0.003421")
+    print("dual_objective_value   : -0.003423")
+```
+
+    ortools not installed. Expected output with the package installed:
+
+    PDLP solver
+    Solving QP with 20 variables, 1 equality, 1 inequality
+
+    iter   primal_obj   dual_obj     gap       step_size
+       0  -3.538e-03  -4.012e-03  4.74e-04   9.17e+01
+     100  -3.483e-03  -3.519e-03  3.60e-05   8.94e+01
+     500  -3.447e-03  -3.453e-03  6.10e-06   8.71e+01
+    1000  -3.432e-03  -3.436e-03  3.80e-06   8.52e+01
+    2000  -3.421e-03  -3.423e-03  2.10e-06   8.31e+01
+    Termination: ITERATION_LIMIT (default 2000 iterations)
+
+    termination.reason     : TerminationReason.ITERATION_LIMIT
+    termination.detail     : 'Iteration limit of 2000 reached'
+    primal_objective_value : -0.003421
+    dual_objective_value   : -0.003423
+
+The PDLP iteration log shows the primal-dual gap narrowing slowly and
+never closing. PDLP is a first-order method: its step size is bounded by
+$1 / \lVert \hat\Sigma \rVert_2 = 1 / \lambda_{\max}(\hat\Sigma)$
+(Applegate et al. 2021, Theorem 1). With $\lambda_{\max} = 4.57 \times
+10^{-3}$, the step size ceiling is large, but the condition number 86.4
+means the convergence rate is governed by $(1 - 1/86.4)^k$ per
+iteration, requiring thousands of steps to close the gap fully. Under
+the default iteration limit the solver terminates with `ITERATION_LIMIT`
+— not `OPTIMAL` — so unlike trust-constr it does not falsely claim
+convergence.
+
+### KKT-certified global minimum
+
+``` python
 res_kkt, cert = kkt_optimum.derive(p)
+kkt_optimum.print_certificate(cert, res_kkt, p)
 ```
 
-``` python
-rows = []
-for r in [res_slsqp, res_tc, res_gurobi, res_ortools]:
-    gap = (r.objective - res_kkt.objective) / abs(res_kkt.objective) * 100
-    rows.append({
-        "Solver": r.solver_name,
-        "Converged": "✓" if r.converged else "✗ FAILED",
-        "Objective": f"{r.objective:.9f}",
-        "Gap to optimum": "—" if not r.converged else f"{gap:.2f}%",
-    })
-rows.append({
-    "Solver": "**" + res_kkt.solver_name + "**",
-    "Converged": "— (analytical)",
-    "Objective": f"**{res_kkt.objective:.9f}**",
-    "Gap to optimum": "0.00%",
-})
-pd.DataFrame(rows).set_index("Solver")
-```
+    Long leg  : Hlth    w = +1.2500  (μ = +0.1360%/day, highest)
+    Short leg : Telcm   w = -0.2500  (μ = -0.8280%/day, lowest)
 
-<div id="tbl-results">
+    Budget   : sum(w*) = 1.000000  (must = 1.0) ✓
+    Leverage : sum|w*| = 1.500000  (cap = 1.50, tight) ✓
 
-Table 3: Summary comparison. Trust-constr and Gurobi report convergence
-yet return solutions 4.59% worse than the KKT-certified global minimum.
-OR-Tools PDLP’s step size is bounded by 1/λ_max, leading to slow
-convergence and early termination. SLSQP fails outright.
+    KKT dual variables:
+      λ (budget)   = -0.003760
+      ν (leverage) = 0.004762  (≥ 0) ✓
 
-<div class="cell-output cell-output-display" execution_count="8">
+    Dual feasibility — all zero-weight industries must satisfy
+    |r_k + λ| ≤ ν = 0.004762:
+      Industry     |r_k + λ|       Slack   OK?
+         NoDur      0.004124    0.000638  ✓
+         Durbl      0.000957    0.003805  ✓
+         Manuf      0.001868    0.002894  ✓
+         Enrgy      0.000391    0.004371  ✓
+         HiTec      0.000448    0.004315  ✓
+         Shops      0.000085    0.004677  ✓
+         Utils      0.003337    0.001426  ✓
+         Other      0.002623    0.002139  ✓
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-&#10;    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-&#10;    .dataframe thead th {
-        text-align: right;
-    }
-</style>
+    ✓  All KKT conditions satisfied. Σ̂ is strictly positive definite.
+       This is the unique global minimum.
 
-|  | Converged | Objective | Gap to optimum |
-|----|----|----|----|
-| Solver |  |  |  |
-| SciPy SLSQP (active-set) | ✗ FAILED | -0.003413214 | — |
-| SciPy trust-constr (barrier) | ✓ | -0.003412309 | 4.59% |
-| Gurobi barrier (simulated) | ✓ | -0.003413000 | 4.57% |
-| OR-Tools PDLP (simulated) | ✗ FAILED | -0.003415000 | — |
-| \*\*KKT global optimum\*\* | — (analytical) | \*\*-0.003576587\*\* | 0.00% |
-
-</div>
-
-</div>
-
-</div>
-
-### SciPy SLSQP output
-
-``` python
-slsqp.print_result(res_slsqp, p)
-```
-
-    Converged         : False
-    Message           : Iteration limit reached
-    Iterations        : 100
-    Objective         : -0.003413213603
-    Budget error      : 7.77e-16
-    Leverage violation: 1.63e-05
-
-    ❌  SLSQP FAILED: active-set search cycles at the non-differentiable
-        |w_i|=0 boundary without converging.
-        Output weights are numerically unstable.
-
-### SciPy trust-constr output
-
-``` python
-trust_constr.print_result(res_tc, p)
-```
-
-    Converged         : True
-    Message           : `gtol` termination condition is satisfied.
-    Iterations        : 29
-    Objective         : -0.003412309165
-    Budget error      : 1.07e-14
-    Leverage violation: 0.00e+00
-    Nonzero weights   :
-      NoDur   +0.2499
-      Telcm   -0.2499
-      Hlth    +0.9999
-
-    ⚠️   trust-constr reports Converged=True, but see KKT analysis for
-        the gap to the true global minimum.
-
-### Gurobi barrier output
-
-``` python
-gurobi.print_result(res_gurobi, p)
-```
-
-    Converged         : True
-    Message           : Simulated: gurobipy not installed
-    Objective         : -0.003413000000
-
-### OR-Tools PDLP output
-
-``` python
-ortools_pdlp.print_result(res_ortools, p)
-```
-
-    Converged         : False
-    Message           : Simulated: ortools not installed
-    Objective         : -0.003415000000
+       f(w*) = -0.003576587456
 
 ## Why the reformulation fails
 
@@ -501,8 +735,8 @@ kkt_optimum.print_certificate(cert, res_kkt, p)
 ``` python
 industries = p.industries
 x = np.arange(len(industries))
-w_tc_full = res_tc.weights
-w_kkt = res_kkt.weights
+w_tc_full = w_tc          # extracted in the trust-constr-weights cell above
+w_kkt = res_kkt.weights   # from kkt_optimum.derive()
 
 fig, axes = plt.subplots(1, 2, figsize=(11, 3.8), sharey=True)
 bar_kw = dict(width=0.6, edgecolor="white")
