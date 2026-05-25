@@ -1,15 +1,12 @@
 format: jb-book
 root: intro
 parts:
-  - caption: Projects
+  - caption: Active Projects
     chapters:
-      - file: quant-core
-      - url: https://eigenq-xyz.github.io/quant-proofs/backtest-proofs/intro.html
-        title: backtest-proofs (full docs)
       - file: ftap-proofs
       - file: options-proofs
+      - file: quant-core
       - file: mortgage-proofs
-  - caption: Research Paper
+  - caption: Archive
     chapters:
-      - url: https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf
-        title: "Provably Correct Quantitative Backtesting (PDF)"
+      - file: backtest-proofs
