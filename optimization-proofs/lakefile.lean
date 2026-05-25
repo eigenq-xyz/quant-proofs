@@ -16,3 +16,6 @@ lean_lib OptimizationProofs
 
 lean_exe pgd_bench where
   root := `Main
+
+lean_exe pgd_solve where
+  root := `CLI

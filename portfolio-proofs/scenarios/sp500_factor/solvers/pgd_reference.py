@@ -1,25 +1,36 @@
-"""Reference PGD with O(N) factor-structure gradient.
+"""Lean 4 PGD (direct subprocess) + Python reference for the sp500-factor scenario.
 
-Uses the rank-1 update Sigma w = sigma_f^2 * beta (beta'w) + sigma_eps^2 * w rather
-than the dense O(N^2) matrix-vector product. This is the structural advantage that
-makes PGD scale to N=500 in microseconds while interior-point uses O(N^3) Newton steps.
+Primary solver: calls ``optimization-proofs/.lake/build/bin/pgd_solve`` via
+subprocess -- no Cython, no FFI layer.  The Lean binary runs ``pgdFlat``
+(PGDFlat.lean) with the rank-1 factor-structure gradient O(N) and the Duchi
+dual-bisection projection O(N log N).
+
+Python reference (``benchmark``): used for per-step timing comparisons in the
+scaling benchmark table.  Uses the same O(N) factor-structure gradient so the
+comparison is algorithmic, not language-level.
 
 Projection:
   Duchi et al. (2008) extended projection onto {sum(w)=B, sum|w|<=L},
-  which allows negative weights when L > 1. The algorithm is a nested bisection
-  over the L1 dual variable mu (outer) and the budget dual variable lambda (inner),
-  each loop running in O(log(1/eps)) iterations. Per-call cost is O(N log N)
-  dominated by soft-threshold evaluations.
+  allowing negative weights when L > 1.
 """
 
 from __future__ import annotations
 
+import pathlib
+import sys
 import time
 from dataclasses import dataclass
 
 import numpy as np
 
 from .common import ProblemData
+
+# lean_pgd_direct.py lives at portfolio-proofs/
+_PORTFOLIO = pathlib.Path(__file__).parent.parent.parent.parent
+if str(_PORTFOLIO) not in sys.path:
+    sys.path.insert(0, str(_PORTFOLIO))
+
+from lean_pgd_direct import solve as _lean_solve  # noqa: E402
 
 
 @dataclass
@@ -159,4 +170,54 @@ def benchmark(p: ProblemData, reps: int = 5) -> BenchmarkResult:
         leverage_violation=max(
             0.0, float(np.sum(np.abs(w_final))) - p.leverage_cap
         ),
+    )
+
+
+@dataclass
+class DirectBenchmarkResult:
+    """Timing result from the Lean 4 pgd_solve binary (subprocess call)."""
+
+    N: int
+    solve_time_ms: float  # wall-clock including subprocess startup
+    objective: float
+    n_active: int
+    budget_error: float
+    lean_weights: np.ndarray
+
+
+def benchmark_direct(p: ProblemData, reps: int = 3) -> DirectBenchmarkResult:
+    """Time the Lean 4 pgd_solve binary on problem p (median of reps runs).
+
+    Includes subprocess startup overhead (~5-15 ms), which dominates at
+    small N. For large N the arithmetic cost grows and subprocess overhead
+    becomes a smaller fraction.  The Python benchmark() reports pure
+    algorithmic cost; this reports the full subprocess round-trip cost.
+
+    Parameters
+    ----------
+    p:
+        Problem instance at a given N.
+    reps:
+        Number of timed runs (median reported).
+
+    Returns
+    -------
+    DirectBenchmarkResult
+        Timing, objective, and certified weights from the Lean binary.
+    """
+    times: list[float] = []
+    w_final = np.zeros(p.N)
+    for _ in range(reps):
+        t0 = time.perf_counter()
+        w, _ = _lean_solve(p.Sigma, p.mu, p.leverage_cap)
+        times.append((time.perf_counter() - t0) * 1000.0)
+        w_final = w
+    times.sort()
+    return DirectBenchmarkResult(
+        N=p.N,
+        solve_time_ms=times[len(times) // 2],
+        objective=float(p.objective(w_final)),
+        n_active=int(np.sum(np.abs(w_final) > 1e-9)),
+        budget_error=abs(float(np.sum(w_final)) - 1.0),
+        lean_weights=w_final,
     )

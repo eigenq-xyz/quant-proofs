@@ -1,80 +1,102 @@
-"""Shared Lean 4 PGD wrapper for portfolio-proofs scenarios.
+"""Lean 4 PGD — direct subprocess invocation (no Cython, no FFI layer).
 
-Wraps ``pgd_solve_flat()`` — the fast FloatArray path — from the compiled
-``pgd_ffi`` Cython extension in ``optimization-proofs/``.
+Calls the compiled ``pgd_solve`` binary from ``optimization-proofs/`` directly
+via ``subprocess.Popen``.  A persistent process is kept alive across multiple
+``solve()`` calls so that process-spawn overhead (~35 ms on macOS) is paid only
+once per Python session.
+
+Protocol
+--------
+stdin  : one space-separated line per problem::
+
+    N  sigma_00 … sigma_{N-1,N-1}  mu_0 … mu_{N-1}  lambda_max  leverage_cap
+
+    N is a plain integer string ("10").
+    All float values use Python ``f"{v:.17f}"`` (fixed-point, no exponent).
+
+stdout : one space-separated line of N float64 weights per problem.
+
+The Lean binary reads problems in a loop until EOF; sending ``"\\n"`` (empty
+line) closes the loop cleanly.
+
+Performance
+-----------
+- First ``solve()`` call: starts the Lean binary (~35 ms on macOS).
+- Subsequent ``solve()`` calls: data transfer only, typically < 1 ms for N ≤ 50.
+- The Lean PGD computation itself: **13.834 ns/solve** at N = 10
+  (``lake exe pgd_bench``, no I/O, no Python boundary).
 
 Usage
 -----
     from lean_pgd import solve as lean_pgd_solve
     weights, lam_max = lean_pgd_solve(sigma, mu, leverage_cap=1.5)
-
-The first call initializes the Lean runtime (once per process).
-
-Performance notes
------------------
-The FFI path marshals sigma via N² + N calls to ``lean_float_array_push()``.
-Each push runs in roughly 100 µs due to Lean's incremental reference-counting
-runtime, giving approximately (N² + N) × 100 µs of marshalling overhead.  At
-N = 10 this is ~11 ms; the actual PGD computation (Lean native) is ~14 ns.
-
-The Lean *native* binary (``lake exe pgd_bench``, no FFI boundary) achieves
-the timing quoted in the scenario notebooks: **13.834 ns/solve** for N = 10
-(1,000-run average, Apple M-series).  Use ``LEAN_NATIVE_NS`` to reference
-this number in prose.
-
-The FFI path is used in the scenario solver-result cells (N = 10 or N = 4),
-where the 11 ms overhead is acceptable.  The benchmark scaling tables use the
-Python PGD reference to demonstrate the O(N²) vs O(N³) complexity difference,
-since the Python path uses vectorised numpy BLAS whereas the Lean path uses
-scalar double loops.
 """
 
 from __future__ import annotations
 
+import atexit
 import pathlib
-import sys
+import subprocess
+import threading
 
 import numpy as np
 
 # ---------------------------------------------------------------------------
-# Locate and register optimization-proofs on sys.path
+# Locate the compiled binary
 # ---------------------------------------------------------------------------
 
 _OPT_PROOFS = pathlib.Path(__file__).parent.parent / "optimization-proofs"
-if str(_OPT_PROOFS) not in sys.path:
-    sys.path.insert(0, str(_OPT_PROOFS))
+_BINARY = _OPT_PROOFS / ".lake" / "build" / "bin" / "pgd_solve"
 
 # ---------------------------------------------------------------------------
-# Lazy initialisation — called once per process
+# Persistent subprocess
 # ---------------------------------------------------------------------------
 
-_lean_initialized: bool = False
-_pgd_solve_flat_fn: object | None = None
+_proc: subprocess.Popen[str] | None = None
+_lock = threading.Lock()
 
 
-def _ensure_initialized() -> None:
-    """Initialize the Lean runtime and load the FFI symbols (once per process)."""
-    global _lean_initialized, _pgd_solve_flat_fn
-    if _lean_initialized:
-        return
-    try:
-        from pgd_ffi import (  # type: ignore[import-not-found]
-            initialize_lean,
-            pgd_solve_flat,
-        )
-
-        initialize_lean()
-        _pgd_solve_flat_fn = pgd_solve_flat
-    except (ImportError, OSError) as exc:
-        raise ImportError(
-            "Lean 4 FFI not available.  Rebuild with:\n"
+def _start_process() -> subprocess.Popen[str]:
+    """Launch the Lean pgd_solve binary in persistent mode."""
+    if not _BINARY.exists():
+        raise FileNotFoundError(
+            f"Lean binary not found: {_BINARY}\n"
+            "Build it with:\n"
             "  cd optimization-proofs\n"
-            "  lake build\n"
-            "  uv run python ffi/setup_ffi.py build_ext --inplace\n"
-            "Then restart the Python kernel."
-        ) from exc
-    _lean_initialized = True
+            "  lake build pgd_solve"
+        )
+    return subprocess.Popen(
+        [str(_BINARY)],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,  # line-buffered
+    )
 
+
+def _get_process() -> subprocess.Popen[str]:
+    """Return the (possibly cached) persistent subprocess."""
+    global _proc
+    if _proc is None or _proc.poll() is not None:
+        _proc = _start_process()
+    return _proc
+
+
+def _shutdown() -> None:
+    """Close the persistent subprocess on interpreter exit."""
+    global _proc
+    if _proc is not None and _proc.poll() is None:
+        try:
+            _proc.stdin.write("\n")  # empty line signals EOF to Lean
+            _proc.stdin.flush()
+            _proc.wait(timeout=2.0)
+        except Exception:  # noqa: BLE001
+            _proc.kill()
+        _proc = None
+
+
+atexit.register(_shutdown)
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -82,7 +104,7 @@ def _ensure_initialized() -> None:
 
 #: Wall-clock time for the Lean 4 *native* PGD binary at N = 10,
 #: measured by ``lake exe pgd_bench`` (1,000-run average, Apple M-series).
-#: This reflects the algorithm with no FFI boundary; cite in notebook prose.
+#: This reflects the algorithm with no I/O boundary.
 LEAN_NATIVE_NS: float = 13.834
 
 
@@ -91,19 +113,23 @@ def solve(
     mu: np.ndarray,
     leverage_cap: float = 1.5,
 ) -> tuple[np.ndarray, float]:
-    """Call the formally verified Lean 4 PGD (``pgd_solve_flat`` via FFI).
+    """Call the Lean 4 PGD directly via subprocess (no Cython / FFI layer).
 
-    Computes ``lambda_max`` in Python then delegates the entire PGD loop to
-    the Lean 4 LLVM-compiled solver.  The step size ``eta = 1.9 / lambda_max``
-    is enforced *inside* Lean, so convergence is guaranteed by theorem
-    ``pgd_convergence``.
+    The ``pgd_solve`` binary reads one problem per line from stdin and writes
+    one weight vector per line to stdout.  The binary stays alive between
+    calls so process-spawn overhead is paid only on the first call.
+
+    Convergence is guaranteed by theorem ``pgd_convergence`` in
+    ``OptimizationProofs/PGDFlat.lean``: for any strictly PD ``sigma`` and
+    step size ``eta = 1.9 / lambda_max``, the iterates converge to the global
+    minimum.
 
     Parameters
     ----------
     sigma:
         (N, N) symmetric positive-definite covariance matrix (float64).
-        Apply Ledoit-Wolf shrinkage before passing if the raw sample
-        covariance is rank-deficient.
+        Apply Ledoit-Wolf shrinkage before passing if raw sample covariance
+        is rank-deficient.
     mu:
         (N,) expected return vector (float64).
     leverage_cap:
@@ -118,15 +144,38 @@ def solve(
 
     Raises
     ------
-    ImportError
-        If the Lean FFI extension has not been compiled.
+    FileNotFoundError
+        If the ``pgd_solve`` binary has not been compiled.
+    RuntimeError
+        If the Lean process returns an empty or malformed result.
     """
-    _ensure_initialized()
+    N = len(mu)
     lam_max = float(np.linalg.eigvalsh(sigma)[-1])
-    sigma_c = np.ascontiguousarray(sigma, dtype=np.float64)
-    mu_c = np.ascontiguousarray(mu, dtype=np.float64)
-    assert _pgd_solve_flat_fn is not None
-    weights: np.ndarray = _pgd_solve_flat_fn(
-        sigma_c, mu_c, lam_max, leverage_cap
-    )  # type: ignore[operator]
+
+    # Serialise as fixed-point decimal (no scientific notation) so the Lean
+    # parser handles it with a simple digit accumulator.
+    float_strs = [
+        f"{v:.17f}"
+        for v in sigma.ravel().tolist() + mu.tolist() + [lam_max, leverage_cap]
+    ]
+    line = str(N) + " " + " ".join(float_strs) + "\n"
+
+    with _lock:
+        proc = _get_process()
+        assert proc.stdin is not None and proc.stdout is not None
+        proc.stdin.write(line)
+        proc.stdin.flush()
+        out = proc.stdout.readline()
+
+    if not out.strip():
+        raise RuntimeError(
+            "Lean pgd_solve returned empty output.  "
+            "Check stderr or rebuild with `lake build pgd_solve`."
+        )
+
+    weights = np.array([float(x) for x in out.split()], dtype=np.float64)
+    if len(weights) != N:
+        raise RuntimeError(
+            f"Expected {N} weights from Lean, got {len(weights)}: {out!r}"
+        )
     return weights, lam_max
