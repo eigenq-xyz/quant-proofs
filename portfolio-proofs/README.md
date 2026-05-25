@@ -1,6 +1,6 @@
 # portfolio-proofs — Formally Verified Convex Portfolio Optimizer Core
 
-A specialized, high-performance, and compiler-verified Convex Quadratic Programming (QP) solver in Lean 4 and Python/Cython, designed to eradicate model instability and constraint violations in systematic asset allocation.
+An elegant, decoupled, and compiler-verified portfolio allocation module in Lean 4 and Python/Cython. It leverages the general-purpose optimization core in [`optimization-proofs`](file:///Users/akhilkarra/ode/eigenq/quant-proofs/optimization-proofs) and applies it to Mean-Variance asset allocation using stable Ledoit-Wolf shrinkage, designed to eradicate model instability and constraint violations in systematic portfolio construction.
 
 ---
 

@@ -9,6 +9,7 @@ Monorepo for formally verified quantitative finance. Lean 4 proofs + Python/Cyth
 | `ftap-proofs/` | Discrete FTAP (Harrison-Pliska 1981): no arbitrage iff EMM exists | `cd ftap-proofs && lake build` | `grep -rn sorry --include="*.lean" ftap-proofs/` |
 | `options-proofs/` | Put-call parity via Cox-Ross-Rubinstein; depends on ftap-proofs | `cd options-proofs && lake build` | same |
 | `quant-core/` | Shared pricing primitives (OptionKind, payoffs, Black-Scholes, GBM) | `cd quant-core/lean && lake build` | `cd quant-core/python && pytest` |
+| `optimization-proofs/` | Formally verified abstract PGD & simplex/L1 projection core | `cd optimization-proofs && lake build` (planned) | `grep -rn sorry --include="*.lean" optimization-proofs/` |
 | `portfolio-proofs/` | Formally verified PGD simplex portfolio solver core | `cd portfolio-proofs/lean && lake build` (planned) | `python3 portfolio-proofs/showcase/stressed_solver_master.py` |
 | `mortgage-proofs/` | LangGraph multi-agent mortgage pipeline + Lean 4 invariant checking | `cd mortgage-proofs && lake build` | `cd mortgage-proofs && pytest` |
 | `archive/` | Superseded work — do not build or extend | — | — |
