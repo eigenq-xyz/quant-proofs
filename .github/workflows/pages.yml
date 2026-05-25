@@ -31,12 +31,14 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install JupyterBook
-        run: uvx --from jupyter-book jupyter-book --version
+      # Pin to v1.x — our docs/_config.yml uses JupyterBook 1 format.
+      # JupyterBook 2.x (MyST-based) requires a different config structure.
+      - name: Install JupyterBook v1
+        run: uv tool install "jupyter-book<2"
 
       # Build the root overview book (deploys to /)
       - name: Build root JupyterBook
-        run: uvx --from jupyter-book jupyter-book build docs/
+        run: jupyter-book build docs/
 
       - name: Deployment summary
         run: |
