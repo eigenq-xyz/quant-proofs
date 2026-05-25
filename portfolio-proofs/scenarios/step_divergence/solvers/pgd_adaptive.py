@@ -135,7 +135,7 @@ def run(p: ProblemData) -> SolverResult:
     """
     eta_adaptive = 1.9 / p.lam_max_shock
 
-    print("=== Lean 4 Adaptive-eta PGD (pgd_ffi) ===")
+    print("=== Lean 4 Adaptive-eta PGD (pgd_solve CLI) ===")
     print()
     print(
         f"Adaptive eta = {eta_adaptive:.4f}  "
@@ -166,10 +166,10 @@ def run(p: ProblemData) -> SolverResult:
             print(f"  {ind:6s}  {wi:+.6f}")
 
     return SolverResult(
-        solver_name="Lean 4 Adaptive-eta PGD (pgd_ffi)",
+        solver_name="Lean 4 Adaptive-eta PGD (pgd_solve CLI)",
         converged=True,
         message=(
-            f"Lean 4 pgd_solve_flat via FFI  "
+            f"pgd_solve subprocess  "
             f"(eta = 1.9 / {lam_max_returned:.6f};  "
             f"native: {LEAN_NATIVE_NS:.3f} ns/solve)"
         ),

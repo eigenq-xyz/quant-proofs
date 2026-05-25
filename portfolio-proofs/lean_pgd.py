@@ -152,10 +152,11 @@ def solve(
     N = len(mu)
     lam_max = float(np.linalg.eigvalsh(sigma)[-1])
 
-    # Serialise as fixed-point decimal (no scientific notation) so the Lean
-    # parser handles it with a simple digit accumulator.
+    # repr(v) gives the shortest round-trip form, e.g. "1.25" rather than
+    # "1.25000000000000000".  The Lean CLI parseFloat handles scientific notation
+    # (e.g. "2.378e-03") and plain decimal.  Shorter tokens → less parsing time.
     float_strs = [
-        f"{v:.17f}"
+        repr(v)
         for v in sigma.ravel().tolist() + mu.tolist() + [lam_max, leverage_cap]
     ]
     line = str(N) + " " + " ".join(float_strs) + "\n"

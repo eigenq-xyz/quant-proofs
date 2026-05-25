@@ -152,10 +152,10 @@ def run(p: ProblemData) -> SolverResult:
     lev_viol = max(0.0, float(np.sum(np.abs(w))) - p.leverage_cap)
 
     return SolverResult(
-        solver_name="Lean 4 PGD + Ledoit-Wolf (pgd_ffi)",
+        solver_name="Lean 4 PGD + Ledoit-Wolf (pgd_solve CLI)",
         converged=True,
         message=(
-            f"Lean 4 pgd_solve_flat via FFI  "
+            f"pgd_solve subprocess  "
             f"(eta = 1.9 / {lam_max:.4e};  "
             f"native: {LEAN_NATIVE_NS:.3f} ns/solve)"
         ),
