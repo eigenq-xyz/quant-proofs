@@ -2975,6 +2975,11 @@ dev = [
     { name = "ruff" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "cython", specifier = ">=3.2.5" },
@@ -2997,6 +3002,9 @@ requires-dist = [
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "yfinance", specifier = ">=1.4.0" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "mypy", specifier = ">=2.1.0" }]
 
 [[package]]
 name = "prometheus-client"

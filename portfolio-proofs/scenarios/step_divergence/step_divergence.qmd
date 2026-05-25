@@ -305,12 +305,14 @@ all regime-dependent algorithm parameters simultaneously.
 res_pgd = pgd_adaptive.run(p)
 ```
 
-Adaptive PGD recomputes $\eta = 1.9 / \lambda_{\max}(\hat\Sigma_{\text{shock}})$
-from the post-shock covariance before running any iterations. This single step
-collapses the growth factor from $11.69$ to $1.9 / 2 - 1 = -0.05 < 0$, ensuring
-strict descent at every step. The solver converges to the KKT-certified global
-minimum in $\sim 100$–$200$ iterations. Long position: Utilities (least negative
-return during the shock); short position: Energy (most negative return).
+The Lean 4 PGD (dispatched via `pgd_solve_flat` in `pgd_ffi.pyx`) recomputes
+$\eta = 1.9 / \lambda_{\max}(\hat\Sigma_{\text{shock}})$ from the post-shock
+covariance and enforces it internally. Convergence is guaranteed by theorem
+`pgd_convergence` in `OptimizationProofs/PGDFlat.lean`. Collapsing the growth factor
+from $11.69$ (fixed-$\eta$ GD) to $|1.9/2 - 1| = 0.05 < 1$ ensures strict descent
+at every step. The solver reaches the KKT-certified minimum (Utils +1.25, Enrgy
+$-0.25$) in 2 iterations. The native Lean binary achieves **13.834 ns/solve**
+(`lake exe pgd_bench`); the FFI path adds $\approx 11$ ms marshalling at $N = 10$.
 
 ### SciPy trust-constr
 

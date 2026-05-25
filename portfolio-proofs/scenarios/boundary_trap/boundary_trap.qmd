@@ -578,23 +578,25 @@ over trust-constr and a 15-fold advantage over Gurobi.
 
 **Lean 4 native implementation.** The Lean 4 PGD in `optimization-proofs/` (compiled
 to native code via LLVM, no interpreter boundary at any point) solves the August 2007
-$N = 10$ problem in **14.8 ns** per solve (1,000-run average on Apple M-series), converging
-in 6 iterations to the KKT-certified optimum. The Python PGD reference at the same
-problem runs at approximately 40 ms, reflecting Python's per-call overhead rather than
-actual floating-point work — at $N = 10$ each numpy call costs more in dispatch than the
-10-element arithmetic. The algorithmic advantage of PGD over interior-point methods is
-best read from the scaling table above at $N \geq 100$, where the $O(N^2)$ vs.\ $O(N^3)$
-difference dominates over language-level constant factors.
+$N = 10$ problem in **13.834 ns** per solve (1,000-run average on Apple M-series,
+measured by `lake exe pgd_bench`), converging in 6 iterations to the KKT-certified
+optimum. The Python PGD reference at the same problem runs at approximately 60 µs,
+reflecting Python and numpy dispatch overhead at $N = 10$ where each BLAS call costs
+more than the 10-element arithmetic. The algorithmic advantage of PGD over interior-point
+methods is best read from the scaling table above at $N \geq 100$, where the $O(N^2)$
+vs.\ $O(N^3)$ difference dominates over language-level constant factors. At large $N$
+the Lean native binary gains a further speedup over the Python reference from the absence
+of interpreter overhead and from LLVM vectorisation of the inner loop.
 
-**Cython FFI round trip.** Calling the Lean 4 PGD from Python via Cython FFI
-(`ffi/pgd_ffi.pyx`) takes **31.8 ms** per solve (1,000-run average). The Lean
-computation itself remains 14.8 ns; the 31.8 ms overhead is entirely marshalling:
-$N \times N + N = 110$ calls to `lean_box_float`, each of which heap-allocates a
-Lean Float object. A production FFI would replace `Array Float` with `FloatArray`
-(Lean's unboxed flat double array), which lays out doubles contiguously in memory
-and reduces the marshalling to a single `memcpy`. The current FFI demonstrates that
-the Lean solver is callable from Python and returns the correct answer; it is not
-yet optimised for low-latency batch use.
+**Cython FFI round trip.** Calling the Lean 4 PGD from Python via `pgd_solve_flat`
+in `pgd_ffi.pyx` (the fast `FloatArray` path) takes approximately 11 ms per solve at
+$N = 10$. The Lean computation itself is 13.834 ns; the ~11 ms overhead comes from
+the $N^2 + N = 110$ calls to `lean_float_array_push` that marshal sigma into a Lean
+`FloatArray`. Each push runs in roughly 100 µs under Lean's incremental
+reference-counting runtime. The scenarios in this project call `pgd_solve_flat` for
+the correctness-demonstration cells (where 11 ms is acceptable at $N = 10$) and use
+the Python PGD reference in the scaling benchmark (where the O(N²) vs O(N³) claim
+is about algorithm complexity, not language speed).
 
 ## The global minimum: KKT derivation
 

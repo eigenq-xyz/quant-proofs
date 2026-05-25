@@ -34,10 +34,18 @@ import pandas as pd
 import seaborn as sns
 import yfinance as yf
 
-from solvers import common, slsqp_float, pgd_integer
+from solvers import (
+    common,
+    gurobi,
+    lean_pgd,
+    ortools_gscip,
+    pgd_integer,
+    slsqp_float,
+    trust_constr,
+)
 from solvers.common import (
-    SLSQP_FEASIBILITY_TOLERANCE,
     PRODUCTION_HALT_THRESHOLD,
+    SLSQP_FEASIBILITY_TOLERANCE,
     load_rolling_windows,
 )
 
