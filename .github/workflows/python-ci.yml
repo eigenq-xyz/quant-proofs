@@ -5,8 +5,6 @@ on:
     branches: [main]
     paths:
       - 'quant-core/python/**'
-      - 'backtest-proofs/python/**'
-      - 'backtest-proofs/lean/**'
       - 'mortgage-proofs/src/**'
       - 'mortgage-proofs/tests/**'
       - 'mortgage-proofs/lean/**'
@@ -52,78 +50,6 @@ jobs:
 
       - name: Lint
         working-directory: quant-core/python
-        run: uv run ruff check src/ tests/
-
-  backtest-python:
-    name: backtest-proofs Python
-    runs-on: macos-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install system dependencies
-        run: brew install libuv
-
-      - name: Install elan
-        run: |
-          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
-            | sh -s -- -y --default-toolchain none
-          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
-
-      - name: Cache Lake packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            backtest-proofs/lean/.lake
-            quant-core/lean/.lake
-          key: lean-backtest-${{ runner.os }}-${{ hashFiles('backtest-proofs/lean/lake-manifest.json') }}
-          restore-keys: lean-backtest-${{ runner.os }}-
-
-      - name: Fetch mathlib cache
-        working-directory: backtest-proofs/lean
-        run: lake exe cache get || echo "Cache miss — building from source"
-
-      - name: Build Lean kernel
-        working-directory: backtest-proofs/lean
-        run: lake build
-
-      # setup_ffi.py calls `lean --print-prefix`; elan was installed with
-      # --default-toolchain none so the shim fails outside a lean-toolchain
-      # directory. Set a default so `lean` resolves from any working directory.
-      - name: Activate Lean toolchain
-        working-directory: backtest-proofs/lean
-        run: elan default $(cat lean-toolchain)
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-
-      - name: Install dependencies
-        working-directory: backtest-proofs/python
-        run: uv sync --extra dev
-
-      - name: Build Cython FFI
-        working-directory: backtest-proofs/python
-        run: uv run python setup_ffi.py build_ext --inplace
-
-      - name: Test
-        working-directory: backtest-proofs/python
-        run: uv run pytest -q --cov=src --cov-report=xml
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          files: backtest-proofs/python/coverage.xml
-          flags: backtest-proofs
-        continue-on-error: true
-
-      - name: Type check
-        working-directory: backtest-proofs/python
-        run: uv run mypy src/ --strict
-
-      - name: Lint
-        working-directory: backtest-proofs/python
         run: uv run ruff check src/ tests/
 
   mortgage-python:
