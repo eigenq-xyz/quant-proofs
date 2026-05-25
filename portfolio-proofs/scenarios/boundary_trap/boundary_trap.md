@@ -304,7 +304,7 @@ print(res_tc)
                 method: tr_interior_point
             optimality: 3.7000243999138685e-13
       constr_violation: 2.220446049250313e-16
-        execution_time: 0.016063928604125977
+        execution_time: 0.016649961471557617
              tr_radius: 55337450.4474261
         constr_penalty: 1.0
      barrier_parameter: 1.0240000000000006e-08
@@ -426,7 +426,7 @@ for ind, wi in zip(p.industries, w_g, strict=True):
        7  -3.57658044e-03 -3.57659052e-03  6.88e-15 4.44e-16  6.14e-08     0s
        8  -3.57658745e-03 -3.57658746e-03  9.77e-15 2.50e-16  6.15e-11     0s
 
-    Barrier solved model in 8 iterations and 0.00 seconds (0.00 work units)
+    Barrier solved model in 8 iterations and 0.01 seconds (0.00 work units)
     Optimal objective -3.57658745e-03
 
 
@@ -747,11 +747,11 @@ steps.
 |  | PGD (ms) | trust-constr (ms) | Gurobi (ms) | PGD iterations | Speedup vs trust-constr | Speedup vs Gurobi |
 |----|----|----|----|----|----|----|
 | N |  |  |  |  |  |  |
-| 10 | 0.1 | 12.9 | 0.2 | 2 | 208× | 3× |
-| 50 | 0.1 | 60.1 | 1.7 | 2 | 417× | 12× |
-| 100 | 0.4 | 160.5 | 6.5 | 3 | 421× | 17× |
-| 250 | 2.3 | 947.6 | 42.2 | 3 | 407× | 18× |
-| 500 | 10.5 | 6419.7 | 158.0 | 14 | 612× | 15× |
+| 10 | 0.1 | 12.9 | 0.2 | 2 | 202× | 3× |
+| 50 | 0.1 | 60.4 | 1.7 | 2 | 439× | 12× |
+| 100 | 0.4 | 151.9 | 6.5 | 3 | 399× | 17× |
+| 250 | 2.2 | 936.9 | 42.5 | 3 | 431× | 20× |
+| 500 | 10.4 | 6287.5 | 156.4 | 14 | 604× | 15× |
 
 </div>
 
@@ -772,26 +772,30 @@ Gurobi.
 
 **Lean 4 native implementation.** The Lean 4 PGD in
 `optimization-proofs/` (compiled to native code via LLVM, no interpreter
-boundary at any point) solves the August 2007 $N = 10$ problem in **14.8
-ns** per solve (1,000-run average on Apple M-series), converging in 6
-iterations to the KKT-certified optimum. The Python PGD reference at the
-same problem runs at approximately 40 ms, reflecting Python’s per-call
-overhead rather than actual floating-point work — at $N = 10$ each numpy
-call costs more in dispatch than the 10-element arithmetic. The
-algorithmic advantage of PGD over interior-point methods is best read
-from the scaling table above at $N \geq 100$, where the $O(N^2)$
+boundary at any point) solves the August 2007 $N = 10$ problem in
+**13.834 ns** per solve (1,000-run average on Apple M-series, measured
+by `lake exe pgd_bench`), converging in 6 iterations to the
+KKT-certified optimum. The Python PGD reference at the same problem runs
+at approximately 60 µs, reflecting Python and numpy dispatch overhead at
+$N = 10$ where each BLAS call costs more than the 10-element arithmetic.
+The algorithmic advantage of PGD over interior-point methods is best
+read from the scaling table above at $N \geq 100$, where the $O(N^2)$
 vs. $O(N^3)$ difference dominates over language-level constant factors.
+At large $N$ the Lean native binary gains a further speedup over the
+Python reference from the absence of interpreter overhead and from LLVM
+vectorisation of the inner loop.
 
-**Cython FFI round trip.** Calling the Lean 4 PGD from Python via Cython
-FFI (`ffi/pgd_ffi.pyx`) takes **31.8 ms** per solve (1,000-run average).
-The Lean computation itself remains 14.8 ns; the 31.8 ms overhead is
-entirely marshalling: $N \times N + N = 110$ calls to `lean_box_float`,
-each of which heap-allocates a Lean Float object. A production FFI would
-replace `Array Float` with `FloatArray` (Lean’s unboxed flat double
-array), which lays out doubles contiguously in memory and reduces the
-marshalling to a single `memcpy`. The current FFI demonstrates that the
-Lean solver is callable from Python and returns the correct answer; it
-is not yet optimised for low-latency batch use.
+**Cython FFI round trip.** Calling the Lean 4 PGD from Python via
+`pgd_solve_flat` in `pgd_ffi.pyx` (the fast `FloatArray` path) takes
+approximately 11 ms per solve at $N = 10$. The Lean computation itself
+is 13.834 ns; the ~11 ms overhead comes from the $N^2 + N = 110$ calls
+to `lean_float_array_push` that marshal sigma into a Lean `FloatArray`.
+Each push runs in roughly 100 µs under Lean’s incremental
+reference-counting runtime. The scenarios in this project call
+`pgd_solve_flat` for the correctness-demonstration cells (where 11 ms is
+acceptable at $N = 10$) and use the Python PGD reference in the scaling
+benchmark (where the O(N²) vs O(N³) claim is about algorithm complexity,
+not language speed).
 
 ## The global minimum: KKT derivation
 

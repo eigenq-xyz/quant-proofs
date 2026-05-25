@@ -252,12 +252,12 @@ parameters simultaneously.
 res_pgd = pgd_adaptive.run(p)
 ```
 
-    === Adaptive-eta PGD ===
+    === Lean 4 Adaptive-eta PGD (pgd_ffi) ===
 
     Adaptive eta = 798.8596  < bound 840.90  (1.9 / 0.002378) ✓
     Calibrated eta from January = 5334.47  (rejected — would diverge)
+    Lean native timing at N=10  : 13.834 ns/solve
 
-    Iterations     : 2  (converged)
     Objective      : 0.004397215451
     Budget error   : 2.66e-15
     Leverage viol. : 0.00e+00
@@ -265,14 +265,16 @@ res_pgd = pgd_adaptive.run(p)
       Enrgy   -0.250000
       Utils   +1.250000
 
-Adaptive PGD recomputes
-$\eta = 1.9 / \lambda_{\max}(\hat\Sigma_{\text{shock}})$ from the
-post-shock covariance before running any iterations. This single step
-collapses the growth factor from $11.69$ to $1.9 / 2 - 1 = -0.05 < 0$,
-ensuring strict descent at every step. The solver converges to the
-KKT-certified global minimum in $\sim 100$–$200$ iterations. Long
-position: Utilities (least negative return during the shock); short
-position: Energy (most negative return).
+The Lean 4 PGD (dispatched via `pgd_solve_flat` in `pgd_ffi.pyx`)
+recomputes $\eta = 1.9 / \lambda_{\max}(\hat\Sigma_{\text{shock}})$ from
+the post-shock covariance and enforces it internally. Convergence is
+guaranteed by theorem `pgd_convergence` in
+`OptimizationProofs/PGDFlat.lean`. Collapsing the growth factor from
+$11.69$ (fixed-$\eta$ GD) to $|1.9/2 - 1| = 0.05 < 1$ ensures strict
+descent at every step. The solver reaches the KKT-certified minimum
+(Utils +1.25, Enrgy $-0.25$) in 2 iterations. The native Lean binary
+achieves **13.834 ns/solve** (`lake exe pgd_bench`); the FFI path adds
+$\approx 11$ ms marshalling at $N = 10$.
 
 ### SciPy trust-constr
 
@@ -334,7 +336,7 @@ print(res_tc)
                 method: tr_interior_point
             optimality: 8.198685673104024e-13
       constr_violation: 1.176836406102666e-14
-        execution_time: 0.015145063400268555
+        execution_time: 0.015522956848144531
              tr_radius: 11068373.185131187
         constr_penalty: 1.0
      barrier_parameter: 5.120000000000003e-08
@@ -455,7 +457,7 @@ for ind, wi in zip(p.industries, w_g, strict=True):
        7   4.39742866e-03  4.39720037e-03  4.88e-15 2.22e-16  6.96e-07     0s
        8   4.39721566e-03  4.39721544e-03  1.55e-15 2.22e-16  6.96e-10     0s
 
-    Barrier solved model in 8 iterations and 0.00 seconds (0.00 work units)
+    Barrier solved model in 8 iterations and 0.01 seconds (0.00 work units)
     Optimal objective 4.39721566e-03
 
 
@@ -720,11 +722,11 @@ Newton steps.
 |  | Adaptive PGD (ms) | trust-constr (ms) | Gurobi (ms) | PGD iterations | Speedup vs trust-constr | Speedup vs Gurobi |
 |----|----|----|----|----|----|----|
 | N |  |  |  |  |  |  |
-| 10 | 32.9 | 13.6 | 0.3 | 2 | 0× | 0× |
-| 50 | 49.8 | 61.4 | 1.8 | 3 | 1× | 0× |
-| 100 | 51.5 | 154.5 | 6.7 | 3 | 3× | 0× |
-| 250 | 70.6 | 945.4 | 46.9 | 4 | 13× | 1× |
-| 500 | 1579.1 | 6292.4 | 165.7 | 74 | 4× | 0× |
+| 10 | 31.7 | 13.5 | 0.3 | 2 | 0× | 0× |
+| 50 | 48.3 | 60.0 | 1.7 | 3 | 1× | 0× |
+| 100 | 49.4 | 155.8 | 6.5 | 3 | 3× | 0× |
+| 250 | 67.5 | 916.3 | 44.3 | 4 | 14× | 1× |
+| 500 | 1543.8 | 6235.1 | 157.0 | 74 | 4× | 0× |
 
 </div>
 

@@ -11,6 +11,11 @@
 - [Solver results](#solver-results)
   - [SciPy SLSQP (float64)](#scipy-slsqp-float64)
   - [PGD with integer arithmetic](#pgd-with-integer-arithmetic)
+  - [SciPy trust-constr](#scipy-trust-constr)
+  - [Gurobi barrier](#gurobi-barrier)
+  - [OR-Tools GSCIP](#or-tools-gscip)
+  - [Lean 4 PGD](#lean-4-pgd)
+- [Constraint-satisfaction spectrum](#constraint-satisfaction-spectrum)
 - [Float32 accumulation at high
   frequency](#float32-accumulation-at-high-frequency)
 - [Scaling: constraint error versus
@@ -282,6 +287,267 @@ allocation at institutional scale, 1 bp is commercially negligible. For
 a 1000-asset portfolio the quantization noise would need to be evaluated
 against the investment mandate.
 
+### SciPy trust-constr
+
+``` python
+tc_results = trust_constr.run_all(windows)
+trust_constr.print_results(tc_results)
+```
+
+    ==============================================================================
+    ================ SciPy trust-constr — Rolling Window Results =================
+    ==============================================================================
+      Production halt threshold: 1e-09
+
+    Window 1: Mar 09 – Mar 13
+      Converged    : True  (`gtol` termination condition is satisfied.)
+      Sum(w)       : 0.99999999999999978
+      Sum(|w|)     : 1.49993305562725410
+      Budget Err   : 2.22e-16  (|sum(w) - 1|)
+      Leverage Err : 0.00e+00  (max(0, sum|w| - 1.5))
+      STATUS       : PERFECT
+
+    Window 2: Mar 10 – Mar 16
+      Converged    : True  (`gtol` termination condition is satisfied.)
+      Sum(w)       : 0.99999999999999989
+      Sum(|w|)     : 1.49998435718411693
+      Budget Err   : 1.11e-16  (|sum(w) - 1|)
+      Leverage Err : 0.00e+00  (max(0, sum|w| - 1.5))
+      STATUS       : PERFECT
+
+    Window 3: Mar 11 – Mar 17
+      Converged    : True  (`gtol` termination condition is satisfied.)
+      Sum(w)       : 0.99999999999999989
+      Sum(|w|)     : 1.49998465591174490
+      Budget Err   : 1.11e-16  (|sum(w) - 1|)
+      Leverage Err : 0.00e+00  (max(0, sum|w| - 1.5))
+      STATUS       : PERFECT
+
+    Window 4: Mar 12 – Mar 18
+      Converged    : True  (`gtol` termination condition is satisfied.)
+      Sum(w)       : 0.99999999999994493
+      Sum(|w|)     : 1.49991440534420661
+      Budget Err   : 5.51e-14  (|sum(w) - 1|)
+      Leverage Err : 0.00e+00  (max(0, sum|w| - 1.5))
+      STATUS       : PERFECT
+
+    ==============================================================================
+    CONCLUSION: trust-constr satisfies constraints below halt threshold.
+    ==============================================================================
+
+trust-constr uses the 2N-variable interior-point barrier reformulation
+and satisfies constraints to near machine-epsilon. `success=True` with
+constraint errors at $10^{-16}$–$10^{-14}$ for all four windows.
+
+### Gurobi barrier
+
+``` python
+gb_results = gurobi.run_all(windows)
+gurobi.print_results(gb_results)
+```
+
+    ==============================================================================
+    ================= Gurobi barrier QP — Rolling Window Results =================
+    ==============================================================================
+      Production halt threshold: 1e-09
+
+    Window 1: Mar 09 – Mar 13
+      Converged    : True  (Gurobi status=2  (2=OPTIMAL))
+      Sum(w)       : 0.99999999999999845
+      Sum(|w|)     : 1.49999931110981999
+      Budget Err   : 1.55e-15
+      Leverage Err : 0.00e+00
+      STATUS       : PERFECT
+
+    Window 2: Mar 10 – Mar 16
+      Converged    : True  (Gurobi status=2  (2=OPTIMAL))
+      Sum(w)       : 1.00000000000000067
+      Sum(|w|)     : 1.49999997973313937
+      Budget Err   : 6.66e-16
+      Leverage Err : 0.00e+00
+      STATUS       : PERFECT
+
+    Window 3: Mar 11 – Mar 17
+      Converged    : True  (Gurobi status=2  (2=OPTIMAL))
+      Sum(w)       : 0.99999999999999989
+      Sum(|w|)     : 1.49999999994882649
+      Budget Err   : 1.11e-16
+      Leverage Err : 0.00e+00
+      STATUS       : PERFECT
+
+    Window 4: Mar 12 – Mar 18
+      Converged    : True  (Gurobi status=2  (2=OPTIMAL))
+      Sum(w)       : 1.00000000000000022
+      Sum(|w|)     : 1.49999999704982279
+      Budget Err   : 2.22e-16
+      Leverage Err : 0.00e+00
+      STATUS       : PERFECT
+
+    ==============================================================================
+
+Gurobi’s barrier satisfies constraints to its default feasibility
+tolerance ($10^{-6}$), giving budget and leverage errors at or below
+$10^{-15}$ for all four windows.
+
+### OR-Tools GSCIP
+
+``` python
+or_results = ortools_gscip.run_all(windows)
+ortools_gscip.print_results(or_results)
+```
+
+    ==============================================================================
+    ================== OR-Tools GSCIP — Rolling Window Results ===================
+    ==============================================================================
+    Window 1: Mar 09 – Mar 13
+      Converged    : True  (OPTIMAL  underlying gSCIP status: OPTIMAL)
+      Budget Err   : 0.00e+00
+      Leverage Err : 0.00e+00
+      STATUS       : PERFECT
+
+    Window 2: Mar 10 – Mar 16
+      Converged    : True  (OPTIMAL  underlying gSCIP status: OPTIMAL)
+      Budget Err   : 0.00e+00
+      Leverage Err : 0.00e+00
+      STATUS       : PERFECT
+
+    Window 3: Mar 11 – Mar 17
+      Converged    : True  (OPTIMAL  underlying gSCIP status: OPTIMAL)
+      Budget Err   : 0.00e+00
+      Leverage Err : 0.00e+00
+      STATUS       : PERFECT
+
+    Window 4: Mar 12 – Mar 18
+      Converged    : True  (OPTIMAL  underlying gSCIP status: OPTIMAL)
+      Budget Err   : 0.00e+00
+      Leverage Err : 0.00e+00
+      STATUS       : PERFECT
+
+    ==============================================================================
+
+OR-Tools GSCIP (no license required) terminates `OPTIMAL` with
+constraint errors at SCIP’s default feasibility tolerance ($10^{-9}$) or
+better.
+
+### Lean 4 PGD
+
+``` python
+lean_results = lean_pgd.run_all(windows)
+lean_pgd.print_results(lean_results)
+```
+
+    ==============================================================================
+    ======= Lean 4 PGD (pgd_ffi, native 13.8 ns) — Rolling Window Results ========
+    ==============================================================================
+      Production halt threshold: 1e-09
+
+    Window 1: Mar 09 – Mar 13
+      Converged    : True  (pgd_solve_flat via FFI  (eta = 1.9 / 7.5424e-03;  native: 13)
+      Objective    : 0.006404328531255
+      Sum(w)       : 1.00000000000000000
+      Sum(|w|)     : 1.49999999999794031
+      Budget Err   : 0.00e+00  (|sum(w) - 1|)
+      Leverage Err : 0.00e+00  (max(0, sum|w| - 1.5))
+      STATUS       : PERFECT
+
+    Window 2: Mar 10 – Mar 16
+      Converged    : True  (pgd_solve_flat via FFI  (eta = 1.9 / 9.2950e-03;  native: 13)
+      Objective    : 0.010994379531268
+      Sum(w)       : 1.00000000000000000
+      Sum(|w|)     : 1.49999999999683187
+      Budget Err   : 0.00e+00  (|sum(w) - 1|)
+      Leverage Err : 0.00e+00  (max(0, sum|w| - 1.5))
+      STATUS       : PERFECT
+
+    Window 3: Mar 11 – Mar 17
+      Converged    : True  (pgd_solve_flat via FFI  (eta = 1.9 / 9.7834e-03;  native: 13)
+      Objective    : 0.010765898968748
+      Sum(w)       : 1.00000000000000000
+      Sum(|w|)     : 1.50000000000036460
+      Budget Err   : 0.00e+00  (|sum(w) - 1|)
+      Leverage Err : 3.65e-13  (max(0, sum|w| - 1.5))
+      STATUS       : PERFECT
+
+    Window 4: Mar 12 – Mar 18
+      Converged    : True  (pgd_solve_flat via FFI  (eta = 1.9 / 1.0085e-02;  native: 13)
+      Objective    : 0.016240929468738
+      Sum(w)       : 1.00000000000000000
+      Sum(|w|)     : 1.50000000000280043
+      Budget Err   : 0.00e+00  (|sum(w) - 1|)
+      Leverage Err : 2.80e-12  (max(0, sum|w| - 1.5))
+      STATUS       : PERFECT
+
+    ==============================================================================
+    CONCLUSION: Lean 4 PGD satisfies constraints to float64 rounding — below the production halt threshold for all windows.
+    ==============================================================================
+
+The Lean 4 PGD (via `pgd_solve_flat` FFI, theorem `pgd_convergence`)
+satisfies constraints at float64 rounding level ($\lesssim 10^{-12}$),
+well below the $10^{-9}$ production halt threshold. Unlike integer PGD
+it does not guarantee exact zero, but the convergence proof ensures the
+projection is always on the feasible set to machine precision. The
+native Lean binary achieves **13.834 ns/solve** at $N = 10$; the FFI
+path adds $\approx 1.6$ ms marshalling at $N = 4$.
+
+## Constraint-satisfaction spectrum
+
+The five solvers span four distinct regimes of constraint accuracy:
+
+<div id="tbl-constraint-spectrum">
+
+Table 1: Constraint error (max of \|budget error\|, leverage violation)
+for each solver across the four March 2020 rolling windows. Threshold =
+1e-9 (production halt boundary). SLSQP Window 1 is the only case that
+exceeds the threshold.
+
+<div class="cell-output cell-output-display" execution_count="10">
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+&#10;    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+&#10;    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+
+|                        | W1         | W2      | W3      | W4      |
+|------------------------|------------|---------|---------|---------|
+| Solver                 |            |         |         |         |
+| SLSQP (tol=1e-12)      | 2.8e-09 ⚠️ | 3.9e-15 | 2.2e-16 | 1.0e-14 |
+| trust-constr (barrier) | 2.2e-16    | 1.1e-16 | 1.1e-16 | 5.5e-14 |
+| Gurobi barrier QP      | 1.6e-15    | 6.7e-16 | 1.1e-16 | 2.2e-16 |
+| OR-Tools GSCIP         | 0.0e+00    | 0.0e+00 | 0.0e+00 | 0.0e+00 |
+| Integer PGD (bp-exact) | 0.0e+00    | 0.0e+00 | 0.0e+00 | 0.0e+00 |
+| Lean 4 PGD (pgd_ffi)   | 0.0e+00    | 0.0e+00 | 3.6e-13 | 2.8e-12 |
+
+</div>
+
+</div>
+
+</div>
+
+The SLSQP Window 1 violation ($2.79 \times 10^{-9}$) is the only case
+that exceeds the production halt threshold. All other solvers satisfy
+constraints below the threshold. The precision hierarchy from weakest to
+strongest guarantee:
+
+1.  **SLSQP**: `acc=1e-8` internal tolerance; violations possible in
+    $(10^{-9}, 10^{-8})$ range when the leverage kink causes
+    iteration-limit exit.
+2.  **trust-constr / Gurobi / OR-Tools**: commercial or scipy barrier
+    methods; constraints satisfied to $10^{-14}$–$10^{-6}$ depending on
+    solver defaults.
+3.  **Lean 4 PGD**: formally verified projection; constraint errors at
+    float64 rounding ($\sim 10^{-12}$–$10^{-15}$), with convergence
+    guaranteed by theorem `pgd_convergence`.
+4.  **Integer PGD**: exact integer arithmetic; constraint errors
+    identically zero; weights quantised to 1 basis point.
+
 ## Float32 accumulation at high frequency
 
 The four-window scenario above demonstrates the per-solve feasibility
@@ -378,17 +644,17 @@ print(f"Integer drift at {STEPS:,} steps  : {err_int:.2e}  (exact zero)")
     Float32   — 100,000 steps:
       Final sum(w) - 1   : 5.960464e-08
       Cumulative drift   : 5.96e-08
-      Time               : 395.7 ms
+      Time               : 386.0 ms
 
     Float64   — 100,000 steps:
       Final sum(w) - 1   : 2.220446e-16
       Cumulative drift   : 2.22e-16
-      Time               : 336.7 ms
+      Time               : 332.7 ms
 
     Integer bp — 100,000 steps:
       Final sum(w_bp)    : 10000  (integer, exact)
       Budget drift       : 0.00e+00  (= 0 exactly, by integer arithmetic)
-      Time               : 430.6 ms
+      Time               : 431.4 ms
 
     ========================================================================
     Float32 drift at 100,000 steps  : 5.96e-08
@@ -427,7 +693,7 @@ any problem with integer-feasible input.
 
 <div id="tbl-scaling-benchmark">
 
-Table 1: Mean and maximum SLSQP constraint error (max of budget error
+Table 2: Mean and maximum SLSQP constraint error (max of budget error
 and leverage violation) across 20 random strictly-PD problems per N.
 Integer PGD errors are identically 0 for all N by the integer-arithmetic
 invariant.
