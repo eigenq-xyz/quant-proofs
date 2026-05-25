@@ -1,3 +1,9 @@
+import FtapProofs.Market
+import FtapProofs.Strategy
+import FtapProofs.Arbitrage
+import FtapProofs.MartingaleMeasure
+import FtapProofs.Theorem
+
 /-!
 # FtapProofs
 
@@ -24,13 +30,3 @@ NoArbitrage m ↔ ∃ Q, EquivalentMartingaleMeasure m Q
 
 Work in progress. See `ROADMAP.md` for the task breakdown.
 -/
-
-import FtapProofs.Market
-import FtapProofs.Strategy
-import FtapProofs.Arbitrage
-import FtapProofs.MartingaleMeasure
-import FtapProofs.Theorem
-
-namespace FtapProofs
-
-end FtapProofs
