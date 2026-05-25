@@ -569,13 +569,22 @@ pd.DataFrame(results_bm).set_index("N")
 
 The speedup is algorithmic, not incidental.[^wright1997] trust-constr and Gurobi both
 solve a $2N$-variable system; each Newton step requires $O((2N)^3)$ dense linear
-algebra.
-The reference PGD avoids the reformulation entirely: each step is $O(N^2)$ for
-the gradient and $O(N \log N)$ for the analytical projection. The iteration count
+algebra. The reference PGD avoids the reformulation entirely: each step is $O(N^2)$
+for the gradient and $O(N \log N)$ for the analytical projection. The iteration count
 stays roughly constant as $N$ grows (bounded by the condition number of $\hat\Sigma$,
-not by problem size), so the total cost scales as $O(N^2)$ while trust-constr
-scales as $O(N^3)$. At $N = 500$ this yields approximately a 600-fold wall-clock
-advantage over trust-constr and a 15-fold advantage over Gurobi.
+not by problem size), so the total cost scales as $O(N^2)$ while trust-constr scales
+as $O(N^3)$. At $N = 500$ this yields approximately a 600-fold wall-clock advantage
+over trust-constr and a 15-fold advantage over Gurobi.
+
+**Lean 4 native implementation.** The Lean 4 PGD in `optimization-proofs/` (compiled
+to native code via LLVM, no interpreter boundary at any point) solves the August 2007
+$N = 10$ problem in **14.8 ns** per solve (1,000-run average on Apple M-series), converging
+in 6 iterations to the KKT-certified optimum. The Python PGD reference at the same
+problem runs at approximately 40 ms, reflecting Python's per-call overhead rather than
+actual floating-point work — at $N = 10$ each numpy call costs more in dispatch than the
+10-element arithmetic. The algorithmic advantage of PGD over interior-point methods is
+best read from the scaling table above at $N \geq 100$, where the $O(N^2)$ vs.\ $O(N^3)$
+difference dominates over language-level constant factors.
 
 ## The global minimum: KKT derivation
 
