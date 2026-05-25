@@ -40,9 +40,9 @@ TARGET_TICKERS = {"SPY", "QQQ", "AAPL", "MSFT", "JPM", "IWM"}
 _WINDOWS: list[tuple[str, str, str]] = [
     # (output_filename, date_start, date_end)
     ("portfolio_atm_options.parquet", "2019-01-01", "2024-12-31"),
-    ("stress_gfc_2008.parquet",       "2008-09-01", "2008-12-31"),
-    ("stress_volm_2018.parquet",      "2017-12-01", "2018-04-30"),
-    ("stress_dec2018.parquet",        "2018-10-01", "2019-01-31"),
+    ("stress_gfc_2008.parquet", "2008-09-01", "2008-12-31"),
+    ("stress_volm_2018.parquet", "2017-12-01", "2018-04-30"),
+    ("stress_dec2018.parquet", "2018-10-01", "2019-01-31"),
 ]
 # ───────────────────────────────────────────────────────────────────────────
 

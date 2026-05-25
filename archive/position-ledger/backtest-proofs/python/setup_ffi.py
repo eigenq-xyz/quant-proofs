@@ -53,8 +53,13 @@ def find_lake_ir(repo_root: Path) -> Path:
 def find_quant_core_ir(repo_root: Path) -> Path:
     """Return the Lake C IR directory for QuantCore (path dependency)."""
     ir_dir = (
-        repo_root.parent / "quant-core" / "lean"
-        / ".lake" / "build" / "ir" / "QuantCore"
+        repo_root.parent
+        / "quant-core"
+        / "lean"
+        / ".lake"
+        / "build"
+        / "ir"
+        / "QuantCore"
     )
     if not ir_dir.is_dir():
         sys.exit(

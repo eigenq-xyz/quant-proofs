@@ -116,7 +116,10 @@ def _simulate_one_frequency(
         )
         hedge_result = run_delta_hedge(
             path=PricePath(times=path.times, prices=path.prices),
-            K=k, r=r, sigma=sigma, n_contracts=n_contracts,
+            K=k,
+            r=r,
+            sigma=sigma,
+            n_contracts=n_contracts,
         )
         costs.append(hedge_result.total_hedging_cost)
     return n_steps, costs
@@ -164,11 +167,21 @@ def leland_paths_sweep_parallel(
     result: dict[int, list[float]] = {}
     futures_map = {}
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+    with concurrent.futures.ProcessPoolExecutor(
+        max_workers=max_workers
+    ) as executor:
         for n_steps in frequencies:
             fut = executor.submit(
                 _simulate_one_frequency,
-                n_steps, s0, k, r, sigma, t, n_paths, seed, n_contracts,
+                n_steps,
+                s0,
+                k,
+                r,
+                sigma,
+                t,
+                n_paths,
+                seed,
+                n_contracts,
             )
             futures_map[fut] = n_steps
 

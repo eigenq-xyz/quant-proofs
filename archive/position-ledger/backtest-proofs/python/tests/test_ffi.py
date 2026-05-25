@@ -222,8 +222,7 @@ def test_portfolio_value_via_lean_ffi():
 
     # The portfolio_value function should come from the Cython extension, not stubs.
     assert (
-        ffi_mod.portfolio_value.__module__
-        == "backtest_proofs.ffi.lean_ffi"
+        ffi_mod.portfolio_value.__module__ == "backtest_proofs.ffi.lean_ffi"
     ), (
         "portfolio_value is not from the Cython extension — pure-Python stubs may still be active"
     )

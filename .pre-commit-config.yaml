@@ -10,7 +10,10 @@
 # Skip in CI runs (pre-commit.ci) where the build tools aren't available;
 # these are run by the per-project GitHub Actions workflows instead.
 ci:
-  skip: [mypy-backtest-proofs, mypy-quant-core, mypy-mortgage-proofs]
+  skip: [mypy-quant-core, mypy-mortgage-proofs]
+
+# Exclude archived work from all hooks — archive/ is read-only history
+exclude: ^archive/
 
 repos:
   # ─── General file-level hygiene ──────────────────────────────────────────
@@ -49,13 +52,6 @@ repos:
   # have changed.
   - repo: local
     hooks:
-      - id: mypy-backtest-proofs
-        name: mypy --strict (backtest-proofs)
-        entry: bash -c 'cd backtest-proofs/python && uv run mypy src/ --strict'
-        language: system
-        files: ^backtest-proofs/python/src/.*\.py$
-        pass_filenames: false
-
       - id: mypy-quant-core
         name: mypy --strict (quant-core)
         entry: bash -c 'cd quant-core/python && uv run mypy src/ --strict'

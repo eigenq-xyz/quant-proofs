@@ -147,8 +147,14 @@ def process_csv(csv_path: Path, spec: _WindowSpec) -> pd.DataFrame:
 
     # Verify required columns are present
     required = {
-        "date", "exdate", "cp_flag", "strike_price",
-        "best_bid", "best_offer", "impl_volatility", "spotprice",
+        "date",
+        "exdate",
+        "cp_flag",
+        "strike_price",
+        "best_bid",
+        "best_offer",
+        "impl_volatility",
+        "spotprice",
     }
     missing = required - set(raw.columns)
     if missing:
@@ -164,21 +170,23 @@ def process_csv(csv_path: Path, spec: _WindowSpec) -> pd.DataFrame:
     df["exdate"] = pd.to_datetime(df["exdate"]).dt.strftime("%Y-%m-%d")
 
     # Filter to the window dates (in case the CSV is wider than one window)
-    df = df[
-        (df["date"] >= spec.start_date) & (df["date"] <= spec.end_date)
-    ]
+    df = df[(df["date"] >= spec.start_date) & (df["date"] <= spec.end_date)]
 
     # Calls only
     df = df[df["cp_flag"].str.upper() == "C"]
 
     # DTE filter
-    dte = (
-        pd.to_datetime(df["exdate"]) - pd.to_datetime(df["date"])
-    ).dt.days
+    dte = (pd.to_datetime(df["exdate"]) - pd.to_datetime(df["date"])).dt.days
     df = df[(dte >= _MIN_DTE) & (dte <= _MAX_DTE)]
 
     # Coerce numeric columns
-    for col in ("strike_price", "best_bid", "best_offer", "impl_volatility", "spotprice"):
+    for col in (
+        "strike_price",
+        "best_bid",
+        "best_offer",
+        "impl_volatility",
+        "spotprice",
+    ):
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # Detect and correct OptionMetrics strike×1000 encoding
@@ -196,9 +204,7 @@ def process_csv(csv_path: Path, spec: _WindowSpec) -> pd.DataFrame:
 
     # Filters that need the corrected strike
     df = df[df["best_bid"] > 0]
-    df = df[
-        df["impl_volatility"].between(_IV_LO, _IV_HI, inclusive="both")
-    ]
+    df = df[df["impl_volatility"].between(_IV_LO, _IV_HI, inclusive="both")]
     df = df[df["spotprice"] > 0]
     moneyness = df["strike_price"] / df["spotprice"]
     df = df[moneyness.between(_MONO_LO, _MONO_HI, inclusive="both")]
@@ -216,8 +222,15 @@ def process_csv(csv_path: Path, spec: _WindowSpec) -> pd.DataFrame:
 
     # Keep only the columns run_stress_window + optionmetrics_option_snapshots_from_df need
     keep = [
-        "underlying_ticker", "date", "expiry", "strike", "option_type",
-        "best_bid", "best_offer", "impl_volatility", "underlying_price",
+        "underlying_ticker",
+        "date",
+        "expiry",
+        "strike",
+        "option_type",
+        "best_bid",
+        "best_offer",
+        "impl_volatility",
+        "underlying_price",
     ]
     optional = ["delta", "volume", "open_interest", "optionid"]
     keep += [c for c in optional if c in df.columns]
@@ -231,18 +244,37 @@ def _print_summary(df: pd.DataFrame, spec: _WindowSpec, out_path: Path) -> None:
     print(f"  trading days  : {n_days}")
     print(f"  date range    : {df['date'].min()} — {df['date'].max()}")
     print(f"  strike range  : ${df['strike'].min():.0f} — ${df['strike'].max():.0f}")
-    print(f"  iv range      : {df['impl_volatility'].min():.2f} — {df['impl_volatility'].max():.2f}")
+    print(
+        f"  iv range      : {df['impl_volatility'].min():.2f} — {df['impl_volatility'].max():.2f}"
+    )
     print(f"  saved         : {out_path}")
 
 
 def _parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--gfc",   type=Path, default=None, metavar="CSV",
-                   help="opprcd CSV for GFC-2008 (2008-09-15 to 2008-11-21)")
-    p.add_argument("--volm",  type=Path, default=None, metavar="CSV",
-                   help="opprcd CSV for Volmageddon-2018 (2018-01-22 to 2018-02-16)")
-    p.add_argument("--dec2018", type=Path, default=None, metavar="CSV",
-                   help="opprcd CSV for Dec 2018 Q4 selloff (2018-10-01 to 2019-01-31)")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--gfc",
+        type=Path,
+        default=None,
+        metavar="CSV",
+        help="opprcd CSV for GFC-2008 (2008-09-15 to 2008-11-21)",
+    )
+    p.add_argument(
+        "--volm",
+        type=Path,
+        default=None,
+        metavar="CSV",
+        help="opprcd CSV for Volmageddon-2018 (2018-01-22 to 2018-02-16)",
+    )
+    p.add_argument(
+        "--dec2018",
+        type=Path,
+        default=None,
+        metavar="CSV",
+        help="opprcd CSV for Dec 2018 Q4 selloff (2018-10-01 to 2019-01-31)",
+    )
     return p.parse_args()
 
 
