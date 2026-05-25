@@ -35,6 +35,7 @@ import seaborn as sns
 import yfinance as yf
 
 from solvers import common, kkt_optimum, uncertified_gd, certified_pgd, gurobi
+from solvers import slsqp as slsqp_solver, trust_constr as tc_solver
 
 sns.set_theme(style="whitegrid", palette="muted", font_scale=1.05)
 plt.rcParams["figure.dpi"] = 120
@@ -409,15 +410,69 @@ print(f"KKT optimum f(w*_post) = {res_post.objective:.15f}")
 print(f"Max weight error vs KKT: {np.max(np.abs(res_gurobi.weights - common.W_STAR_POST)):.2e}")
 ```
 
+## Solver results: SciPy SLSQP
+
+SciPy SLSQP solves the long-only simplex QP using sequential quadratic
+programming with its own internal step size. It formulates the active-set
+subproblems directly from the constraint structure and does not use a
+gradient descent recurrence, so there is no step-size calibration that
+could become stale after a covariance regime shift.
+
+```{python}
+#| label: slsqp-raw
+res_slsqp = slsqp_solver.run(p_post)
+print(f"Solver    : {res_slsqp.solver_name}")
+print(f"Converged : {res_slsqp.converged}")
+print(f"Message   : {res_slsqp.message}")
+print(f"Objective : {res_slsqp.objective:.15f}")
+print(f"Budget err: {res_slsqp.budget_error:.2e}")
+print()
+for name, wi in zip(p_post.asset_names, res_slsqp.weights, strict=True):
+    print(f"  {name:12s}: {wi:+.8f}")
+print(f"\nDist to w*_post: {float(np.linalg.norm(res_slsqp.weights - common.W_STAR_POST)):.2e}")
+```
+
+SLSQP uses sequential quadratic programming with its own internal step
+size. It is unaffected by the Lipschitz stability issue because it does
+not use gradient descent. It converges to the post-shock optimum.
+
+## Solver results: SciPy trust-constr
+
+SciPy trust-constr solves the same problem using an interior-point barrier
+method with an adaptive trust-region step size. The 2N-variable slack
+reformulation ($w = u - v$, $u, v \geq 0$) handles the L1 leverage
+constraint; since all weights are non-negative and sum to one, the
+leverage constraint is automatically tight.
+
+```{python}
+#| label: trust-constr-raw
+res_tc = tc_solver.run(p_post)
+print(f"Solver    : {res_tc.solver_name}")
+print(f"Converged : {res_tc.converged}")
+print(f"Message   : {res_tc.message}")
+print(f"Objective : {res_tc.objective:.15f}")
+print(f"Budget err: {res_tc.budget_error:.2e}")
+print()
+for name, wi in zip(p_post.asset_names, res_tc.weights, strict=True):
+    print(f"  {name:12s}: {wi:+.8f}")
+print(f"\nDist to w*_post: {float(np.linalg.norm(res_tc.weights - common.W_STAR_POST)):.2e}")
+```
+
+trust-constr uses an interior-point barrier method with adaptive step
+size. It also converges to the correct post-shock optimum.
+
 ## Weight trajectory comparison
 
 The defining figure of this scenario: $\|w_k - w^\star_{\text{post}}\|_2$
 versus iteration $k$ on a log scale. Lean PGD contracts geometrically
 over ~212 iterations. Gradient Descent with stale $\eta_{\text{pre}}$
 oscillates between two extreme simplex vertices at constant large distance
-from the optimum --- the simplex projection prevents $|w_i| \to \infty$, but
+from the optimum. The simplex projection prevents $|w_i| \to \infty$, but
 the gradient step direction is so far off that the iterates cycle rather than
-contract.
+contract. SLSQP and trust-constr both converge correctly because they use
+internal adaptive step sizes rather than a fixed $\eta$ calibrated to a
+prior covariance estimate. The failure is specific to gradient descent with
+an uncertified, stale step size, not to the optimization problem itself.
 
 ```{python}
 #| label: fig-trajectory

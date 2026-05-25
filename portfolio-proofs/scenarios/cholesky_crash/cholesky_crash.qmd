@@ -34,7 +34,7 @@ import pandas as pd
 import seaborn as sns
 import yfinance as yf
 
-from solvers import common, slsqp, gurobi, cvxpy_osqp, pgd_lw
+from solvers import common, slsqp, gurobi, cvxpy_osqp, pgd_lw, trust_constr
 
 sns.set_theme(style="whitegrid", palette="muted", font_scale=1.05)
 plt.rcParams["figure.dpi"] = 120
@@ -311,6 +311,57 @@ The native Lean binary solves this $N = 10$ problem in **13.834 ns/solve**
 (`lake exe pgd_bench`, 1,000-run average). The FFI path (`pgd_solve_flat`) adds
 $\approx 11$ ms of marshalling overhead at $N = 10$; the benchmark section demonstrates
 the O(N²) vs O(N³) complexity difference using a Python PGD reference.
+
+### SciPy trust-constr (2N-variable barrier, raw S)
+
+```{python}
+#| label: trust-constr-raw
+from scipy.optimize import minimize as sp_min_tc, Bounds, LinearConstraint
+
+N = p.N
+
+def _obj_tc_raw(x: np.ndarray) -> float:
+    w = x[:N] - x[N:]
+    return p.raw_objective(w)
+
+A_tc = np.zeros((2, 2 * N))
+A_tc[0, :N] =  1.0; A_tc[0, N:] = -1.0
+A_tc[1, :N] =  1.0; A_tc[1, N:] =  1.0
+bounds_tc = Bounds(np.zeros(2 * N), np.full(2 * N, np.inf))
+lc_tc = LinearConstraint(A_tc, [1.0, 0.0], [1.0, p.leverage_cap])
+x0_tc = np.ones(2 * N) / (2 * N)
+
+res_tc_raw = sp_min_tc(
+    _obj_tc_raw, x0_tc, method="trust-constr",
+    bounds=bounds_tc, constraints=lc_tc, tol=1e-12,
+)
+print(res_tc_raw)
+```
+
+```{python}
+#| label: trust-constr-weights
+w_tc_raw = res_tc_raw.x[:N] - res_tc_raw.x[N:]
+print("Recovered weights w = u - v:")
+for ind, wi in zip(p.industries, w_tc_raw, strict=True):
+    print(f"  {ind}: {wi:+.6f}")
+print(f"\nsum(w)   = {np.sum(w_tc_raw):.15f}  (must = 1.0)")
+print(f"sum(|w|) = {np.sum(np.abs(w_tc_raw)):.15f}  (cap = {p.leverage_cap})")
+print(f"f(w)     = {p.raw_objective(w_tc_raw):.15f}  (raw S objective)")
+```
+
+trust-constr, using the 2N-variable barrier reformulation, reports gtol termination
+despite the non-PSD covariance. The barrier Hessian is positive definite even when the
+original covariance is not, so the solver proceeds. However, with a non-PSD objective,
+the problem is non-convex, and the trust-constr solution is not certified as the global
+minimum.
+
+The mechanism is that the barrier method augments the objective with log-barrier penalty
+terms that regularize the Hessian in a neighborhood of the feasible boundary. This
+regularization can mask the indefiniteness of the original Hessian, allowing the barrier
+system to converge without detecting the underlying non-convexity. The reported weights
+are the exit point of the interior-point trajectory, not a KKT point of the original
+problem. Comparing the objective value here against the verified optimum (on the shrunk
+$\hat\Sigma$) shows the gap introduced by the non-PSD Hessian.
 
 ## Why rank deficiency causes the crash
 

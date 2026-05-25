@@ -16,4 +16,8 @@ cvxpy_osqp   : CVXPY / OSQP — two documented failure paths: (1) DCP rejection 
                if forced through. Simulation log only.
 pgd_lw       : PGD + Ledoit-Wolf shrinkage — uses the PSD Sigma; O(N^2) gradient step
                plus O(N log N) dual-bisection projection. Converges to the global minimum.
+trust_constr : SciPy trust-constr — run on raw S via 2N-variable reformulation. Reports
+               gtol termination despite non-PSD Hessian; barrier regularization masks
+               indefiniteness, but the result is not certified as the global minimum of
+               the non-convex problem.
 """

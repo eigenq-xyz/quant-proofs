@@ -34,7 +34,7 @@ import pandas as pd
 import seaborn as sns
 import yfinance as yf
 
-from solvers import common, gd_fixed, pgd_adaptive, trust_constr, gurobi, kkt_optimum
+from solvers import common, gd_fixed, pgd_adaptive, slsqp, trust_constr, gurobi, kkt_optimum
 
 sns.set_theme(style="whitegrid", palette="muted", font_scale=1.05)
 plt.rcParams["figure.dpi"] = 120
@@ -313,6 +313,38 @@ from $11.69$ (fixed-$\eta$ GD) to $|1.9/2 - 1| = 0.05 < 1$ ensures strict descen
 at every step. The solver reaches the KKT-certified minimum (Utils +1.25, Enrgy
 $-0.25$) in 2 iterations. The native Lean binary achieves **13.834 ns/solve**
 (`lake exe pgd_bench`); the FFI path adds $\approx 11$ ms marshalling at $N = 10$.
+
+### SciPy SLSQP
+
+```{python}
+#| label: slsqp-raw
+res_slsqp = slsqp.run(p)
+print(res_slsqp)
+```
+
+```{python}
+#| label: slsqp-comparison
+res_kkt_ref, _ = kkt_optimum.derive(p)
+print(f"SLSQP converged  : {res_slsqp.converged}")
+print(f"SLSQP message    : {res_slsqp.message}")
+print(f"SLSQP iterations : {res_slsqp.n_iterations}")
+print(f"SLSQP f(w)       : {res_slsqp.objective:.12f}")
+print(f"KKT certified f* : {res_kkt_ref.objective:.12f}")
+print(f"Gap              : {res_slsqp.objective - res_kkt_ref.objective:.6e}")
+```
+
+SLSQP fails on the step-divergence problem for the same reason as boundary_trap: the
+L1 gross leverage constraint is non-differentiable at zero, causing active-set cycling.
+The solver exhausts its 100-iteration limit. Note that this is a different failure mode
+from the gradient descent divergence: SLSQP never diverges to NaN, but it does not
+converge either.
+
+The distinction matters for diagnosis. Fixed-$\eta$ gradient descent diverges
+geometrically because the step size violates the Lipschitz bound; the iterates escape
+to infinity. SLSQP fails because its active-set quadratic programming subproblem
+cannot resolve the kink at $w_i = 0$; the iterates cycle within the feasible set
+without reaching a KKT point. Both failures produce unusable output, but for entirely
+different algorithmic reasons.
 
 ### SciPy trust-constr
 

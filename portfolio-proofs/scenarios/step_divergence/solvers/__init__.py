@@ -16,6 +16,8 @@ Modules
 common        : ProblemData / SolverResult dataclasses; calibration + shock data loader.
 gd_fixed      : Fixed-eta gradient descent (unconstrained); diverges when eta_cal >> 2/lam_max_shock.
 pgd_adaptive  : Adaptive-eta PGD; recomputes step size from post-shock covariance, converges.
+slsqp         : SciPy SLSQP — active-set SQP; hits 100-iteration limit due to L1 kink
+                (same failure mode as boundary_trap); returns converged=False.
 trust_constr  : SciPy trust-constr — interior-point barrier; converges via 2N reform.
 gurobi        : Gurobi barrier QP; converges exactly (requires license).
 kkt_optimum   : Analytical KKT derivation and dual-feasibility certificate.
