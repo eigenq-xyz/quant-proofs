@@ -157,3 +157,14 @@ head-to-head benchmark table.
   Appendix A (linear algebra review). For a symmetric PSD matrix $Q$, the spectral
   norm $\|Q\|_2 = \lambda_{\max}(Q)$; this is the Lipschitz constant for the
   gradient $\nabla f(w) = Qw - \mu$.
+- Whaley, R. E. (2009). "Understanding the VIX." _Journal of Portfolio Management_
+  35(3): 98–105. DOI: 10.3905/JPM.2009.35.3.098. History and interpretation of
+  the CBOE VIX index.
+- Cboe Exchange, Inc. (2019). "Cboe Volatility Index." White Paper. Chicago: Cboe
+  Global Markets. <https://cdn.cboe.com/resources/vix/VIX_Methodology.pdf>.
+  Documents the VIX index calculation methodology. **Cite this for VIX formula
+  and methodology only — not for the February 5, 2018 spike event.**
+- U.S. SEC DERA (2025). "Demystify the Surge in VIX." SEC DERA Working Paper.
+  <https://www.sec.gov/files/dera-vix-working-paper-2504.pdf>. Post-mortem
+  analysis of the February 5, 2018 VIX spike and the XIV ETN collapse.
+  **Cite this for the Volmageddon event itself.**

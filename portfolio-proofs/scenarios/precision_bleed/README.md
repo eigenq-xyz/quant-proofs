@@ -201,15 +201,20 @@ tuning required.
 
 ## References
 
+- Kraft, D. (1988). "A software package for sequential quadratic programming."
+  Tech. Rep. DFVLR-FB 88-28, Institut für Dynamik der Flugsysteme, Oberpfaffenhofen.
+  The original Fortran SLSQP implementation; hard-codes `acc=1e-8` as the internal
+  constraint satisfaction accuracy parameter. SciPy's `minimize(method="SLSQP")`
+  inherits this value directly; it is not overridable via any public API.
 - IEEE Computer Society (2019). _IEEE Standard for Floating-Point Arithmetic (IEEE
   Std 754-2019)_. IEEE. DOI: 10.1109/IEEESTD.2019.8766229. The normative document
   defining binary floating-point formats, rounding modes, and the unit-in-last-place
   (ULP) model of rounding error.
 - Goldberg, D. (1991). "What every computer scientist should know about
-  floating-point arithmetic." _ACM Computing Surveys_ 23(1): 5-48. The standard
-  tutorial on representation error, rounding modes, and accumulation in iterative
-  algorithms; directly applicable to constraint drift in sequential portfolio
-  rebalancing.
+  floating-point arithmetic." _ACM Computing Surveys_ 23(1): 5-48.
+  DOI: 10.1145/103162.103163. The standard tutorial on representation error,
+  rounding modes, and accumulation in iterative algorithms; directly applicable
+  to constraint drift in sequential portfolio rebalancing.
 - Higham, N. J. (2002). _Accuracy and Stability of Numerical Algorithms_, 2nd ed.
   SIAM. DOI: 10.1137/1.9780898718027. Chapter 2 proves that iterative computation
   accumulates rounding errors at rate $O(n\,\varepsilon_{\text{mach}})$ across $n$
