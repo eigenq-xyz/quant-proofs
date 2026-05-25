@@ -187,12 +187,24 @@ plt.show()
 
 ## Covariance structure
 
-With $T = 5 < N = 10$, the sample covariance has rank 4 (Marčenko and Pastur 1967;
-Anderson 2003, Ch. 7). Minimal Ledoit-Wolf shrinkage restores strict positive
-definiteness:
+Let $S \in \mathbb{R}^{N \times N}$ denote the sample covariance matrix of the
+five-day return window. With $T = 5 < N = 10$, $S$ has rank at most $T - 1 = 4$
+(Marčenko and Pastur 1967; Anderson 2003, Ch. 7): the remaining six eigenvalues
+are zero in exact arithmetic and appear as small negative values ($-1.11 \times
+10^{-19}$) under float64 rounding.
 
-$$\hat\Sigma = \alpha F + (1-\alpha) S, \qquad F = \frac{\operatorname{tr}(S)}{N} I,
-\quad \alpha = 0.10$$
+Minimal Ledoit-Wolf shrinkage toward the scaled identity $F = \frac{\operatorname{tr}(S)}{N} I$
+restores strict positive definiteness:
+
+$$\hat\Sigma = \alpha F + (1-\alpha) S, \qquad
+F = \frac{\operatorname{tr}(S)}{N} I \in \mathbb{R}^{N \times N}, \qquad
+\alpha = 0.10$$
+
+Here $F$ is the diagonal target matrix — a scaled identity whose single
+eigenvalue equals the average variance across all industries. Shrinking $S$
+toward $F$ lifts the near-zero eigenvalues of $S$ by $\alpha \cdot
+\frac{\operatorname{tr}(S)}{N}$, guaranteeing $\hat\Sigma \succ 0$ for any
+$\alpha \in (0, 1)$.
 
 ```{python}
 #| label: tbl-cov
