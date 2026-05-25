@@ -1,9 +1,15 @@
 import numpy as np
 
 print("=" * 80)
-print(" SCENARIO 3: Precision Bleed (Floating-Point Rounding Drift) ".center(80, "="))
 print(
-    " PROVIDER: CVXPY Solver Engine (Float64 / Float32 Accumulation) ".center(80, "=")
+    " SCENARIO 3: Precision Bleed (Floating-Point Rounding Drift) ".center(
+        80, "="
+    )
+)
+print(
+    " PROVIDER: CVXPY Solver Engine (Float64 / Float32 Accumulation) ".center(
+        80, "="
+    )
 )
 print("=" * 80)
 
@@ -16,7 +22,9 @@ try:
     # Add real run if cvxpy was installed
 except ModuleNotFoundError:
     print(" CVXPY is not installed in the local environment. ".center(80, "#"))
-    print("\n[MATHEMATICAL ANALYSIS & SIMULATION LOG OF CUMULATIVE CONSTRAINT BLEED]")
+    print(
+        "\n[MATHEMATICAL ANALYSIS & SIMULATION LOG OF CUMULATIVE CONSTRAINT BLEED]"
+    )
     print(
         "Under low-latency execution pipelines, quants use float32 or float64 matrices to update weights over thousands of sequential rebalances."
     )

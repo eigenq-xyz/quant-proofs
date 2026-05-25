@@ -57,45 +57,45 @@ We have packaged the mathematical and numerical failure tests directly into inde
 *   Python 3.10+
 *   `numpy`, `pandas`, `scipy`
 
-### 1. Scenario 1: Cholesky Crash (Non-PSD Covariance Matrix)
+### Scenario: Cholesky Crash (Non-PSD Covariance Matrix)
 Executes solvers under rolling March 2020 parameters where $T < N$, demonstrating rank-deficiency crashes:
 ```bash
 # Run SciPy SLSQP (fails with Iteration Limit Reached)
-python3 scenarios/scenario_1_cholesky_crash/scipy_slsqp.py
+python3 scenarios/cholesky_crash/scipy_slsqp.py
 
 # Run Gurobi simulation (explains the Non-PSD Error 10020 crash)
-python3 scenarios/scenario_1_cholesky_crash/gurobi_non_psd.py
+python3 scenarios/cholesky_crash/gurobi_non_psd.py
 
 # Run CVXPY/OSQP simulation (explains DCP errors and ADMM solver failure)
-python3 scenarios/scenario_1_cholesky_crash/cvxpy_osqp.py
+python3 scenarios/cholesky_crash/cvxpy_osqp.py
 ```
 
-### 2. Scenario 2: Boundary Trap (Non-Differentiable L1 Bounds)
+### Scenario: Boundary Trap (Non-Differentiable L1 Bounds)
 Executes solvers on ill-conditioned PSD matrices under $L_1$ leverage bounds:
 ```bash
 # Run SciPy SLSQP (fails with Iteration Limit Reached)
-python3 scenarios/scenario_2_boundary_trap/scipy_slsqp.py
+python3 scenarios/boundary_trap/scipy_slsqp.py
 
 # Run SciPy trust-constr (converges but stops early in suboptimal flat valley)
-python3 scenarios/scenario_2_boundary_trap/scipy_trust_constr.py
+python3 scenarios/boundary_trap/scipy_trust_constr.py
 
 # Run Gurobi simulation (explains Newton-Raphson barrier complementarity gaps)
-python3 scenarios/scenario_2_boundary_trap/gurobi_interior_point.py
+python3 scenarios/boundary_trap/gurobi_interior_point.py
 ```
 
-### 3. Scenario 3: Precision Bleed (Floating-Point Rounding Drift)
+### Scenario: Precision Bleed (Floating-Point Rounding Drift)
 Executes sequential rolling rebalances to demonstrate constraint leaking over long paths:
 ```bash
 # Run SciPy SLSQP (demonstrates float64 leverage limit leakages)
-python3 scenarios/scenario_3_precision_bleed/scipy_slsqp.py
+python3 scenarios/precision_bleed/scipy_slsqp.py
 
 # Run CVXPY simulation (demonstrates float32 truncation accumulation over 100,000 steps)
-python3 scenarios/scenario_3_precision_bleed/cvxpy_float.py
+python3 scenarios/precision_bleed/cvxpy_float.py
 ```
 
-### 4. Scenario 4: Step-Size Divergence (Lipschitz Bound Violations)
+### Scenario: Step-Size Divergence (Lipschitz Bound Violations)
 Executes standard gradient descent to show weight path explosions during volatility shocks:
 ```bash
 # Run unverified solver (demonstrates explosion to infinity when η > 2/λ_max)
-python3 scenarios/scenario_4_step_divergence/unverified_gd.py
+python3 scenarios/step_divergence/unverified_gd.py
 ```

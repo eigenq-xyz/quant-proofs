@@ -2,14 +2,20 @@ import numpy as np
 import pandas as pd
 
 print("=" * 80)
-print(" SCENARIO 1: Cholesky Crash (Non-PSD Covariance Matrix) ".center(80, "="))
-print(" PROVIDER: Gurobi Optimizer (Commercial Barrier/Simplex) ".center(80, "="))
+print(
+    " SCENARIO 1: Cholesky Crash (Non-PSD Covariance Matrix) ".center(80, "=")
+)
+print(
+    " PROVIDER: Gurobi Optimizer (Commercial Barrier/Simplex) ".center(80, "=")
+)
 print("=" * 80)
 
 # Setup singular returns data: N=10 assets, T=5 days (lookback < assets)
 np.random.seed(42)
 N_sectors, T_days = 10, 5
-returns_singular = np.random.normal(loc=0.0005, scale=0.02, size=(T_days, N_sectors))
+returns_singular = np.random.normal(
+    loc=0.0005, scale=0.02, size=(T_days, N_sectors)
+)
 S_singular = pd.DataFrame(returns_singular).cov().to_numpy()
 mu_singular = pd.DataFrame(returns_singular).mean().to_numpy()
 
@@ -18,7 +24,9 @@ print(f"Number of Assets (N): {N_sectors} | Lookback Days (T): {T_days}")
 print(
     f"Estimated Covariance Rank: {np.linalg.matrix_rank(S_singular)} (Rank Deficient)"
 )
-print(f"Minimum Eigenvalue: {min_eig:.8e} (Singular/Non-PSD due to float limits)\n")
+print(
+    f"Minimum Eigenvalue: {min_eig:.8e} (Singular/Non-PSD due to float limits)\n"
+)
 
 try:
     import gurobipy as gp
@@ -46,7 +54,9 @@ try:
     v = model.addVars(N_sectors, lb=0.0, name="v")
     for i in range(N_sectors):
         model.addConstr(w[i] == u[i] - v[i], f"split_{i}")
-    model.addConstr(sum(u[i] + v[i] for i in range(N_sectors)) <= 1.5, "leverage")
+    model.addConstr(
+        sum(u[i] + v[i] for i in range(N_sectors)) <= 1.5, "leverage"
+    )
 
     print("Running Gurobi optimize...")
     model.optimize()
@@ -54,7 +64,9 @@ try:
 
 except ModuleNotFoundError:
     print(
-        " Gurobi (gurobipy) is not installed in the local environment. ".center(80, "#")
+        " Gurobi (gurobipy) is not installed in the local environment. ".center(
+            80, "#"
+        )
     )
     print("\n[MATHEMATICAL ANALYSIS & SIMULATION LOG OF THE CRASH]")
     print(

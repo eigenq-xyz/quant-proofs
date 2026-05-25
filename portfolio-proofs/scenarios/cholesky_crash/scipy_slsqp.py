@@ -3,14 +3,18 @@ import pandas as pd
 from scipy.optimize import minimize
 
 print("=" * 80)
-print(" SCENARIO 1: Cholesky Crash (Non-PSD Covariance Matrix) ".center(80, "="))
+print(
+    " SCENARIO 1: Cholesky Crash (Non-PSD Covariance Matrix) ".center(80, "=")
+)
 print(" PROVIDER: SciPy SLSQP (Active-Set SQP) ".center(80, "="))
 print("=" * 80)
 
 # Setup singular returns data: N=10 assets, T=5 days (lookback < assets)
 np.random.seed(42)
 N_sectors, T_days = 10, 5
-returns_singular = np.random.normal(loc=0.0005, scale=0.02, size=(T_days, N_sectors))
+returns_singular = np.random.normal(
+    loc=0.0005, scale=0.02, size=(T_days, N_sectors)
+)
 S_singular = pd.DataFrame(returns_singular).cov().to_numpy()
 mu_singular = pd.DataFrame(returns_singular).mean().to_numpy()
 
@@ -37,7 +41,12 @@ w0 = np.ones(N_sectors) / N_sectors
 
 print("\nRunning SciPy SLSQP solver on singular covariance matrix...")
 res = minimize(
-    objective, w0, method="SLSQP", bounds=bounds, constraints=constraints, tol=1e-12
+    objective,
+    w0,
+    method="SLSQP",
+    bounds=bounds,
+    constraints=constraints,
+    tol=1e-12,
 )
 
 print("\n--- SLSQP SOLVER OUTPUT ---")

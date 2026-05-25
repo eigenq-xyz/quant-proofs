@@ -2,14 +2,24 @@ import numpy as np
 import pandas as pd
 
 print("=" * 80)
-print(" SCENARIO 2: Boundary Trap (Non-Differentiable L1 Bounds) ".center(80, "="))
-print(" PROVIDER: Gurobi Optimizer (Barrier Solver / Slack Inflation) ".center(80, "="))
+print(
+    " SCENARIO 2: Boundary Trap (Non-Differentiable L1 Bounds) ".center(
+        80, "="
+    )
+)
+print(
+    " PROVIDER: Gurobi Optimizer (Barrier Solver / Slack Inflation) ".center(
+        80, "="
+    )
+)
 print("=" * 80)
 
 # Setup singular returns data: N=10 assets, T=5 days (lookback < assets)
 np.random.seed(42)
 N_sectors, T_days = 10, 5
-returns_singular = np.random.normal(loc=0.0005, scale=0.02, size=(T_days, N_sectors))
+returns_singular = np.random.normal(
+    loc=0.0005, scale=0.02, size=(T_days, N_sectors)
+)
 S_singular = pd.DataFrame(returns_singular).cov().to_numpy()
 mu_singular = pd.DataFrame(returns_singular).mean().to_numpy()
 
@@ -19,8 +29,12 @@ F = (tr / N_sectors) * np.eye(N_sectors)
 Sigma_shrink = 0.1 * F + 0.9 * S_singular
 min_eig = np.min(np.linalg.eigvals(Sigma_shrink))
 
-print(f"Shrinked Covariance Minimum Eigenvalue: {min_eig:.8e} (Positive Definite)")
-print("This matrix is strictly positive definite but highly ill-conditioned.\n")
+print(
+    f"Shrinked Covariance Minimum Eigenvalue: {min_eig:.8e} (Positive Definite)"
+)
+print(
+    "This matrix is strictly positive definite but highly ill-conditioned.\n"
+)
 
 try:
     import gurobipy as gp  # noqa: F401
@@ -29,7 +43,9 @@ try:
     # Add real gurobi run details here if needed.
 except ModuleNotFoundError:
     print(
-        " Gurobi (gurobipy) is not installed in the local environment. ".center(80, "#")
+        " Gurobi (gurobipy) is not installed in the local environment. ".center(
+            80, "#"
+        )
     )
     print(
         "\n[MATHEMATICAL ANALYSIS & SIMULATION LOG OF SUBOPTIMAL BARRIER CONVERGENCE]"

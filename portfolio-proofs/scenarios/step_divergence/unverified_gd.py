@@ -1,8 +1,16 @@
 import numpy as np
 
 print("=" * 80)
-print(" SCENARIO 4: Step-Size Divergence (Lipschitz Bound Violations) ".center(80, "="))
-print(" PROVIDER: Unverified Gradient Descent (Fixed learning rate η) ".center(80, "="))
+print(
+    " SCENARIO 4: Step-Size Divergence (Lipschitz Bound Violations) ".center(
+        80, "="
+    )
+)
+print(
+    " PROVIDER: Unverified Gradient Descent (Fixed learning rate η) ".center(
+        80, "="
+    )
+)
 print("=" * 80)
 
 # Stressed covariance matrix during a liquidity freeze (volatility shock)

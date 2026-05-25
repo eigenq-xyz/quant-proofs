@@ -3,7 +3,11 @@ import pandas as pd
 from scipy.optimize import minimize
 
 print("=" * 80)
-print(" SCENARIO 3: Precision Bleed (Floating-Point Rounding Drift) ".center(80, "="))
+print(
+    " SCENARIO 3: Precision Bleed (Floating-Point Rounding Drift) ".center(
+        80, "="
+    )
+)
 print(" PROVIDER: SciPy SLSQP (Double-Precision Float64) ".center(80, "="))
 print("=" * 80)
 
@@ -19,14 +23,52 @@ dates = [
     "2020-03-18",
 ]
 returns_data = {
-    "SPY": [-0.0760, 0.0494, -0.0489, -0.0951, 0.0929, -0.1198, 0.0598, -0.0518],
-    "TLT": [0.0150, -0.0190, 0.0050, -0.0248, -0.0150, -0.0215, -0.0110, -0.0610],
-    "GLD": [-0.0120, 0.0080, -0.0090, -0.0359, -0.0150, -0.0242, 0.0150, -0.0305],
-    "HYG": [-0.0350, 0.0050, -0.0150, -0.0410, 0.0210, -0.0380, 0.0080, -0.0475],
+    "SPY": [
+        -0.0760,
+        0.0494,
+        -0.0489,
+        -0.0951,
+        0.0929,
+        -0.1198,
+        0.0598,
+        -0.0518,
+    ],
+    "TLT": [
+        0.0150,
+        -0.0190,
+        0.0050,
+        -0.0248,
+        -0.0150,
+        -0.0215,
+        -0.0110,
+        -0.0610,
+    ],
+    "GLD": [
+        -0.0120,
+        0.0080,
+        -0.0090,
+        -0.0359,
+        -0.0150,
+        -0.0242,
+        0.0150,
+        -0.0305,
+    ],
+    "HYG": [
+        -0.0350,
+        0.0050,
+        -0.0150,
+        -0.0410,
+        0.0210,
+        -0.0380,
+        0.0080,
+        -0.0475,
+    ],
 }
 df_returns = pd.DataFrame(returns_data, index=pd.to_datetime(dates))
 
-print("Simulating rolling sequential rebalances over March 2020 shock windows...")
+print(
+    "Simulating rolling sequential rebalances over March 2020 shock windows..."
+)
 print("Asserting constraint bleed (drift > 1e-15)...")
 
 bleeding = False
@@ -37,18 +79,28 @@ for i in range(len(df_returns) - 4):
 
     n = len(mu)
 
-    def objective(w):
+    def objective(w, cov=cov, mu=mu):
         return 0.5 * np.dot(w.T, np.dot(cov, w)) - np.dot(mu, w)
 
     leverage_cap = 1.5
     constraints = [
         {"type": "eq", "fun": lambda w: np.sum(w) - 1.0},
-        {"type": "ineq", "fun": lambda w: leverage_cap - np.sum(np.abs(w))},
+        {
+            "type": "ineq",
+            "fun": lambda w, leverage_cap=leverage_cap: (
+                leverage_cap - np.sum(np.abs(w))
+            ),
+        },
     ]
     bounds = [(-1.0, 1.0) for _ in range(n)]
     w0 = np.ones(n) / n
     res = minimize(
-        objective, w0, method="SLSQP", bounds=bounds, constraints=constraints, tol=1e-12
+        objective,
+        w0,
+        method="SLSQP",
+        bounds=bounds,
+        constraints=constraints,
+        tol=1e-12,
     )
 
     sum_w = np.sum(res.x)
