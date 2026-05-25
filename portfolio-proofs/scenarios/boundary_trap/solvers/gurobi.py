@@ -48,8 +48,9 @@ def _run_gurobi(p: ProblemData) -> SolverResult:
     env.start()
 
     m = gp.Model("boundary_trap", env=env)
-    u = m.addVars(N, lb=0.0, ub=1.0, name="u")
-    v = m.addVars(N, lb=0.0, ub=1.0, name="v")
+    # No per-asset box bounds — only budget and leverage constraints.
+    u = m.addVars(N, lb=0.0, name="u")
+    v = m.addVars(N, lb=0.0, name="v")
 
     # Objective: (1/2)(u-v)' Sigma (u-v) - mu'(u-v)
     obj = gp.QuadExpr()

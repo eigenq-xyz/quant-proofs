@@ -1,9 +1,13 @@
 """SciPy SLSQP (active-set SQP) solver for the boundary-trap scenario.
 
-SLSQP handles the L1 leverage constraint directly via absolute-value
-approximations and active-set boundary search. Under an ill-conditioned
-covariance matrix it cycles at the non-differentiable |w_i|=0 boundary
-without converging (Nocedal and Wright 2006, Ch. 16).
+The problem has no per-asset position limits. In a long-short strategy
+the gross leverage cap already bounds total exposure; individual box
+bounds would be a separate mandate requirement not modelled here.
+
+SLSQP handles the L1 leverage constraint directly via active-set boundary
+search on absolute-value approximations. Because |w_i| is non-differentiable
+at w_i = 0, the active-set search cycles at the kink without converging
+(Nocedal and Wright 2006, Ch. 16).
 """
 
 from __future__ import annotations
@@ -23,14 +27,14 @@ def run(p: ProblemData) -> SolverResult:
             "fun": lambda w: float(p.leverage_cap - np.sum(np.abs(w))),
         },
     ]
-    bounds = [(-1.0, 1.0)] * p.N
+    # No per-asset box bounds — only budget and leverage constraints.
     w0 = np.ones(p.N) / p.N
 
     res = minimize(
         p.objective,
         w0,
         method="SLSQP",
-        bounds=bounds,
+        bounds=None,
         constraints=constraints,
         tol=1e-12,
     )

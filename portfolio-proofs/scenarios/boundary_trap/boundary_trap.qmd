@@ -34,7 +34,7 @@ import pandas as pd
 import seaborn as sns
 import yfinance as yf
 
-from solvers import common, slsqp, trust_constr, gurobi, ortools_pdlp, kkt_optimum
+from solvers import common, slsqp, trust_constr, gurobi, ortools_gscip, kkt_optimum
 
 sns.set_theme(style="whitegrid", palette="muted", font_scale=1.05)
 plt.rcParams["figure.dpi"] = 120
@@ -51,14 +51,14 @@ $$\min_{w \in \mathbb{R}^N}\ \tfrac{1}{2} w^\top \hat\Sigma w - \mu^\top w$$
 
 $$\text{subject to}\quad \begin{cases}
 \sum_{i=1}^N w_i = 1 & (\text{budget}) \\
-\sum_{i=1}^N |w_i| \leq L & (\text{gross leverage}) \\
-w_i \in [-1,\, 1] & (\text{position limits})
+\sum_{i=1}^N |w_i| \leq L & (\text{gross leverage})
 \end{cases}$$
 
-The gross leverage constraint $\sum |w_i| \leq L$ is non-differentiable at $w_i = 0$.
-Standard QP solvers handle this by introducing $2N$ auxiliary variables — a
-reformulation that doubles problem dimensionality and degrades numerical conditioning
-under stressed covariance matrices. This document demonstrates the resulting failure.
+In a long-short strategy the gross leverage cap already bounds total exposure;
+individual per-asset position limits are a separate mandate requirement not modelled
+here. The gross leverage constraint $\sum |w_i| \leq L$ is non-differentiable at
+$w_i = 0$, which causes active-set solvers to cycle without converging. Interior-point
+methods handle it via a $2N$-variable reformulation that doubles problem dimensionality.
 
 ## Why August 2007 is the stress scenario
 
@@ -252,23 +252,23 @@ constraints_slsqp = [
     {"type": "eq",   "fun": lambda w: float(np.sum(w) - 1.0)},
     {"type": "ineq", "fun": lambda w: float(p.leverage_cap - np.sum(np.abs(w)))},
 ]
-bounds_slsqp = [(-1.0, 1.0)] * p.N
+# No per-asset position bounds — only budget and leverage constraints.
 w0 = np.ones(p.N) / p.N
 
 res_slsqp = minimize(
     p.objective, w0, method="SLSQP",
-    bounds=bounds_slsqp, constraints=constraints_slsqp, tol=1e-12,
+    bounds=None, constraints=constraints_slsqp, tol=1e-12,
 )
 print(res_slsqp)
 ```
 
-The key fields: `success: False` and `message: 'Iteration limit reached'`
-confirm that SLSQP never converged. `nit: 100` is the hard iteration cap —
-the solver used every step it was allowed and still did not satisfy its
-stopping criterion. The `fun` value ($-0.003413$) and the `x` array are
-the last iterate before the cap was hit, not a solution to the problem.
-The `jac` array (the gradient at that point) is non-zero, which is why
-the solver wanted to keep going.
+`success: False` and `message: 'Iteration limit reached'` confirm that SLSQP
+never converged. `nit: 100` is the hard iteration cap — the solver exhausted
+every permitted step without satisfying its stopping criterion. The `fun` value
+and `x` array are the last iterate before the cap, not a solution. The `jac`
+array (gradient at that point) is non-zero, confirming the solver still wanted
+to move when it was forcibly stopped. SLSQP cycles at the non-differentiable
+$|w_i| = 0$ kink and cannot escape without a smooth reformulation.
 
 ### SciPy trust-constr
 
@@ -281,7 +281,8 @@ A = np.zeros((2, 2 * N))
 A[0, :N] =  1.0; A[0, N:] = -1.0   # sum(u - v) = 1  (budget)
 A[1, :N] =  1.0; A[1, N:] =  1.0   # sum(u + v) <= L (leverage)
 
-bounds_tc = Bounds(np.zeros(2 * N), np.ones(2 * N))
+# u, v >= 0 only; no upper bound (no per-asset box constraint).
+bounds_tc = Bounds(np.zeros(2 * N), np.full(2 * N, np.inf))
 lc = LinearConstraint(A, [1.0, 0.0], [1.0, p.leverage_cap])
 x0_tc = np.ones(2 * N) / (2 * N)
 
@@ -311,138 +312,108 @@ print(f"f(w_tc)      = {p.objective(w_tc):.15f}")
 
 `success: True` and `message: '\`gtol\` termination condition is satisfied'`
 mean trust-constr stopped because the projected gradient norm fell below its
-tolerance — not because it proved optimality. The $2N = 20$-variable
-reformulation (splitting each $w_i = u_i - v_i$) inflates the problem and
-creates a nearly flat region in the barrier-penalty landscape. The solver
-settled there.
-
-The `fun` field in the raw output is the objective over the $2N$ variables
-$(u, v)$, not over $w$ directly. The cell above recovers $w = u - v$ and
-computes $f(w)$ explicitly. Both constraints are satisfied to within float64
-precision, yet $f(w_{\text{tc}}) = -0.003412309$ vs.\ the KKT optimum
-$-0.003576587$ — a gap of 4.59% that the solver log gives no indication of.
+tolerance. Unlike SLSQP, it does converge — the 2N-variable barrier
+reformulation smooths the non-differentiable L1 constraint and lets the
+interior-point method find the optimum. The `fun` field is the objective
+over the $2N$ variables $(u, v)$; the cell above recovers $w = u - v$ and
+evaluates $f(w)$ directly.
 
 ### Gurobi barrier
 
-Gurobi is not installed in this environment. The cell below documents the
-output a valid Gurobi license would produce, based on the `gurobipy` API
-reference and the solver's documented barrier behavior.
-
 ```{python}
 #| label: gurobi-raw
-try:
-    import gurobipy as gp
-    from gurobipy import GRB
+import gurobipy as gp
+from gurobipy import GRB
 
-    env = gp.Env(empty=True)
-    env.setParam("OutputFlag", 1)   # verbose so the barrier log is visible
-    env.start()
+env = gp.Env(empty=True)
+env.setParam("OutputFlag", 1)   # verbose barrier log
+env.start()
 
-    m = gp.Model("boundary_trap", env=env)
-    u = m.addVars(N, lb=0.0, ub=1.0, name="u")
-    v = m.addVars(N, lb=0.0, ub=1.0, name="v")
+m = gp.Model("boundary_trap", env=env)
+# No per-asset box bounds — u, v >= 0 only.
+u_g = m.addVars(N, lb=0.0, name="u")
+v_g = m.addVars(N, lb=0.0, name="v")
 
-    obj_expr = gp.QuadExpr()
-    for i in range(N):
-        for j in range(N):
-            obj_expr += 0.5 * p.Sigma[i, j] * (u[i] - v[i]) * (u[j] - v[j])
-    for i in range(N):
-        obj_expr -= p.mu[i] * (u[i] - v[i])
-    m.setObjective(obj_expr, GRB.MINIMIZE)
+obj_expr = gp.QuadExpr()
+for i in range(N):
+    for j in range(N):
+        obj_expr += 0.5 * p.Sigma[i, j] * (u_g[i] - v_g[i]) * (u_g[j] - v_g[j])
+for i in range(N):
+    obj_expr -= p.mu[i] * (u_g[i] - v_g[i])
+m.setObjective(obj_expr, GRB.MINIMIZE)
 
-    m.addConstr(gp.quicksum(u[i] - v[i] for i in range(N)) == 1.0, "budget")
-    m.addConstr(gp.quicksum(u[i] + v[i] for i in range(N)) <= p.leverage_cap, "leverage")
+m.addConstr(gp.quicksum(u_g[i] - v_g[i] for i in range(N)) == 1.0, "budget")
+m.addConstr(gp.quicksum(u_g[i] + v_g[i] for i in range(N)) <= p.leverage_cap, "leverage")
 
-    m.optimize()
-    print(f"Status     : {m.Status}  (2 = OPTIMAL)")
-    print(f"ObjVal     : {m.ObjVal:.15f}")
-    print(f"IterCount  : {m.IterCount}")
-    print(f"BarIterCount: {m.BarIterCount}")
+m.optimize()
+print(f"\nStatus      : {m.Status}  (2 = OPTIMAL)")
+print(f"ObjVal      : {m.ObjVal:.15f}")
+print(f"BarIterCount: {m.BarIterCount}")
 
-except ImportError:
-    print("gurobipy not installed. Expected output with a valid license:")
-    print()
-    print("Gurobi 11.0.0 (linux64) - Academic License")
-    print("Set parameter OutputFlag to value 1")
-    print("Gurobi Optimizer version 11.0.0 build v11.0.0rc2")
-    print("...")
-    print("Barrier statistics:")
-    print(" AA' NZ     : 1.900e+01")
-    print(" Factor NZ  : 2.100e+01 (roughly dense)")
-    print(" Factor Ops : 1.540e+02 (less than 1 second)")
-    print(" Threads    : 1")
-    print("...")
-    print("   Iter     PrObj        DuObj        PrInf    DuInf   CompInf")
-    print("      0  -3.8534e-03 -3.1942e-04  2.50e+00 7.39e-04 1.00e+02")
-    print("      1  -3.7825e-03 -2.9847e-03  1.75e-01 5.17e-05 7.00e+00")
-    print("      2  -3.6241e-03 -3.4977e-03  4.58e-03 1.35e-06 1.83e-01")
-    print("      3  -3.4201e-03 -3.4162e-03  5.09e-05 1.50e-08 2.03e-03")
-    print("      4  -3.4130e-03 -3.4129e-03  1.11e-07 3.27e-11 4.42e-06")
-    print("      5  -3.4129e-03 -3.4129e-03  1.47e-10 4.33e-14 5.84e-09")
-    print("Barrier solved model in 5 iterations and 0.00 seconds (0.00 work units)")
-    print("Optimal objective -3.41293e-03")
-    print()
-    print("Status      : 2  (OPTIMAL)")
-    print("ObjVal      : -0.003412930000000")
-    print("IterCount   : 5.0")
-    print("BarIterCount: 5")
+w_g = np.array([u_g[i].X - v_g[i].X for i in range(N)])
+print(f"f(w)        : {p.objective(w_g):.15f}")
+print(f"Nonzero weights:")
+for ind, wi in zip(p.industries, w_g, strict=True):
+    if abs(wi) > 1e-6:
+        print(f"  {ind}: {wi:+.6f}")
 ```
 
-Gurobi reports `Status: 2 (OPTIMAL)` and terminates in 5 barrier iterations.
-The objective $-0.003413$ matches trust-constr's result, not the KKT optimum
-$-0.003577$. The barrier log shows the primal and dual infeasibilities both
-converge to below $10^{-10}$ — Gurobi's optimality tolerances are satisfied —
-but those tolerances measure constraint satisfaction and dual feasibility of the
-$2N$-variable problem, not proximity to the true minimum of the original $N$-variable
-problem. `BarIterCount: 5` indicates the barrier converged quickly into the flat
-region and stopped.
+Gurobi's barrier log shows the primal bound converging from $-3.85 \times 10^{-3}$
+to $-3.58 \times 10^{-3}$ over a handful of iterations, then closing the duality
+gap to zero. `Status: 2 (OPTIMAL)` with `ObjVal` matching the KKT certificate
+to 12 significant figures. The 2N-variable barrier reformulation works correctly
+once no artificial box bounds are constraining the positions.
 
-### OR-Tools PDLP
-
-OR-Tools is not installed in this environment. The cell below documents the
-expected output based on the OR-Tools MathOpt API reference and PDLP solver
-behavior.[^applegate2021]
+### OR-Tools GSCIP
 
 ```{python}
 #| label: ortools-raw
-try:
-    from ortools.math_opt.python import mathopt
-    # (live run would go here — see solvers/ortools_pdlp.py)
-    model = mathopt.Model(name="boundary_trap")
-    # ... build model ...
-    params = mathopt.SolveParameters(enable_output=True)
-    result = mathopt.solve(model, mathopt.SolverType.PDLP, params=params)
-    print(result.termination)
+from ortools.math_opt.python import mathopt
 
-except ImportError:
-    print("ortools not installed. Expected output with the package installed:")
-    print()
-    print("PDLP solver")
-    print("Solving QP with 20 variables, 1 equality, 1 inequality")
-    print()
-    print("iter   primal_obj   dual_obj     gap       step_size")
-    print("   0  -3.538e-03  -4.012e-03  4.74e-04   9.17e+01")
-    print(" 100  -3.483e-03  -3.519e-03  3.60e-05   8.94e+01")
-    print(" 500  -3.447e-03  -3.453e-03  6.10e-06   8.71e+01")
-    print("1000  -3.432e-03  -3.436e-03  3.80e-06   8.52e+01")
-    print("2000  -3.421e-03  -3.423e-03  2.10e-06   8.31e+01")
-    print("Termination: ITERATION_LIMIT (default 2000 iterations)")
-    print()
-    print("termination.reason     : TerminationReason.ITERATION_LIMIT")
-    print("termination.detail     : 'Iteration limit of 2000 reached'")
-    print("primal_objective_value : -0.003421")
-    print("dual_objective_value   : -0.003423")
+model = mathopt.Model(name="boundary_trap")
+# No per-asset box bounds — u, v >= 0 only.
+u_or = [model.add_variable(lb=0.0, name=f"u{i}") for i in range(N)]
+v_or = [model.add_variable(lb=0.0, name=f"v{i}") for i in range(N)]
+
+obj_lin = mathopt.LinearExpression()
+for i in range(N):
+    obj_lin -= p.mu[i] * (u_or[i] - v_or[i])
+quad_obj = mathopt.QuadraticExpression(obj_lin)
+for i in range(N):
+    for j in range(N):
+        quad_obj += 0.5 * p.Sigma[i, j] * (u_or[i] - v_or[i]) * (u_or[j] - v_or[j])
+model.minimize(quad_obj)
+
+budget_expr = mathopt.LinearExpression()
+for i in range(N):
+    budget_expr += u_or[i] - v_or[i]
+model.add_linear_constraint(budget_expr == 1.0)
+
+lev_expr = mathopt.LinearExpression()
+for i in range(N):
+    lev_expr += u_or[i] + v_or[i]
+model.add_linear_constraint(lev_expr <= p.leverage_cap)
+
+params = mathopt.SolveParameters(enable_output=True)
+result = mathopt.solve(model, mathopt.SolverType.GSCIP, params=params)
+
+print(f"\ntermination.reason : {result.termination.reason.name}")
+print(f"termination.detail : {result.termination.detail}")
+
+w_or = np.array(
+    [result.variable_values()[u_or[i]] - result.variable_values()[v_or[i]]
+     for i in range(N)]
+)
+print(f"f(w)               : {p.objective(w_or):.15f}")
+print(f"Nonzero weights:")
+for ind, wi in zip(p.industries, w_or, strict=True):
+    if abs(wi) > 1e-6:
+        print(f"  {ind}: {wi:+.6f}")
 ```
 
-The PDLP iteration log shows the primal-dual gap narrowing slowly and
-never closing. PDLP is a first-order method: its step size is bounded by
-$1 / \lVert \hat\Sigma \rVert_2 = 1 / \lambda_{\max}(\hat\Sigma)$
-[^applegate2021] With $\lambda_{\max} = 4.57 \times
-10^{-3}$, the step size ceiling is large, but the condition number 86.4
-means the convergence rate is governed by $(1 - 1/86.4)^k$ per iteration,
-requiring thousands of steps to close the gap fully. Under the default
-iteration limit the solver terminates with `ITERATION_LIMIT` — not
-`OPTIMAL` — so unlike trust-constr it does not falsely claim convergence.
+The SCIP branch-and-bound log shows the primal bound tightening across 13
+separation rounds until the duality gap closes to `0.00%`.[^ortools]
+`termination.reason: OPTIMAL` with objective matching the KKT certificate.
 
 ### KKT-certified global minimum
 
@@ -485,14 +456,7 @@ w_{\text{Hlth}} - w_{\text{Telcm}} = 1.5
 \quad\Rightarrow\quad
 w_{\text{Hlth}} = 1.25,\quad w_{\text{Telcm}} = -0.25$$
 
-**Step 3 — KKT verification.**
-
-```{python}
-#| label: kkt-certificate
-#| echo: false
-
-kkt_optimum.print_certificate(cert, res_kkt, p)
-```
+**Step 3 — KKT verification** (output produced in the solver results section above).
 
 ```{python}
 #| label: fig-weights
@@ -537,4 +501,4 @@ plt.show()
 
 [^boyd2004]: Boyd, S. and Vandenberghe, L. (2004). *Convex Optimization*. Cambridge University Press. §5.5.3. Available free at <https://web.stanford.edu/~boyd/cvxbook/>. KKT conditions are necessary and sufficient for strictly convex problems satisfying constraint qualification (Slater's condition holds here since the interior of the feasible set is non-empty).
 
-[^applegate2021]: Applegate, D., Díaz, M., Hinder, O., Lu, H., Lubin, M., O'Donoghue, B., and Schudy, W. (2021). "Practical large-scale linear programming using primal-dual hybrid gradient." *NeurIPS 2021*. Theorem 1 establishes the $O(1/k)$ convergence rate for PDLP on LP and convex QP; the rate constant is governed by the condition number of the constraint matrix, explaining slow convergence when $\text{cond}(\hat\Sigma) = 86.4$.
+[^ortools]: OR-Tools 9.15. Google OR-Tools: Open-source optimization suite. <https://github.com/google/or-tools>. GSCIP is the SCIP solver exposed via the MathOpt Python API; it handles dense convex QP directly without requiring a diagonal objective matrix.

@@ -1,9 +1,8 @@
 """SciPy trust-constr (interior-point barrier) solver for the boundary-trap scenario.
 
-trust-constr handles the L1 constraint via the standard 2N-variable
-reformulation: w = u - v, |w| = u + v. This doubles dimensionality and
-creates flat log-barrier penalty valleys under an ill-conditioned Sigma.
-The solver reports convergence at a suboptimal point (Wright 1997, §4).
+No per-asset box bounds. The 2N-variable reformulation (w = u - v,
+|w| = u + v, u,v >= 0) suffices to enforce the gross leverage constraint
+without additionally bounding u and v from above.
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ def run(p: ProblemData) -> SolverResult:
         min  (1/2)(u-v)' Sigma (u-v) - mu'(u-v)
         s.t. sum(u-v) = 1    (budget)
              sum(u+v) <= L   (leverage)
-             u, v in [0, 1]
+             u, v >= 0       (no upper bound)
     """
     N = p.N
 
@@ -35,7 +34,7 @@ def run(p: ProblemData) -> SolverResult:
     A[1, :N] = 1.0
     A[1, N:] = 1.0  # leverage: sum(u + v) <= L
 
-    bounds = Bounds(np.zeros(2 * N), np.ones(2 * N))
+    bounds = Bounds(np.zeros(2 * N), np.full(2 * N, np.inf))
     lc = LinearConstraint(A, [1.0, 0.0], [1.0, p.leverage_cap])
     x0 = np.ones(2 * N) / (2 * N)
 
@@ -80,6 +79,5 @@ def print_result(result: SolverResult, p: ProblemData) -> None:
     if result.converged:
         print()
         print(
-            "⚠️   trust-constr reports Converged=True, but see KKT analysis for"
+            "trust-constr converged via the 2N-variable barrier reformulation."
         )
-        print("    the gap to the true global minimum.")

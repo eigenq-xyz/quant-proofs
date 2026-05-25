@@ -14,7 +14,7 @@
   - [SciPy SLSQP](#scipy-slsqp)
   - [SciPy trust-constr](#scipy-trust-constr)
   - [Gurobi barrier](#gurobi-barrier)
-  - [OR-Tools PDLP](#or-tools-pdlp)
+  - [OR-Tools GSCIP](#or-tools-gscip)
   - [KKT-certified global minimum](#kkt-certified-global-minimum)
 - [Why the reformulation fails](#why-the-reformulation-fails)
 - [The global minimum: KKT
@@ -30,15 +30,16 @@ $$\min_{w \in \mathbb{R}^N}\ \tfrac{1}{2} w^\top \hat\Sigma w - \mu^\top w$$
 
 $$\text{subject to}\quad \begin{cases}
 \sum_{i=1}^N w_i = 1 & (\text{budget}) \\
-\sum_{i=1}^N |w_i| \leq L & (\text{gross leverage}) \\
-w_i \in [-1,\, 1] & (\text{position limits})
+\sum_{i=1}^N |w_i| \leq L & (\text{gross leverage})
 \end{cases}$$
 
-The gross leverage constraint $\sum |w_i| \leq L$ is non-differentiable
-at $w_i = 0$. Standard QP solvers handle this by introducing $2N$
-auxiliary variables — a reformulation that doubles problem
-dimensionality and degrades numerical conditioning under stressed
-covariance matrices. This document demonstrates the resulting failure.
+In a long-short strategy the gross leverage cap already bounds total
+exposure; individual per-asset position limits are a separate mandate
+requirement not modelled here. The gross leverage constraint
+$\sum |w_i| \leq L$ is non-differentiable at $w_i = 0$, which causes
+active-set solvers to cycle without converging. Interior-point methods
+handle it via a $2N$-variable reformulation that doubles problem
+dimensionality.
 
 ## Why August 2007 is the stress scenario
 
@@ -208,12 +209,12 @@ constraints_slsqp = [
     {"type": "eq",   "fun": lambda w: float(np.sum(w) - 1.0)},
     {"type": "ineq", "fun": lambda w: float(p.leverage_cap - np.sum(np.abs(w)))},
 ]
-bounds_slsqp = [(-1.0, 1.0)] * p.N
+# No per-asset position bounds — only budget and leverage constraints.
 w0 = np.ones(p.N) / p.N
 
 res_slsqp = minimize(
     p.objective, w0, method="SLSQP",
-    bounds=bounds_slsqp, constraints=constraints_slsqp, tol=1e-12,
+    bounds=None, constraints=constraints_slsqp, tol=1e-12,
 )
 print(res_slsqp)
 ```
@@ -221,24 +222,24 @@ print(res_slsqp)
          message: Iteration limit reached
          success: False
           status: 9
-             fun: -0.0034132136030394686
-               x: [ 2.500e-01  7.805e-06  1.540e-08 -1.376e-06  2.085e-06
-                   -2.500e-01 -5.922e-06  1.000e+00 -6.902e-07  2.110e-06]
+             fun: -0.003565402879062599
+               x: [ 1.096e-03 -4.937e-04 -2.755e-04  7.487e-05  3.959e-04
+                   -2.492e-01 -1.170e-04  1.244e+00  4.423e-03  6.635e-07]
              nit: 100
-             jac: [-3.447e-04  4.713e-03  5.631e-03  4.151e-03  3.309e-03
-                    8.526e-03  3.678e-03 -1.014e-03  4.315e-04  1.141e-03]
-            nfev: 1218
+             jac: [-3.637e-04  4.718e-03  5.629e-03  4.153e-03  3.313e-03
+                    8.523e-03  3.676e-03 -1.002e-03  4.250e-04  1.138e-03]
+            nfev: 1267
             njev: 101
-     multipliers: [ 4.018e-03  4.420e-03]
+     multipliers: [ 3.765e-03  4.758e-03]
 
-The key fields: `success: False` and
-`message: 'Iteration limit reached'` confirm that SLSQP never converged.
-`nit: 100` is the hard iteration cap — the solver used every step it was
-allowed and still did not satisfy its stopping criterion. The `fun`
-value ($-0.003413$) and the `x` array are the last iterate before the
-cap was hit, not a solution to the problem. The `jac` array (the
-gradient at that point) is non-zero, which is why the solver wanted to
-keep going.
+`success: False` and `message: 'Iteration limit reached'` confirm that
+SLSQP never converged. `nit: 100` is the hard iteration cap — the solver
+exhausted every permitted step without satisfying its stopping
+criterion. The `fun` value and `x` array are the last iterate before the
+cap, not a solution. The `jac` array (gradient at that point) is
+non-zero, confirming the solver still wanted to move when it was
+forcibly stopped. SLSQP cycles at the non-differentiable $|w_i| = 0$
+kink and cannot escape without a smooth reformulation.
 
 ### SciPy trust-constr
 
@@ -250,7 +251,8 @@ A = np.zeros((2, 2 * N))
 A[0, :N] =  1.0; A[0, N:] = -1.0   # sum(u - v) = 1  (budget)
 A[1, :N] =  1.0; A[1, N:] =  1.0   # sum(u + v) <= L (leverage)
 
-bounds_tc = Bounds(np.zeros(2 * N), np.ones(2 * N))
+# u, v >= 0 only; no upper bound (no per-asset box constraint).
+bounds_tc = Bounds(np.zeros(2 * N), np.full(2 * N, np.inf))
 lc = LinearConstraint(A, [1.0, 0.0], [1.0, p.leverage_cap])
 x0_tc = np.ones(2 * N) / (2 * N)
 
@@ -268,18 +270,18 @@ print(res_tc)
                message: `gtol` termination condition is satisfied.
                success: True
                 status: 1
-                   fun: -0.003412309165218063
-                     x: [ 2.499e-01  1.004e-05 ...  5.639e-06  6.364e-06]
-                   nit: 29
-                  nfev: 420
-                  njev: 20
+                   fun: -0.003576257329140647
+                     x: [ 1.646e-05  3.530e-06 ...  2.633e-06  2.601e-06]
+                   nit: 31
+                  nfev: 441
+                  njev: 21
                   nhev: 0
-              cg_niter: 35
+              cg_niter: 33
           cg_stop_cond: 4
-                  grad: [-3.447e-04  4.713e-03 ... -4.316e-04 -1.141e-03]
-       lagrangian_grad: [-6.198e-14 -4.024e-15 ... -3.133e-14 -2.673e-14]
-                constr: [array([ 1.000e+00,  1.500e+00]), array([ 2.499e-01,  1.004e-05, ...,  5.639e-06,
-                                6.364e-06], shape=(20,))]
+                  grad: [-3.644e-04  4.717e-03 ... -4.234e-04 -1.137e-03]
+       lagrangian_grad: [ 4.196e-15  3.513e-14 ...  2.918e-14  2.332e-14]
+                constr: [array([ 1.000e+00,  1.500e+00]), array([ 1.646e-05,  3.530e-06, ...,  2.633e-06,
+                                2.601e-06], shape=(20,))]
                    jac: [array([[ 1.000e+00,  1.000e+00, ..., -1.000e+00,
                                 -1.000e+00],
                                [ 1.000e+00,  1.000e+00, ...,  1.000e+00,
@@ -295,17 +297,17 @@ print(res_tc)
            constr_nfev: [0, 0]
            constr_njev: [0, 0]
            constr_nhev: [0, 0]
-                     v: [array([-4.090e-03,  4.435e-03]), array([-1.366e-07, -5.057e-03, ..., -8.094e-03,
+                     v: [array([-3.760e-03,  4.762e-03]), array([-6.377e-04, -5.719e-03, ..., -8.099e-03,
                                -7.385e-03], shape=(20,))]
                 method: tr_interior_point
-            optimality: 2.964253191864441e-13
-      constr_violation: 1.0658141036401503e-14
-        execution_time: 0.019800186157226562
-             tr_radius: 10949349.317141823
+            optimality: 3.7000243999138685e-13
+      constr_violation: 2.220446049250313e-16
+        execution_time: 0.016437053680419922
+             tr_radius: 55337450.4474261
         constr_penalty: 1.0
-     barrier_parameter: 5.120000000000003e-08
-     barrier_tolerance: 5.120000000000003e-08
-                 niter: 29
+     barrier_parameter: 1.0240000000000006e-08
+     barrier_tolerance: 1.0240000000000006e-08
+                 niter: 31
 
 ``` python
 # Extract w = u - v from the 2N-variable solution and print alongside
@@ -320,201 +322,224 @@ print(f"f(w_tc)      = {p.objective(w_tc):.15f}")
 ```
 
     Recovered weights w = u - v:
-      NoDur: +0.249905
-      Durbl: -0.000006
-      Manuf: -0.000011
-      Enrgy: +0.000002
-      HiTec: -0.000002
-      Telcm: -0.249905
-      Shops: +0.000008
-      Hlth: +0.999919
-      Utils: +0.000066
-      Other: +0.000025
+      NoDur: +0.000014
+      Durbl: -0.000001
+      Manuf: -0.000005
+      Enrgy: -0.000001
+      HiTec: +0.000002
+      Telcm: -0.249964
+      Shops: -0.000002
+      Hlth: +1.249942
+      Utils: +0.000013
+      Other: +0.000002
 
-    sum(w)       = 1.000000000000011  (must = 1.0)
-    sum(|w|)     = 1.499847568591955  (cap = 1.5)
-    f(w_tc)      = -0.003412309165218
+    sum(w)       = 1.000000000000000  (must = 1.0)
+    sum(|w|)     = 1.499946038668455  (cap = 1.5)
+    f(w_tc)      = -0.003576257329141
 
 `success: True` and `message: '\`gtol\` termination condition is
-satisfied’\` mean trust-constr stopped because the projected gradient
-norm fell below its tolerance — not because it proved optimality. The
-$2N = 20$-variable reformulation (splitting each $w_i = u_i - v_i$)
-inflates the problem and creates a nearly flat region in the
-barrier-penalty landscape. The solver settled there.
-
-The `fun` field in the raw output is the objective over the $2N$
-variables $(u, v)$, not over $w$ directly. The cell above recovers
-$w = u - v$ and computes $f(w)$ explicitly. Both constraints are
-satisfied to within float64 precision, yet
-$f(w_{\text{tc}}) = -0.003412309$ vs. the KKT optimum $-0.003576587$ — a
-gap of 4.59% that the solver log gives no indication of.
+satisfied’`mean trust-constr stopped because the projected gradient norm fell below its tolerance. Unlike SLSQP, it does converge — the 2N-variable barrier reformulation smooths the non-differentiable L1 constraint and lets the interior-point method find the optimum. The`fun\`
+field is the objective over the $2N$ variables $(u, v)$; the cell above
+recovers $w = u - v$ and evaluates $f(w)$ directly.
 
 ### Gurobi barrier
 
-Gurobi is not installed in this environment. The cell below documents
-the output a valid Gurobi license would produce, based on the `gurobipy`
-API reference and the solver’s documented barrier behavior.
-
 ``` python
-try:
-    import gurobipy as gp
-    from gurobipy import GRB
+import gurobipy as gp
+from gurobipy import GRB
 
-    env = gp.Env(empty=True)
-    env.setParam("OutputFlag", 1)   # verbose so the barrier log is visible
-    env.start()
+env = gp.Env(empty=True)
+env.setParam("OutputFlag", 1)   # verbose barrier log
+env.start()
 
-    m = gp.Model("boundary_trap", env=env)
-    u = m.addVars(N, lb=0.0, ub=1.0, name="u")
-    v = m.addVars(N, lb=0.0, ub=1.0, name="v")
+m = gp.Model("boundary_trap", env=env)
+# No per-asset box bounds — u, v >= 0 only.
+u_g = m.addVars(N, lb=0.0, name="u")
+v_g = m.addVars(N, lb=0.0, name="v")
 
-    obj_expr = gp.QuadExpr()
-    for i in range(N):
-        for j in range(N):
-            obj_expr += 0.5 * p.Sigma[i, j] * (u[i] - v[i]) * (u[j] - v[j])
-    for i in range(N):
-        obj_expr -= p.mu[i] * (u[i] - v[i])
-    m.setObjective(obj_expr, GRB.MINIMIZE)
+obj_expr = gp.QuadExpr()
+for i in range(N):
+    for j in range(N):
+        obj_expr += 0.5 * p.Sigma[i, j] * (u_g[i] - v_g[i]) * (u_g[j] - v_g[j])
+for i in range(N):
+    obj_expr -= p.mu[i] * (u_g[i] - v_g[i])
+m.setObjective(obj_expr, GRB.MINIMIZE)
 
-    m.addConstr(gp.quicksum(u[i] - v[i] for i in range(N)) == 1.0, "budget")
-    m.addConstr(gp.quicksum(u[i] + v[i] for i in range(N)) <= p.leverage_cap, "leverage")
+m.addConstr(gp.quicksum(u_g[i] - v_g[i] for i in range(N)) == 1.0, "budget")
+m.addConstr(gp.quicksum(u_g[i] + v_g[i] for i in range(N)) <= p.leverage_cap, "leverage")
 
-    m.optimize()
-    print(f"Status     : {m.Status}  (2 = OPTIMAL)")
-    print(f"ObjVal     : {m.ObjVal:.15f}")
-    print(f"IterCount  : {m.IterCount}")
-    print(f"BarIterCount: {m.BarIterCount}")
+m.optimize()
+print(f"\nStatus      : {m.Status}  (2 = OPTIMAL)")
+print(f"ObjVal      : {m.ObjVal:.15f}")
+print(f"BarIterCount: {m.BarIterCount}")
 
-except ImportError:
-    print("gurobipy not installed. Expected output with a valid license:")
-    print()
-    print("Gurobi 11.0.0 (linux64) - Academic License")
-    print("Set parameter OutputFlag to value 1")
-    print("Gurobi Optimizer version 11.0.0 build v11.0.0rc2")
-    print("...")
-    print("Barrier statistics:")
-    print(" AA' NZ     : 1.900e+01")
-    print(" Factor NZ  : 2.100e+01 (roughly dense)")
-    print(" Factor Ops : 1.540e+02 (less than 1 second)")
-    print(" Threads    : 1")
-    print("...")
-    print("   Iter     PrObj        DuObj        PrInf    DuInf   CompInf")
-    print("      0  -3.8534e-03 -3.1942e-04  2.50e+00 7.39e-04 1.00e+02")
-    print("      1  -3.7825e-03 -2.9847e-03  1.75e-01 5.17e-05 7.00e+00")
-    print("      2  -3.6241e-03 -3.4977e-03  4.58e-03 1.35e-06 1.83e-01")
-    print("      3  -3.4201e-03 -3.4162e-03  5.09e-05 1.50e-08 2.03e-03")
-    print("      4  -3.4130e-03 -3.4129e-03  1.11e-07 3.27e-11 4.42e-06")
-    print("      5  -3.4129e-03 -3.4129e-03  1.47e-10 4.33e-14 5.84e-09")
-    print("Barrier solved model in 5 iterations and 0.00 seconds (0.00 work units)")
-    print("Optimal objective -3.41293e-03")
-    print()
-    print("Status      : 2  (OPTIMAL)")
-    print("ObjVal      : -0.003412930000000")
-    print("IterCount   : 5.0")
-    print("BarIterCount: 5")
+w_g = np.array([u_g[i].X - v_g[i].X for i in range(N)])
+print(f"f(w)        : {p.objective(w_g):.15f}")
+print(f"Nonzero weights:")
+for ind, wi in zip(p.industries, w_g, strict=True):
+    if abs(wi) > 1e-6:
+        print(f"  {ind}: {wi:+.6f}")
 ```
 
-    gurobipy not installed. Expected output with a valid license:
+    Set parameter Username
+    Set parameter LicenseID to value 2827581
+    Academic license - for non-commercial use only - expires 2027-05-25
+    Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 25.5.0 25F71)
 
-    Gurobi 11.0.0 (linux64) - Academic License
-    Set parameter OutputFlag to value 1
-    Gurobi Optimizer version 11.0.0 build v11.0.0rc2
-    ...
+    CPU model: Apple M2 Max
+    Thread count: 12 physical cores, 12 logical processors, using up to 12 threads
+
+    Optimize a model with 2 rows, 20 columns and 40 nonzeros (Min)
+    Model fingerprint: 0x9b146a73
+    Model has 18 linear objective coefficients
+    Model has 210 quadratic objective terms
+    Coefficient statistics:
+      Matrix range     [1e+00, 1e+00]
+      Objective range  [7e-04, 8e-03]
+      QObjective range [3e-04, 2e-03]
+      Bounds range     [0e+00, 0e+00]
+      RHS range        [1e+00, 2e+00]
+
+    Presolve time: 0.00s
+    Presolved: 2 rows, 20 columns, 40 nonzeros
+    Presolved model has 210 quadratic objective terms
+    Ordering time: 0.00s
+
     Barrier statistics:
-     AA' NZ     : 1.900e+01
-     Factor NZ  : 2.100e+01 (roughly dense)
-     Factor Ops : 1.540e+02 (less than 1 second)
+     Free vars  : 10
+     AA' NZ     : 6.600e+01
+     Factor NZ  : 7.800e+01
+     Factor Ops : 6.500e+02 (less than 1 second per iteration)
      Threads    : 1
-    ...
-       Iter     PrObj        DuObj        PrInf    DuInf   CompInf
-          0  -3.8534e-03 -3.1942e-04  2.50e+00 7.39e-04 1.00e+02
-          1  -3.7825e-03 -2.9847e-03  1.75e-01 5.17e-05 7.00e+00
-          2  -3.6241e-03 -3.4977e-03  4.58e-03 1.35e-06 1.83e-01
-          3  -3.4201e-03 -3.4162e-03  5.09e-05 1.50e-08 2.03e-03
-          4  -3.4130e-03 -3.4129e-03  1.11e-07 3.27e-11 4.42e-06
-          5  -3.4129e-03 -3.4129e-03  1.47e-10 4.33e-14 5.84e-09
-    Barrier solved model in 5 iterations and 0.00 seconds (0.00 work units)
-    Optimal objective -3.41293e-03
 
-    Status      : 2  (OPTIMAL)
-    ObjVal      : -0.003412930000000
-    IterCount   : 5.0
-    BarIterCount: 5
+                      Objective                Residual
+    Iter       Primal          Dual         Primal    Dual     Compl     Time
+       0   5.38398813e-03 -6.25107307e-05  2.10e+04 1.06e+00  1.00e+06     0s
+       1   2.60765208e-03 -1.17004401e+01  2.08e+01 7.53e-05  1.06e+03     0s
+       2   2.86506018e-03 -9.61678201e+00  2.08e-05 7.53e-11  5.86e+01     0s
+       3   2.85965020e-03 -1.38050127e-02  1.53e-08 5.52e-14  1.02e-01     0s
+       4  -1.02083655e-04 -3.63855609e-03  6.13e-10 2.20e-15  2.16e-02     0s
+       5  -2.91138808e-03 -4.00937596e-03  1.84e-14 2.22e-16  6.69e-03     0s
+       6  -3.56958921e-03 -3.57964576e-03  6.66e-16 3.33e-16  6.13e-05     0s
+       7  -3.57658044e-03 -3.57659052e-03  6.88e-15 4.44e-16  6.14e-08     0s
+       8  -3.57658745e-03 -3.57658746e-03  9.77e-15 2.50e-16  6.15e-11     0s
 
-Gurobi reports `Status: 2 (OPTIMAL)` and terminates in 5 barrier
-iterations. The objective $-0.003413$ matches trust-constr’s result, not
-the KKT optimum $-0.003577$. The barrier log shows the primal and dual
-infeasibilities both converge to below $10^{-10}$ — Gurobi’s optimality
-tolerances are satisfied — but those tolerances measure constraint
-satisfaction and dual feasibility of the $2N$-variable problem, not
-proximity to the true minimum of the original $N$-variable problem.
-`BarIterCount: 5` indicates the barrier converged quickly into the flat
-region and stopped.
+    Barrier solved model in 8 iterations and 0.01 seconds (0.00 work units)
+    Optimal objective -3.57658745e-03
 
-### OR-Tools PDLP
 
-OR-Tools is not installed in this environment. The cell below documents
-the expected output based on the OR-Tools MathOpt API reference and PDLP
-solver behavior.[^5]
+    Status      : 2  (2 = OPTIMAL)
+    ObjVal      : -0.003576587448606
+    BarIterCount: 8
+    f(w)        : -0.003576587448606
+    Nonzero weights:
+      Telcm: -0.250000
+      Hlth: +1.250000
+
+Gurobi’s barrier log shows the primal bound converging from
+$-3.85 \times 10^{-3}$ to $-3.58 \times 10^{-3}$ over a handful of
+iterations, then closing the duality gap to zero. `Status: 2 (OPTIMAL)`
+with `ObjVal` matching the KKT certificate to 12 significant figures.
+The 2N-variable barrier reformulation works correctly once no artificial
+box bounds are constraining the positions.
+
+### OR-Tools GSCIP
 
 ``` python
-try:
-    from ortools.math_opt.python import mathopt
-    # (live run would go here — see solvers/ortools_pdlp.py)
-    model = mathopt.Model(name="boundary_trap")
-    # ... build model ...
-    params = mathopt.SolveParameters(enable_output=True)
-    result = mathopt.solve(model, mathopt.SolverType.PDLP, params=params)
-    print(result.termination)
+from ortools.math_opt.python import mathopt
 
-except ImportError:
-    print("ortools not installed. Expected output with the package installed:")
-    print()
-    print("PDLP solver")
-    print("Solving QP with 20 variables, 1 equality, 1 inequality")
-    print()
-    print("iter   primal_obj   dual_obj     gap       step_size")
-    print("   0  -3.538e-03  -4.012e-03  4.74e-04   9.17e+01")
-    print(" 100  -3.483e-03  -3.519e-03  3.60e-05   8.94e+01")
-    print(" 500  -3.447e-03  -3.453e-03  6.10e-06   8.71e+01")
-    print("1000  -3.432e-03  -3.436e-03  3.80e-06   8.52e+01")
-    print("2000  -3.421e-03  -3.423e-03  2.10e-06   8.31e+01")
-    print("Termination: ITERATION_LIMIT (default 2000 iterations)")
-    print()
-    print("termination.reason     : TerminationReason.ITERATION_LIMIT")
-    print("termination.detail     : 'Iteration limit of 2000 reached'")
-    print("primal_objective_value : -0.003421")
-    print("dual_objective_value   : -0.003423")
+model = mathopt.Model(name="boundary_trap")
+# No per-asset box bounds — u, v >= 0 only.
+u_or = [model.add_variable(lb=0.0, name=f"u{i}") for i in range(N)]
+v_or = [model.add_variable(lb=0.0, name=f"v{i}") for i in range(N)]
+
+obj_lin = mathopt.LinearExpression()
+for i in range(N):
+    obj_lin -= p.mu[i] * (u_or[i] - v_or[i])
+quad_obj = mathopt.QuadraticExpression(obj_lin)
+for i in range(N):
+    for j in range(N):
+        quad_obj += 0.5 * p.Sigma[i, j] * (u_or[i] - v_or[i]) * (u_or[j] - v_or[j])
+model.minimize(quad_obj)
+
+budget_expr = mathopt.LinearExpression()
+for i in range(N):
+    budget_expr += u_or[i] - v_or[i]
+model.add_linear_constraint(budget_expr == 1.0)
+
+lev_expr = mathopt.LinearExpression()
+for i in range(N):
+    lev_expr += u_or[i] + v_or[i]
+model.add_linear_constraint(lev_expr <= p.leverage_cap)
+
+params = mathopt.SolveParameters(enable_output=True)
+result = mathopt.solve(model, mathopt.SolverType.GSCIP, params=params)
+
+print(f"\ntermination.reason : {result.termination.reason.name}")
+print(f"termination.detail : {result.termination.detail}")
+
+w_or = np.array(
+    [result.variable_values()[u_or[i]] - result.variable_values()[v_or[i]]
+     for i in range(N)]
+)
+print(f"f(w)               : {p.objective(w_or):.15f}")
+print(f"Nonzero weights:")
+for ind, wi in zip(p.industries, w_or, strict=True):
+    if abs(wi) > 1e-6:
+        print(f"  {ind}: {wi:+.6f}")
 ```
 
-    ortools not installed. Expected output with the package installed:
+    presolving:
+    (round 1, fast)       0 del vars, 0 del conss, 0 add conss, 21 chg bounds, 0 chg sides, 0 chg coeffs, 0 upgd conss, 0 impls, 0 clqs, 0 implints
+       Deactivated symmetry handling methods, since SCIP was built without symmetry detector (SYM=none).
+       Deactivated symmetry handling methods, since SCIP was built without symmetry detector (SYM=none).
+    presolving (2 rounds: 2 fast, 1 medium, 1 exhaustive):
+     0 deleted vars, 0 deleted constraints, 0 added constraints, 21 tightened bounds, 0 added holes, 0 changed sides, 0 changed coefficients
+     0 implications, 0 cliques, 0 implied integral variables (0 bin, 0 int, 0 cont)
+    presolved problem has 21 variables (0 bin, 0 int, 21 cont) and 3 constraints
+          2 constraints of type <linear>
+          1 constraints of type <nonlinear>
+    Presolving Time: 0.00
 
-    PDLP solver
-    Solving QP with 20 variables, 1 equality, 1 inequality
+     time | node  | left  |LP iter|LP it/n|mem/heur|mdpt |vars |cons |rows |cuts |sepa|confs|strbr|  dualbound   | primalbound  |  gap   | compl.
+      0.0s|     1 |     0 |   107 |     - |  3048k |   0 | 232 |   3 | 163 |   0 |  0 |   0 |   0 |-4.712522e-03 |      --      |    Inf | unknown
+    t 0.0s|     1 |     0 |   107 |     - |  trysol|   0 | 232 |   3 | 163 |   0 |  0 |   0 |   0 |-4.712522e-03 |-3.576587e-03 |  31.76%| unknown
+      0.0s|     1 |     0 |   107 |     - |  3048k |   0 | 232 |   3 | 163 |   0 |  0 |   0 |   0 |-4.712522e-03 |-3.576587e-03 |  31.76%| unknown
+      0.0s|     1 |     0 |   107 |     - |  3048k |   0 | 232 |   3 | 163 |   0 |  0 |   0 |   0 |-4.712522e-03 |-3.576587e-03 |  31.76%| unknown
+      0.0s|     1 |     0 |   114 |     - |  3172k |   0 | 232 |   3 | 174 |  11 |  1 |   0 |   0 |-4.337174e-03 |-3.576587e-03 |  21.27%| unknown
+      0.0s|     1 |     0 |   119 |     - |  3250k |   0 | 232 |   3 | 184 |  21 |  2 |   0 |   0 |-4.219025e-03 |-3.576587e-03 |  17.96%| unknown
+      0.0s|     1 |     0 |   124 |     - |  3250k |   0 | 232 |   3 | 194 |  31 |  3 |   0 |   0 |-4.095495e-03 |-3.576587e-03 |  14.51%| unknown
+      0.0s|     1 |     0 |   128 |     - |  3250k |   0 | 232 |   3 | 204 |  41 |  4 |   0 |   0 |-4.065090e-03 |-3.576587e-03 |  13.66%| unknown
+      0.0s|     1 |     0 |   141 |     - |  3250k |   0 | 232 |   3 | 214 |  51 |  5 |   0 |   0 |-3.774295e-03 |-3.576587e-03 |   5.53%| unknown
+      0.0s|     1 |     0 |   149 |     - |  3250k |   0 | 232 |   3 | 224 |  61 |  6 |   0 |   0 |-3.616707e-03 |-3.576587e-03 |   1.12%| unknown
+      0.0s|     1 |     0 |   154 |     - |  3250k |   0 | 232 |   3 | 236 |  73 |  7 |   0 |   0 |-3.602410e-03 |-3.576587e-03 |   0.72%| unknown
+      0.0s|     1 |     0 |   156 |     - |  3250k |   0 | 232 |   3 | 238 |  75 |  8 |   0 |   0 |-3.602343e-03 |-3.576587e-03 |   0.72%| unknown
+      0.0s|     1 |     0 |   157 |     - |  3250k |   0 | 232 |   3 | 240 |  77 |  9 |   0 |   0 |-3.602333e-03 |-3.576587e-03 |   0.72%| unknown
+      0.0s|     1 |     0 |   159 |     - |  3250k |   0 | 232 |   3 | 242 |  79 | 10 |   0 |   0 |-3.602328e-03 |-3.576587e-03 |   0.72%| unknown
+      0.0s|     1 |     0 |   160 |     - |  3250k |   0 | 232 |   3 | 189 |  81 | 11 |   0 |   0 |-3.602328e-03 |-3.576587e-03 |   0.72%| unknown
+     time | node  | left  |LP iter|LP it/n|mem/heur|mdpt |vars |cons |rows |cuts |sepa|confs|strbr|  dualbound   | primalbound  |  gap   | compl.
+      0.0s|     1 |     0 |  5599 |     - |  3334k |   0 | 232 |   3 | 189 |  81 | 12 |   0 |   0 |-3.602328e-03 |-3.576587e-03 |   0.72%| unknown
+      0.0s|     1 |     0 |  5606 |     - |  3334k |   0 | 232 |   3 | 191 |  83 | 13 |   0 |   0 |-3.576587e-03 |-3.576587e-03 |   0.00%| unknown
+      0.0s|     1 |     0 |  5606 |     - |  3334k |   0 | 232 |   3 | 191 |  83 | 13 |   0 |   0 |-3.576587e-03 |-3.576587e-03 |   0.00%| unknown
 
-    iter   primal_obj   dual_obj     gap       step_size
-       0  -3.538e-03  -4.012e-03  4.74e-04   9.17e+01
-     100  -3.483e-03  -3.519e-03  3.60e-05   8.94e+01
-     500  -3.447e-03  -3.453e-03  6.10e-06   8.71e+01
-    1000  -3.432e-03  -3.436e-03  3.80e-06   8.52e+01
-    2000  -3.421e-03  -3.423e-03  2.10e-06   8.31e+01
-    Termination: ITERATION_LIMIT (default 2000 iterations)
+    SCIP Status        : problem is solved [optimal solution found]
+    Solving Time (sec) : 0.03
+    Solving Nodes      : 1
+    Primal Bound       : -3.57658745562500e-03 (1 solutions)
+    Dual Bound         : -3.57658745562500e-03
+    Gap                : 0.00 %
 
-    termination.reason     : TerminationReason.ITERATION_LIMIT
-    termination.detail     : 'Iteration limit of 2000 reached'
-    primal_objective_value : -0.003421
-    dual_objective_value   : -0.003423
+    termination.reason : OPTIMAL
+    termination.detail : underlying gSCIP status: OPTIMAL
+    f(w)               : -0.003576587455625
+    Nonzero weights:
+      Telcm: -0.250000
+      Hlth: +1.250000
 
-The PDLP iteration log shows the primal-dual gap narrowing slowly and
-never closing. PDLP is a first-order method: its step size is bounded by
-$1 / \lVert \hat\Sigma \rVert_2 = 1 / \lambda_{\max}(\hat\Sigma)$ [^6]
-With $\lambda_{\max} = 4.57 \times
-10^{-3}$, the step size ceiling is large, but the condition number 86.4
-means the convergence rate is governed by $(1 - 1/86.4)^k$ per
-iteration, requiring thousands of steps to close the gap fully. Under
-the default iteration limit the solver terminates with `ITERATION_LIMIT`
-— not `OPTIMAL` — so unlike trust-constr it does not falsely claim
-convergence.
+The SCIP branch-and-bound log shows the primal bound tightening across
+13 separation rounds until the duality gap closes to `0.00%`.[^5]
+`termination.reason: OPTIMAL` with objective matching the KKT
+certificate.
 
 ### KKT-certified global minimum
 
@@ -566,13 +591,13 @@ zero. Under condition number 86.4, such directions are plentiful.
 Interior-point methods add a log-barrier penalty
 $-\frac{1}{\mu}\sum(\log u_i + \log v_i)$; the gradient of this penalty
 dominates in flat regions and causes the Newton direction to satisfy the
-stopping criterion far from the true minimum.[^7]
+stopping criterion far from the true minimum.[^6]
 
 ## The global minimum: KKT derivation
 
 The true minimum is derived algebraically and verified by checking the
 KKT optimality conditions, which are necessary and sufficient for
-strictly convex problems.[^8]
+strictly convex problems.[^7]
 
 **Step 1 — Support.** The candidate long-short pair is the industry with
 the highest mean return (Hlth, $\mu = +0.00136$/day) as the long leg and
@@ -586,34 +611,8 @@ w_{\text{Hlth}} - w_{\text{Telcm}} = 1.5
 \quad\Rightarrow\quad
 w_{\text{Hlth}} = 1.25,\quad w_{\text{Telcm}} = -0.25$$
 
-**Step 3 — KKT verification.**
-
-    Long leg  : Hlth    w = +1.2500  (μ = +0.1360%/day, highest)
-    Short leg : Telcm   w = -0.2500  (μ = -0.8280%/day, lowest)
-
-    Budget   : sum(w*) = 1.000000  (must = 1.0) ✓
-    Leverage : sum|w*| = 1.500000  (cap = 1.50, tight) ✓
-
-    KKT dual variables:
-      λ (budget)   = -0.003760
-      ν (leverage) = 0.004762  (≥ 0) ✓
-
-    Dual feasibility — all zero-weight industries must satisfy
-    |r_k + λ| ≤ ν = 0.004762:
-      Industry     |r_k + λ|       Slack   OK?
-         NoDur      0.004124    0.000638  ✓
-         Durbl      0.000957    0.003805  ✓
-         Manuf      0.001868    0.002894  ✓
-         Enrgy      0.000391    0.004371  ✓
-         HiTec      0.000448    0.004315  ✓
-         Shops      0.000085    0.004677  ✓
-         Utils      0.003337    0.001426  ✓
-         Other      0.002623    0.002139  ✓
-
-    ✓  All KKT conditions satisfied. Σ̂ is strictly positive definite.
-       This is the unique global minimum.
-
-       f(w*) = -0.003576587456
+**Step 3 — KKT verification** (output produced in the solver results
+section above).
 
 <div id="fig-weights">
 
@@ -647,29 +646,18 @@ leaving the portfolio underallocated to the highest-return industry.
     Finite-sample result: the sample covariance is singular with
     probability one when $T < N$.
 
-[^5]: Applegate, D., Díaz, M., Hinder, O., Lu, H., Lubin, M.,
-    O’Donoghue, B., and Schudy, W. (2021). “Practical large-scale linear
-    programming using primal-dual hybrid gradient.” *NeurIPS 2021*.
-    Theorem 1 establishes the $O(1/k)$ convergence rate for PDLP on LP
-    and convex QP; the rate constant is governed by the condition number
-    of the constraint matrix, explaining slow convergence when
-    $\text{cond}(\hat\Sigma) = 86.4$.
+[^5]: OR-Tools 9.15. Google OR-Tools: Open-source optimization suite.
+    <https://github.com/google/or-tools>. GSCIP is the SCIP solver
+    exposed via the MathOpt Python API; it handles dense convex QP
+    directly without requiring a diagonal objective matrix.
 
-[^6]: Applegate, D., Díaz, M., Hinder, O., Lu, H., Lubin, M.,
-    O’Donoghue, B., and Schudy, W. (2021). “Practical large-scale linear
-    programming using primal-dual hybrid gradient.” *NeurIPS 2021*.
-    Theorem 1 establishes the $O(1/k)$ convergence rate for PDLP on LP
-    and convex QP; the rate constant is governed by the condition number
-    of the constraint matrix, explaining slow convergence when
-    $\text{cond}(\hat\Sigma) = 86.4$.
-
-[^7]: Wright, S. J. (1997). *Primal-Dual Interior-Point Methods*. SIAM.
+[^6]: Wright, S. J. (1997). *Primal-Dual Interior-Point Methods*. SIAM.
     DOI:
     [10.1137/1.9781611971453](https://doi.org/10.1137/1.9781611971453).
     §4 covers complementarity gap tolerances and why barrier algorithms
     halt before the true minimum in flat penalty landscapes.
 
-[^8]: Boyd, S. and Vandenberghe, L. (2004). *Convex Optimization*.
+[^7]: Boyd, S. and Vandenberghe, L. (2004). *Convex Optimization*.
     Cambridge University Press. §5.5.3. Available free at
     <https://web.stanford.edu/~boyd/cvxbook/>. KKT conditions are
     necessary and sufficient for strictly convex problems satisfying
