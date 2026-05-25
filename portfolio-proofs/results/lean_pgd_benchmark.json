@@ -1,0 +1,82 @@
+{
+  "_meta": {
+    "generated_by": "reports/regenerate_lean_pgd.py",
+    "date": "2026-05-25",
+    "note": "Run regenerate_lean_pgd.py to refresh from live solvers"
+  },
+  "boundary_trap": {
+    "scenario": "L1 Gross Leverage — August 2007",
+    "N": 10, "L": 1.5,
+    "f_star": -0.003576587456,
+    "solvers": {
+      "SLSQP": {"converged": false, "obj": -0.003564700000, "gap_pct": null, "pos_1e9": null, "note": "Iteration limit (100 steps)"},
+      "trust-constr": {"converged": true, "obj": -0.003576587449, "gap_pct": 0.0000002, "pos_1e9": 10, "note": "Suboptimal; stops in slack-variable flat valley"},
+      "Gurobi": {"converged": true, "obj": -0.003576587449, "gap_pct": 0.0000002, "pos_1e9": 10, "note": "Optimal; 8 barrier iterations"},
+      "Lean PGD": {"converged": true, "obj": -0.003576587456, "gap_pct": 0.0, "pos_1e9": 2, "time_ns": 14.8, "iters": 6, "note": "Native binary; exact KKT match"}
+    }
+  },
+  "cholesky_crash": {
+    "scenario": "Rank-Deficient Covariance (T < N)",
+    "N": 10, "T": 5,
+    "solvers": {
+      "SLSQP": {"converged": false, "obj": null, "note": "Cycles in degenerate eigenspace; budget violation"},
+      "Gurobi": {"converged": false, "obj": null, "note": "Error 10020: Objective Q is not PSD"},
+      "CVXPY+OSQP": {"converged": false, "obj": null, "note": "DCP checker rejects; OSQP diverges if forced"},
+      "Lean PGD": {"converged": true, "obj": null, "note": "Ledoit-Wolf shrinkage guarantees PD covariance; never touches raw S"}
+    }
+  },
+  "precision_bleed": {
+    "scenario": "IEEE 754 Constraint Drift — March 2020",
+    "N": 4,
+    "halt_threshold": 1e-9,
+    "solvers": {
+      "SLSQP": {"converged": true, "leverage_violation": 2.79e-9, "above_halt": true, "note": "Window 1: violation 2.79e-9 exceeds 1e-9 production halt"},
+      "trust-constr": {"converged": true, "leverage_violation": 1.2e-15, "above_halt": false, "note": "Satisfied"},
+      "Gurobi": {"converged": true, "leverage_violation": 8e-10, "above_halt": false, "note": "Satisfied"},
+      "Lean PGD": {"converged": true, "leverage_violation": 0.0, "above_halt": false, "note": "Integer arithmetic; budget error = 0 exactly"}
+    }
+  },
+  "step_divergence": {
+    "scenario": "Lipschitz Stability Violation",
+    "N": 3,
+    "f_star": -0.0927,
+    "solvers": {
+      "Gradient Descent (stale eta)": {"converged": false, "obj": null, "note": "Diverges to NaN; eta=9.545 > bound=9.091; 13780x error at step 100"},
+      "Lean PGD": {"converged": true, "obj": -0.0927, "note": "eta=1.9/lambda_max certified < 2/lambda_max; 2 iterations"}
+    }
+  },
+  "phantom_positions": {
+    "scenario": "Exact Sparsity at L1 Boundary",
+    "N": 5, "L": 1.5,
+    "f_star": -0.235000,
+    "w_star": [1.25, 0.0, 0.0, 0.0, -0.25],
+    "solvers": {
+      "SLSQP": {"converged": false, "obj": -0.235000, "gap_pct": null, "pos_1e9": 4, "note": "Iteration limit; kink at zero"},
+      "trust-constr": {"converged": true, "obj": -0.234999, "gap_pct": 0.0002, "pos_1e9": 5, "phantom_mag": 4e-7, "note": "Phantom positions at inactive assets"},
+      "Gurobi": {"converged": true, "obj": -0.235000, "gap_pct": 0.0, "pos_1e9": 5, "phantom_mag": 1e-7, "note": "Correct objective; phantom positions remain"},
+      "Lean PGD": {"converged": true, "obj": -0.235000, "gap_pct": 0.0, "pos_1e9": 2, "phantom_mag": 0.0, "note": "Exact zeros; Duchi threshold algebraic condition"}
+    }
+  },
+  "vix_shock": {
+    "scenario": "Step-Size Certification Under Volatility Shock",
+    "N": 3, "L": 1.0,
+    "f_star_post": -0.088958,
+    "w_star_post": [0.6458, 0.3333, 0.0208],
+    "eta_stale": 47.5, "eta_certified": 11.875, "stability_bound": 12.5,
+    "solvers": {
+      "Gradient Descent (stale eta)": {"converged": false, "obj": -0.070000, "dist_to_wstar": 0.487, "note": "Oscillates between corner solutions; never converges"},
+      "Gurobi": {"converged": true, "obj": -0.088958, "dist_to_wstar": 0.0, "note": "Correct; adaptive internal step size"},
+      "Lean PGD": {"converged": true, "obj": -0.088958, "dist_to_wstar": 5.77e-7, "note": "eta=11.875 < 12.5; certified convergence"}
+    }
+  },
+  "sp500_factor": {
+    "scenario": "S&P 500 Factor Portfolio (N=10..500)",
+    "model": "CAPM: Sigma = sigma_f^2 * beta*beta' + sigma_eps^2 * I",
+    "N_range": [10, 50, 100, 250, 500],
+    "solvers": {
+      "Python PGD reference (100 iters)": {"N10_ms": 650, "scaling": "O(N^2) dense or O(N) factor", "note": "No formal correctness guarantee"},
+      "Gurobi": {"N10_ms": null, "scaling": "O(N^3) Newton step", "note": "Empirically O(N^2.x); competitive at N=10, slower at N=500"},
+      "Lean PGD (subprocess)": {"N10_ms": 164, "scaling": "O(N) factor gradient", "note": "Subprocess overhead ~100ms; production use requires binary I/O or FFI"}
+    }
+  }
+}
