@@ -68,24 +68,3 @@ def run(p: ProblemData) -> SolverResult:
         budget_error=budget_err,
         leverage_violation=lev_viol,
     )
-
-
-def print_result(result: SolverResult, p: ProblemData) -> None:
-    """Print formatted SLSQP output."""
-    print(f"Converged         : {result.converged}")
-    print(f"Message           : {result.message}")
-    print(f"Iterations        : {result.n_iterations}")
-    print(f"Objective         : {result.objective:.12f}")
-    print(f"Budget error      : {result.budget_error:.2e}")
-    print(f"Leverage violation: {result.leverage_violation:.2e}")
-    print()
-    print("Weights at termination (last iterate, not a solution):")
-    for name, wi in zip(p.asset_names, result.weights, strict=True):
-        print(f"  {name:8s}: {wi:+.8f}")
-    if not result.converged:
-        print()
-        print(
-            "SLSQP FAILED: active-set search cycles at the non-differentiable"
-        )
-        print("|w_i| = 0 kink without converging.")
-        print("Weights above are the last iterate before the iteration cap.")

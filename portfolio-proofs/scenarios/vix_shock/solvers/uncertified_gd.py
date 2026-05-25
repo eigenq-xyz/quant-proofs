@@ -108,7 +108,7 @@ def run(p: ProblemData, eta: float | None = None) -> SolverResult:
             if ratio >= _OSCILLATION_RATIO:
                 diverged = True
                 message = (
-                    f"OSCILLATION DETECTED at iteration {k + 1}: "
+                    f"Gradient Descent oscillation at iteration {k + 1}: "
                     f"step norms constant at ~{np.mean(recent):.4f} for {_OSCILLATION_WINDOW} steps. "
                     f"Stale eta={step:.4f} violates stability bound "
                     f"2/lambda_max={2.0 / p.sigma_sq:.4f}. "
@@ -123,7 +123,7 @@ def run(p: ProblemData, eta: float | None = None) -> SolverResult:
     budget_err = abs(float(np.sum(w)) - 1.0)
 
     return SolverResult(
-        solver_name=f"Uncertified GD (stale eta={step:.4f})",
+        solver_name=f"Gradient Descent (stale η={step:.4f})",
         converged=False,
         message=message,
         objective=p.objective(w),

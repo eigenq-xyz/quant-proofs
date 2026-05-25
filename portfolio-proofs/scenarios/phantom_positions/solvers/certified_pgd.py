@@ -154,7 +154,7 @@ def run(p: ProblemData) -> SolverResult:
     lev_viol = max(0.0, float(np.sum(np.abs(w))) - p.leverage_cap)
 
     return SolverResult(
-        solver_name="Lean 4 PGD (pgd_solve direct)",
+        solver_name="Lean PGD",
         converged=True,
         message=(
             f"Lean 4 pgdFlat via subprocess  "
@@ -166,41 +166,3 @@ def run(p: ProblemData) -> SolverResult:
         budget_error=budget_err,
         leverage_violation=lev_viol,
     )
-
-
-def print_result(result: SolverResult, p: ProblemData) -> None:
-    """Print formatted PGD output, emphasising the exact zeros at inactive assets."""
-    print(f"Converged         : {result.converged}")
-    print(f"Message           : {result.message}")
-    print(f"Iterations        : {result.n_iterations}")
-    print(f"Objective         : {result.objective:.12f}")
-    print(f"Budget error      : {result.budget_error:.2e}")
-    print(f"Leverage violation: {result.leverage_violation:.2e}")
-    print()
-    print("Weights and exact zero status:")
-    print(f"  {'Asset':>8}  {'w_i':>14}  {'|w_i|':>14}  {'Note'}")
-    for name, wi in zip(p.asset_names, result.weights, strict=True):
-        abs_wi = abs(wi)
-        if abs_wi > 1e-6:
-            note = "<- active"
-        elif abs_wi > 1e-12:
-            note = "near-zero (machine epsilon?)"
-        else:
-            note = "EXACT ZERO"
-        print(f"  {name:>8}  {wi:14.10f}  {abs_wi:14.3e}  {note}")
-    print()
-    n_exact_zero = int(np.sum(np.abs(result.weights) <= 1e-12))
-    n_near_zero = int(
-        np.sum(
-            (np.abs(result.weights) > 1e-12) & (np.abs(result.weights) <= 1e-9)
-        )
-    )
-    print(f"  Exact zeros  (|w_i| <= 1e-12): {n_exact_zero} assets")
-    print(f"  Near-zeros   (1e-12 < |w_i| <= 1e-9): {n_near_zero} assets")
-    print(
-        f"  Active       (|w_i| > 1e-9): {result.live_position_count(1e-9)} assets"
-    )
-    print()
-    print("The Duchi projection sets components below the dual threshold to")
-    print("exactly zero (hard threshold, not numerical convergence).")
-    print("The Lean 4 theorem projection_correctness certifies this property.")

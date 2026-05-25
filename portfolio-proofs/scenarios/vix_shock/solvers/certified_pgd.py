@@ -100,7 +100,7 @@ def run(p: ProblemData) -> SolverResult:
     weight_history = np.stack(history, axis=0)
     budget_err = abs(float(np.sum(w_lean)) - 1.0)
     return SolverResult(
-        solver_name="Lean 4 PGD (pgd_solve direct)",
+        solver_name="Lean PGD",
         converged=True,
         message=(
             f"Lean 4 pgdFlat via subprocess  "

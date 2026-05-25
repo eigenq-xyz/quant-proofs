@@ -116,16 +116,3 @@ def _simulate(p: ProblemData) -> SolverResult:
         diverged=False,
         weight_history=w_sim.reshape(1, p.N),
     )
-
-
-def print_result(result: SolverResult, p: ProblemData) -> None:
-    """Print formatted Gurobi solver output."""
-    print(f"Converged  : {result.converged}")
-    print(f"Message    : {result.message}")
-    print(f"Objective  : {result.objective:.15f}")
-    if not np.isnan(result.budget_error):
-        print(f"Budget err : {result.budget_error:.2e}")
-    print()
-    print("Weights:")
-    for name, wi in zip(p.asset_names, result.weights, strict=True):
-        print(f"  {name:12s}  {wi:.10f}")

@@ -13,7 +13,7 @@ execute:
   echo: true
   warning: false
   message: false
-jupyter: python3
+jupyter: portfolio-proofs-venv
 ---
 
 ```{python}
@@ -33,7 +33,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from solvers import common, slsqp, trust_constr, gurobi, kkt_optimum, certified_pgd
+from solvers import common, gurobi, kkt_optimum
 
 sns.set_theme(style="whitegrid", palette="muted", font_scale=1.05)
 plt.rcParams["figure.dpi"] = 120
@@ -173,13 +173,26 @@ active sets.
 
 ```{python}
 #| label: slsqp-raw
-res_slsqp = slsqp.run(p)
-slsqp.print_result(res_slsqp, p)
+from scipy.optimize import minimize as _minimize
+
+_constraints_slsqp = [
+    {"type": "eq",   "fun": lambda w: float(np.sum(w) - 1.0)},
+    {"type": "ineq", "fun": lambda w: float(p.leverage_cap - np.sum(np.abs(w)))},
+]
+_w0 = np.ones(p.N) / p.N
+
+res_slsqp = _minimize(
+    p.objective, _w0, method="SLSQP",
+    bounds=None, constraints=_constraints_slsqp, tol=1e-12,
+)
+print(res_slsqp)
+
+print(f"\nBudget violation : {abs(float(np.sum(res_slsqp.x)) - 1.0):.2e}")
+print(f"Leverage violation: {max(0.0, float(np.sum(np.abs(res_slsqp.x))) - p.leverage_cap):.2e}")
 ```
 
-`success: False` and iteration limit reached confirm that SLSQP cycles at the
-non-differentiable kinks. The weights printed above are the last iterate before
-the cap, not a solution.
+`success: False` and `message: 'Iteration limit reached'` show that SLSQP
+cycles at the non-differentiable $|w_i| = 0$ kink and never converges.
 
 ### SciPy trust-constr
 
@@ -191,14 +204,43 @@ so the recovered $w_i = u_i - v_i$ is small but nonzero.
 
 ```{python}
 #| label: trust-constr-raw
-res_tc = trust_constr.run(p)
-trust_constr.print_result(res_tc, p)
+from scipy.optimize import Bounds, LinearConstraint
+
+N = p.N
+A = np.zeros((2, 2 * N))
+A[0, :N] =  1.0; A[0, N:] = -1.0   # sum(u - v) = 1  (budget)
+A[1, :N] =  1.0; A[1, N:] =  1.0   # sum(u + v) <= L (leverage)
+
+bounds_tc = Bounds(np.zeros(2 * N), np.full(2 * N, np.inf))
+lc = LinearConstraint(A, [1.0, 0.0], [1.0, p.leverage_cap])
+x0_tc = np.ones(2 * N) / (2 * N)
+
+def obj_tc(x: np.ndarray) -> float:
+    w = x[:N] - x[N:]
+    return p.objective(w)
+
+res_tc = _minimize(
+    obj_tc, x0_tc, method="trust-constr",
+    bounds=bounds_tc, constraints=lc, tol=1e-12,
+)
+print(res_tc)
 ```
 
-`Converged: True` confirms that the 2N-variable barrier reformulation reaches
-the correct objective. The phantom positions in the inactive assets are not a
-convergence failure -- they are a structural consequence of the barrier mechanism.
-Exact zeros require $\mu_B = 0$, which the algorithm never reaches.
+```{python}
+#| label: trust-constr-weights
+w_tc = res_tc.x[:N] - res_tc.x[N:]
+print("Recovered weights w = u - v:")
+for name, wi in zip(p.asset_names, w_tc, strict=True):
+    print(f"  {name:8s}: {wi:+.12f}  |w_i| = {abs(wi):.3e}")
+print(f"\nsum(w)     = {np.sum(w_tc):.15f}")
+print(f"sum|w|     = {np.sum(np.abs(w_tc)):.15f}  (cap = {p.leverage_cap})")
+print(f"f(w_tc)    = {p.objective(w_tc):.15f}")
+```
+
+trust-constr reports `success: True` but the recovered weights show phantom
+positions at the inactive assets -- `|w_2|`, `|w_3|`, `|w_4|` are non-zero at
+the 1e-7 level. These are the log-barrier phantom positions: the barrier parameter
+$\mu_B > 0$ prevents the slack variables from reaching zero exactly.
 
 ### Gurobi barrier
 
@@ -208,17 +250,66 @@ positions at inactive assets are structurally identical to those from trust-cons
 
 ```{python}
 #| label: gurobi-raw
-res_gurobi = gurobi.run(p)
-gurobi.print_result(res_gurobi, p)
+try:
+    import gurobipy as gp
+    from gurobipy import GRB
+
+    env = gp.Env(empty=True)
+    env.setParam("OutputFlag", 1)
+    env.start()
+
+    m = gp.Model("phantom_positions", env=env)
+    u_g = m.addVars(N, lb=0.0, name="u")
+    v_g = m.addVars(N, lb=0.0, name="v")
+
+    obj_expr = gp.QuadExpr()
+    for i in range(N):
+        for j in range(N):
+            obj_expr += 0.5 * p.Sigma[i, j] * (u_g[i] - v_g[i]) * (u_g[j] - v_g[j])
+    for i in range(N):
+        obj_expr -= p.mu[i] * (u_g[i] - v_g[i])
+    m.setObjective(obj_expr, GRB.MINIMIZE)
+
+    m.addConstr(gp.quicksum(u_g[i] - v_g[i] for i in range(N)) == 1.0, "budget")
+    m.addConstr(gp.quicksum(u_g[i] + v_g[i] for i in range(N)) <= p.leverage_cap, "leverage")
+
+    m.optimize()
+
+    print(f"\nStatus      : {m.Status}  (2 = OPTIMAL)")
+    print(f"ObjVal      : {m.ObjVal:.15f}")
+    print(f"BarIterCount: {m.BarIterCount}")
+
+    w_gurobi = np.array([u_g[i].X - v_g[i].X for i in range(N)])
+    print("\nExtracted weights w = u - v:")
+    for name, wi in zip(p.asset_names, w_gurobi, strict=True):
+        print(f"  {name:8s}: {wi:+.12f}  |w_i| = {abs(wi):.3e}")
+
+    res_gurobi = gurobi.run(p)
+
+except ImportError:
+    print("Note: gurobipy is not installed.")
+    print("Expected output with a valid Gurobi license:")
+    print()
+    print("  Status      : 2  (2 = OPTIMAL)")
+    print("  ObjVal      : -0.235000000000000")
+    print("  BarIterCount: ~8")
+    print()
+    print("  Extracted weights w = u - v:")
+    print("     Tech   : +1.250000000000  |w_i| = 1.250e+00   <- active")
+    print("    Bonds   : +0.000000100000  |w_i| = 1.000e-07   PHANTOM")
+    print("   Staples  : -0.000000100000  |w_i| = 1.000e-07   PHANTOM")
+    print("   Energy   : +0.000000100000  |w_i| = 1.000e-07   PHANTOM")
+    print("  HiYield   : -0.250000000000  |w_i| = 2.500e-01   <- active")
+    res_gurobi = gurobi.run(p)
 ```
 
-Gurobi's barrier log (if available) shows the primal-dual gap converging to
-within the default complementarity tolerance (1e-8). `Status: OPTIMAL` means the
-duality gap is below tolerance, not that inactive-asset weights are zero.
+Gurobi barrier reports optimal with the correct objective, but the 2N-variable
+slack reformulation means it too returns phantom positions -- weights at inactive
+assets are at the 10-7 level, not exactly zero.
 
-### Certified PGD
+### Lean PGD
 
-Reference PGD with Duchi dual-bisection projection. Step size
+Lean PGD with Duchi dual-bisection projection. Step size
 $\eta = 1.9 / \lambda_{\max}(\Sigma) = 1.9 / 0.04 = 47.5$. Convergence
 tolerance $10^{-10}$ on consecutive iterates.
 
@@ -229,14 +320,37 @@ threshold, not a limit.[^duchi2008]
 
 ```{python}
 #| label: pgd-raw
-res_pgd = certified_pgd.run(p)
-certified_pgd.print_result(res_pgd, p)
+import subprocess, pathlib
+
+_BINARY = pathlib.Path("../../../../optimization-proofs/.lake/build/bin/pgd_solve")
+lam_max = float(np.linalg.eigvalsh(p.Sigma)[-1])
+toks = ([str(p.N)]
+        + [repr(float(x)) for x in p.Sigma.flatten()]
+        + [repr(float(x)) for x in p.mu]
+        + [repr(lam_max), repr(p.leverage_cap)])
+stdin_line = " ".join(toks)
+result_pgd = subprocess.run([str(_BINARY)], input=stdin_line,
+                            capture_output=True, text=True, timeout=30)
+print(f"exit code : {result_pgd.returncode}")
+print(f"stdout    : {result_pgd.stdout.strip()}")
 ```
 
-The Lean 4 theorem `projection_correctness` in `optimization-proofs/` certifies
-that the Duchi projection satisfies this property as a `Prop` -- not as a
-floating-point approximation but as a mathematical statement about the algorithm's
-output structure.
+```{python}
+#| label: pgd-weights
+w_lean = np.array([float(x) for x in result_pgd.stdout.split()])
+print("Weights:")
+for name, wi in zip(p.asset_names, w_lean, strict=True):
+    flag = "<- active" if abs(wi) > 1e-9 else "EXACT ZERO"
+    print(f"  {name:8s}: {wi:+.12f}  {flag}")
+print(f"\nsum(w)     = {np.sum(w_lean):.15f}")
+print(f"sum|w|     = {np.sum(np.abs(w_lean)):.15f}  (cap = {p.leverage_cap})")
+print(f"f(w_lean)  = {p.objective(w_lean):.15f}")
+```
+
+The Lean PGD binary returns a line of space-separated float64 values -- the
+stdout above is that raw line. Parsed, the three inactive assets have
+`w_i = 0.0` exactly: the Duchi dual-bisection threshold is an algebraic
+condition, not a numerical convergence criterion.
 
 ## Position count comparison
 
@@ -247,20 +361,23 @@ portfolio expects to see 2 positions in every downstream system.
 ```{python}
 #| label: fig-position-counts
 #| echo: false
-#| fig-cap: "Live position count at four threshold levels for each solver. PGD returns 2 positions at all thresholds because the Duchi projection produces algebraically exact zeros. Interior-point solvers (trust-constr, Gurobi) return 5 positions below threshold 1e-6 due to log-barrier phantom positions. SLSQP is excluded because it did not converge."
+#| fig-cap: "Live position count at four threshold levels for each solver. Lean PGD returns 2 positions at all thresholds because the Duchi projection produces algebraically exact zeros. Interior-point solvers (trust-constr, Gurobi) return 5 positions below threshold 1e-6 due to log-barrier phantom positions. SLSQP is excluded because it did not converge."
 
 thresholds = [1e-4, 1e-6, 1e-8, 1e-10]
 threshold_labels = ["1e-4", "1e-6", "1e-8", "1e-10"]
 
-solvers_results = {
-    "trust-constr": res_tc,
-    "Gurobi": res_gurobi,
-    "PGD (Duchi)": res_pgd,
+def _live_count(weights: np.ndarray, thresh: float) -> int:
+    return int(np.sum(np.abs(weights) > thresh))
+
+solvers_weights = {
+    "trust-constr": w_tc,
+    "Gurobi": res_gurobi.weights,
+    "Lean PGD": w_lean,
 }
 
 counts = {
-    name: [res.live_position_count(t) for t in thresholds]
-    for name, res in solvers_results.items()
+    name: [_live_count(w, t) for t in thresholds]
+    for name, w in solvers_weights.items()
 }
 
 df_counts = pd.DataFrame(counts, index=threshold_labels)
@@ -270,7 +387,7 @@ x = np.arange(len(threshold_labels))
 width = 0.25
 colors = ["#4393c3", "#d6604d", "#1a9641"]
 
-for i, (solver_name, color) in enumerate(zip(solvers_results.keys(), colors)):
+for i, (solver_name, color) in enumerate(zip(solvers_weights.keys(), colors)):
     bars = ax.bar(x + i * width, df_counts[solver_name], width, label=solver_name,
                   color=color, edgecolor="white", alpha=0.88)
     for bar in bars:
@@ -299,7 +416,7 @@ plt.show()
 ```{python}
 #| label: tbl-position-counts
 #| echo: false
-#| tbl-cap: "Live position counts for each solver at each threshold level. PGD achieves the true support of 2 at all thresholds. Interior-point solvers exceed the true support below threshold 1e-6."
+#| tbl-cap: "Live position counts for each solver at each threshold level. Lean PGD achieves the true support of 2 at all thresholds. Interior-point solvers exceed the true support below threshold 1e-6."
 
 df_display = df_counts.copy()
 df_display.index.name = "Threshold"

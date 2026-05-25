@@ -305,72 +305,85 @@ pd.DataFrame({
 }).set_index("")
 ```
 
-## Solver results: uncertified gradient descent (stale step size)
+## Solver results: Gradient Descent (stale step size)
 
-The uncertified solver applies $\eta_{\text{pre}} = 47.5$ to the post-shock
+The Gradient Descent solver applies $\eta_{\text{pre}} = 47.5$ to the post-shock
 problem. Each gradient step first sends the iterate far outside the simplex
 before the projection pulls it back. The gradient direction is so far off
 that after projection the iterates cycle between the Equity-only corner and
 the Bonds-only corner of the simplex, never approaching the interior optimum.
 
 ```{python}
-#| label: uncertified-gd-raw
+#| label: gradient-descent-raw
 res_unc = uncertified_gd.run(p_post)
 print(f"Solver    : {res_unc.solver_name}")
 print(f"Converged : {res_unc.converged}")
-print(f"Oscillation detected: {res_unc.diverged}")
-print(f"Iterations: {res_unc.n_iterations}")
 print(f"Message   : {res_unc.message}")
+print(f"Iterations: {res_unc.n_iterations}")
 print()
 print("Weight trajectory (selected steps):")
-print(f"  {'Step':>5}  {'Equity':>12}  {'Bonds':>12}  {'Commodities':>14}  {'||w - w*||_2':>14}")
-w_star = common.W_STAR_POST
-fib_steps = [0, 1, 2, 3, 5, 8, 13]
-for k in fib_steps:
+print(f"  {'Step':>5}  {'Equity':>10}  {'Bonds':>10}  {'Commodities':>12}  {'||w - w*||':>12}")
+w_star_post = common.W_STAR_POST
+for k in [0, 1, 2, 3, 5, 8, 11]:
     if k < len(res_unc.weight_history):
-        w_k = res_unc.weight_history[k]
-        dist = float(np.linalg.norm(w_k - w_star))
-        print(f"  {k:>5}  {w_k[0]:>12.4f}  {w_k[1]:>12.4f}  {w_k[2]:>14.4f}  {dist:>14.4f}")
+        wk = res_unc.weight_history[k]
+        dist = float(np.linalg.norm(wk - w_star_post))
+        print(f"  {k:>5}  {wk[0]:>10.4f}  {wk[1]:>10.4f}  {wk[2]:>12.4f}  {dist:>12.4f}")
 ```
 
-The simplex projection maintains $\sum w_i = 1$ at each step, yet the
-distance to the post-shock optimum $w^\star_{\text{post}}$ does not decrease.
-The iterates alternate between $[1, 0, 0]$ (Equity-only) and $[0, 1, 0]$
-(Bonds-only), both far from the true post-shock optimum $[0.6458, 0.3333, 0.0208]$.
-The stale step size makes the gradient descent direction counterproductive:
-projection cannot recover what the gradient step destroys.
+Gradient Descent oscillates between corner solutions and never converges to the
+interior optimum. The simplex projection maintains $\sum w_i = 1$ at each step,
+yet the distance to the post-shock optimum $w^\star_{\text{post}}$ does not
+decrease. The iterates alternate between $[1, 0, 0]$ (Equity-only) and
+$[0, 1, 0]$ (Bonds-only), both far from the true post-shock optimum
+$[0.6458, 0.3333, 0.0208]$. The stale step size makes the gradient direction
+counterproductive: projection cannot recover what the gradient step destroys.
 
-## Solver results: certified PGD
+## Solver results: Lean PGD
 
-The certified solver recomputes $\eta$ from the post-shock covariance before
-every solve, yielding $\eta_{\text{post}} = 1.9 / 0.16 = 11.875$. The Lean 4
+The Lean PGD recomputes $\eta$ from the post-shock covariance before every
+solve, yielding $\eta_{\text{post}} = 1.9 / 0.16 = 11.875$. The Lean 4
 proof of `pgd_convergence` in `optimization-proofs/` certifies this inequality
 as a `Prop` at compile time: no runtime code path can pass a step size that
 violates $\eta < 2 / \lambda_{\max}$.
 
 ```{python}
-#| label: certified-pgd-raw
+#| label: lean-pgd-raw
+import subprocess, pathlib
+_BINARY = pathlib.Path("../../../../optimization-proofs/.lake/build/bin/pgd_solve")
+lam_max = float(np.linalg.eigvalsh(p_post.Sigma)[-1])
+toks = ([str(p_post.N)]
+        + [repr(float(x)) for x in p_post.Sigma.flatten()]
+        + [repr(float(x)) for x in p_post.mu]
+        + [repr(lam_max), repr(p_post.leverage_cap)])
+lean_result = subprocess.run([str(_BINARY)], input=" ".join(toks),
+                             capture_output=True, text=True, timeout=30)
+print(f"exit code : {lean_result.returncode}")
+print(f"stdout    : {lean_result.stdout.strip()}")
+```
+
+```{python}
+#| label: lean-pgd-weights
+w_lean = np.array([float(x) for x in lean_result.stdout.split()])
+print("Weights:")
+for name, wi in zip(p_post.asset_names, w_lean, strict=True):
+    print(f"  {name:12s}: {wi:+.8f}")
+print(f"\nsum(w)    = {np.sum(w_lean):.15f}")
+print(f"sum|w|    = {np.sum(np.abs(w_lean)):.15f}  (simplex L=1.0)")
+print(f"f(w_lean) = {p_post.objective(w_lean):.15f}")
+print(f"f(w*_post)= {p_post.objective(common.W_STAR_POST):.15f}")
+```
+
+The Lean PGD binary outputs the optimal weights as a single space-separated line.
+The result matches the KKT-certified post-shock optimum $w^\star_{\text{post}} =
+[0.6458, 0.3333, 0.0208]$ to full float64 precision.
+
+```{python}
+#| label: lean-pgd-trajectory-ref
+#| echo: false
+# Python reference run for trajectory visualization only — final weights always
+# come from the Lean binary (w_lean above).
 res_cert = certified_pgd.run(p_post)
-print(f"Solver    : {res_cert.solver_name}")
-print(f"Converged : {res_cert.converged}")
-print(f"Iterations: {res_cert.n_iterations}")
-print(f"Message   : {res_cert.message}")
-print(f"Objective : {res_cert.objective:.15f}")
-print()
-print("Weight trajectory (selected steps):")
-print(f"  {'Step':>5}  {'Equity':>12}  {'Bonds':>12}  {'Commodities':>14}  {'||w - w*||_2':>14}")
-w_star_post = common.W_STAR_POST
-traj_steps = [0, 1, 5, 10, 20, res_cert.n_iterations]
-for k in sorted(set(traj_steps)):
-    if k < len(res_cert.weight_history):
-        w_k = res_cert.weight_history[k]
-        dist = float(np.linalg.norm(w_k - w_star_post))
-        print(f"  {k:>5}  {w_k[0]:>12.6f}  {w_k[1]:>12.6f}  {w_k[2]:>14.6f}  {dist:>14.2e}")
-print()
-print("Post-shock optimum w*_post:")
-print(f"  Equity={w_star_post[0]:.6f}  Bonds={w_star_post[1]:.6f}  Commodities={w_star_post[2]:.6f}")
-print(f"\nFinal weights vs w*_post:")
-print(f"  Max absolute error: {np.max(np.abs(res_cert.weights - w_star_post)):.2e}")
 ```
 
 ## Solver results: Gurobi QP
@@ -382,7 +395,15 @@ both gradient methods are compared.
 ```{python}
 #| label: gurobi-raw
 res_gurobi = gurobi.run(p_post)
-gurobi.print_result(res_gurobi, p_post)
+print(f"Converged  : {res_gurobi.converged}")
+print(f"Message    : {res_gurobi.message}")
+print(f"Objective  : {res_gurobi.objective:.15f}")
+if not np.isnan(res_gurobi.budget_error):
+    print(f"Budget err : {res_gurobi.budget_error:.2e}")
+print()
+print("Weights:")
+for name, wi in zip(p_post.asset_names, res_gurobi.weights, strict=True):
+    print(f"  {name:12s}  {wi:.10f}")
 print()
 print(f"KKT optimum f(w*_post) = {res_post.objective:.15f}")
 print(f"Max weight error vs KKT: {np.max(np.abs(res_gurobi.weights - common.W_STAR_POST)):.2e}")
@@ -391,8 +412,8 @@ print(f"Max weight error vs KKT: {np.max(np.abs(res_gurobi.weights - common.W_ST
 ## Weight trajectory comparison
 
 The defining figure of this scenario: $\|w_k - w^\star_{\text{post}}\|_2$
-versus iteration $k$ on a log scale. Certified PGD contracts geometrically
-over ~212 iterations. The uncertified solver with stale $\eta_{\text{pre}}$
+versus iteration $k$ on a log scale. Lean PGD contracts geometrically
+over ~212 iterations. Gradient Descent with stale $\eta_{\text{pre}}$
 oscillates between two extreme simplex vertices at constant large distance
 from the optimum --- the simplex projection prevents $|w_i| \to \infty$, but
 the gradient step direction is so far off that the iterates cycle rather than
@@ -401,17 +422,17 @@ contract.
 ```{python}
 #| label: fig-trajectory
 #| echo: false
-#| fig-cap: "Distance to the post-shock optimum ||w_k - w*_post||_2 on a log scale. Certified PGD (blue, eta=11.875) converges geometrically over ~212 iterations. Uncertified GD (red, stale eta=47.5) oscillates at constant distance ~0.5-0.9 from the optimum --- the simplex projection keeps weights on the feasible set, but the stale step size makes the gradient direction catastrophically wrong. Both start from w_0 = [1/3, 1/3, 1/3]."
+#| fig-cap: "Distance to the post-shock optimum ||w_k - w*_post||_2 on a log scale. Lean PGD (blue, eta=11.875) converges geometrically over ~212 iterations. Gradient Descent (red, stale eta=47.5) oscillates at constant distance ~0.5-0.9 from the optimum --- the simplex projection keeps weights on the feasible set, but the stale step size makes the gradient direction catastrophically wrong. Both start from w_0 = [1/3, 1/3, 1/3]."
 
 w_star = common.W_STAR_POST
 
-# Certified PGD distances
+# Lean PGD distances (from Python reference run weight_history)
 cert_dists = np.array([
     float(np.linalg.norm(res_cert.weight_history[k] - w_star))
     for k in range(len(res_cert.weight_history))
 ])
 
-# Uncertified GD distances
+# Gradient Descent distances
 unc_dists = np.array([
     float(np.linalg.norm(res_unc.weight_history[k] - w_star))
     for k in range(len(res_unc.weight_history))
@@ -424,11 +445,11 @@ iters_unc  = np.arange(len(unc_dists))
 
 ax.semilogy(iters_cert, cert_dists, color="#2c7bb6", linewidth=2.0,
             marker="o", markersize=4, markevery=20,
-            label=f"Certified PGD (eta_post={common.ETA_POST:.4f})")
+            label=f"Lean PGD (η={common.ETA_POST:.4f})")
 
 ax.semilogy(iters_unc, unc_dists, color="#d7191c", linewidth=2.0,
             marker="s", markersize=5, markevery=1,
-            label=f"Uncertified GD (stale eta_pre={common.ETA_PRE:.4f})")
+            label=f"Gradient Descent (stale η={common.ETA_PRE:.4f})")
 
 # Mark oscillation-failure point
 if res_unc.diverged:
@@ -450,7 +471,7 @@ ax.axhline(1e-10, color="gray", linestyle=":", linewidth=0.8, alpha=0.5,
 ax.set_xlabel("Iteration $k$")
 ax.set_ylabel("$\\|w_k - w^\\star_{\\mathrm{post}}\\|_2$")
 ax.set_title(
-    "Distance to Post-Shock Optimum: Certified PGD vs Uncertified GD (Stale Step Size)"
+    "Distance to Post-Shock Optimum: Lean PGD vs Gradient Descent"
 )
 ax.legend(fontsize=9)
 ax.yaxis.set_minor_locator(mticker.LogLocator(subs="all"))
@@ -458,8 +479,8 @@ fig.tight_layout()
 plt.show()
 ```
 
-The certified PGD converges to the post-shock optimum in 212 iterations
-(geometric decay visible in the log plot). The uncertified solver with
+The Lean PGD converges to the post-shock optimum in 212 iterations
+(geometric decay visible in the log plot). Gradient Descent with
 stale $\eta_{\text{pre}} = 47.5$ oscillates at constant distance $\approx
 0.49$-$0.93$ from the optimum: the simplex projection keeps individual
 weights in $[0,1]$, but the gradient step direction is so far off that
@@ -477,9 +498,9 @@ recommendation; it is a hard mathematical requirement for convergence
 
 - The theorem statement takes $\eta$ and $\Sigma$ as explicit arguments and
   requires a proof that $\eta < 2 / \lambda_{\max}(\Sigma)$ as a hypothesis.
-- The certified solver computes $\eta = 1.9 / \lambda_{\max}(\Sigma)$
+- The Lean PGD computes $\eta = 1.9 / \lambda_{\max}(\Sigma)$
   from the current covariance and constructs the proof object inline.
-- The uncertified solver has no such constraint: a caller can pass any
+- Gradient Descent has no such constraint: a caller can pass any
   $\eta > 0$, including one calibrated on a stale covariance.
 
 The proof makes the failure mode structurally impossible at the type level.
@@ -487,11 +508,11 @@ No runtime check, no configuration flag, and no code review can enforce
 this guarantee as strongly: if the Lean module compiles without `sorry`,
 the convergence condition is satisfied.[^boyd2004]
 
-In production, the certified PGD recalibrates $\eta$ on every solve by
+In production, the Lean PGD recalibrates $\eta$ on every solve by
 recomputing $\lambda_{\max}(\Sigma)$ from the current covariance estimate.
 For $\Sigma = \sigma^2 I$ this is trivially $\sigma^2$; for general $\Sigma$
 it requires a leading-eigenvalue computation (e.g., power iteration, cost
-$O(N^2)$ per step). The uncertified solver skips this step as an
+$O(N^2)$ per step). Gradient Descent skips this step as an
 optimization --- one that is safe in a stationary regime and catastrophic
 after an overnight volatility shift.
 

@@ -172,31 +172,3 @@ def _simulate(p: ProblemData) -> SolverResult:
         budget_error=budget_err,
         leverage_violation=lev_viol,
     )
-
-
-def print_result(result: SolverResult, p: ProblemData) -> None:
-    """Print formatted Gurobi output, highlighting phantom positions."""
-    print(f"Converged         : {result.converged}")
-    print(f"Message           : {result.message}")
-    print(f"Iterations        : {result.n_iterations}")
-    print(f"Objective         : {result.objective:.12f}")
-    if not np.isnan(result.budget_error):
-        print(f"Budget error      : {result.budget_error:.2e}")
-        print(f"Leverage violation: {result.leverage_violation:.2e}")
-    print()
-    print("Weights with phantom position magnitudes:")
-    print(f"  {'Asset':>8}  {'w_i':>14}  {'|w_i|':>14}  {'Note'}")
-    for name, wi in zip(p.asset_names, result.weights, strict=True):
-        if abs(wi) > 1e-4:
-            note = "<- active"
-        elif abs(wi) > 1e-9:
-            note = "PHANTOM"
-        else:
-            note = "zero (or near-zero)"
-        print(f"  {name:>8}  {wi:14.10f}  {abs(wi):14.3e}  {note}")
-    if result.converged:
-        print()
-        print("Gurobi reports OPTIMAL: objective matches KKT certificate.")
-        print(
-            "Inactive assets have nonzero phantom weights due to log-barrier."
-        )

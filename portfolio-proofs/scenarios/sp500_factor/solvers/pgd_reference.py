@@ -1,4 +1,4 @@
-"""Lean 4 PGD (direct subprocess) + Python reference for the sp500-factor scenario.
+"""Lean PGD (direct subprocess) + Python reference for the sp500-factor scenario.
 
 Primary solver: calls ``optimization-proofs/.lake/build/bin/pgd_solve`` via
 subprocess -- no Cython, no FFI layer.  The Lean binary runs ``pgdFlat``
@@ -175,7 +175,7 @@ def benchmark(p: ProblemData, reps: int = 5) -> BenchmarkResult:
 
 @dataclass
 class DirectBenchmarkResult:
-    """Timing result from the Lean 4 pgd_solve binary (subprocess call)."""
+    """Timing result from the Lean PGD binary (pgd_solve) (subprocess call)."""
 
     N: int
     solve_time_ms: float  # wall-clock including subprocess startup
@@ -186,7 +186,7 @@ class DirectBenchmarkResult:
 
 
 def benchmark_direct(p: ProblemData, reps: int = 3) -> DirectBenchmarkResult:
-    """Time the Lean 4 pgd_solve binary on problem p (median of reps runs).
+    """Time the Lean PGD binary on problem p (median of reps runs).
 
     Includes subprocess startup overhead (~5-15 ms), which dominates at
     small N. For large N the arithmetic cost grows and subprocess overhead
