@@ -9,7 +9,11 @@ package «optimization-proofs» where
     ⟨`pp.proofs.withType, false⟩
   ]
 
--- No mathlib dependency yet — pure computational implementation.
+-- Mathlib required for proof modules (Shrinkage, Projection, Convergence).
+-- Computational modules (PGD, PGDFlat, FFI, CLI) compile without mathlib;
+-- they are included in the same library target so lake only builds mathlib once.
+require mathlib from git
+  "https://github.com/leanprover-community/mathlib4.git" @ "master"
 
 @[default_target]
 lean_lib OptimizationProofs
