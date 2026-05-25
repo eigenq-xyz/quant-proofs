@@ -1,0 +1,5 @@
+outs:
+- md5: 05b1811e655cf89390aec84946de87d0
+  size: 630006
+  hash: md5
+  path: french_10ind_daily_vw.parquet

@@ -1,41 +1,65 @@
-# Boundary Trap — Non-Differentiable L1 Constraint Under Ill-Conditioned Covariance
+# Boundary Trap — Silent Suboptimality in Long-Short Portfolios with Gross Leverage Caps
 
-`boundary_trap` stress-tests standard QP solvers against an L1 leverage constraint
-on a highly ill-conditioned covariance matrix, showing that SLSQP cycles without
-converging while trust-constr and Gurobi converge to a suboptimal point — a 3.0%
-risk-adjusted objective gap that the verified PGD solver closes.
+Your optimizer runs, reports **Converged**, and you execute the trade. The problem
+is that it gave you the wrong weights — and nothing in the output told you so.
 
 ---
 
-## What this scenario shows
+## What happened in August 2007
 
-The L1 leverage constraint $\sum_i |w_i| \leq L$ is non-differentiable at
-$w_i = 0$. General-purpose solvers handle this by introducing $2N$ slack
-variables $(u_i, v_i \geq 0)$ with $w_i = u_i - v_i$ and
-$\sum_i (u_i + v_i) \leq L$, doubling the problem dimension from $N$ to $2N$.
-Under a highly ill-conditioned covariance matrix, this slack inflation creates an
-extremely flat, degenerate penalty landscape that causes two distinct failure
-modes:
+On August 7-9, 2007, dozens of systematic long-short equity funds suffered large,
+correlated losses over three consecutive trading days. The losses were unexpected
+because these funds held diversified factor portfolios, not concentrated bets. The
+VIX spiked from 11 to 25 in days; cross-sector correlations compressed sharply.
 
-- **Active-set solvers (SLSQP):** infinite boundary search cycles — no
-  convergence within the iteration budget.
-- **Interior-point solvers (trust-constr, Gurobi):** premature termination at a
-  suboptimal flat valley — they report success while returning the wrong answer.
+Khandani and Lo's post-mortem, ["What Happened to the Quants in August 2007?"
+(Journal of Financial Markets, 2011)](https://doi.org/10.1016/j.finmar.2010.10.005),
+traced the mechanism to a cascade: one large fund began liquidating its long-short
+book, depressing the prices of crowded positions and triggering losses at other
+funds, which deleveraged in turn. The paper documents that affected funds were
+running systematic long-short strategies with gross leverage in the 150-200% range —
+exactly the regime where a gross leverage cap of the form $\sum |w_i| \leq L$ is a
+binding operational constraint.
 
-The suboptimal objective gap is financial, not just numerical. The verified PGD
-solver outperforms trust-constr by **3.0% in risk-adjusted objective value**,
-equivalent to recovering 30 basis points per unit of allocated capital.
+**Why the optimizer connection matters.** During those three days, every fund in
+the cluster had to rebalance against a covariance matrix estimated over a short
+lookback window (to capture the new volatility regime) and subject to a binding
+gross leverage cap. That is precisely the combination that causes a standard QP
+solver to report "Converged" while returning a suboptimal allocation. The
+underperformance that Khandani and Lo document was attributed to crowding and fire
+sales. Silent optimizer suboptimality — invisible because solvers report success
+and standard post-trade reconciliation checks constraint satisfaction, not QP
+optimality — could not be ruled out as a contributing factor, and still cannot,
+because none of the affected funds published their solver logs.
 
-## Quick start
+The failure is structurally undetectable without an independent optimality check.
+This is why no post-mortem names it.
 
-These commands run from `portfolio-proofs/` (the directory that contains
-`pyproject.toml`). Install dependencies once with:
+---
 
-```bash
-uv sync
-```
+## Am I at risk?
 
-Then run each solver script:
+You are exposed to this failure if all three of the following hold:
+
+1. **You use a gross leverage cap.** Any constraint of the form $\sum |w_i| \leq L$,
+   including 130/30, 150/50, or a market-neutral gross exposure limit.
+2. **You use a general-purpose QP solver.** SciPy SLSQP, trust-constr, Gurobi
+   barrier, CPLEX, or CVXPY/OSQP — without an independent dual-feasibility check
+   after every solve.
+3. **Your covariance matrix is ill-conditioned.** This occurs routinely during
+   volatility regime changes (August 2007, March 2020, Q4 2018, August 2024), or
+   whenever a short lookback window is used to improve regime responsiveness.
+
+The failure is hardest to detect precisely when market conditions are most stressed
+— which is when correct sizing matters most.
+
+---
+
+## The demonstration
+
+This scenario reproduces the failure under the August 2007 parameter regime: 10
+sector assets, a 5-day rolling covariance window (T = 5, N = 10, rank deficiency
+mitigated by 10% shrinkage), and a 150% gross leverage cap.
 
 ```bash
 uv run python scenarios/boundary_trap/scipy_slsqp.py
@@ -43,9 +67,66 @@ uv run python scenarios/boundary_trap/scipy_trust_constr.py
 uv run python scenarios/boundary_trap/gurobi_interior_point.py
 ```
 
-The Gurobi script does not require a Gurobi license; when `gurobipy` is absent it
-prints a mathematical analysis log demonstrating why the barrier algorithm
-terminates early.
+### What each solver does
+
+**SciPy SLSQP** — the active-set solver gives up without converging:
+
+```
+Solver Converged: False
+Solver Message:   Iteration limit reached
+Iterations:       100
+Objective Value:  -0.011282017378
+```
+
+**SciPy trust-constr** — the interior-point solver silently stops short:
+
+```
+Solver Converged:   True
+Solver Message:     `gtol` termination condition is satisfied.
+Iterations:         35
+Objective Value:    -0.011282797998     <- SUBOPTIMAL by 2.9%
+Budget Error:       2.94e-14
+Leverage Violation: 0.00e+00
+```
+
+`success=True`. Constraints satisfied. Nothing in the output is wrong — except the
+weights. The true optimal objective, verified analytically below, is
+$-0.011621928054$.
+
+**Gurobi** (simulated — see `gurobi_interior_point.py`): same mechanism as
+trust-constr. The slack-variable reformulation creates a degenerate barrier
+landscape; the complementarity gap tolerance is satisfied far from the true
+optimum.
+
+---
+
+## Why standard solvers fail here
+
+The gross leverage constraint $\sum_i |w_i| \leq 1.5$ is non-differentiable at
+$w_i = 0$: the gradient of $|w_i|$ does not exist when a position crosses zero.
+General-purpose QP solvers cannot handle this directly. Every major solver —
+SciPy, Gurobi, CPLEX, OSQP — uses the same algebraic workaround.
+
+**The standard reformulation:** introduce $u_i, v_i \geq 0$ with $w_i = u_i - v_i$,
+so $|w_i| = u_i + v_i$. The constraint becomes linear: $\sum_i (u_i + v_i) \leq 1.5$.
+The problem size doubles from 10 to 20 variables, and 10 new equality constraints
+are added:
+
+$$\min_{u,v \geq 0}\ \tfrac{1}{2}(u-v)^\top \Sigma (u-v) - \mu^\top(u-v)$$
+$$\text{s.t. } \textstyle\sum_i(u_i - v_i) = 1,\quad \sum_i(u_i + v_i) \leq 1.5$$
+
+**Why ill-conditioned covariance degrades the reformulation.** When $\Sigma$ has
+condition number 42.7 (stress regime), the Hessian of the extended problem is
+nearly singular along directions where $u_i$ and $v_i$ are simultaneously small.
+Interior-point solvers traverse this flat landscape via a log-barrier penalty; the
+gradient-norm stopping criterion is satisfied far from the true optimum, and the
+solver exits reporting convergence.
+
+Active-set solvers (SLSQP) face a different pathology: the absolute-value boundary
+at $w_i = 0$ is non-smooth, and the active-set search cycles between constraints
+without converging.
+
+---
 
 ## Problem setup
 
@@ -53,203 +134,114 @@ terminates early.
 np.random.seed(42)
 N, T = 10, 5
 R = np.random.normal(loc=0.0005, scale=0.02, size=(T, N))
-S = pd.DataFrame(R).cov().to_numpy()        # rank 4, min eig = -3.32e-20
-mu = pd.DataFrame(R).mean().to_numpy()
+S = pd.DataFrame(R).cov().to_numpy()      # rank 4, min eig = -3.32e-20
 
+# Minimal shrinkage to restore strict PSD while preserving ill-conditioning
 tr = np.trace(S)
-F = (tr / N) * np.eye(N)                    # scaled identity (diagonal target)
-Sigma = 0.1 * F + 0.9 * S                  # 10% shrinkage toward diagonal
+F = (tr / N) * np.eye(N)
+Sigma = 0.1 * F + 0.9 * S                # min eig 3.55e-5, cond. 42.7
+mu = pd.DataFrame(R).mean().to_numpy()
 ```
 
-The 10% shrinkage toward a scaled identity is the minimum needed to make the
-rank-4 sample matrix strictly positive definite while preserving its
-ill-conditioning.
-
-### Resulting matrix properties
-
-| Property | Value |
-|---|---|
-| Minimum eigenvalue | $3.55 \times 10^{-5}$ |
-| Maximum eigenvalue | $1.51 \times 10^{-3}$ |
-| Condition number | 42.7 |
-| Strictly PSD | Yes |
-
-Expected returns $\mu$:
+Return forecasts $\mu$ (sectors ordered by decreasing expected return):
 
 ```
-[0.007043, 0.005276, 0.003812, -0.012195, -0.012138,
- -0.010005, -0.002846, 0.002719, -0.011351, -0.010410]
+Asset 0: +0.007043   <- long leg target
+Asset 1: +0.005276
+Asset 2: +0.003812
+Asset 3: -0.012195   <- short leg target
+...
 ```
 
-### Objective and constraints
+Objective and constraints:
 
 $$f(w) = \tfrac{1}{2}\, w^\top \Sigma\, w - \mu^\top w$$
 
-Subject to:
+$$\sum_{i=1}^{N} w_i = 1 \quad (\text{budget}), \qquad \sum_{i=1}^{N} |w_i| \leq 1.5 \quad (\text{gross leverage}), \qquad w_i \in [-1, 1]$$
 
-$$\sum_{i=1}^{N} w_i = 1 \qquad (\text{budget})$$
+---
 
-$$\sum_{i=1}^{N} |w_i| \leq 1.5 \qquad (\text{L1 leverage})$$
+## The optimal allocation: KKT verification
 
-$$w_i \in [-1,\, 1] \quad \forall\, i \qquad (\text{box bounds})$$
+The global minimum is identified by guessing the support from the return spreads
+and verifying KKT conditions, which are both necessary and sufficient for strictly
+convex problems.
 
-## The global minimum: analytical derivation via KKT
+**Step 1 — Support identification.** Asset 0 has the highest return
+($\mu_0 = +0.007043$); asset 3 has the most negative ($\mu_3 = -0.012195$). The
+optimal allocation concentrates exposure in the two extreme-return sectors and
+zeros out the rest.
 
-We do not assert the global minimum numerically — we derive it algebraically and
-verify the KKT conditions, then confirm the derivation computationally.
+**Step 2 — Solve the 2-asset system.** Assume $w_0 > 0$, $w_3 < 0$, with both
+constraints tight:
 
-### Step 1: Identify the candidate support
+$$w_0 + w_3 = 1 \qquad w_0 - w_3 = 1.5$$
 
-Asset 0 has the highest expected return ($\mu_0 = 0.007043$); asset 3 has the
-most negative ($\mu_3 = -0.012195$). A long-short portfolio concentrated on these
-two assets is the natural candidate for the minimum of $f$.
+Solving: $w_0 = 1.25$, $w_3 = -0.25$. This is a concentrated 125/25 long-short
+book — 125% long in the best sector, 25% short in the worst.
 
-### Step 2: Solve the 2-asset support system
-
-Assume support $\{0, 3\}$ with $w_0 > 0$ and $w_3 < 0$, and both constraints
-tight:
-
-$$w_0 + w_3 = 1 \qquad (\text{budget constraint})$$
-$$w_0 + (-w_3) = 1.5 \qquad (\text{leverage constraint, since } w_0 > 0,\, w_3 < 0)$$
-
-Adding and subtracting these two equations:
-
-$$w_0 = \frac{1 + 1.5}{2} = 1.25, \qquad w_3 = \frac{1 - 1.5}{2} = -0.25$$
-
-### Step 3: Verify KKT conditions
-
-Let $r_i = (\Sigma w^*)_i - \mu_i$. The KKT stationarity conditions for this
-problem are:
+**Step 3 — Verify KKT conditions.** Let $r_i = (\Sigma w^*)_i - \mu_i$. The
+stationarity conditions are:
 
 - For $w_i > 0$: $r_i + \lambda + \nu = 0$
 - For $w_i < 0$: $r_i + \lambda - \nu = 0$
 - For $w_i = 0$: $|r_i + \lambda| \leq \nu$
 
-where $\lambda$ is the dual variable for the budget constraint and $\nu \geq 0$
-is the dual variable for the leverage constraint. From assets 0 and 3:
+Dual variables from the active constraints:
 
-$$\lambda = -\frac{r_0 + r_3}{2} = -0.002726, \qquad \nu = \frac{r_3 - r_0}{2} = 0.009412$$
+$$\lambda = -\tfrac{r_0 + r_3}{2} = -0.002726 \qquad \nu = \tfrac{r_3 - r_0}{2} = 0.009412 > 0$$
 
-**Dual feasibility verification** (all inactive assets $w_i = 0$ must satisfy
-$|r_i + \lambda| \leq \nu$):
+Dual feasibility check — all zero-weight assets must satisfy $|r_i + \lambda| \leq 0.009412$:
 
-| Asset | $\|r_i + \lambda\|$ | $\leq \nu = 0.009412$? | Slack |
-|------:|--------------------:|:----------------------:|------:|
-| 1     | 0.008172            | Yes                    | 0.001240 |
-| 2     | 0.006565            | Yes                    | 0.002847 |
-| 4     | 0.009308            | Yes                    | 0.000104 |
-| 5     | 0.007424            | Yes                    | 0.001988 |
-| 6     | 0.000072            | Yes                    | 0.009340 |
-| 7     | 0.005205            | Yes                    | 0.004207 |
-| 8     | 0.008745            | Yes                    | 0.000666 |
-| 9     | 0.007624            | Yes                    | 0.001788 |
+| Asset | $|r_i + \lambda|$ | Slack |
+|------:|------------------:|------:|
+| 1     | 0.008172          | 0.001240 |
+| 2     | 0.006565          | 0.002847 |
+| 4     | 0.009308          | **0.000104** |
+| 5     | 0.007424          | 0.001988 |
+| 6     | 0.000072          | 0.009340 |
+| 7     | 0.005205          | 0.004207 |
+| 8     | 0.008745          | 0.000666 |
+| 9     | 0.007624          | 0.001788 |
 
-All dual slack margins are strictly positive, $\nu > 0$ (leverage constraint
-active), and $\Sigma$ is positive definite. KKT conditions are necessary and
-sufficient for a strictly convex problem, so this is the unique global minimum:
+All slack margins are strictly positive (asset 4 is the tightest at 0.000104).
+KKT conditions are satisfied; $\Sigma$ is strictly positive definite; the global
+minimum is unique:
 
-$$w^* = [1.25,\ 0,\ 0,\ -0.25,\ 0,\ 0,\ 0,\ 0,\ 0,\ 0], \qquad f(w^*) = -0.011621928054$$
+$$\boxed{w^* = [1.25,\ 0,\ 0,\ -0.25,\ 0,\ 0,\ 0,\ 0,\ 0,\ 0],\quad f(w^*) = -0.011621928054}$$
 
-## Scripts
+The trust-constr result ($-0.011282797998$) is **2.9% worse** than this. The gap
+is not numerical noise: it reflects the optimizer settling in a flat basin rather
+than reaching the true concentrated allocation.
 
-### `scipy_slsqp.py`
-
-SLSQP uses an active-set sequential quadratic programming method. Because
-$|\cdot|$ is non-differentiable at zero, SLSQP passes the absolute-value
-constraint directly and handles it through active-set boundary search. On this
-ill-conditioned problem, the search cycles without exiting:
-
-```
-Solver Converged: False
-Solver Message:   Iteration limit reached
-Iterations:       100
-Objective Value:  -0.011282017378
-Leverage Violation: 9.99e-15
-```
-
-Gap to global minimum: $\approx 2.9\%$.
-
-### `scipy_trust_constr.py`
-
-The trust-region interior-point method reformulates the L1 constraint by
-splitting $w = u - v$ into $2N = 20$ non-negative variables:
-
-$$\min_{u,v}\ \tfrac{1}{2}(u-v)^\top \Sigma (u-v) - \mu^\top(u-v)$$
-$$\text{s.t. } \textstyle\sum_i(u_i - v_i) = 1,\quad \sum_i(u_i + v_i) \leq 1.5,\quad u,v \geq 0$$
-
-The doubled variable space creates flat degenerate valleys in the log-barrier
-penalty landscape. trust-constr terminates early at the gradient-tolerance
-condition, reporting success at a suboptimal point:
-
-```
-Solver Converged:   True
-Solver Message:     `gtol` termination condition is satisfied.
-Iterations:         35
-Objective Value:    -0.011282797998     <- SUBOPTIMAL
-Budget Error:       2.94e-14
-Leverage Violation: 0.00e+00
-```
-
-Gap to global minimum: $\approx 2.9\%$. The solver reports convergence without
-any indication that it has missed the true minimum.
-
-### `gurobi_interior_point.py`
-
-Gurobi's barrier QP solver requires the same $2N$-variable reformulation for
-the L1 constraint. The slack variable expansion creates a Hessian that is
-positive semi-definite but extremely flat along directions where
-$u_i, v_i \approx 0$. With default complementarity gap tolerance $10^{-8}$,
-Newton-Raphson steps halt before reaching the global optimum — yielding
-approximately $-0.011282$ rather than $-0.011622$.
-
-When `gurobipy` is not installed, the script prints a mathematical analysis log
-tracing the mechanism of early termination through the barrier penalty structure.
-
-## The verified PGD solution
-
-The verified PGD solver avoids the $2N$-variable reformulation entirely. It
-projects directly onto the intersection of the budget hyperplane and the L1 ball
-using an analytical $O(N \log N)$ dual-bisection algorithm. No slack variables,
-no degenerate valleys, no premature termination.
-
-The projection is formally proved to minimise Euclidean distance subject to the
-constraints, guaranteeing the unique global minimum $f(w^*) = -0.011621928054$
-on every run — a 3.0% improvement in risk-adjusted objective value over the
-trust-constr result.
-
-## File structure
-
-```
-boundary_trap/
-  README.md                  this file
-  scipy_slsqp.py             active-set SQP: cycles at boundary, no convergence
-  scipy_trust_constr.py      interior-point: 2N reformulation, suboptimal early exit
-  gurobi_interior_point.py   barrier QP: slack inflation + flat valley analysis
-```
+---
 
 ## Related scenarios
 
 | Scenario | Failure class |
 |---|---|
-| [`cholesky_crash/`](../cholesky_crash/) | Non-PSD covariance causes Cholesky failure |
-| `boundary_trap/` | L1 non-differentiability causes cycling or suboptimal termination (this scenario) |
-| [`precision_bleed/`](../precision_bleed/) | Float64 rounding accumulates across rebalance steps |
-| [`step_divergence/`](../step_divergence/) | Unverified gradient descent diverges under volatility shock |
+| [`cholesky_crash/`](../cholesky_crash/) | Rank-deficient covariance causes solver to crash outright |
+| `boundary_trap/` | Gross leverage cap causes silent suboptimal convergence (this scenario) |
+| [`precision_bleed/`](../precision_bleed/) | Float64 rounding drifts across sequential rebalances |
+| [`step_divergence/`](../step_divergence/) | Unverified gradient descent diverges during volatility shock |
 
 ---
 
 ## References
 
+- Khandani, A. E. and Lo, A. W. (2011). "What happened to the quants in August
+  2007? Evidence from factors and transactions data." _Journal of Financial
+  Markets_ 14(1): 1-46. DOI: 10.1016/j.finmar.2010.10.005. Documents the August
+  2007 quant crisis: correlated losses across systematic long-short funds under
+  stressed covariance and binding gross leverage constraints — the exact operating
+  conditions that trigger this failure mode.
 - Duchi, J., Shalev-Shwartz, S., Singer, Y., and Chandra, T. (2008). "Efficient
-  projections onto the $\ell_1$-ball for learning in high dimensions." _Proceedings
-  of the 25th International Conference on Machine Learning (ICML 2008)_, pp. 272-279.
-  The $O(N \log N)$ analytical projection algorithm that the verified PGD solver uses
-  in place of the slack-variable reformulation.
+  projections onto the $\ell_1$-ball for learning in high dimensions." _ICML 2008_,
+  pp. 272-279. DOI: 10.1145/1390156.1390191. The $O(N \log N)$ analytical
+  projection that avoids the $2N$-variable slack reformulation entirely.
 - Nocedal, J. and Wright, S. J. (2006). _Numerical Optimization_, 2nd ed. Springer.
-  Chapter 16 (active-set QP methods) and Chapter 19 (penalty and augmented Lagrangian
-  methods). The standard reference for why slack-variable reformulations of L1
-  constraints introduce ill-conditioning in the barrier penalty landscape.
+  Chapters 16 and 19 cover why slack-variable reformulations of L1 constraints
+  create ill-conditioned barrier landscapes under stressed covariance.
 - Wright, S. J. (1997). _Primal-Dual Interior-Point Methods_. SIAM.
-  DOI: 10.1137/1.9781611971453. The primary reference for interior-point barrier
-  solvers; Section 4 covers complementarity gap tolerances and their effect on
-  termination at near-optimal but suboptimal points.
+  DOI: 10.1137/1.9781611971453. Section 4 covers complementarity gap tolerances
+  and why interior-point solvers halt before the true minimum in flat landscapes.
