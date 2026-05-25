@@ -2,83 +2,86 @@
 """
 Cython FFI bindings to the Lean 4 PGD solver (OptimizationProofs).
 
-Exposes lean_pgd_solve from OptimizationProofs.FFI.
-Input/output: numpy float64 arrays.
+Two variants timed side-by-side:
+  pgd_solve      — Array Float (boxed): 110 lean_box_float calls per solve
+  pgd_solve_flat — FloatArray (unboxed): N lean_float_array_push + 1 memcpy
 
 Reference-counting rules (Lean deterministic RC):
-- Objects created here start at rc=1 (caller owns).
-- Passing to an FFI function transfers ownership — do NOT lean_dec after.
-- Return values from FFI are owned by caller — lean_dec when done.
-- lean_array_get_core returns a BORROWED reference — lean_inc to keep past parent.
+  Objects created here start at rc=1 (caller owns).
+  Passing to an FFI function transfers ownership — do NOT lean_dec after.
+  Return values from FFI are owned by caller — lean_dec when done.
 """
 
 import numpy as np
 cimport numpy as np
 from libc.stdint cimport uint8_t
 from libc.stddef cimport size_t
+from libc.string cimport memcpy
 
 np.import_array()
 
-# ── C declarations: lean.h exact signatures ─────────────────────────────────
+# ── lean.h declarations ──────────────────────────────────────────────────────
 
 cdef extern from "lean/lean.h":
     ctypedef void* lean_object
 
-    # Lifecycle
     void lean_io_mark_end_initialization()
     bint lean_io_result_is_error(lean_object* r)
-
-    # Reference counting
     void lean_inc(lean_object* o)
     void lean_dec(lean_object* o)
 
-    # Scalars (tagged pointers — no RC needed)
     lean_object* lean_box(size_t n)
     size_t lean_unbox(lean_object* o)
 
-    # Float boxing
+    # ── Slow path: boxed Array Float ─────────────────────────────────────────
     lean_object* lean_box_float(double d)
     double lean_unbox_float(lean_object* o)
-
-    # Array construction
     lean_object* lean_mk_empty_array_with_capacity(lean_object* capacity)
     lean_object* lean_array_push(lean_object* a, lean_object* v)
-
-    # Array access (inline, exact signatures from lean.h)
-    # lean_array_size: returns size_t directly (NOT a boxed Nat)
     size_t lean_array_size(lean_object* o)
-    # lean_array_get_core: takes size_t index, returns BORROWED lean_object*
     lean_object* lean_array_get_core(lean_object* o, size_t i)
-    # lean_array_set_core: takes size_t index, CONSUMES v
-    void lean_array_set_core(lean_object* o, size_t i, lean_object* v)
+
+    # ── Fast path: unboxed FloatArray ────────────────────────────────────────
+    # lean_float_array_push: writes double directly to backing buffer (no malloc)
+    lean_object* lean_float_array_push(lean_object* a, double d)
+    # lean_float_array_uget: direct double read (no unboxing, no malloc)
+    double lean_float_array_uget(lean_object* a, size_t i)
+    # lean_float_array_cptr: raw double* pointer to backing buffer
+    double* lean_float_array_cptr(lean_object* a)
 
 
-# ── Module initialiser + lean_pgd_solve ─────────────────────────────────────
+# ── Lean module exports ──────────────────────────────────────────────────────
 
 cdef extern from *:
     """
     extern void lean_initialize_runtime_module(void);
-    // Module name: optimization-proofs.OptimizationProofs.FFI
-    // Hyphen encoded as x2d per Lean's C name mangling
     extern lean_object* initialize_optimization_x2dproofs_OptimizationProofs_FFI(uint8_t builtin);
-    extern lean_object* lean_pgd_solve(lean_object* sigmaFlat,
-                                       lean_object* muArr,
-                                       double lambdaMax,
-                                       double leverageCap);
+
+    // Slow path: Array Float (boxed doubles)
+    extern lean_object* lean_pgd_solve(lean_object* sigma, lean_object* mu,
+                                       double lam, double lev);
+    // Fast path: FloatArray (unboxed doubles)
+    extern lean_object* lean_pgd_solve_flat(lean_object* sigma, lean_object* mu,
+                                            double lam, double lev);
+    // The canonical empty FloatArray global (initialised during module init)
+    extern lean_object* l_FloatArray_empty;
     """
     void lean_initialize_runtime_module()
     lean_object* initialize_optimization_x2dproofs_OptimizationProofs_FFI(uint8_t builtin)
-    lean_object* lean_pgd_solve(lean_object* sigmaFlat,
-                                lean_object* muArr,
-                                double lambdaMax,
-                                double leverageCap)
+    lean_object* lean_pgd_solve(lean_object* sigma, lean_object* mu,
+                                double lam, double lev)
+    lean_object* lean_pgd_solve_flat(lean_object* sigma, lean_object* mu,
+                                     double lam, double lev)
+    # l_FloatArray_empty is a global variable (NOT a function)
+    lean_object* l_FloatArray_empty
 
-# ── Runtime initialisation ──────────────────────────────────────────────────
+
+# ── Runtime initialisation ───────────────────────────────────────────────────
 
 cdef bint _lean_initialized = False
 
 def initialize_lean() -> None:
-    """Call once before any FFI function. Safe to call multiple times."""
+    """Call once before any FFI function."""
     global _lean_initialized
     if _lean_initialized:
         return
@@ -90,23 +93,53 @@ def initialize_lean() -> None:
     lean_io_mark_end_initialization()
     _lean_initialized = True
 
-# ── Marshalling helpers ─────────────────────────────────────────────────────
 
-cdef lean_object* np_to_lean_float_array(double* arr, size_t n) except NULL:
-    """Pack C double* into a Lean Array Float via lean_array_push."""
+# ── Marshalling: slow path (Array Float, boxed) ──────────────────────────────
+
+cdef lean_object* _np_to_array_float(double* ptr, size_t n) except NULL:
+    """Pack C doubles into Lean Array Float via lean_box_float (one malloc per element)."""
     cdef lean_object* a = lean_mk_empty_array_with_capacity(lean_box(n))
     cdef size_t i
     for i in range(n):
-        a = lean_array_push(a, lean_box_float(arr[i]))
+        a = lean_array_push(a, lean_box_float(ptr[i]))
     return a
 
-cdef void lean_float_array_to_buf(lean_object* a, double* buf, size_t n):
-    """Unpack Lean Array Float into a C double* buffer."""
+cdef void _array_float_to_np(lean_object* a, double* buf, size_t n):
+    """Unpack Lean Array Float into C doubles via lean_unbox_float."""
     cdef size_t i
     cdef lean_object* elem
     for i in range(n):
-        elem = lean_array_get_core(a, i)   # borrowed — no inc/dec needed
+        elem = lean_array_get_core(a, i)   # borrowed reference
         buf[i] = lean_unbox_float(elem)
+
+
+# ── Marshalling: fast path (FloatArray, unboxed) ─────────────────────────────
+
+cdef lean_object* _np_to_float_array(double* ptr, size_t n) except NULL:
+    """Pack C doubles into Lean FloatArray via lean_float_array_push.
+
+    lean_float_array_push writes the double directly into the backing buffer —
+    no lean_box_float, no per-element heap allocation.
+
+    l_FloatArray_empty is a Lean global variable (not a function); we must
+    lean_inc it before passing to lean_float_array_push since push takes
+    ownership of its first argument.
+    """
+    lean_inc(l_FloatArray_empty)    # push takes ownership; keep global alive
+    cdef lean_object* fa = l_FloatArray_empty
+    cdef size_t i
+    for i in range(n):
+        fa = lean_float_array_push(fa, ptr[i])
+    return fa
+
+cdef void _float_array_to_np(lean_object* a, double* buf, size_t n):
+    """Unpack Lean FloatArray via lean_float_array_uget (direct double read,
+    no lean_unbox_float, no per-element heap access).
+    """
+    cdef size_t i
+    for i in range(n):
+        buf[i] = lean_float_array_uget(a, i)
+
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
@@ -116,45 +149,40 @@ def pgd_solve(
     double lambda_max,
     double leverage_cap = 1.5,
 ) -> np.ndarray:
-    """Run the Lean 4 PGD solver via Cython FFI.
-
-    Parameters
-    ----------
-    sigma : ndarray, shape (N, N), float64
-        Shrunk covariance matrix (row-major).
-    mu : ndarray, shape (N,), float64
-        Mean return vector.
-    lambda_max : float
-        Maximum eigenvalue of sigma.
-    leverage_cap : float, default 1.5
-        Gross leverage cap L.
-
-    Returns
-    -------
-    ndarray, shape (N,), float64
-        Optimal portfolio weights.
-    """
+    """Slow path: Array Float (boxed). Marshalling: N² lean_box_float calls."""
     if not _lean_initialized:
-        raise RuntimeError("Call initialize_lean() before pgd_solve().")
-
+        raise RuntimeError("Call initialize_lean() first.")
     sigma = np.ascontiguousarray(sigma, dtype=np.float64)
     mu    = np.ascontiguousarray(mu,    dtype=np.float64)
-
     cdef size_t N = <size_t>mu.shape[0]
-    cdef double* sigma_ptr = <double*>sigma.data
-    cdef double* mu_ptr    = <double*>mu.data
-
-    # Marshal numpy → Lean arrays (caller gives ownership to lean_pgd_solve)
-    cdef lean_object* l_sigma = np_to_lean_float_array(sigma_ptr, N * N)
-    cdef lean_object* l_mu    = np_to_lean_float_array(mu_ptr, N)
-
-    # Call Lean solver — acquires l_sigma, l_mu; returns new owned array
-    cdef lean_object* l_weights = lean_pgd_solve(l_sigma, l_mu,
-                                                  lambda_max, leverage_cap)
-
-    # Marshal result → numpy
+    cdef lean_object* l_sigma = _np_to_array_float(<double*>sigma.data, N * N)
+    cdef lean_object* l_mu    = _np_to_array_float(<double*>mu.data, N)
+    cdef lean_object* l_w = lean_pgd_solve(l_sigma, l_mu, lambda_max, leverage_cap)
     cdef np.ndarray out = np.empty(N, dtype=np.float64)
-    lean_float_array_to_buf(l_weights, <double*>out.data, N)
-    lean_dec(l_weights)
+    _array_float_to_np(l_w, <double*>out.data, N)
+    lean_dec(l_w)
+    return out
 
+
+def pgd_solve_flat(
+    np.ndarray sigma not None,
+    np.ndarray mu not None,
+    double lambda_max,
+    double leverage_cap = 1.5,
+) -> np.ndarray:
+    """Fast path: FloatArray (unboxed).
+    In:  N² + N lean_float_array_push calls (direct double write, no malloc)
+    Out: 1 memcpy via lean_float_array_cptr
+    """
+    if not _lean_initialized:
+        raise RuntimeError("Call initialize_lean() first.")
+    sigma = np.ascontiguousarray(sigma, dtype=np.float64)
+    mu    = np.ascontiguousarray(mu,    dtype=np.float64)
+    cdef size_t N = <size_t>mu.shape[0]
+    cdef lean_object* l_sigma = _np_to_float_array(<double*>sigma.data, N * N)
+    cdef lean_object* l_mu    = _np_to_float_array(<double*>mu.data, N)
+    cdef lean_object* l_w = lean_pgd_solve_flat(l_sigma, l_mu, lambda_max, leverage_cap)
+    cdef np.ndarray out = np.empty(N, dtype=np.float64)
+    _float_array_to_np(l_w, <double*>out.data, N)
+    lean_dec(l_w)
     return out
