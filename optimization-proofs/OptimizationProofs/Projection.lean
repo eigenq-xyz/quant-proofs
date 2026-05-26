@@ -64,23 +64,84 @@ noncomputable def primalFromDual (y : Fin N → ℝ) (θ μ : ℝ) : Fin N → �
 
 /-! ### P3.2 — Projection feasibility -/
 
-/-- **P3.2** For any `y`, there exist dual variables `θ*, μ* ≥ 0` such that
-    `primalFromDual y θ* μ*` satisfies both the budget and leverage constraints.
+-- Helper: primalFromDual y θ 0 i = y i - θ (soft-threshold with μ = 0 is identity shift)
+private theorem primalFromDual_mu_zero (y : Fin N → ℝ) (θ : ℝ) (i : Fin N) :
+    primalFromDual y θ 0 i = y i - θ := by
+  simp only [primalFromDual]
+  split_ifs with h1 h2
+  · linarith [abs_nonneg (y i - θ), (abs_le.mp h1).1, (abs_le.mp h1).2]
+  · ring
+  · ring
 
-    **Status**: `sorry`.  Full proof requires the Intermediate Value Theorem applied
-    to the strictly decreasing budget function `θ ↦ ∑ᵢ primalFromDual y θ 0 i`, plus
-    a bisection argument over `μ ≥ 0` to enforce the leverage constraint when
-    `∑ |primalFromDual y θ₀ 0 i| > L`.
+-- Helper: budget equals B at the unique budget-fixing θ₀ = (∑ y - B) / N
+private theorem budget_at_theta0 [NeZero N] (y : Fin N → ℝ) (B : ℝ) :
+    ∑ i, primalFromDual y ((∑ i, y i - B) / ↑N) 0 i = B := by
+  simp_rw [primalFromDual_mu_zero]
+  have hN : (N : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (NeZero.ne N)
+  have : ∑ i : Fin N, (y i - (∑ j, y j - B) / ↑N) = B := by
+    rw [Finset.sum_sub_distrib]
+    simp [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+    field_simp; ring
+  exact this
 
-    Additional hypothesis needed: `|B| ≤ L` (otherwise 𝒞 is empty). -/
-theorem projection_feasibility (B L : ℝ) (hL : 1 ≤ L) (y : Fin N → ℝ) :
+-- Helper: all components are 0 when μ ≥ max |y i - θ|
+private theorem primalFromDual_all_zero (y : Fin N → ℝ) (θ μ : ℝ)
+    (hμ : ∀ i, |y i - θ| ≤ μ) (i : Fin N) : primalFromDual y θ μ i = 0 := by
+  simp only [primalFromDual]; exact if_pos (hμ i)
+
+/-- **P3.2** For any `y : Fin N → ℝ` and feasible `(B, L)` with `|B| ≤ L`,
+    there exist dual variables `θ*, μ* ≥ 0` such that `primalFromDual y θ* μ*`
+    lies in the constraint set `𝒞(B, L)`.
+
+    **Proof** (Cases 1 and 2a complete; Case 2b sorry):
+
+    **Case 1** — μ = 0 suffices: Set `θ₀ = (∑ y − B) / N`. Then
+    `primalFromDual y θ₀ 0 i = y i − θ₀` and `∑(y i − θ₀) = B`. If
+    `∑|y i − θ₀| ≤ L`, use `(θ₀, 0)`. ✓
+
+    **Case 2a** — μ = 0 leverage > L, B = 0: Use `θ = 0` and
+    `μ = ∑|y i| + 1`. All components vanish (Case 1 of soft-threshold), giving
+    budget 0 = B and leverage 0 ≤ L. ✓
+
+    **Case 2b** — B ≠ 0 and μ = 0 leverage > L: sorry.  Requires IVT on the
+    budget-maintaining leverage curve `h(μ) = ∑|primalFromDual y (θ(μ)) μ i|`
+    where `θ(μ)` is the unique root of the budget equation for each fixed μ.
+    `h(0) > L` and `h(μ) → |B| ≤ L` as μ → ∞; IVT gives the witness. -/
+theorem projection_feasibility [NeZero N] (B L : ℝ) (hL : 1 ≤ L) (hBL : |B| ≤ L) (y : Fin N → ℝ) :
     ∃ θ μ : ℝ, 0 ≤ μ ∧ IsInConstraintSet B L (primalFromDual y θ μ) := by
-  sorry
-  -- TODO (Milestone 3):
-  -- The budget function h(θ) = ∑ primalFromDual y θ 0 i is continuous and strictly
-  -- decreasing (as a shifted mean). By IVT, ∃ θ₀ with h(θ₀) = B.
-  -- If ∑|primalFromDual y θ₀ 0 i| ≤ L, done with μ = 0.
-  -- Otherwise, bisect μ > 0 to enforce complementary slackness.
+  set θ₀ := (∑ i, y i - B) / ↑N with hθ₀_def
+  by_cases hlev : ∑ i, |primalFromDual y θ₀ 0 i| ≤ L
+  · -- ── Case 1: μ = 0 works ──────────────────────────────────────────────────
+    exact ⟨θ₀, 0, le_refl _, budget_at_theta0 y B, hlev⟩
+  · push Not at hlev
+    by_cases hB : B = 0
+    · -- ── Case 2a: B = 0, use large μ to zero all components ───────────────
+      subst hB
+      -- All |y i - 0| ≤ ∑|y j| + 1
+      have habs_bound : ∀ i : Fin N, |y i - 0| ≤ ∑ j, |y j| + 1 := fun i => by
+        simp only [sub_zero]
+        calc |y i|
+            ≤ ∑ j, |y j| := Finset.single_le_sum (f := fun j => |y j|)
+                (fun j _ => abs_nonneg _) (Finset.mem_univ i)
+          _ ≤ ∑ j, |y j| + 1 := le_add_of_nonneg_right one_pos.le
+      have hμ_pos : 0 ≤ ∑ j : Fin N, |y j| + 1 :=
+        add_nonneg (Finset.sum_nonneg (fun j _ => abs_nonneg _)) one_pos.le
+      have hzero : ∀ i : Fin N, primalFromDual y 0 (∑ j, |y j| + 1) i = 0 :=
+        fun i => primalFromDual_all_zero y 0 _ habs_bound i
+      refine ⟨0, ∑ i, |y i| + 1, hμ_pos, ?_⟩
+      constructor
+      · -- Budget = 0 = B = 0
+        simp [hzero]
+      · -- Leverage = 0 ≤ L
+        simp [hzero]; linarith
+    · -- ── Case 2b: B ≠ 0, leverage too large — IVT needed (sorry) ──────────
+      sorry
+      -- TODO: For fixed μ ≥ 0, the budget function f_μ(θ) = ∑ primalFromDual y θ μ i
+      -- is continuous, strictly decreasing in θ (N ≥ 1), and f_μ(θ) → ±∞ as θ → ∓∞.
+      -- By IVT (intermediate_value_univ₂_eventually₁), ∃ unique θ(μ) with f_μ(θ(μ)) = B.
+      -- The leverage h(μ) = ∑|primalFromDual y (θ(μ)) μ i| is continuous in μ,
+      -- h(0) > L (by hlev), and h(μ) → |B| ≤ L as μ → ∞.
+      -- By IVT, ∃ μ* with h(μ*) ≤ L.  Use (θ(μ*), μ*) as the witness.
 
 /-! ### P3.3 — Projection correctness from KKT conditions -/
 

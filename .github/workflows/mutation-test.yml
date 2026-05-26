@@ -1,0 +1,219 @@
+name: Mutation Test
+
+# Mutation testing is slow — runs weekly and on manual trigger only.
+# It is intentionally excluded from the PR path (python-ci.yml / lean-ci.yml).
+# Results are uploaded as artifacts; a summary is posted to the workflow run.
+#
+# Interpretation: a survival rate below 80% means tests are not catching logic bugs.
+# Target: ≥ 80% mutation kill rate in src/ for each subdir.
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'   # Monday 08:00 UTC
+  workflow_dispatch:
+    inputs:
+      subdir:
+        description: 'Subdir to test (leave blank for all)'
+        required: false
+        default: ''
+      timeout_per_mutant:
+        description: 'Seconds before a mutant is considered a timeout'
+        required: false
+        default: '60'
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Build the matrix dynamically so a manual run can target a single subdir.
+  # ─────────────────────────────────────────────────────────────────────────────
+  matrix-setup:
+    name: Build job matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Determine subdirs
+        id: set-matrix
+        run: |
+          INPUT="${{ github.event.inputs.subdir }}"
+          if [ -n "$INPUT" ]; then
+            # Single subdir requested
+            case "$INPUT" in
+              quant-core)
+                echo 'matrix={"include":[{"subdir":"quant-core","work-dir":"quant-core/python","src-path":"src/"}]}' >> "$GITHUB_OUTPUT"
+                ;;
+              mortgage-proofs)
+                echo 'matrix={"include":[{"subdir":"mortgage-proofs","work-dir":"mortgage-proofs","src-path":"src/"}]}' >> "$GITHUB_OUTPUT"
+                ;;
+              portfolio-proofs)
+                echo 'matrix={"include":[{"subdir":"portfolio-proofs","work-dir":"portfolio-proofs","src-path":"lean_pgd.py lean_pgd_direct.py"}]}' >> "$GITHUB_OUTPUT"
+                ;;
+              *)
+                echo "Unknown subdir: $INPUT" && exit 1
+                ;;
+            esac
+          else
+            # All subdirs
+            echo 'matrix={"include":[{"subdir":"quant-core","work-dir":"quant-core/python","src-path":"src/"},{"subdir":"mortgage-proofs","work-dir":"mortgage-proofs","src-path":"src/"},{"subdir":"portfolio-proofs","work-dir":"portfolio-proofs","src-path":"lean_pgd.py lean_pgd_direct.py"}]}' >> "$GITHUB_OUTPUT"
+          fi
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Python mutation testing via mutmut
+  # ─────────────────────────────────────────────────────────────────────────────
+  mutate-python:
+    name: mutmut — ${{ matrix.subdir }}
+    needs: matrix-setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrix-setup.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies + mutmut
+        working-directory: ${{ matrix.work-dir }}
+        run: |
+          uv sync --all-extras
+          uv pip install mutmut
+
+      # Run mutmut. Exit code 1 means some mutants survived — that's expected and
+      # not a hard failure here; the artifact tells us the rate.
+      - name: Run mutation tests
+        id: mutmut
+        working-directory: ${{ matrix.work-dir }}
+        env:
+          MUTMUT_TIMEOUT: ${{ github.event.inputs.timeout_per_mutant || '60' }}
+        run: |
+          uv run mutmut run \
+            --paths-to-mutate "${{ matrix.src-path }}" \
+            --runner "uv run pytest -x -q --tb=no" \
+            --timeout "$MUTMUT_TIMEOUT" \
+            || true   # don't fail the step; report below
+
+          # Capture results
+          uv run mutmut results > /tmp/mutmut-results.txt 2>&1 || true
+          uv run mutmut junitxml > /tmp/mutmut-junit.xml 2>&1 || true
+
+          # Extract counts for the step summary
+          KILLED=$(grep -c 'Killed' /tmp/mutmut-results.txt 2>/dev/null || echo 0)
+          SURVIVED=$(grep -c 'Survived' /tmp/mutmut-results.txt 2>/dev/null || echo 0)
+          TIMEOUT=$(grep -c 'Timeout' /tmp/mutmut-results.txt 2>/dev/null || echo 0)
+          TOTAL=$((KILLED + SURVIVED + TIMEOUT))
+
+          if [ "$TOTAL" -gt 0 ]; then
+            KILL_RATE=$(python3 -c "print(f'{$KILLED / $TOTAL * 100:.1f}')")
+          else
+            KILL_RATE="N/A"
+          fi
+
+          echo "killed=$KILLED"     >> "$GITHUB_OUTPUT"
+          echo "survived=$SURVIVED" >> "$GITHUB_OUTPUT"
+          echo "timeout=$TIMEOUT"   >> "$GITHUB_OUTPUT"
+          echo "total=$TOTAL"       >> "$GITHUB_OUTPUT"
+          echo "kill_rate=$KILL_RATE" >> "$GITHUB_OUTPUT"
+
+      - name: Write job summary
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Mutation Test — ${{ matrix.subdir }}
+
+          | Metric | Value |
+          |--------|-------|
+          | Killed | ${{ steps.mutmut.outputs.killed }} |
+          | Survived | ${{ steps.mutmut.outputs.survived }} |
+          | Timeout | ${{ steps.mutmut.outputs.timeout }} |
+          | Total | ${{ steps.mutmut.outputs.total }} |
+          | **Kill rate** | **${{ steps.mutmut.outputs.kill_rate }}%** |
+
+          Target: ≥ 80% kill rate. Survived mutants are uploaded as an artifact.
+          EOF
+
+      - name: Fail if kill rate below threshold
+        run: |
+          RATE="${{ steps.mutmut.outputs.kill_rate }}"
+          TOTAL="${{ steps.mutmut.outputs.total }}"
+          if [ "$TOTAL" -eq 0 ]; then
+            echo "No mutants generated — check that src-path is correct."
+            exit 1
+          fi
+          # Fail only if kill rate is critically low (< 60%); warn between 60–80%
+          RATE_INT=$(python3 -c "print(int(float('$RATE')))" 2>/dev/null || echo 0)
+          if [ "$RATE_INT" -lt 60 ]; then
+            echo "FAIL: kill rate $RATE% is below the minimum threshold of 60%."
+            echo "Review survived mutants in the artifact and add targeted tests."
+            exit 1
+          elif [ "$RATE_INT" -lt 80 ]; then
+            echo "WARN: kill rate $RATE% is below the target of 80%. Consider improving test coverage."
+          else
+            echo "PASS: kill rate $RATE% meets the ≥ 80% target."
+          fi
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report-${{ matrix.subdir }}-${{ github.run_id }}
+          path: |
+            ${{ matrix.work-dir }}/mutmut-report/
+            /tmp/mutmut-results.txt
+            /tmp/mutmut-junit.xml
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Lean mutation sketch — structural (no automated tool; manual analysis)
+  # A future phase when a Lean mutation framework matures.
+  # ─────────────────────────────────────────────────────────────────────────────
+  lean-mutation-sketch:
+    name: Lean mutation sketch (structural)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Count proof-critical operators
+        run: |
+          echo "## Lean Mutation Sketch — $(date -u '+%Y-%m-%d')" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "No automated Lean mutation tool is available yet." >> "$GITHUB_STEP_SUMMARY"
+          echo "The following counts indicate proof surface area to target with manual mutation:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          for dir in ftap-proofs options-proofs quant-core/lean mortgage-proofs/lean; do
+            if [ -d "$dir" ]; then
+              THEOREMS=$(grep -rn '^\(theorem\|lemma\) ' --include="*.lean" \
+                           --exclude-dir=".lake" "$dir" 2>/dev/null | wc -l | tr -d ' ')
+              echo "| $dir | $THEOREMS theorems/lemmas |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Manual mutation protocol: for each theorem, temporarily negate the" >> "$GITHUB_STEP_SUMMARY"
+          echo "conclusion (replace \`P\` with \`¬P\`) and confirm \`lake build\` fails." >> "$GITHUB_STEP_SUMMARY"
+          echo "If \`lake build\` still passes, the proof is vacuously true or the" >> "$GITHUB_STEP_SUMMARY"
+          echo "hypothesis set is inconsistent." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check for vacuous proofs
+        run: |
+          # A quick heuristic: theorems whose hypothesis list contains `False`
+          # or whose proof is just `exact absurd ...` may be vacuously true.
+          echo "Checking for potential vacuous proofs..."
+          grep -rn 'exact absurd\|exact False.elim\|exfalso' \
+            --include="*.lean" --exclude-dir=".lake" \
+            ftap-proofs/ options-proofs/ quant-core/lean/ mortgage-proofs/lean/ 2>/dev/null | \
+            grep -v '^\s*--' || echo "None found."
+
+          # Theorems with empty hypothesis list (⊢ P where P is non-trivial)
+          # These are either base cases (fine) or suspicious.
+          grep -rn '^theorem [a-zA-Z].*:$\|^lemma [a-zA-Z].*:$' \
+            --include="*.lean" --exclude-dir=".lake" \
+            ftap-proofs/ options-proofs/ 2>/dev/null | head -20 || echo "None found."
