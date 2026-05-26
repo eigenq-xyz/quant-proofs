@@ -123,9 +123,15 @@ theorem emm_implies_no_arbitrage (m : FinancialMarket Ω)
     **Proof sketch:** Under NA, `K ∩ ℝ₊^Ω = {0}` by
     `noArbitrage_iff_attainable_nonneg_eq_zero`. In the finite-dimensional space
     `EuclideanSpace ℝ Ω`, the positive orthant is a proper cone and `K` is a closed
-    subspace with `K ∩ ℝ₊^Ω = {0}`. Apply `ProperCone.hyperplane_separation'` from
-    `Mathlib.Analysis.Convex.Cone.InnerDual` to get a separating functional `q` with
-    `q ω > 0` for all `ω` and `∑_ω q ω * f ω = 0` for all `f ∈ K`. -/
+    subspace with `K ∩ ℝ₊^Ω = {0}`. Apply a hyperplane separation theorem (e.g.,
+    `geometric_hahn_banach_point_closed` or the inner-dual cone characterization from
+    `Mathlib.Analysis.Convex.Cone.InnerDual`) to get a separating functional `q` with
+    `q ω > 0` for all `ω` and `∑_ω q ω * f ω = 0` for all `f ∈ K`.
+
+    **API note (high-risk):** `ProperCone.hyperplane_separation'` is the target but its
+    exact name in current mathlib4 is uncertain. Before implementing, search for the
+    correct lemma in `Mathlib.Analysis.Convex.Cone.*`. Also: `attainablePayoffs m`
+    should be refactored to a `Submodule ℝ (Ω → ℝ)` to access closedness results. -/
 private theorem state_price_functional (m : FinancialMarket Ω) (hNA : NoArbitrage m) :
     ∃ q : Ω → ℝ,
       (∀ ω : Ω, 0 < q ω) ∧
@@ -193,8 +199,12 @@ theorem no_arbitrage_implies_emm (m : FinancialMarket Ω)
     NoArbitrage m ↔ ∃ Q, EquivalentMartingaleMeasure m Q
     ```
 
-    The `hP_full` hypothesis is needed to ensure that state prices constructed in
-    the hard direction (NA → EMM) give a measure equivalent to `P`. -/
+    The `hP_full` hypothesis is needed for **both** directions:
+    - *Hard direction (NA → EMM)*: state prices constructed via T5.2 give a measure
+      equivalent to `P` only if `P` has full support.
+    - *Easy direction (EMM → NA)*: `ArbitrageOpportunity.profit` witnesses a state `ω₀`
+      with `Ṽ T θ ω₀ > 0`, but we need `Q {ω₀} > 0` to derive `E^Q[Ṽ T θ] > 0`.
+      Since `Q ~ P`, this requires `P {ω₀} > 0` — which `hP_full` provides. -/
 theorem ftap (m : FinancialMarket Ω) (hP_full : ∀ ω : Ω, 0 < m.P {ω}) :
     NoArbitrage m ↔ ∃ Q : MeasureTheory.Measure Ω, EquivalentMartingaleMeasure m Q := by
   constructor

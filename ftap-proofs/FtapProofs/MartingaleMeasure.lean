@@ -95,8 +95,11 @@ theorem discountedValue_martingale_of_emm (m : FinancialMarket Ω)
     -- apply Finset.stronglyMeasurable_sum
     -- intro i _
     -- apply StronglyMeasurable.mul
-    -- · exact (θ.predictable i t).stronglyMeasurable  -- holdings predictable → ℱ t-meas
-    -- · exact (m.S_adapted i t).stronglyMeasurable    -- S adapted → ℱ t-meas for discountedPrice
+    -- · -- holdings: θ.predictable gives ℱ_{prevTime t}-measurability.
+    --   -- Need to lift to ℱ_t via filtration monotonicity:
+    --   -- (θ.predictable i t).mono (m.𝒻.mono (Fin.castSucc_le_succ t) Ω rfl)
+    --   --   or more precisely: StronglyMeasurable.mono with the comap argument.
+    -- · exact (m.S_adapted i t).stronglyMeasurable    -- S adapted → ℱ_t-meas for discountedPrice
   · -- condExp property: E^Q[Ṽ (t+1) θ | ℱ t] = Ṽ t θ a.e.
     intro t ht
     sorry
