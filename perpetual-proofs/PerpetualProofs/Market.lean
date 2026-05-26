@@ -48,7 +48,9 @@ representing the spot price at each funding interval. The market is characterize
 - The intensity `p = κ / (1 + r) ∈ (0, 1)` governing the geometric stopping time
 
 All spot prices are strictly positive (`spot_pos`), which is required for the
-inverse perpetual convexity adjustment (Theorem 3). -/
+inverse perpetual convexity adjustment (Theorem 3). `spot_bounded` ensures the
+cash-flow tsum converges — see `geometricExpectation_summable` in `stopped-time-proofs`.
+Resolves issues #124 and #125. -/
 structure OnePeriodMarket where
   /-- Spot price process: `spot k ω` is the spot price at funding date `k` in state `ω` -/
   spot : ℕ → Ω → ℝ
@@ -64,6 +66,13 @@ structure OnePeriodMarket where
   κ_lt : κ < 1 + r
   /-- Spot prices are strictly positive (required for inverse perpetual) -/
   spot_pos : ∀ k ω, 0 < spot k ω
+  /-- Spot prices are uniformly bounded above.
+  Required for convergence of `geometricExpectation` in `CostlessEntry`: the cash-flow
+  tsum `∑' k, geomPMF p k * (F₀ - spot k ω)` is summable only when `spot k ω ≤ C`
+  for all `k` and `ω`. Without this, Lean's `tsum` convention (returns 0 for
+  non-summable series) makes `CostlessEntry` vacuously satisfiable for unbounded
+  spot processes. Resolves issue #124. -/
+  spot_bounded : ∃ C : ℝ, ∀ k : ℕ, ∀ ω : Ω, spot k ω ≤ C
 
 /-! ### P2.2 — Equivalent martingale measure -/
 
@@ -71,10 +80,13 @@ structure OnePeriodMarket where
 
 A risk-neutral probability measure Q on Ω, represented by a strictly positive
 density function. Q is equivalent to the reference measure P (both assign positive
-probability to every state) via `density_pos`.
+probability to every state) via `density_pos`. The field `spot_expectation_const`
+encodes the martingale condition: Q-expected spot prices are constant across all
+funding dates. This is the time-homogeneous analogue of the full martingale condition
+and is sufficient for all theorems in `perpetual-proofs`.
 
 **TODO:** Replace with `FtapProofs.MartingaleMeasure.EquivalentMartingaleMeasure`
-once ftap-proofs Phase 4 (issue #110) is complete. -/
+once ftap-proofs Phase 4 (issue #110) is complete. Resolves issue #125. -/
 structure OnePeriodEMM (market : OnePeriodMarket Ω) where
   /-- Risk-neutral density: Q({ω}) = density ω -/
   density : Ω → ℝ
@@ -82,5 +94,12 @@ structure OnePeriodEMM (market : OnePeriodMarket Ω) where
   density_pos : ∀ ω, 0 < density ω
   /-- Q is a probability measure: densities sum to 1 -/
   density_sum_eq_one : ∑ ω : Ω, density ω = 1
+  /-- Martingale condition: Q-expected spot price is constant across all funding dates.
+  In the time-homogeneous model, `E^Q[S_k] = E^Q[S_{k'}]` for all `k`, `k'`. This
+  is what allows the geometric expectation in the pricing formula to reduce to a single
+  Q-expectation `E^Q[S_τ]`. Required by `no_arb_existence` (PR4.2). -/
+  spot_expectation_const : ∀ k k' : ℕ,
+    ∑ ω : Ω, density ω * market.spot k ω =
+    ∑ ω : Ω, density ω * market.spot k' ω
 
 end PerpetualProofs
