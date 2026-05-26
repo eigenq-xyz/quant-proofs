@@ -1,3 +1,8 @@
+import FtapProofs.Arbitrage
+import FtapProofs.MartingaleMeasure
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.Analysis.InnerProductSpace.Basic
+
 /-!
 # The Fundamental Theorem of Asset Pricing
 
@@ -10,35 +15,191 @@ NoArbitrage m ↔ ∃ Q, EquivalentMartingaleMeasure m Q
 
 ## Proof sketch
 
-**(⇐) EMM implies NA** (the easy direction).
-Suppose `Q` is an EMM and `θ` is a self-financing strategy with `V 0 θ = 0`.
-Since `Q ~ P`, `V T θ ≥ 0` a.s. under `P` implies `V T θ ≥ 0` a.s. under `Q`.
-The discounted value process `Ṽ t θ` is a `Q`-martingale, so:
-  `E^Q [Ṽ T θ] = Ṽ 0 θ = 0`
-Since `Ṽ T θ ≥ 0` and has expectation 0, we get `Ṽ T θ = 0` `Q`-a.s., hence `P`-a.s.
-So no free lunch is possible.
+### (⇐) EMM implies NA (T5.1 — easy direction)
 
-**(⇒) NA implies EMM exists** (the hard direction, via Farkas' lemma).
-In the finite-state setting, let `K` be the linear subspace of attainable
-discounted terminal payoffs from zero-cost self-financing strategies.
-NA says `K ∩ ℝ₊^Ω = {0}`.
-By the separating hyperplane theorem (Farkas' lemma for finite dimensions),
-there exists a strictly positive linear functional `φ : ℝ^Ω → ℝ` that
-vanishes on `K`. Normalize `φ` to a probability measure: `Q ω := φ(1_ω) / φ(1)`.
-Strict positivity of `φ` gives `Q ~ P`. The martingale property of `S̃ i` under `Q`
-follows from `φ` vanishing on `K` (buy-and-hold strategies lie in `K`).
+Suppose `Q` is an EMM and `θ` is an arbitrage opportunity with zero cost.
+- Zero cost: `Ṽ 0 θ ω = 0` for all `ω`.
+- Non-negative terminal payoff: `Ṽ T θ ω ≥ 0` for all `ω`.
+- Profit in some state: `∃ ω₀, 0 < Ṽ T θ ω₀`.
+
+By risk-neutral pricing (Q4.5): `E^Q[Ṽ T θ] = Ṽ 0 θ ω = 0` for any `ω`.
+But `Ṽ T θ ≥ 0` everywhere and `Ṽ T θ ω₀ > 0`, so `E^Q[Ṽ T θ] > 0`. Contradiction.
+
+### (⇒) NA implies EMM (T5.2–T5.3 — hard direction via Farkas)
+
+Let `K = attainablePayoffs m` be the linear subspace of attainable discounted
+terminal payoffs from zero-cost self-financing strategies.
+
+NA says `K ∩ ℝ₊^Ω = {0}` (by `noArbitrage_iff_attainable_nonneg_eq_zero`).
+
+**T5.2** By the separating hyperplane theorem (`ProperCone.hyperplane_separation'`
+from `Mathlib.Analysis.Convex.Cone.InnerDual`), there exists a strictly positive
+linear functional `φ : (Ω → ℝ) → ℝ` that vanishes on `K` and is strictly positive
+on `ℝ₊^Ω \ {0}`.
+
+In the finite-state setting `Ω → ℝ ≅ EuclideanSpace ℝ Ω`, so `φ` corresponds to
+a vector `q : Ω → ℝ` with `q ω > 0` for all `ω` and `∑_ω q ω · f ω = 0` for all `f ∈ K`.
+
+**T5.3** Normalize `q` to a probability measure `Q ω = q ω / (∑_ω q ω)`.
+- `Q ~ P`: since `q ω > 0` for all `ω`, `Q {ω} > 0`, hence `Q ~ P` by the full
+  support assumption on `P`.
+- Martingale property: buy-and-hold strategies (holding 1 unit of asset `i` from time
+  `s` to `T` and 0 otherwise) lie in `K`. The vanishing of `φ` on `K` translates to
+  `E^Q[discountedPrice m i (t+1)] = discountedPrice m i t`, i.e., the martingale property.
+
+## Sorry ledger
+
+- **T5.1 integral step**: `∫ Ṽ T θ dQ > 0` when `Ṽ T θ ≥ 0` and `∃ ω₀, Ṽ T θ ω₀ > 0`
+  and `Q {ω} > 0` for all `ω`. Use `integral_pos_of_pos_of_ae_pos` or
+  `Measure.sum_smul_dirac` + `Finset.sum_pos`.
+
+- **T5.2** (`state_price_functional`): cone separation in `EuclideanSpace ℝ Ω`.
+  Set up `K_cone` as the linear subspace `K` viewed as a closed convex cone, and
+  `pos_orthant` as `{f | ∀ ω, 0 ≤ f ω}`. Apply
+  `ProperCone.hyperplane_separation' : K_cone ∩ pos_orthant = {0} → ∃ φ, ...`.
+
+- **T5.3** (`state_prices_to_emm`): construct `Q` from state prices and verify
+  both the equivalence and martingale properties. Use `Measure.sum_smul_dirac`
+  to build `Q` as a weighted sum of Dirac measures.
+
+## Contents
+
+- **T5.1** `emm_implies_no_arbitrage` — EMM ⇒ NA
+- **T5.2** `state_price_functional` — NA ⇒ ∃ strictly positive functional vanishing on K
+- **T5.3** `state_prices_to_emm` — state prices ⇒ EMM
+- **T5.4** `no_arbitrage_implies_emm` — NA ⇒ ∃ EMM (combines T5.2 + T5.3)
+- **T5.5** `ftap` — the full biconditional
 -/
 
 namespace FtapProofs
 
--- TODO: theorem emm_implies_no_arbitrage :
---   EquivalentMartingaleMeasure m Q → NoArbitrage m
+variable {Ω : Type*} [Fintype Ω] [MeasurableSpace Ω] [MeasurableSingletonClass Ω]
 
--- TODO: theorem no_arbitrage_implies_emm :
---   NoArbitrage m → ∃ Q, EquivalentMartingaleMeasure m Q
---   (requires: Farkas' lemma applied to the attainable payoff subspace)
+/-! ### T5.1 EMM implies no arbitrage -/
 
--- TODO: theorem ftap :
---   NoArbitrage m ↔ ∃ Q, EquivalentMartingaleMeasure m Q
+/-- **(Easy direction.)** If an equivalent martingale measure exists, the market is
+    arbitrage-free.
+
+    **Proof:** By risk-neutral pricing, any zero-cost self-financing strategy satisfies
+    `E^Q[Ṽ T θ] = Ṽ 0 θ = 0`. If `θ` were an arbitrage, `Ṽ T θ ≥ 0` everywhere and
+    `Ṽ T θ ω₀ > 0` for some `ω₀`. Since `Q {ω₀} > 0`, this forces `E^Q[Ṽ T θ] > 0`,
+    contradicting the zero value. -/
+theorem emm_implies_no_arbitrage (m : FinancialMarket Ω)
+    (hP_full : ∀ ω : Ω, 0 < m.P {ω})
+    (Q : MeasureTheory.Measure Ω) (hQ : EquivalentMartingaleMeasure m Q) :
+    NoArbitrage m := by
+  intro ⟨arb⟩
+  -- Extract the arbitrage components
+  have hQprob := hQ.1.1
+  have hQeq := hQ.1.2
+  -- By risk-neutral pricing: E^Q[Ṽ T θ] = Ṽ 0 θ ω₀ = 0
+  obtain ⟨ω₀, hω₀pos⟩ := arb.profit
+  have hQ_pos : 0 < Q {ω₀} := by
+    rw [← hQeq ω₀]
+    exact hP_full ω₀
+  -- The integral is positive: Ṽ T θ ≥ 0 everywhere and Ṽ T θ ω₀ > 0 with Q {ω₀} > 0
+  have hintegral_pos : 0 <
+      MeasureTheory.integral Q
+        (discountedValueProcess m arb.θ ⟨m.T, Nat.lt_succ_self m.T⟩) := by
+    sorry
+    -- Tactic path:
+    -- In a finite measurable space with MeasurableSingletonClass,
+    -- ∫ f dQ = ∑ ω, Q {ω} * f ω (via integral_fintype or Measure.sum_smul_dirac).
+    -- Then Finset.sum_pos gives positivity from hQ_pos and hω₀pos,
+    -- and arb.nonneg gives non-negativity for all other terms.
+  -- But risk_neutral_pricing says this integral equals 0 (using zero_cost with ω₀)
+  have hzero : MeasureTheory.integral Q
+      (discountedValueProcess m arb.θ ⟨m.T, Nat.lt_succ_self m.T⟩) = 0 := by
+    have h0 := risk_neutral_pricing m arb.θ arb.sf Q hQ ω₀
+    simp only [arb.zero_cost ω₀] at h0
+    exact h0
+  linarith
+
+/-! ### T5.2 State-price functional (Farkas / cone separation) -/
+
+/-- **(Hard direction, step 1.)** If the market satisfies NA, there exists a strictly
+    positive functional `q : Ω → ℝ` that vanishes on all attainable payoffs.
+
+    **Proof sketch:** Under NA, `K ∩ ℝ₊^Ω = {0}` by
+    `noArbitrage_iff_attainable_nonneg_eq_zero`. In the finite-dimensional space
+    `EuclideanSpace ℝ Ω`, the positive orthant is a proper cone and `K` is a closed
+    subspace with `K ∩ ℝ₊^Ω = {0}`. Apply `ProperCone.hyperplane_separation'` from
+    `Mathlib.Analysis.Convex.Cone.InnerDual` to get a separating functional `q` with
+    `q ω > 0` for all `ω` and `∑_ω q ω * f ω = 0` for all `f ∈ K`. -/
+private theorem state_price_functional (m : FinancialMarket Ω) (hNA : NoArbitrage m) :
+    ∃ q : Ω → ℝ,
+      (∀ ω : Ω, 0 < q ω) ∧
+      (∀ f ∈ attainablePayoffs m, ∑ ω : Ω, q ω * f ω = 0) := by
+  sorry
+  -- Tactic path:
+  -- 1. Let K := attainablePayoffs m (shown linear subspace by attainablePayoffs_isLinearSubspace)
+  -- 2. Embed Ω → ℝ as EuclideanSpace ℝ Ω (finite-dimensional inner product space)
+  -- 3. The positive orthant P = {f | ∀ ω, 0 ≤ f ω} is a ProperCone in EuclideanSpace ℝ Ω
+  -- 4. By noArbitrage_iff_attainable_nonneg_eq_zero applied to hNA:
+  --    K ∩ P = {0}
+  -- 5. Apply ProperCone.hyperplane_separation' (or Farkas lemma variant) to get q.
+  -- 6. Translate the inner product ⟪q, f⟫ = ∑ ω, q ω * f ω.
+
+/-! ### T5.3 State prices to EMM -/
+
+/-- **(Hard direction, step 2.)** Given a strictly positive functional `q` vanishing on
+    attainable payoffs, normalize it to an EMM.
+
+    **Proof sketch:**
+    - Define `Q ω = q ω / (∑ ω, q ω)` as a probability measure via
+      `Measure.sum_smul_dirac`.
+    - `Q ~ P`: since `q ω > 0` and `P {ω} > 0` for all `ω` (full support), we have
+      `Q {ω} > 0 ↔ P {ω} > 0`.
+    - Martingale property: for each asset `i` and time `t`, the buy-and-hold strategy
+      (hold 1 unit of asset `i` from `t` to `T`) is a zero-cost self-financing strategy
+      whose payoff is `discountedPrice m i T - discountedPrice m i t`. The vanishing
+      of `q` on attainable payoffs gives `E^Q[discountedPrice m i T] = discountedPrice m i t`,
+      which is the martingale property. -/
+private theorem state_prices_to_emm (m : FinancialMarket Ω)
+    (hP_full : ∀ ω : Ω, 0 < m.P {ω})
+    (q : Ω → ℝ) (hq_pos : ∀ ω : Ω, 0 < q ω)
+    (hq_vanish : ∀ f ∈ attainablePayoffs m, ∑ ω : Ω, q ω * f ω = 0) :
+    ∃ Q : MeasureTheory.Measure Ω, EquivalentMartingaleMeasure m Q := by
+  sorry
+  -- Tactic path:
+  -- 1. Let Z := ∑ ω : Ω, q ω (positive since each term positive)
+  -- 2. Define Q := (1/Z) • ∑ ω : Ω, q ω • Measure.dirac ω
+  --    (or equivalently via MeasureTheory.Measure.ofFintype)
+  -- 3. Verify IsProbabilityMeasure Q: Q univ = (1/Z) * Z = 1
+  -- 4. Verify EquivalentMeasure: Q {ω} = q ω / Z > 0 ↔ P {ω} > 0 (by hP_full and hq_pos)
+  -- 5. Verify IsMartingaleMeasure: for each i, use hq_vanish on buy-and-hold strategies
+  --    to get E^Q[discountedPrice m i (t+1) - discountedPrice m i t] = 0, i.e., martingale
+
+/-! ### T5.4 NA implies EMM -/
+
+/-- **(Hard direction.)** If the market is arbitrage-free, there exists an equivalent
+    martingale measure. This follows by combining the cone separation (T5.2) with
+    the measure construction (T5.3). -/
+theorem no_arbitrage_implies_emm (m : FinancialMarket Ω)
+    (hP_full : ∀ ω : Ω, 0 < m.P {ω})
+    (hNA : NoArbitrage m) :
+    ∃ Q : MeasureTheory.Measure Ω, EquivalentMartingaleMeasure m Q := by
+  obtain ⟨q, hq_pos, hq_vanish⟩ := state_price_functional m hNA
+  exact state_prices_to_emm m hP_full q hq_pos hq_vanish
+
+/-! ### T5.5 The full FTAP biconditional -/
+
+/-- **Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981).**
+    In a finite-state discrete-time market with full support (`P {ω} > 0` for all `ω`),
+    the market is arbitrage-free if and only if there exists an equivalent martingale
+    measure.
+
+    ```
+    NoArbitrage m ↔ ∃ Q, EquivalentMartingaleMeasure m Q
+    ```
+
+    The `hP_full` hypothesis is needed to ensure that state prices constructed in
+    the hard direction (NA → EMM) give a measure equivalent to `P`. -/
+theorem ftap (m : FinancialMarket Ω) (hP_full : ∀ ω : Ω, 0 < m.P {ω}) :
+    NoArbitrage m ↔ ∃ Q : MeasureTheory.Measure Ω, EquivalentMartingaleMeasure m Q := by
+  constructor
+  · exact no_arbitrage_implies_emm m hP_full
+  · rintro ⟨Q, hQ⟩
+    exact emm_implies_no_arbitrage m hP_full Q hQ
 
 end FtapProofs
