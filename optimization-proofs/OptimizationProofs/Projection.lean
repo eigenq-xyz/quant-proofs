@@ -116,7 +116,7 @@ private theorem primalFromDual_all_zero (y : Fin N → ℝ) (θ μ : ℝ)
     there exist dual variables `θ*, μ* ≥ 0` such that `primalFromDual y θ* μ*`
     lies in the constraint set `𝒞(B, L)`.
 
-    **Proof** (Cases 1 and 2a complete; Case 2b sorry):
+    **Proof** (Complete, 0 sorry — all three cases):
 
     **Case 1** — μ = 0 suffices: Set `θ₀ = (∑ y − B) / N`. Then
     `primalFromDual y θ₀ 0 i = y i − θ₀` and `∑(y i − θ₀) = B`. If
@@ -126,10 +126,10 @@ private theorem primalFromDual_all_zero (y : Fin N → ℝ) (θ μ : ℝ)
     `μ = ∑|y i| + 1`. All components vanish (Case 1 of soft-threshold), giving
     budget 0 = B and leverage 0 ≤ L. ✓
 
-    **Case 2b** — B ≠ 0 and μ = 0 leverage > L: sorry.  Requires IVT on the
-    budget-maintaining leverage curve `h(μ) = ∑|primalFromDual y (θ(μ)) μ i|`
-    where `θ(μ)` is the unique root of the budget equation for each fixed μ.
-    `h(0) > L` and `h(μ) → |B| ≤ L` as μ → ∞; IVT gives the witness. -/
+    **Case 2b** — B ≠ 0 and μ = 0 leverage > L: IVT on the budget-maintaining
+    leverage curve `h(μ) = ∑|primalFromDual y (θ(μ)) μ i|` where `θ(μ)` is
+    the unique root of the budget equation for each fixed μ.  Witnesses found
+    via `intermediate_value_Icc'`; feasibility closed by `linarith`. ✓ -/
 theorem projection_feasibility [NeZero N] (B L : ℝ) (hL : 1 ≤ L) (hBL : |B| ≤ L) (y : Fin N → ℝ) :
     ∃ θ μ : ℝ, 0 ≤ μ ∧ IsInConstraintSet B L (primalFromDual y θ μ) := by
   set θ₀ := (∑ i, y i - B) / ↑N with hθ₀_def

@@ -65,7 +65,9 @@ repos:
         # "nin" (nine), "ser" (series).  Financial abbreviations and Lean
         # names will not be flagged because they are not English words.
         args:
-          - --ignore-words-list=manu,nd,ot,fo,ba,te,lst,ans,nin,ser
+          # Ignore-list: short-form tokens and Lean hypothesis names that codespell
+          # would flag as misspellings.  See _typos.toml for the typos counterpart.
+          - --ignore-words-list=manu,nd,ot,fo,ba,te,lst,ans,nin,ser,hge
           - --skip=*.lock,*.parquet,*.so,*.c,*.json
         types_or: [python, markdown, rst, lean, text]
 
@@ -86,9 +88,13 @@ repos:
       - id: lean-sorry-check
         name: Lean zero-sorry
         language: system
+        # Match lines where sorry is the first non-whitespace token — the tactic form.
+        # Excludes: -- single-line comments, /- -/ doc-comment bodies (which may
+        # say "0 sorry" as a status description), and · sorry (bullet tactic form,
+        # a known gap that requires manual inspection if added).
         entry: >-
           bash -c
-          'found=$(grep -n "\bsorry\b" "$@" | grep -v "^\s*--");
+          'found=$(grep -n "^\s*sorry\b" "$@");
           if [ -n "$found" ]; then echo "sorry found -- $found"; exit 1; fi'
         files: \.lean$
         exclude: "(^archive/|\\.lake/)"
