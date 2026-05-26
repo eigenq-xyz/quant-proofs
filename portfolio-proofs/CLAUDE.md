@@ -5,7 +5,7 @@ the formally verified Lean 4 PGD solver in `optimization-proofs/`.
 
 ## What this project is
 
-Six failure scenarios that demonstrate where standard solvers (SLSQP, Gurobi,
+Seven failure scenarios that demonstrate where standard solvers (SLSQP, Gurobi,
 trust_constr) break on real portfolio-optimization edge cases, and where the
 Lean PGD either holds or fails differently.  Each scenario is a standalone
 Quarto document (`scenarios/<name>/<name>.qmd`) with Python solver modules
@@ -94,3 +94,7 @@ and scientific-notation strings.
   produce incorrect results on the raw rank-deficient input.
 - `phantom_positions` and `vix_shock` currently use `lean_pgd_direct`
   (single-shot); updating them to the persistent wrapper is a tracked TODO.
+- `lean_pgd_ffi.py`: Cython FFI wrapper, dispatches to FFI-flat or FFI-boxed
+  based on condition number.  FFI-flat ≈ subprocess; FFI-boxed is ~1.5x faster
+  for cond ≥ 150 (e.g. boundary_trap random sigma, cond≈204).
+  Build: `cd optimization-proofs && python ffi/setup_ffi.py build_ext --inplace`

@@ -15,25 +15,53 @@ per solve for N = 10 with iters = 80 (6 PGD steps × 80² bisection steps × N n
 per `budgetSumF` call).  At ≈ 60 ns/alloc+free this adds ≈ 26 ms of overhead.
 The Std.Range rewrite eliminates all transient list allocations.
 
-## Performance notes
+## Performance notes (measured, Apple M-series, warm persistent subprocess)
 
-- Warm subprocess call (persistent lean_pgd.py):  ≈ 3 ms  (N = 10, full covariance)
-- Dominant cost:  `matVecFlat` — N² multiply-adds per PGD step, 6 steps total
-- Pipe + string-parse overhead:  ≈ 0.2 ms  (measured with diagonal sigma where
-  the fast-path projection skips the bisection entirely)
-- True algorithmic floor (no I/O):  pgd_bench reports 16 ns, but this figure is
-  likely optimistic due to compiler constant-folding of the pure, fixed-argument
-  call in the timing loop.
+The dominant cost is the Duchi projection bisection, not the pipe I/O or matrix-vector
+multiply.  Measured medians across 15 warm reps:
+
+| Problem (L1 constraint active?)    | Subprocess | FFI-flat | FFI-boxed |
+|------------------------------------|-----------|----------|-----------|
+| N=2 diag, L1 inactive (pipe floor) |    2.4 ms |   2.5 ms |    6.7 ms |
+| N=5 diag, L1 active (phantom_pos)  |    4.8 ms |   4.9 ms |    4.9 ms |
+| N=3 diag, L1 active (vix shock)    |    7.6 ms |   7.5 ms |   24.5 ms |
+| N=10 CAPM, cond≈36 (sp500)         |   83.3 ms |  82.5 ms |  122.1 ms |
+| N=10 rand, cond≈204 (bound.trap)   |  343.7 ms | 344.0 ms |  231.6 ms |
+
+Key takeaways:
+- **FFI-flat ≈ subprocess** — the Cython path eliminates pipe overhead (~0.2 ms)
+  but the compute cost is identical (same Lean code, same `FloatArray.get!` bounds
+  checks).
+- **FFI-boxed** is faster than FFI-flat only for large high-condition problems (cond ≥ 200).
+  For small or well-conditioned problems it is slower due to N² `lean_box_float` calls
+  in the marshalling layer.
+- The bisection dominates.  Per-step cost (L1 active, N=10, iters=53):
+    ~43 active outer iters × 53 inner iters × N ops × ~60 ns/FloatArray.get! ≈ 1.4 ms.
+- `pgd_bench` reports ~16 ns (1 000-run loop, fixed args, no I/O) — this figure is
+  unreliable due to compiler constant-folding of the pure, fixed-argument call.
+
+## Bisection step count: why 53
+
+IEEE 754 `Float` has a 53-bit mantissa.  After k bisection steps the search interval
+shrinks by 2^(-k):
+  - Inner bisect (theta s.t. Σ softThresh(yᵢ - θ, μ) = B):
+      range ≈ 8; need precision ≤ tol_pgd/N ≈ 1e-9; k ≥ 33.
+  - Outer bisect (μ ≥ 0 s.t. leverage = L, tol 1e-11):
+      range ≈ 4; need 4/2^k × N < 1e-11; k ≥ 43.
+Using `iters = 53` satisfies both with a ~10-step safety margin and equals the
+machine-precision ceiling.  Previously 80; reduction eliminates 37.5% of bisection
+work while preserving full float64 accuracy.
 
 ## Further optimisation opportunities
 
-1. Replace `FloatArray.get!` (bounds-checked) with unsafe indexing in the proven-safe
-   inner loops — `FloatArray.uget` in v4.30.0-rc2 still requires a proof argument,
-   so this needs a custom unsafe wrapper.
-2. Use the existing Cython FFI (`ffi/pgd_ffi.pyx`) to eliminate pipe + parse overhead
-   entirely; estimated warm latency ≈ 0.3 ms via FFI vs 3 ms via subprocess.
-3. Reduce bisection iters from 80 to 40 (53 steps give full float64 precision;
-   40 gives ≈ 12 significant figures, far beyond the 1e-8 convergence criterion).
+1. **Separate outer/inner iters**: outer only needs ~43 steps; inner only ~33. Splitting
+   them (e.g., `outerIters=50, innerIters=40`) would save another 25% of bisection work.
+2. **Unsafe array indexing**: Replace `FloatArray.get!` (bounds-checked) with unchecked
+   access in the proven-safe inner loops.  In v4.30.0-rc2, `FloatArray.uget` still
+   requires a proof argument; a custom `@[extern]` wrapper to `lean_float_array_cptr`
+   would eliminate the ~60 ns/op bounds-check overhead.
+3. **Cython FFI for large N**: For problems where marshalling is cheap relative to
+   computation (N ≥ 50 with many PGD steps), the FFI-boxed path is faster.
 -/
 namespace OptimizationProofs
 
@@ -94,7 +122,7 @@ private def bisectThetaF (y : FloatArray) (mu B : Float) (iters : Nat) : Float :
   return (lo + hi) / 2.0
 
 /-- Duchi et al. (2008) projection onto { x | Σxᵢ = B, Σ|xᵢ| ≤ L } using FloatArray. -/
-def projectL1F (y : FloatArray) (B L : Float) (iters : Nat := 80) : FloatArray := Id.run do
+def projectL1F (y : FloatArray) (B L : Float) (iters : Nat := 53) : FloatArray := Id.run do
   let θ₀ := bisectThetaF y 0.0 B iters
   let x₀ := primalFromDualF y θ₀ 0.0
   let mut lev₀ : Float := 0.0
