@@ -53,10 +53,10 @@ Sum the descent inequality from `k = 0` to `K`:
 Since all terms are non-negative and `f(wₖ) − f(w*)` is the minimum in the
 partial sum, we get the O(1/K) bound.
 
-**Status**: Proof obligations are stubs.  The structure is correct; individual
-steps require `Mathlib.Analysis.Convex.GradientDescent` (or equivalent bespoke
-lemmas) and the projection inequality from `Projection.projection_correctness`.
-Remove `sorry` after completing Milestones 3 and 4.
+**Status**: Both theorems fully proved, 0 sorry.  `pgd_descent_lemma` uses
+bespoke quadratic lemmas from `QuadraticLemmas.lean` and the projection
+inequality from `Projection.projection_correctness`.  `pgd_convergence`
+telescopes the descent inequality over K steps.
 -/
 
 open scoped BigOperators Matrix
@@ -81,8 +81,9 @@ variable {N : ℕ} [NeZero N]
 
     where `w₊ = Π(w − η ∇f(w))` is the PGD update.
 
-    **Status**: `sorry`.  Full proof uses the Lipschitz smoothness inequality and
-    the projection inequality from `projection_correctness`. -/
+    **Status**: Complete, 0 sorry.  Proof chain: quadratic_identity (A),
+    quadratic_convexity (B), Lipschitz bound (C), projection inequality (D),
+    polarization_identity (E); closed by `nlinarith`. -/
 theorem pgd_descent_lemma
     (Cov : Matrix (Fin N) (Fin N) ℝ) (ret : Fin N → ℝ)
     (hCov : Cov.PosDef)
@@ -183,8 +184,8 @@ theorem pgd_descent_lemma
     In particular, for any `ε > 0` there exists `K` such that for all `k ≥ K`,
     `|f(wₖ) − f(w*)| < ε`.
 
-    **Status**: `sorry`.  Full proof telescopes `pgd_descent_lemma` over `k` steps
-    and uses convexity to bound `f(wₖ) − f(w*)` from the minimum in the sum. -/
+    **Status**: Complete, 0 sorry.  Telescopes `pgd_descent_lemma` over K steps;
+    K·E(K) ≤ D₀/(2η) by sum lower bound; K₀ = ⌈D₀/(2ηε)⌉ + 1 witnesses ε. -/
 theorem pgd_convergence
     (Cov : Matrix (Fin N) (Fin N) ℝ) (ret : Fin N → ℝ)
     (hCov : Cov.PosDef)

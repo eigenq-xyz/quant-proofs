@@ -32,12 +32,10 @@ optimization-proofs/
                                 quadratic_identity, quadratic_convexity, polarization_identity
     Shrinkage.lean            — Ledoit-Wolf shrinkage theorems (0 sorry):
                                 shrinkage_isSymmetric, shrinkage_psd
-    Projection.lean           — dual-bisection projection proofs:
-                                projection_feasibility (Cases 1+2a complete; Case 2b open),
-                                projection_correctness (complete, 0 sorry)
-    Convergence.lean          — PGD convergence proofs:
-                                pgd_descent_lemma (proof body complete),
-                                pgd_convergence (proof body complete)
+    Projection.lean           — dual-bisection projection proofs (0 sorry):
+                                projection_feasibility, projection_correctness
+    Convergence.lean          — PGD convergence proofs (0 sorry):
+                                pgd_descent_lemma, pgd_convergence
   CLI.lean                    — stdin/stdout server loop (pgd_solve entry point)
   Main.lean                   — benchmark (pgd_bench entry point)
   ffi/
@@ -55,10 +53,10 @@ optimization-proofs/
 | `quadratic_identity` | `QuadraticLemmas.lean` | Complete, 0 sorry |
 | `quadratic_convexity` | `QuadraticLemmas.lean` | Complete, 0 sorry |
 | `polarization_identity` | `QuadraticLemmas.lean` | Complete, 0 sorry |
-| `projection_feasibility` | `Projection.lean` | Cases 1+2a complete; Case 2b open (requires IVT) |
-| `projection_correctness` | `Projection.lean` | **Complete, 0 sorry** |
-| `pgd_descent_lemma` | `Convergence.lean` | Proof body complete |
-| `pgd_convergence` | `Convergence.lean` | Proof body complete |
+| `projection_feasibility` | `Projection.lean` | Complete, 0 sorry |
+| `projection_correctness` | `Projection.lean` | Complete, 0 sorry |
+| `pgd_descent_lemma` | `Convergence.lean` | Complete, 0 sorry |
+| `pgd_convergence` | `Convergence.lean` | Complete, 0 sorry |
 
 ## Build & test commands
 
@@ -72,7 +70,9 @@ lake build pgd_solve
 # Run the benchmark (prints timing for 1000 solves at N=10)
 lake exe pgd_bench
 
-# Check zero sorry (tactic uses only; doc-comment strings are not flagged)
+# Check zero sorry (tactic form only).  Matches lines where sorry is the first
+# non-whitespace token.  Doc-comment lines ("0 sorry") and -- comments are not
+# matched.  Known gap: `· sorry` (bullet tactic form) starts with · not sorry.
 grep -rn '^\s*sorry\b' --include="*.lean" --exclude-dir=.lake .
 
 # Build the Cython FFI extension (only if needed for the FFI path)
