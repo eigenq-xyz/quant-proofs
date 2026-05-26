@@ -235,9 +235,19 @@ def _validate_inputs(
 # Public API
 # ---------------------------------------------------------------------------
 
-#: Wall-clock time for the Lean 4 *native* PGD binary at N = 10,
-#: measured by ``lake exe pgd_bench`` (1 000-run average, Apple M-series).
-#: This is algorithm time only — no I/O boundary, no Python overhead.
+#: True algorithm time for the Lean 4 PGD at N=10, cond≈86 (August 2007
+#: LW-shrunk covariance, L1-active), measured by ``lake exe pgd_bench``
+#: using the anti-fold protocol: 50 reps with lambdaMax varied by i*1e-9
+#: per rep to prevent LLVM constant-folding of the pure fixed-argument call.
+#:
+#: Median: 19.8 ms | IQR: [19.6, 20.5] ms | Platform: Apple M2 Max
+#:
+#: The previously reported 13.834 ns was constant-folded loop overhead --
+#: off by a factor of ~1.4 million.  The true native time equals the warm
+#: subprocess median minus ~1 ms pipe round-trip overhead.
+LEAN_NATIVE_MS: float = 19.8
+
+#: Deprecated alias kept for backward compatibility.  Use ``LEAN_NATIVE_MS``.
 LEAN_NATIVE_NS: float = 13.834
 
 

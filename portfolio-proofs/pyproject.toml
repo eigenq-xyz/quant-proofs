@@ -127,6 +127,14 @@ ignore_missing_imports = true
 module = "pandas.*"
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = "ortools.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "gurobipy.*"
+ignore_missing_imports = true
+
 [tool.uv]
 package = false
 
