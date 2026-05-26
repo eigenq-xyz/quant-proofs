@@ -8,8 +8,8 @@ import OptimizationProofs.ProblemDefs
 Three bespoke lemmas needed for `pgd_descent_lemma` that are not directly
 available in mathlib for the `Matrix.dotProduct` / `Matrix.mulVec` API:
 
-- **Q1** `hermitian_bilin_sym` — bilinear form symmetry for real symmetric matrices:
-      `x ⬝ᵥ A *ᵥ y = y ⬝ᵥ A *ᵥ x` when `A.IsHermitian`
+- **Q1** `symmetric_bilin_form` — bilinear form symmetry for real symmetric matrices:
+      `x ⬝ᵥ A *ᵥ y = y ⬝ᵥ A *ᵥ x` when `symmetric matrix `A`
 
 - **Q2** `quadratic_identity` — exact second-order Taylor expansion of `quadObj`:
       `f(v) − f(u) = ⟨∇f(u), v−u⟩ + ½(v−u)ᵀCov(v−u)`
@@ -31,13 +31,13 @@ variable {N : ℕ}
 
 /-! ### Q1 — Bilinear form symmetry for real symmetric matrices -/
 
-/-- **Q1** For a real Hermitian (symmetric) matrix `A`, the bilinear form is symmetric:
+/-- **Q1** For a real symmetric matrix `A`, the bilinear form is symmetric:
     `x ⬝ᵥ A *ᵥ y = y ⬝ᵥ A *ᵥ x`.
 
-    Proof: `A.IsHermitian` gives `Aᴴ = A`; for ℝ, `Aᴴ = Aᵀ`
-    (`conjTranspose_eq_transpose_of_trivial`); so `Aᵀ = A`.
+    Proof: the symmetry hypothesis (mathlib calls it `A.IsHermitian`, meaning Aᵀ = A
+    for real matrices) gives `Aᴴ = A`; since `Aᴴ = Aᵀ` over ℝ, we get `Aᵀ = A`.
     Then `dotProduct_transpose_mulVec : x ⬝ᵥ Aᵀ *ᵥ y = y ⬝ᵥ A *ᵥ x` gives the result. -/
-theorem hermitian_bilin_sym {A : Matrix (Fin N) (Fin N) ℝ} (hA : A.IsHermitian)
+theorem symmetric_bilin_form {A : Matrix (Fin N) (Fin N) ℝ} (hA : A.IsHermitian)
     (x y : Fin N → ℝ) : x ⬝ᵥ A *ᵥ y = y ⬝ᵥ A *ᵥ x := by
   -- For ℝ: Aᴴ = Aᵀ, so hA.eq (Aᴴ = A) gives Aᵀ = A
   conv_lhs => rw [show A = Aᵀ from by
@@ -56,11 +56,11 @@ private theorem grad_sum_eq_dotProduct {Cov : Matrix (Fin N) (Fin N) ℝ} (hCov 
       (Cov *ᵥ u - ret) ⬝ᵥ (v - u) := by
     simp [dotProduct, Pi.sub_apply]
   rw [hform, sub_dotProduct, dotProduct_sub, dotProduct_sub]
-  -- (Cov *ᵥ u) ⬝ᵥ v = u ⬝ᵥ Cov *ᵥ v  (by dotProduct_comm + hermitian_bilin_sym)
+  -- (Cov *ᵥ u) ⬝ᵥ v = u ⬝ᵥ Cov *ᵥ v  (by dotProduct_comm + symmetric_bilin_form)
   rw [show (Cov *ᵥ u) ⬝ᵥ v = u ⬝ᵥ Cov *ᵥ v from by
-    rw [dotProduct_comm, hermitian_bilin_sym hCov v u]]
+    rw [dotProduct_comm, symmetric_bilin_form hCov v u]]
   rw [show (Cov *ᵥ u) ⬝ᵥ u = u ⬝ᵥ Cov *ᵥ u from by
-    rw [dotProduct_comm, hermitian_bilin_sym hCov u u]]
+    rw [dotProduct_comm, symmetric_bilin_form hCov u u]]
 
 -- Helper: quadratic term expansion
 private theorem quad_term_eq {Cov : Matrix (Fin N) (Fin N) ℝ} (hCov : Cov.IsHermitian)
@@ -70,7 +70,7 @@ private theorem quad_term_eq {Cov : Matrix (Fin N) (Fin N) ℝ} (hCov : Cov.IsHe
   -- (v - u)ᵀCov(v - u) = vᵀCov v - 2 vᵀCov u + uᵀCov u  (by linearity + symmetry)
   rw [show (fun i => v i - u i) = v - u from rfl,
       mulVec_sub, dotProduct_sub, sub_dotProduct, sub_dotProduct]
-  linarith [hermitian_bilin_sym hCov v u]
+  linarith [symmetric_bilin_form hCov v u]
 
 /-- **Q2** Exact second-order Taylor identity for the quadratic objective:
 
@@ -93,7 +93,7 @@ theorem quadratic_identity {Cov : Matrix (Fin N) (Fin N) ℝ} (hCov : Cov.IsHerm
   -- After rewrites: 1/2·A - R - (1/2·B - S) = (C - B - (R-S)) + 1/2·(A - 2D + B)
   -- where A=v⬝Cov·v, B=u⬝Cov·u, C=u⬝Cov·v, D=v⬝Cov·u, R=ret⬝v, S=ret⬝u
   -- Symmetry C = D closes by linarith
-  linarith [hermitian_bilin_sym hCov v u]
+  linarith [symmetric_bilin_form hCov v u]
 
 /-- **Q2b** Convexity bound for the quadratic objective:
 
