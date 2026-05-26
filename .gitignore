@@ -47,3 +47,5 @@
 .antigravitycli/
 optimization-proofs/pgd_ffi*.so
 optimization-proofs/ffi/pgd_ffi.c
+docs/_build/
+docs/_build/
