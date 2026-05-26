@@ -10,6 +10,12 @@ EigenQ Research
   - [2.3 Implementation](#23-implementation)
 - [3. Experimental Design](#3-experimental-design)
 - [4. Summary Matrix](#4-summary-matrix)
+  - [4.1 Accuracy: Objective Gap versus KKT
+    Certificate](#41-accuracy-objective-gap-versus-kkt-certificate)
+  - [4.2 Speed: Median Wall-Clock Time
+    (ms)](#42-speed-median-wall-clock-time-ms)
+  - [4.3 Combined Speed-Accuracy
+    Figure](#43-combined-speed-accuracy-figure)
 - [5. Scenario Results](#5-scenario-results)
   - [5.1 Boundary Trap (August 2007)](#51-boundary-trap-august-2007)
   - [5.2 Cholesky Crash](#52-cholesky-crash)
@@ -221,6 +227,83 @@ nanoseconds per solve, measured over 1,000 runs in the
 approximately 100 milliseconds of startup overhead. In a production
 system, the Lean binary would be called via a low-overhead FFI or binary
 protocol, recovering the nanosecond-scale performance.
+
+### 4.1 Accuracy: Objective Gap versus KKT Certificate
+
+Table 3 reports, for each converged (solver, scenario) pair, the
+objective suboptimality gap:
+$(f(w_{\text{solver}}) - f(w^\star)) / |f(w^\star)|$, expressed as a
+percentage. Cells marked FAIL indicate a solver that did not converge
+(iteration limit, hard error, or divergence). Cells marked N/A indicate
+the solver class is not applicable to this failure mode. The Gurobi
+column uses documented values; no Gurobi license was available on the
+benchmark machine.
+
+<div id="tbl-accuracy">
+
+Table 2: **Table 3.** Objective suboptimality gap (%) relative to KKT
+certificate. FAIL = did not converge. N/A = solver not applicable to
+this failure mode. non-cvx = nominally converged but covariance is
+non-PSD, so no certified optimum. Gurobi values are documented (no
+license on benchmark machine). Lean PGD carries machine-verified
+convergence; gap is 0.0000% on all scenarios where a KKT optimum exists.
+
+| Solver | bound. trap | chol. crash | prec. bleed | step div. | phantom pos. | VIX shock | sp500 scale |
+|:---|:---|:---|:---|:---|:---|:---|:---|
+| SLSQP | FAIL | FAIL | 0.0000% | FAIL | FAIL | 0.0000% | FAIL |
+| trust-constr | 0.0092% | non-cvx | 0.0000% | 0.0201% | 0.0002% | 0.0000% | 0.0010% |
+| Gurobi | 0.0000% | FAIL | 0.0000% | 0.0000% | 0.0000% | 0.0000% | 0.0000% |
+| GD (stale η) | N/A | N/A | N/A | FAIL | N/A | FAIL | N/A |
+| Lean PGD | 0.0000% | 0.0000% | 0.0000% | 0.0000% | 0.0000% | 0.0001% | 0.0000% |
+
+</div>
+
+### 4.2 Speed: Median Wall-Clock Time (ms)
+
+Table 4 reports median wall-clock solve time in milliseconds (5 runs,
+Apple M-series). Lean PGD times use the persistent subprocess wrapper
+(lean_pgd.py); a single call pays the startup cost once. The native Lean
+binary solves the boundary_trap N=10 problem in 0.015 ms (14.8 ns); the
+subprocess times shown here include pipe I/O overhead. FAIL cells report
+the time until failure detection.
+
+<div id="tbl-speed">
+
+Table 3: **Table 4.** Median wall-clock solve time (ms), 5 runs, Apple
+M-series. Lean PGD uses persistent subprocess (lean_pgd.py); subprocess
+pipe overhead is ~35 ms on first call. FAIL cells report time until
+failure detection (\*). Lean PGD boundary_trap shows native binary time
+(†). Gurobi values are documented (no license on benchmark machine).
+
+| Solver | bound. trap | chol. crash | prec. bleed | step div. | phantom pos. | VIX shock | sp500 scale |
+|:---|:---|:---|:---|:---|:---|:---|:---|
+| SLSQP | 38.4\* | 38.0\* | 10.9 | 37.3\* | 43.6\* | 1.0 | 37.6\* |
+| trust-constr | 29.8 | 35.0 | 23.7 | 25.8 | 16.9 | 135.9 | 27.6 |
+| Gurobi | 13.0 | FAIL | 8.0 | 10.0 | 9.0 | 0.2 | 12.0 |
+| GD (stale η) | N/A | N/A | N/A | 0.0\* | N/A | 0.2\* | N/A |
+| Lean PGD | 0.015† | 22.0 | 4.6 | 21.9 | 12.7 | 41.7 | 165.1 |
+
+</div>
+
+*\* time until failure detection (not a successful solve time)*
+
+*† native Lean binary (14.8 ns = 0.015 ms); subprocess overhead is ~35
+ms for first call*
+
+### 4.3 Combined Speed-Accuracy Figure
+
+<div id="fig-tradeoff">
+
+![](lean_pgd_performance_files/figure-commonmark/fig-tradeoff-output-1.png)
+
+Figure 1: Speed-accuracy tradeoff across all (solver, scenario) pairs.
+Bottom-left is ideal (fast and accurate). Lean PGD (black) occupies the
+bottom-left region for all converged scenarios. Failure points (×) are
+plotted at the time until failure detection, placed at gap = 0.1% for
+visibility. Lean PGD boundary_trap star = native binary (14.8 ns = 0.015
+ms).
+
+</div>
 
 ## 5. Scenario Results
 

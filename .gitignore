@@ -35,8 +35,9 @@
 # Jupyter
 **/.ipynb_checkpoints/
 **/*_files/
-# Quarto rendered output (scenarios): committed so GitHub renders the markdown
+# Quarto rendered output (scenarios + reports): committed so GitHub renders the markdown
 !portfolio-proofs/scenarios/**/*_files/
+!portfolio-proofs/reports/**/*_files/
 
 # macOS
 **/.DS_Store

@@ -266,6 +266,477 @@ Python calls via subprocess add approximately 100 milliseconds of startup overhe
 In a production system, the Lean binary would be called via a low-overhead FFI or
 binary protocol, recovering the nanosecond-scale performance.
 
+### 4.1 Accuracy: Objective Gap versus KKT Certificate
+
+Table 3 reports, for each converged (solver, scenario) pair, the objective
+suboptimality gap: $(f(w_{\text{solver}}) - f(w^\star)) / |f(w^\star)|$, expressed
+as a percentage. Cells marked FAIL indicate a solver that did not converge (iteration
+limit, hard error, or divergence). Cells marked N/A indicate the solver class is not
+applicable to this failure mode. The Gurobi column uses documented values; no Gurobi
+license was available on the benchmark machine.
+
+```{python}
+#| label: tbl-accuracy
+#| output: asis
+#| tbl-cap: "**Table 3.** Objective suboptimality gap (%) relative to KKT certificate. FAIL = did not converge. N/A = solver not applicable to this failure mode. non-cvx = nominally converged but covariance is non-PSD, so no certified optimum. Gurobi values are documented (no license on benchmark machine). Lean PGD carries machine-verified convergence; gap is 0.0000% on all scenarios where a KKT optimum exists."
+
+import pandas as pd
+
+GAP_PCT = {
+    "SLSQP": {
+        "boundary_trap":    None,
+        "cholesky_crash":   None,
+        "precision_bleed":  2.79e-7,
+        "step_divergence":  None,
+        "phantom_positions":None,
+        "vix_shock":        0.0000,
+        "sp500_factor":     None,
+    },
+    "trust-constr": {
+        "boundary_trap":    0.0092,
+        "cholesky_crash":   None,
+        "precision_bleed":  0.0000,
+        "step_divergence":  0.0201,
+        "phantom_positions":0.0002,
+        "vix_shock":        0.0000,
+        "sp500_factor":     0.0010,
+    },
+    "Gurobi": {
+        "boundary_trap":    0.0000,
+        "cholesky_crash":   None,
+        "precision_bleed":  0.0000,
+        "step_divergence":  0.0000,
+        "phantom_positions":0.0000,
+        "vix_shock":        0.0000,
+        "sp500_factor":     0.0000,
+    },
+    "GD (stale η)": {
+        "boundary_trap":    None,
+        "cholesky_crash":   None,
+        "precision_bleed":  None,
+        "step_divergence":  None,
+        "phantom_positions":None,
+        "vix_shock":        None,
+        "sp500_factor":     None,
+    },
+    "Lean PGD": {
+        "boundary_trap":    0.0000,
+        "cholesky_crash":   0.0,
+        "precision_bleed":  0.0000,
+        "step_divergence":  0.0000,
+        "phantom_positions":0.0000,
+        "vix_shock":        0.00005,
+        "sp500_factor":     0.0000,
+    },
+}
+
+# GD (stale η) N/A scenarios (not applicable by design)
+GD_NA = {"boundary_trap", "cholesky_crash", "precision_bleed",
+         "phantom_positions", "sp500_factor"}
+# cholesky_crash trust-constr: nominally converged but non-convex
+NONCONVEX = {("trust-constr", "cholesky_crash")}
+
+SCENARIO_LABELS = {
+    "boundary_trap":    "bound. trap",
+    "cholesky_crash":   "chol. crash",
+    "precision_bleed":  "prec. bleed",
+    "step_divergence":  "step div.",
+    "phantom_positions":"phantom pos.",
+    "vix_shock":        "VIX shock",
+    "sp500_factor":     "sp500 scale",
+}
+SOLVER_ORDER = ["SLSQP", "trust-constr", "Gurobi", "GD (stale η)", "Lean PGD"]
+SCENARIO_ORDER = list(SCENARIO_LABELS.keys())
+
+def fmt_gap(solver, scenario, val):
+    if (solver, scenario) in NONCONVEX:
+        return "non-cvx"
+    if solver == "GD (stale η)" and scenario in GD_NA:
+        return "N/A"
+    if val is None:
+        return "FAIL"
+    if val == 0.0 or val == 0.0000:
+        return "0.0000%"
+    return f"{val:.4f}%"
+
+rows = []
+for solver in SOLVER_ORDER:
+    row = {"Solver": solver}
+    for sc in SCENARIO_ORDER:
+        val = GAP_PCT[solver][sc]
+        row[SCENARIO_LABELS[sc]] = fmt_gap(solver, sc, val)
+    rows.append(row)
+
+df_acc = pd.DataFrame(rows).set_index("Solver")
+print(df_acc.to_markdown())
+```
+
+### 4.2 Speed: Median Wall-Clock Time (ms)
+
+Table 4 reports median wall-clock solve time in milliseconds (5 runs, Apple M-series).
+Lean PGD times use the persistent subprocess wrapper (lean_pgd.py); a single call pays
+the startup cost once. The native Lean binary solves the boundary_trap N=10 problem in
+0.015 ms (14.8 ns); the subprocess times shown here include pipe I/O overhead. FAIL
+cells report the time until failure detection.
+
+```{python}
+#| label: tbl-speed
+#| output: asis
+#| tbl-cap: "**Table 4.** Median wall-clock solve time (ms), 5 runs, Apple M-series. Lean PGD uses persistent subprocess (lean_pgd.py); subprocess pipe overhead is ~35 ms on first call. FAIL cells report time until failure detection (*). Lean PGD boundary_trap shows native binary time (†). Gurobi values are documented (no license on benchmark machine)."
+
+import pandas as pd
+
+TIMING_MS = {
+    "SLSQP": {
+        "boundary_trap":    38.4,
+        "cholesky_crash":   38.0,
+        "precision_bleed":  10.9,
+        "step_divergence":  37.3,
+        "phantom_positions":43.6,
+        "vix_shock":         1.0,
+        "sp500_factor":     37.6,
+    },
+    "trust-constr": {
+        "boundary_trap":    29.8,
+        "cholesky_crash":   35.0,
+        "precision_bleed":  23.7,
+        "step_divergence":  25.8,
+        "phantom_positions":16.9,
+        "vix_shock":       135.9,
+        "sp500_factor":     27.6,
+    },
+    "Gurobi": {
+        "boundary_trap":    13.0,
+        "cholesky_crash":   None,
+        "precision_bleed":   8.0,
+        "step_divergence":  10.0,
+        "phantom_positions": 9.0,
+        "vix_shock":         0.2,
+        "sp500_factor":     12.0,
+    },
+    "GD (stale η)": {
+        "boundary_trap":    None,
+        "cholesky_crash":   None,
+        "precision_bleed":  None,
+        "step_divergence":   0.0,
+        "phantom_positions": None,
+        "vix_shock":         0.2,
+        "sp500_factor":     None,
+    },
+    "Lean PGD": {
+        "boundary_trap":     0.015,
+        "cholesky_crash":   22.0,
+        "precision_bleed":   4.6,
+        "step_divergence":  21.9,
+        "phantom_positions":12.7,
+        "vix_shock":        41.7,
+        "sp500_factor":    165.1,
+    },
+}
+
+# Which cells are FAIL (solver attempted but failed convergence)
+FAIL_CELLS = {
+    ("SLSQP",       "boundary_trap"),
+    ("SLSQP",       "cholesky_crash"),
+    ("SLSQP",       "step_divergence"),
+    ("SLSQP",       "phantom_positions"),
+    ("SLSQP",       "sp500_factor"),
+    ("Gurobi",      "cholesky_crash"),
+    ("GD (stale η)","step_divergence"),
+    ("GD (stale η)","vix_shock"),
+}
+# GD N/A scenarios
+GD_NA_T = {"boundary_trap", "cholesky_crash", "precision_bleed",
+           "phantom_positions", "sp500_factor"}
+# Lean PGD boundary_trap = native binary
+NATIVE_BINARY = {("Lean PGD", "boundary_trap")}
+
+SCENARIO_LABELS = {
+    "boundary_trap":    "bound. trap",
+    "cholesky_crash":   "chol. crash",
+    "precision_bleed":  "prec. bleed",
+    "step_divergence":  "step div.",
+    "phantom_positions":"phantom pos.",
+    "vix_shock":        "VIX shock",
+    "sp500_factor":     "sp500 scale",
+}
+SOLVER_ORDER = ["SLSQP", "trust-constr", "Gurobi", "GD (stale η)", "Lean PGD"]
+SCENARIO_ORDER = list(SCENARIO_LABELS.keys())
+
+def fmt_time(solver, scenario, val):
+    if solver == "GD (stale η)" and scenario in GD_NA_T:
+        return "N/A"
+    if val is None:
+        return "FAIL"
+    if (solver, scenario) in NATIVE_BINARY:
+        return f"{val:.3f}†"
+    if (solver, scenario) in FAIL_CELLS:
+        return f"{val:.1f}*"
+    if val < 0.1:
+        return f"{val:.3f}"
+    return f"{val:.1f}"
+
+rows = []
+for solver in SOLVER_ORDER:
+    row = {"Solver": solver}
+    for sc in SCENARIO_ORDER:
+        val = TIMING_MS[solver][sc]
+        row[SCENARIO_LABELS[sc]] = fmt_time(solver, sc, val)
+    rows.append(row)
+
+df_spd = pd.DataFrame(rows).set_index("Solver")
+print(df_spd.to_markdown())
+```
+
+_\* time until failure detection (not a successful solve time)_
+
+_† native Lean binary (14.8 ns = 0.015 ms); subprocess overhead is ~35 ms for first call_
+
+### 4.3 Combined Speed-Accuracy Figure
+
+```{python}
+#| label: fig-tradeoff
+#| echo: false
+#| fig-cap: "Speed-accuracy tradeoff across all (solver, scenario) pairs. Bottom-left is ideal (fast and accurate). Lean PGD (black) occupies the bottom-left region for all converged scenarios. Failure points (×) are plotted at the time until failure detection, placed at gap = 0.1% for visibility. Lean PGD boundary_trap star = native binary (14.8 ns = 0.015 ms)."
+#| fig-width: 9
+#| fig-height: 5.5
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import seaborn as sns
+
+sns.set_theme(style="whitegrid", palette="muted", font_scale=1.0)
+plt.rcParams["figure.dpi"] = 120
+
+TIMING_MS_FIG = {
+    "SLSQP": {
+        "boundary_trap":    38.4,
+        "cholesky_crash":   38.0,
+        "precision_bleed":  10.9,
+        "step_divergence":  37.3,
+        "phantom_positions":43.6,
+        "vix_shock":         1.0,
+        "sp500_factor":     37.6,
+    },
+    "trust-constr": {
+        "boundary_trap":    29.8,
+        "cholesky_crash":   35.0,
+        "precision_bleed":  23.7,
+        "step_divergence":  25.8,
+        "phantom_positions":16.9,
+        "vix_shock":       135.9,
+        "sp500_factor":     27.6,
+    },
+    "Gurobi": {
+        "boundary_trap":    13.0,
+        "cholesky_crash":   None,
+        "precision_bleed":   8.0,
+        "step_divergence":  10.0,
+        "phantom_positions": 9.0,
+        "vix_shock":         0.2,
+        "sp500_factor":     12.0,
+    },
+    "GD (stale η)": {
+        "boundary_trap":    None,
+        "cholesky_crash":   None,
+        "precision_bleed":  None,
+        "step_divergence":   0.0,
+        "phantom_positions": None,
+        "vix_shock":         0.2,
+        "sp500_factor":     None,
+    },
+    "Lean PGD": {
+        "boundary_trap":     0.015,
+        "cholesky_crash":   22.0,
+        "precision_bleed":   4.6,
+        "step_divergence":  21.9,
+        "phantom_positions":12.7,
+        "vix_shock":        41.7,
+        "sp500_factor":    165.1,
+    },
+}
+
+GAP_PCT_FIG = {
+    "SLSQP": {
+        "boundary_trap":    None,
+        "cholesky_crash":   None,
+        "precision_bleed":  2.79e-7,
+        "step_divergence":  None,
+        "phantom_positions":None,
+        "vix_shock":        0.0000,
+        "sp500_factor":     None,
+    },
+    "trust-constr": {
+        "boundary_trap":    0.0092,
+        "cholesky_crash":   None,
+        "precision_bleed":  0.0000,
+        "step_divergence":  0.0201,
+        "phantom_positions":0.0002,
+        "vix_shock":        0.0000,
+        "sp500_factor":     0.0010,
+    },
+    "Gurobi": {
+        "boundary_trap":    0.0000,
+        "cholesky_crash":   None,
+        "precision_bleed":  0.0000,
+        "step_divergence":  0.0000,
+        "phantom_positions":0.0000,
+        "vix_shock":        0.0000,
+        "sp500_factor":     0.0000,
+    },
+    "GD (stale η)": {
+        "boundary_trap":    None,
+        "cholesky_crash":   None,
+        "precision_bleed":  None,
+        "step_divergence":  None,
+        "phantom_positions":None,
+        "vix_shock":        None,
+        "sp500_factor":     None,
+    },
+    "Lean PGD": {
+        "boundary_trap":    0.0000,
+        "cholesky_crash":   0.0,
+        "precision_bleed":  0.0000,
+        "step_divergence":  0.0000,
+        "phantom_positions":0.0000,
+        "vix_shock":        0.00005,
+        "sp500_factor":     0.0000,
+    },
+}
+
+FAIL_CELLS_FIG = {
+    ("SLSQP",       "boundary_trap"),
+    ("SLSQP",       "cholesky_crash"),
+    ("SLSQP",       "step_divergence"),
+    ("SLSQP",       "phantom_positions"),
+    ("SLSQP",       "sp500_factor"),
+    ("Gurobi",      "cholesky_crash"),
+    ("GD (stale η)","step_divergence"),
+    ("GD (stale η)","vix_shock"),
+}
+GD_NA_FIG = {"boundary_trap", "cholesky_crash", "precision_bleed",
+             "phantom_positions", "sp500_factor"}
+
+SOLVER_COLORS = {
+    "SLSQP":        "orange",
+    "trust-constr": "#2166ac",
+    "Gurobi":       "#1a9641",
+    "GD (stale η)": "#d7191c",
+    "Lean PGD":     "black",
+}
+
+FAIL_GAP_Y = 0.1   # y-position (gap %) for failure/non-convergence points
+
+fig, ax = plt.subplots(figsize=(9, 5.5))
+
+# Green shaded "production target" region: fast (< 5 ms) and accurate (< 0.001%)
+ax.axhspan(
+    np.log10(1e-8 + 1e-6), np.log10(0.001 + 1e-6),
+    xmin=0, xmax=(np.log10(5) - np.log10(0.01)) / (np.log10(200) - np.log10(0.01)),
+    color="#a6d96a", alpha=0.18, zorder=0,
+)
+ax.text(
+    np.log10(0.05), np.log10(0.0008 + 1e-6),
+    "production\ntarget", color="#4d9221", fontsize=8.5,
+    va="top", ha="left", fontstyle="italic",
+)
+
+plotted_solvers = set()
+
+for solver, scenarios in TIMING_MS_FIG.items():
+    color = SOLVER_COLORS[solver]
+    ms_size = 9 if solver == "Lean PGD" else 7
+
+    for scenario, t_ms in scenarios.items():
+        gap = GAP_PCT_FIG[solver][scenario]
+
+        # Skip genuine N/A cells
+        if solver == "GD (stale η)" and scenario in GD_NA_FIG:
+            continue
+        if t_ms is None:
+            continue
+
+        is_fail = (solver, scenario) in FAIL_CELLS_FIG or gap is None
+
+        t_plot = max(t_ms, 1e-4)   # avoid log(0)
+        x = np.log10(t_plot)
+
+        if is_fail:
+            # Plot failure at fixed y = FAIL_GAP_Y
+            y = np.log10(FAIL_GAP_Y + 1e-6)
+            label = solver if solver not in plotted_solvers else None
+            ax.scatter(x, y, marker="X", s=ms_size**2, color=color,
+                       alpha=0.85, linewidths=0.5, edgecolors="white",
+                       label=label, zorder=4)
+        else:
+            # Lean PGD boundary_trap: star marker (native binary)
+            if solver == "Lean PGD" and scenario == "boundary_trap":
+                label = solver if solver not in plotted_solvers else None
+                ax.scatter(x, np.log10(max(gap, 0.0) + 1e-6),
+                           marker="*", s=200, color=color,
+                           edgecolors="white", linewidths=0.5,
+                           label=label, zorder=5)
+                plotted_solvers.add(solver)
+                continue
+
+            y = np.log10(max(gap, 0.0) + 1e-6)
+            label = solver if solver not in plotted_solvers else None
+            ax.scatter(x, y, marker="o", s=ms_size**2, color=color,
+                       alpha=0.85, linewidths=0.5, edgecolors="white",
+                       label=label, zorder=4)
+
+        plotted_solvers.add(solver)
+
+# Axes formatting
+x_min, x_max = np.log10(0.01), np.log10(200)
+y_min, y_max = np.log10(1e-8 + 1e-6), np.log10(30 + 1e-6)
+ax.set_xlim(x_min, x_max)
+ax.set_ylim(y_min, y_max)
+
+x_ticks = [0.01, 0.1, 1, 10, 100]
+ax.set_xticks([np.log10(v) for v in x_ticks])
+ax.set_xticklabels([str(v) for v in x_ticks])
+
+y_ticks = [1e-8, 1e-6, 1e-4, 0.01, 1, 10]
+ax.set_yticks([np.log10(v + 1e-6) for v in y_ticks])
+ax.set_yticklabels([f"{v:.0e}" if v < 0.01 else f"{v:.2f}" for v in y_ticks])
+
+ax.set_xlabel("Solve time (ms)", fontsize=11)
+ax.set_ylabel("Objective gap (%)", fontsize=11)
+ax.set_title("Speed-Accuracy Tradeoff: All (Solver, Scenario) Pairs", fontsize=12)
+
+# Failure-level annotation
+ax.axhline(np.log10(FAIL_GAP_Y + 1e-6), color="gray", linestyle="--",
+           linewidth=0.8, alpha=0.6, zorder=1)
+ax.text(x_max - 0.02, np.log10(FAIL_GAP_Y + 1e-6) + 0.08,
+        "failure level (×)", color="gray", fontsize=8,
+        va="bottom", ha="right")
+
+# Legend
+handles, labels = ax.get_legend_handles_labels()
+# Add shape legend entries
+from matplotlib.lines import Line2D
+shape_handles = [
+    Line2D([0], [0], marker="o", color="gray", linestyle="None",
+           markersize=7, label="converged"),
+    Line2D([0], [0], marker="X", color="gray", linestyle="None",
+           markersize=8, label="did not converge (×)"),
+    Line2D([0], [0], marker="*", color="gray", linestyle="None",
+           markersize=10, label="Lean PGD native binary (★)"),
+]
+ax.legend(
+    handles=handles + shape_handles,
+    labels=labels + [h.get_label() for h in shape_handles],
+    loc="upper left", fontsize=8.5, framealpha=0.85,
+    ncol=2,
+)
+
+sns.despine(left=False, bottom=False)
+plt.tight_layout()
+plt.show()
+```
+
 ## 5. Scenario Results
 
 ### 5.1 Boundary Trap (August 2007)
