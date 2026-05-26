@@ -31,6 +31,14 @@ The Ackerer et al. cash flow at date k is F_k − S_k, where F_k is the current
 perpetual futures price. In the time-homogeneous model assumed here, F_k = F₀ for all k
 (stationarity). This must be confirmed against Ackerer et al. §2 before Week 3 proof
 writing. See SPEC.md Q1 and the open question in `Market.lean`.
+
+## Note on heManelaCashFlow (issue #127)
+
+This encoding takes `S₀` as the arithmetic mean of spot prices at date 0 over `Ω`,
+implicitly assuming the reference measure P is uniform. For the F3.4 counterexample,
+the market is symmetric (two states, equal P-probability), so the arithmetic mean
+equals the P-expectation. Any construction of the counterexample market must satisfy
+this uniformity condition.
 -/
 
 namespace PerpetualProofs
@@ -63,17 +71,19 @@ def ackererCashFlow : CashFlowSpec Ω where
 
 /-- **P2.3** The original He-Manela-Ross-von Wachter cash flow specification.
 
-At each funding date k, the long receives `S₀(ω₀) − F₀` — the initial spot-futures
-spread, a constant independent of the current date k and current state ω.
+At each funding date k, the long receives a constant `S₀ − F₀` — the initial
+spot-futures spread, independent of the current date k and current state ω.
 
 This is the specification documented by Ackerer et al. as incompatible with costless
 entry. See `he_manela_violates_costless_entry` for the counterexample.
 
-**Note:** In this encoding, `S₀` is taken as the average spot price at date 0 under
-the reference measure. The exact encoding may need refinement in Week 2; the key
-property for the counterexample proof is that the payment is constant in k. -/
+**Encoding note (issue #127):** `S₀` is taken as the arithmetic mean of `market.spot 0`
+over `Ω`, which equals `E^P[S₀]` when P is the uniform measure. The F3.4 counterexample
+uses a symmetric two-state market where P is uniform, so this encoding is exact for
+that construction. -/
 noncomputable def heManelaCashFlow : CashFlowSpec Ω where
-  -- Constant payment: initial spot-futures spread, independent of k and ω
+  -- Constant payment: initial spot-futures spread, independent of k and ω.
+  -- Assumes P uniform on Ω; exact for the symmetric F3.4 counterexample market.
   cashflow _k market F₀ _ω :=
     (∑ ω : Ω, market.spot 0 ω) / Fintype.card Ω - F₀
 
@@ -86,7 +96,10 @@ to the long holder, probability-weighted under Q and geometrically discounted at
 rate `p = κ/(1+r)`, equals zero at initiation.
 
 This is a proof obligation, not an assumption: any pricing theorem must first
-discharge `CostlessEntry` for the chosen specification. -/
+discharge `CostlessEntry` for the chosen specification.
+
+The tsum converges (is not vacuously 0) because `OnePeriodMarket.spot_bounded`
+ensures the cash-flow sequence is uniformly bounded. -/
 def CostlessEntry (spec : CashFlowSpec Ω) (market : OnePeriodMarket Ω)
     (Q : OnePeriodEMM market) (F₀ : ℝ) : Prop :=
   geometricExpectation (p := market.κ / (1 + market.r))
@@ -96,23 +109,29 @@ def CostlessEntry (spec : CashFlowSpec Ω) (market : OnePeriodMarket Ω)
 
 /-- **P2.4** The no-buy-and-hold-arbitrage condition for entry price `F₀`.
 
-A price `F₀` admits no buy-and-hold arbitrage if there is no self-financing
-strategy that:
-1. Enters the perpetual futures long at price `F₀` with zero net cost
-2. Receives the funding cash flows for a geometrically distributed holding period
-3. Achieves non-negative payoff under Q with positive probability
+A price `F₀` admits no buy-and-hold arbitrage if:
+1. Entering the perpetual futures long at `F₀` has zero expected cost under Q
+   (costless entry), and
+2. No round-trip strategy — enter long at `F₀'`, short at `F₀` — produces nonzero
+   Q-expected net cash flow when `F₀' ≠ F₀`.
 
-This is the no-arbitrage content of the pricing theorem: existence says
-`F₀ = geometricExpectation ...` satisfies this; uniqueness says no other price does. -/
+Condition (2) is stated as: for any alternative price `F₀' ≠ F₀`, the Q-weighted
+geometric expectation of the cash-flow difference is nonzero. Substituting
+`ackererCashFlow`, this difference equals `F₀' − F₀` (constant in k and ω), so
+by `geometricExpectation_const` the condition reduces to `F₀' − F₀ ≠ 0`, which
+is exactly the hypothesis `F₀' ≠ F₀`. This means uniqueness follows directly:
+the only price satisfying `CostlessEntry` is the geometric-expectation price.
+
+Resolves issue #126 (replaces the previous per-state absolute-value formulation
+which was tautological for the same reason). -/
 def NoBuyAndHoldArbitrage (market : OnePeriodMarket Ω) (Q : OnePeriodEMM market)
     (F₀ : ℝ) : Prop :=
   -- Costless entry at F₀ is necessary for no-arbitrage
   CostlessEntry ackererCashFlow market Q F₀ ∧
-  -- No deviation from F₀ admits a round-trip arbitrage
+  -- No round-trip strategy at any alternative price F₀' ≠ F₀ has zero Q-expected payoff
   ∀ (F₀' : ℝ), F₀' ≠ F₀ →
-    ∃ (ω : Ω), 0 <
-      geometricExpectation (p := market.κ / (1 + market.r))
-        (fun k => |ackererCashFlow.cashflow k market F₀' ω -
-                   ackererCashFlow.cashflow k market F₀ ω|)
+    geometricExpectation (p := market.κ / (1 + market.r)) (fun k =>
+      ∑ ω : Ω, Q.density ω * (ackererCashFlow.cashflow k market F₀' ω -
+                               ackererCashFlow.cashflow k market F₀ ω)) ≠ 0
 
 end PerpetualProofs

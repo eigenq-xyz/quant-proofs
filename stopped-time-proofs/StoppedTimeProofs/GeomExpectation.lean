@@ -26,6 +26,7 @@ so `geometricExpectation` is a genuine expectation operator.
 
 - `tsum_eq_zero_add` — splits `∑' k, f k` into `f 0 + ∑' k, f (k+1)`
 - `Summable.of_norm_bounded` — comparison test for series convergence
+- `tsum_mul_left` / `tsum_mul_right` — factor constants out of tsum
 -/
 
 namespace StoppedTimeProofs
@@ -48,58 +49,73 @@ noncomputable def geometricExpectation (p : ℝ) (f : ℕ → ℝ) : ℝ :=
 
 /-! ### G1.5 — Summability -/
 
--- TODO: G1.5
--- lemma geometricExpectation_summable (hp0 : 0 < p) (hp1 : p < 1)
---     (hf : ∃ C, ∀ k, ‖f k‖ ≤ C) : Summable (fun k => geomPMF p k * f k) := by
---   obtain ⟨C, hC⟩ := hf
---   apply Summable.of_norm_bounded (fun k => (1 - p) ^ k * p * C)
---   · -- The bounding series ∑ (1-p)^k * p * C converges: it's C times a geometric series
---     exact (summable_geometric_of_lt_one (by linarith) (by linarith)).mul_right _
---   · intro k
---     simp [geomPMF, norm_mul]
---     calc ‖(1 - p) ^ k‖ * ‖p‖ * ‖f k‖
---         ≤ (1 - p) ^ k * p * C := by
---           sorry
---     sorry
+/-- **G1.5** The geometric expectation series converges when `f` is bounded.
+
+Proof: bound `‖geomPMF p k * f k‖ ≤ geomPMF p k * C` using `geomPMF_nonneg`,
+then dominate by the convergent series `∑ geomPMF p k * C = C` via
+`summable_geometric_of_lt_one`. -/
+lemma geometricExpectation_summable {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1)
+    {f : ℕ → ℝ} (hf : ∃ C, ∀ k, ‖f k‖ ≤ C) :
+    Summable (fun k => geomPMF p k * f k) := by
+  obtain ⟨C, hC⟩ := hf
+  refine Summable.of_norm_bounded (fun k => geomPMF p k * C) ?_ (fun k => ?_)
+  · -- Bounding series ∑ geomPMF p k * C converges: it's C · ∑ (1-p)^k · p
+    have hs : Summable (fun k : ℕ => (1 - p) ^ k) :=
+      summable_geometric_of_lt_one (by linarith) (by linarith)
+    simpa only [geomPMF] using (hs.mul_right p).mul_right C
+  · -- ‖geomPMF p k * f k‖ ≤ geomPMF p k * C
+    have hg : 0 ≤ geomPMF p k := geomPMF_nonneg hp0 hp1 k
+    rw [norm_mul, Real.norm_of_nonneg hg]
+    exact mul_le_mul_of_nonneg_left (hC k) hg
 
 /-! ### G1.6 — One-step unrolling -/
 
--- TODO: G1.6
--- lemma geometricExpectation_unroll (hp0 : 0 < p) (hp1 : p < 1)
---     (hf : ∃ C, ∀ k, ‖f k‖ ≤ C) :
---     geometricExpectation p f =
---     p * f 0 + (1 - p) * geometricExpectation p (fun k => f (k + 1)) := by
---   simp only [geometricExpectation, geomPMF]
---   -- Split off the k=0 term using tsum_eq_zero_add
---   rw [tsum_eq_zero_add (geometricExpectation_summable hp0 hp1 hf)]
---   simp only [pow_zero, one_mul]
---   congr 1
---   -- Shift the index: ∑' k, (1-p)^(k+1) * p * f(k+1) = (1-p) * ∑' k, (1-p)^k * p * f(k+1)
---   sorry
+/-- **G1.6** One-step recursion for `geometricExpectation`.
+
+`geometricExpectation p f = p * f 0 + (1 - p) * geometricExpectation p (fun k => f (k+1))`
+
+Proof: split the tsum at k = 0 using `tsum_eq_zero_add`, then factor `(1-p)` out of the
+tail using `tsum_mul_left` and `pow_succ`. -/
+lemma geometricExpectation_unroll {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1)
+    {f : ℕ → ℝ} (hf : ∃ C, ∀ k, ‖f k‖ ≤ C) :
+    geometricExpectation p f =
+      p * f 0 + (1 - p) * geometricExpectation p (fun k => f (k + 1)) := by
+  simp only [geometricExpectation]
+  rw [tsum_eq_zero_add (geometricExpectation_summable hp0 hp1 hf)]
+  simp only [geomPMF, pow_zero, one_mul]
+  congr 1
+  rw [← tsum_mul_left]
+  congr 1
+  ext k
+  simp only [geomPMF, pow_succ]
+  ring
 
 /-! ### G1.7 — Constant function -/
 
--- TODO: G1.7
--- lemma geometricExpectation_const (hp0 : 0 < p) (hp1 : p < 1) (c : ℝ) :
---     geometricExpectation p (fun _ => c) = c := by
---   simp only [geometricExpectation, geomPMF]
---   rw [tsum_mul_right]
---   -- ∑' k, (1-p)^k * p = 1 by geomPMF_tsum_eq_one
---   rw [← geomPMF_tsum_eq_one hp0 hp1]
---   simp [geomPMF]
+/-- **G1.7** `geometricExpectation p (fun _ => c) = c`.
+
+Since the geometric weights sum to 1 (`geomPMF_tsum_eq_one`), the weighted sum of a
+constant equals the constant: `∑' k, geomPMF p k * c = (∑' k, geomPMF p k) * c = c`. -/
+lemma geometricExpectation_const {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1) (c : ℝ) :
+    geometricExpectation p (fun _ => c) = c := by
+  simp only [geometricExpectation]
+  rw [tsum_mul_right, geomPMF_tsum_eq_one hp0 hp1, one_mul]
 
 /-! ### G1.8 — Monotonicity -/
 
--- TODO: G1.8
--- lemma geometricExpectation_mono (hp0 : 0 < p) (hp1 : p < 1)
---     (hf : ∃ C, ∀ k, ‖f k‖ ≤ C) (hg : ∃ C, ∀ k, ‖g k‖ ≤ C)
---     (hle : ∀ k, f k ≤ g k) :
---     geometricExpectation p f ≤ geometricExpectation p g := by
---   apply tsum_le_tsum
---   · intro k
---     apply mul_le_mul_of_nonneg_left (hle k)
---     exact geomPMF_nonneg hp0 hp1 k
---   · exact geometricExpectation_summable hp0 hp1 hf
---   · exact geometricExpectation_summable hp0 hp1 hg
+/-- **G1.8** `geometricExpectation p f ≤ geometricExpectation p g` when `f ≤ g` pointwise.
+
+Since all weights `geomPMF p k ≥ 0`, pointwise inequality of functions implies
+inequality of geometric expectations. Follows from `tsum_le_tsum`. -/
+lemma geometricExpectation_mono {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1)
+    {f g : ℕ → ℝ} (hf : ∃ C, ∀ k, ‖f k‖ ≤ C) (hg : ∃ C, ∀ k, ‖g k‖ ≤ C)
+    (hle : ∀ k, f k ≤ g k) :
+    geometricExpectation p f ≤ geometricExpectation p g := by
+  simp only [geometricExpectation]
+  apply tsum_le_tsum
+  · intro k
+    exact mul_le_mul_of_nonneg_left (hle k) (geomPMF_nonneg hp0 hp1 k)
+  · exact geometricExpectation_summable hp0 hp1 hf
+  · exact geometricExpectation_summable hp0 hp1 hg
 
 end StoppedTimeProofs
