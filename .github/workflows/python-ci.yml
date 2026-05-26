@@ -42,7 +42,7 @@ jobs:
         run: uv run pytest -q --cov=src --cov-report=xml
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           files: quant-core/python/coverage.xml
           flags: quant-core
@@ -94,7 +94,7 @@ jobs:
         run: uv run pytest -m "not integration" -q --cov=src --cov-report=xml
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           files: mortgage-proofs/coverage.xml
           flags: mortgage-proofs
@@ -146,7 +146,7 @@ jobs:
         run: uv run pytest tests/ -q --cov=. --cov-report=xml
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           files: portfolio-proofs/coverage.xml
           flags: portfolio-proofs
