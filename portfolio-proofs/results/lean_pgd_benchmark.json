@@ -76,7 +76,7 @@
       "trust-constr":{"converged": true,  "obj": -0.088958, "dist_to_wstar": 0.0, "note": "Converges; adaptive barrier step size"},
       "Gurobi":      {"converged": true,  "obj": -0.088958, "dist_to_wstar": 0.0, "note": "Converges; adaptive barrier step size"},
       "GD_stale":    {"converged": false, "obj": -0.070000, "dist_to_wstar": 0.487, "note": "Oscillates between [1,0,0] and [0,1,0]; never converges; eta=47.5 > bound=12.5"},
-      "Lean PGD":    {"converged": true,  "obj": -0.088958, "dist_to_wstar": 5.72e-5, "time_ms": 6.4, "time_cv_pct": 1.3, "note": "eta=11.875 < 12.5; certified convergence; 6.4 ms warm (iters=53)"}
+      "Lean PGD":    {"converged": true,  "obj": -0.088958, "dist_to_wstar": 5.72e-5, "time_ms": 6.4, "time_cv_pct": 1.3, "note": "eta=11.875 < 12.5; certified convergence; 6.4 ms warm (iters=53). dist_to_wstar=5.72e-5 is a face-settlement effect: w*=[31/48,1/3,1/48] lies on the optimal face; with iters=53 (vs 80) the bisection settles at a slightly different point on that face. Objective gap is exactly 0.0; convergence guarantee is unaffected."}
     }
   },
   "sp500_factor": {

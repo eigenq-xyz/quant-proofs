@@ -47,10 +47,12 @@ shrinks by 2^(-k):
   - Inner bisect (theta s.t. Σ softThresh(yᵢ - θ, μ) = B):
       range ≈ 8; need precision ≤ tol_pgd/N ≈ 1e-9; k ≥ 33.
   - Outer bisect (μ ≥ 0 s.t. leverage = L, tol 1e-11):
-      range ≈ 4; need 4/2^k × N < 1e-11; k ≥ 43.
-Using `iters = 53` satisfies both with a ~10-step safety margin and equals the
-machine-precision ceiling.  Previously 80; reduction eliminates 37.5% of bisection
-work while preserving full float64 accuracy.
+      range = muHi0 = yAbsMax + |B| + 2 ≈ 7 (default params); need range/2^k × N < 1e-11;
+      with range ≈ 7: k ≥ ceil(log2(7 × N / 1e-11)) = 43 for N=10, 47 for N=100.
+Using `iters = 53` satisfies both with a safety margin and equals the machine-precision
+ceiling.  Validated for N × leverageCap ≤ ~1000 (i.e., N ≤ 667 at leverageCap=1.5).
+Previously 80; reduction eliminates 37.5% of bisection work while preserving full
+float64 accuracy.
 
 ## Further optimisation opportunities
 

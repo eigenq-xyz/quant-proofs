@@ -81,10 +81,12 @@ from lean_pgd import solve as _subprocess_solve  # noqa: E402
 # ---------------------------------------------------------------------------
 
 
-def _cond_number(sigma: np.ndarray) -> float:
-    """Cheap condition number estimate via eigenvalue ratio."""
+def _eigs_and_cond(sigma: np.ndarray) -> tuple[float, float]:
+    """Compute (lambda_max, cond) in a single eigvalsh call."""
     eigs = np.linalg.eigvalsh(sigma)
-    return float(eigs[-1] / max(eigs[0], 1e-12))
+    lam_max = float(eigs[-1])
+    cond = lam_max / max(float(eigs[0]), 1e-12)
+    return lam_max, cond
 
 
 # ---------------------------------------------------------------------------
@@ -96,11 +98,19 @@ def solve_flat(
     sigma: np.ndarray,
     mu: np.ndarray,
     leverage_cap: float = 1.5,
+    _lam_max: float | None = None,
 ) -> tuple[np.ndarray, float]:
     """Solve via FFI FloatArray (flat) path.
 
     Equivalent latency to the subprocess path for all tested problems.
     Falls back to subprocess if the FFI extension is not built.
+
+    Parameters
+    ----------
+    sigma, mu, leverage_cap : problem inputs (validated internally).
+    _lam_max : pre-computed lambda_max from a prior eigvalsh call.  When
+        provided (e.g., by ``solve()``), the internal eigvalsh is skipped,
+        avoiding a redundant O(N^3) decomposition.
 
     Returns
     -------
@@ -108,7 +118,11 @@ def solve_flat(
     lambda_max : float
     """
     _validate_inputs(sigma, mu, leverage_cap)
-    lam_max = float(np.linalg.eigvalsh(sigma)[-1])
+    lam_max = (
+        _lam_max
+        if _lam_max is not None
+        else float(np.linalg.eigvalsh(sigma)[-1])
+    )
     if not _FFI_AVAILABLE or _pgd_ffi_mod is None:
         return _subprocess_solve(sigma, mu, leverage_cap=leverage_cap)
     sigma = np.ascontiguousarray(sigma, dtype=np.float64)
@@ -123,6 +137,7 @@ def solve_boxed(
     sigma: np.ndarray,
     mu: np.ndarray,
     leverage_cap: float = 1.5,
+    _lam_max: float | None = None,
 ) -> tuple[np.ndarray, float]:
     """Solve via FFI Array Float (boxed) path.
 
@@ -131,13 +146,24 @@ def solve_boxed(
     compiled for that regime.  Falls back to subprocess if the FFI extension is
     not built.
 
+    Parameters
+    ----------
+    sigma, mu, leverage_cap : problem inputs (validated internally).
+    _lam_max : pre-computed lambda_max from a prior eigvalsh call.  When
+        provided (e.g., by ``solve()``), the internal eigvalsh is skipped,
+        avoiding a redundant O(N^3) decomposition.
+
     Returns
     -------
     weights : ndarray, shape (N,)
     lambda_max : float
     """
     _validate_inputs(sigma, mu, leverage_cap)
-    lam_max = float(np.linalg.eigvalsh(sigma)[-1])
+    lam_max = (
+        _lam_max
+        if _lam_max is not None
+        else float(np.linalg.eigvalsh(sigma)[-1])
+    )
     if not _FFI_AVAILABLE or _pgd_ffi_mod is None:
         return _subprocess_solve(sigma, mu, leverage_cap=leverage_cap)
     sigma = np.ascontiguousarray(sigma, dtype=np.float64)
@@ -155,6 +181,9 @@ def solve(
 ) -> tuple[np.ndarray, float]:
     """Dispatch to the faster FFI back-end based on problem structure.
 
+    Validates inputs and computes eigenvalues exactly once, then routes to
+    the faster back-end:
+
     Routing rule (empirical, Apple M-series, iters=53):
       - cond(sigma) < 150  ->  ``solve_flat``   (same speed as subprocess)
       - cond(sigma) >= 150 ->  ``solve_boxed``  (~1.5x faster at cond=200)
@@ -167,9 +196,10 @@ def solve(
     weights : ndarray, shape (N,)
     lambda_max : float
     """
+    _validate_inputs(sigma, mu, leverage_cap)
     if not _FFI_AVAILABLE:
         return _subprocess_solve(sigma, mu, leverage_cap=leverage_cap)
-    cond = _cond_number(sigma)
+    lam_max, cond = _eigs_and_cond(sigma)
     if cond >= 150.0:
-        return solve_boxed(sigma, mu, leverage_cap)
-    return solve_flat(sigma, mu, leverage_cap)
+        return solve_boxed(sigma, mu, leverage_cap, _lam_max=lam_max)
+    return solve_flat(sigma, mu, leverage_cap, _lam_max=lam_max)
