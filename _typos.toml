@@ -19,3 +19,7 @@ lst = "lst"  # "lst" in --ignore-words-list
 ans = "ans"  # "ans" in --ignore-words-list
 nin = "nin"  # "nin" in --ignore-words-list
 ser = "ser"  # "ser" in --ignore-words-list
+
+# Ken French 10-Industry Portfolio standard abbreviations.
+Enrgy = "Enrgy"  # "Energy" industry short label
+Durbl = "Durbl"  # "Durables" industry short label

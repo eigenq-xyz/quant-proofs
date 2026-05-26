@@ -23,9 +23,28 @@ loop cleanly and exits the process.
 Performance
 -----------
 - First ``solve()`` call: starts the Lean binary (~35 ms on macOS).
-- Subsequent ``solve()`` calls: pipe I/O only, typically < 1 ms for N ≤ 50.
-- Lean native PGD at N = 10: **13.834 ns/solve**
-  (``lake exe pgd_bench``, 1 000-run average, Apple M-series, no I/O).
+- Subsequent ``solve()`` calls: dominated by the Duchi bisection, not pipe I/O.
+  Measured warm medians (Apple M-series, iters=53, 12 reps):
+
+  ==============================  =========  =====
+  Problem                         Time       CV
+  ==============================  =========  =====
+  N=2 diagonal (pipe floor)        2.0 ms    3.0%
+  N=5 diagonal, L1 active          3.5 ms    1.1%
+  N=3 diagonal, L1 active          6.4 ms    1.3%
+  N=10 CAPM, cond≈36              56 ms      0.9%
+  N=10 random, cond≈204          233 ms      0.4%
+  ==============================  =========  =====
+
+  The dominant cost is the nested dual-bisection in ``projectL1F``:
+  up to 53 outer x 53 inner x N ``FloatArray.get!`` operations per PGD step.
+  The pipe round-trip adds only ~0.3 ms (observed for diagonal sigma where
+  the bisection fast-path is skipped).
+
+- ``lake exe pgd_bench`` reports ~16 ns/solve (1000-run loop, fixed args).
+  **This figure is unreliable** — the pure, fixed-argument call is likely
+  constant-folded by LLVM, measuring loop overhead rather than the algorithm.
+  Use the subprocess timings above as the production baseline.
 
 Concurrency
 -----------
@@ -216,9 +235,19 @@ def _validate_inputs(
 # Public API
 # ---------------------------------------------------------------------------
 
-#: Wall-clock time for the Lean 4 *native* PGD binary at N = 10,
-#: measured by ``lake exe pgd_bench`` (1 000-run average, Apple M-series).
-#: This is algorithm time only — no I/O boundary, no Python overhead.
+#: True algorithm time for the Lean 4 PGD at N=10, cond≈86 (August 2007
+#: LW-shrunk covariance, L1-active), measured by ``lake exe pgd_bench``
+#: using the anti-fold protocol: 50 reps with lambdaMax varied by i*1e-9
+#: per rep to prevent LLVM constant-folding of the pure fixed-argument call.
+#:
+#: Median: 19.8 ms | IQR: [19.6, 20.5] ms | Platform: Apple M2 Max
+#:
+#: The previously reported 13.834 ns was constant-folded loop overhead --
+#: off by a factor of ~1.4 million.  The true native time equals the warm
+#: subprocess median minus ~1 ms pipe round-trip overhead.
+LEAN_NATIVE_MS: float = 19.8
+
+#: Deprecated alias kept for backward compatibility.  Use ``LEAN_NATIVE_MS``.
 LEAN_NATIVE_NS: float = 13.834
 
 
