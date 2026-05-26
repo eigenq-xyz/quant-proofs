@@ -101,12 +101,22 @@ theorem emm_implies_no_arbitrage (m : FinancialMarket Ω)
   have hintegral_pos : 0 <
       MeasureTheory.integral Q
         (discountedValueProcess m arb.θ ⟨m.T, Nat.lt_succ_self m.T⟩) := by
-    sorry
-    -- Tactic path:
-    -- In a finite measurable space with MeasurableSingletonClass,
-    -- ∫ f dQ = ∑ ω, Q {ω} * f ω (via integral_fintype or Measure.sum_smul_dirac).
-    -- Then Finset.sum_pos gives positivity from hQ_pos and hω₀pos,
-    -- and arb.nonneg gives non-negativity for all other terms.
+    -- Q is a probability measure (hence finite), and Ω is a fintype.
+    -- Any function on a fintype with a finite measure is integrable.
+    haveI hQprob' : MeasureTheory.IsProbabilityMeasure Q := hQprob
+    haveI hQfin : MeasureTheory.IsFiniteMeasure Q := inferInstance
+    let f := discountedValueProcess m arb.θ ⟨m.T, Nat.lt_succ_self m.T⟩
+    -- Ṽ T θ ≥ 0 almost everywhere (pointwise ≥ 0 ⟹ ae ≥ 0)
+    have hnn : 0 ≤ᵐ[Q] f := MeasureTheory.ae_of_all Q arb.nonneg
+    -- Ṽ T θ is Q-integrable on the finite probability space
+    have hint : MeasureTheory.Integrable f Q := MeasureTheory.Integrable.of_finite
+    -- Use: 0 < ∫ f ∂Q ↔ 0 < Q (support f), for a nonneg integrable f
+    rw [MeasureTheory.integral_pos_iff_support_of_nonneg_ae hnn hint]
+    -- ω₀ lies in the support of f (since f ω₀ > 0 ≠ 0)
+    have hmem : ω₀ ∈ Function.support f := Function.mem_support.mpr hω₀pos.ne'
+    -- Q (support f) ≥ Q {ω₀} > 0 by measure monotonicity
+    exact lt_of_lt_of_le hQ_pos
+      (MeasureTheory.measure_mono (Set.singleton_subset_iff.mpr hmem))
   -- But risk_neutral_pricing says this integral equals 0 (using zero_cost with ω₀)
   have hzero : MeasureTheory.integral Q
       (discountedValueProcess m arb.θ ⟨m.T, Nat.lt_succ_self m.T⟩) = 0 := by

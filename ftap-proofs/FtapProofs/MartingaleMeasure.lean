@@ -88,18 +88,22 @@ theorem discountedValue_martingale_of_emm (m : FinancialMarket Ω)
   constructor
   · -- StronglyAdapted: Ṽ t θ is ℱ t-measurable
     intro t
-    sorry
-    -- Tactic path:
-    -- show StronglyMeasurable[m.𝒻 t] (discountedValueProcess m θ t)
-    -- unfold discountedValueProcess; simp only
-    -- apply Finset.stronglyMeasurable_sum
-    -- intro i _
-    -- apply StronglyMeasurable.mul
-    -- · -- holdings: θ.predictable gives ℱ_{prevTime t}-measurability.
-    --   -- Need to lift to ℱ_t via filtration monotonicity:
-    --   -- (θ.predictable i t).mono (m.𝒻.mono (Fin.castSucc_le_succ t) Ω rfl)
-    --   --   or more precisely: StronglyMeasurable.mono with the comap argument.
-    -- · exact (m.S_adapted i t).stronglyMeasurable    -- S adapted → ℱ_t-meas for discountedPrice
+    -- prevTime t ≤ t, so ℱ_{prevTime t} ≤ ℱ_t by filtration monotonicity
+    have prevTime_le_t : FtapProofs.prevTime t ≤ t := by
+      simp only [FtapProofs.prevTime, Fin.le_def]
+      exact Nat.pred_le _
+    -- Convert the goal to the explicit sum form that Finset.stronglyMeasurable_sum expects.
+    -- discountedValueProcess m θ t = ∑ i, θ.holdings i t * discountedPrice m i t as functions,
+    -- but they're not definitionally equal due to Finset.sum_apply.
+    have key := Finset.stronglyMeasurable_sum Finset.univ (f := fun i ω =>
+        θ.holdings i t ω * discountedPrice m i t ω)
+      fun i _ =>
+        (((θ.predictable i t).mono (m.𝒻.mono prevTime_le_t) le_rfl).stronglyMeasurable).mul
+        (discountedPrice_adapted m i t).stronglyMeasurable
+    convert key using 1
+    -- Goal: discountedValueProcess m θ t = ∑ i ∈ Finset.univ, fun ω => ...
+    ext ω
+    simp [discountedValueProcess, Finset.sum_apply]
   · -- condExp property: E^Q[Ṽ (t+1) θ | ℱ t] = Ṽ t θ a.e.
     intro t ht
     sorry
