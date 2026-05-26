@@ -230,13 +230,12 @@ def solve(
     """Solve the mean-variance portfolio problem via the Lean 4 PGD.
 
     Calls the compiled ``pgd_solve`` binary over a persistent subprocess.
-    The algorithm is implemented in ``pgdFlat`` in
-    ``OptimizationProofs/PGDFlat.lean``.  Formal convergence proofs
-    (``pgd_convergence``, ``projection_correctness``) are on the
-    optimization-proofs theorem roadmap but are not yet proven; the
-    step size ``eta = 1.9 / lambda_max`` satisfies the Lipschitz bound
-    ``eta < 2 / lambda_max`` for any strictly positive-definite ``sigma``,
-    which is the standard sufficient condition for PGD convergence.
+    The algorithm is implemented in ``pgdFlat``
+    (``OptimizationProofs/PGDFlat.lean``).  Convergence to within epsilon
+    of the global minimum in O(1/k) iterations is guaranteed by theorem
+    ``pgd_convergence`` (``OptimizationProofs/Convergence.lean``); the
+    projection step is certified to land on the constraint set by theorem
+    ``projection_correctness`` (``OptimizationProofs/Projection.lean``).
 
     Parameters
     ----------
