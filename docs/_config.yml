@@ -21,6 +21,11 @@ sphinx:
   extra_extensions:
     - sphinx.ext.autodoc
   config:
-    html_theme: sphinx_book_theme
+    html_theme: quantecon_book_theme
     html_show_sourcelink: false
     myst_heading_anchors: 4
+    html_theme_options:
+      header_organisation_url: "https://github.com/eigenq-xyz"
+      header_organisation: "EigenQ Research"
+      nb_repository_url: "https://github.com/eigenq-xyz/quant-proofs"
+      nb_branch: "main"
