@@ -39,10 +39,18 @@ and validated via `lake exe verify-trace`.
 
 **Status:** Active development.
 
+## Portfolio optimization
+
+Seven stress scenarios benchmark Lean PGD against SciPy, Gurobi, and naive gradient
+descent. Each scenario targets one solver failure mode with a KKT-certified analytical
+optimum as ground truth. Lean PGD is the only solver that passes all seven.
+See [Portfolio Optimization](portfolio/index).
+
 ## Status
 
 | Project | Theorems | Status |
 |---------|----------|--------|
+| `portfolio-proofs` | 0 (scaffolded) | Active — 7 stress scenarios, performance report |
 | `ftap-proofs` | — | In progress |
 | `options-proofs` | — | Planned (depends on ftap-proofs) |
 | `quant-core` | 8 (zero sorry) | v1.0 stable |

@@ -7,6 +7,10 @@ on:
       - 'docs/**'
       - 'README.md'
       - '*/README.md'
+      - 'portfolio-proofs/reports/*.md'
+      - 'portfolio-proofs/reports/**/*_files/**'
+      - 'portfolio-proofs/scenarios/**/*.md'
+      - 'portfolio-proofs/scenarios/**/*_files/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -31,10 +35,41 @@ jobs:
         with:
           enable-cache: true
 
-      # Pin to v1.x — our docs/_config.yml uses JupyterBook 1 format.
-      # JupyterBook 2.x (MyST-based) requires a different config structure.
-      - name: Install JupyterBook v1
-        run: uv tool install "jupyter-book<2"
+      # Pin to JupyterBook v1 (our docs/_config.yml uses JB1 format).
+      # quantecon-book-theme is the QuantEcon theme for Sphinx/JupyterBook.
+      # Pin to >=0.8 so we get the version compatible with sphinx-book-theme 1.2.
+      # nb_repository_url is intentionally NOT set in _config.yml — setting it
+      # triggers the launch-buttons code path which errors when colab_url is absent.
+      - name: Install JupyterBook v1 + QuantEcon theme
+        run: uv tool install "jupyter-book<2" --with "quantecon-book-theme>=0.8"
+
+      # Copy portfolio-proofs content into docs/portfolio/ so Jupyter Book
+      # can serve it. Figures live alongside their .md files so relative
+      # paths resolve correctly.
+      - name: Copy portfolio content to docs/portfolio/
+        run: |
+          mkdir -p docs/portfolio
+
+          # Research report
+          if [ -f "portfolio-proofs/reports/lean_pgd_performance.md" ]; then
+            cp portfolio-proofs/reports/lean_pgd_performance.md docs/portfolio/
+            cp -r portfolio-proofs/reports/lean_pgd_performance_files \
+                  docs/portfolio/ 2>/dev/null || true
+          fi
+
+          # Scenario notebooks (rendered .md + figure directories)
+          for s in boundary_trap phantom_positions vix_shock sp500_factor \
+                   cholesky_crash precision_bleed step_divergence; do
+            if [ -f "portfolio-proofs/scenarios/$s/$s.md" ]; then
+              cp "portfolio-proofs/scenarios/$s/$s.md" docs/portfolio/
+              cp -r "portfolio-proofs/scenarios/$s/${s}_files" \
+                    docs/portfolio/ 2>/dev/null || true
+            fi
+          done
+
+      # Strip Quarto HTML wrappers and footnote separators so Sphinx can parse
+      - name: Clean Quarto GFM for Sphinx compatibility
+        run: python3 docs/strip_quarto_html.py docs/portfolio/*.md
 
       # Build the root overview book (deploys to /)
       - name: Build root JupyterBook
@@ -44,6 +79,8 @@ jobs:
         run: |
           echo "### Pages deployment summary" >> $GITHUB_STEP_SUMMARY
           echo "Published at: https://eigenq-xyz.github.io/quant-proofs/" >> $GITHUB_STEP_SUMMARY
+          echo "Theme: quantecon_book_theme" >> $GITHUB_STEP_SUMMARY
+          echo "Portfolio section: docs/portfolio/" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

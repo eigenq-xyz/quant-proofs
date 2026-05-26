@@ -1,0 +1,20 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/portfolio-proofs/.venv/bin/python",
+  "python.terminal.activateEnvInCurrentTerminal": true,
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/portfolio-proofs"
+  ],
+  "python.analysis.indexing": true,
+  "python.analysis.typeCheckingMode": "strict",
+  "ruff.interpreter": [
+    "${workspaceFolder}/portfolio-proofs/.venv/bin/python"
+  ],
+  "ruff.enable": true,
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  }
+}

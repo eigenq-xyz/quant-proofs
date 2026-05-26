@@ -1,0 +1,96 @@
+{
+  "_meta": {
+    "generated_by": "reports/regenerate_lean_pgd.py",
+    "date": "2026-05-25",
+    "note": "Run regenerate_lean_pgd.py to refresh from live solvers"
+  },
+  "boundary_trap": {
+    "scenario": "L1 Gross Leverage — August 2007",
+    "N": 10, "L": 1.5,
+    "f_star": -0.003576587456,
+    "solvers": {
+      "SLSQP":       {"converged": false, "obj": -0.003564700000, "gap_pct": null, "pos_1e9": null, "note": "Iteration limit (100 steps); L1 kink cycling"},
+      "trust-constr":{"converged": true,  "obj": -0.003576587449, "gap_pct": 0.0000002, "pos_1e9": 10, "note": "Suboptimal; stops in slack-variable flat valley"},
+      "Gurobi":      {"converged": true,  "obj": -0.003576587449, "gap_pct": 0.0000002, "pos_1e9": 10, "note": "Optimal; 8 barrier iterations"},
+      "GD_stale":    {"converged": null,  "note": "N/A — step-size failure mode not applicable to this scenario"},
+      "Lean PGD":    {"converged": true,  "obj": -0.003576587456, "gap_pct": 0.0, "pos_1e9": 2, "time_ns": 14.8, "iters": 6, "note": "Exact KKT match; 14.8 ns native"}
+    }
+  },
+  "cholesky_crash": {
+    "scenario": "Rank-Deficient Covariance (T < N)",
+    "N": 10, "T": 5,
+    "solvers": {
+      "SLSQP":       {"converged": false, "note": "Cycles in degenerate eigenspace; budget violation"},
+      "trust-constr":{"converged": true,  "note": "Nominally converges via 2N barrier; non-PSD Hessian causes suboptimal/unreliable result on non-convex problem"},
+      "Gurobi":      {"converged": false, "note": "Error 10020: Objective Q is not PSD; hard abort"},
+      "GD_stale":    {"converged": null,  "note": "N/A"},
+      "Lean PGD":    {"converged": true,  "note": "Ledoit-Wolf shrinkage makes Sigma strictly PD; never touches raw S"}
+    }
+  },
+  "precision_bleed": {
+    "scenario": "IEEE 754 Constraint Drift — March 2020",
+    "N": 4,
+    "halt_threshold": 1e-9,
+    "solvers": {
+      "SLSQP":       {"converged": true,  "leverage_violation": 2.79e-9, "above_halt": true,  "note": "Window 1: violation 2.79e-9 exceeds 1e-9 production halt threshold"},
+      "trust-constr":{"converged": true,  "leverage_violation": 1.2e-15, "above_halt": false, "note": "Satisfied; barrier keeps solution strictly interior"},
+      "Gurobi":      {"converged": true,  "leverage_violation": 8.0e-10, "above_halt": false, "note": "Satisfied; within Gurobi complementarity tolerance"},
+      "GD_stale":    {"converged": null,  "note": "N/A"},
+      "Lean PGD":    {"converged": true,  "leverage_violation": 0.0, "above_halt": false, "note": "Integer arithmetic; constraint error identically zero"}
+    }
+  },
+  "step_divergence": {
+    "scenario": "Lipschitz Stability Violation",
+    "N": 10, "L": 1.5,
+    "f_star": 0.004397,
+    "solvers": {
+      "SLSQP":       {"converged": false, "obj": 0.004397, "gap_pct": 0.0055, "note": "Iteration limit; L1 kink cycling (same failure mode as boundary_trap)"},
+      "trust-constr":{"converged": true,  "obj": 0.004397, "gap_pct": 0.0, "note": "Converges; interior-point method unaffected by step-size failure"},
+      "Gurobi":      {"converged": true,  "obj": 0.004397, "gap_pct": 0.0, "note": "Converges; adaptive barrier step size"},
+      "GD_stale":    {"converged": false, "note": "Diverges to NaN by step 112; growth factor 1.10x per step; 13780x error at step 100"},
+      "Lean PGD":    {"converged": true,  "obj": 0.004397, "gap_pct": 0.0, "note": "eta=1.9/lambda_max certified; 2 iterations"}
+    }
+  },
+  "phantom_positions": {
+    "scenario": "Exact Sparsity at L1 Boundary",
+    "N": 5, "L": 1.5,
+    "f_star": -0.235000,
+    "w_star": [1.25, 0.0, 0.0, 0.0, -0.25],
+    "solvers": {
+      "SLSQP":       {"converged": false, "obj": -0.235000, "gap_pct": null, "pos_1e9": 4, "note": "Iteration limit; L1 kink cycling"},
+      "trust-constr":{"converged": true,  "obj": -0.234999, "gap_pct": 0.0002, "pos_1e9": 5, "phantom_mag": 4e-7, "note": "Phantom positions at inactive assets (~4e-7)"},
+      "Gurobi":      {"converged": true,  "obj": -0.235000, "gap_pct": 0.0,    "pos_1e9": 5, "phantom_mag": 1e-7, "note": "Correct objective; phantom positions remain (~1e-7)"},
+      "GD_stale":    {"converged": null,  "note": "N/A"},
+      "Lean PGD":    {"converged": true,  "obj": -0.235000, "gap_pct": 0.0,    "pos_1e9": 2, "phantom_mag": 0.0,  "note": "Exact zeros; Duchi threshold is algebraic, not asymptotic"}
+    }
+  },
+  "vix_shock": {
+    "scenario": "Step-Size Certification Under Volatility Shock",
+    "N": 3, "L": 1.0,
+    "f_star_post": -0.088958,
+    "w_star_post": [0.6458, 0.3333, 0.0208],
+    "eta_stale": 47.5, "eta_certified": 11.875, "stability_bound": 12.5,
+    "solvers": {
+      "SLSQP":       {"converged": true,  "obj": -0.088958, "dist_to_wstar": 0.0, "note": "Converges; uses its own internal SQP step logic"},
+      "trust-constr":{"converged": true,  "obj": -0.088958, "dist_to_wstar": 0.0, "note": "Converges; adaptive barrier step size"},
+      "Gurobi":      {"converged": true,  "obj": -0.088958, "dist_to_wstar": 0.0, "note": "Converges; adaptive barrier step size"},
+      "GD_stale":    {"converged": false, "obj": -0.070000, "dist_to_wstar": 0.487, "note": "Oscillates between [1,0,0] and [0,1,0]; never converges; eta=47.5 > bound=12.5"},
+      "Lean PGD":    {"converged": true,  "obj": -0.088958, "dist_to_wstar": 5.77e-7, "note": "eta=11.875 < 12.5; certified convergence"}
+    }
+  },
+  "sp500_factor": {
+    "scenario": "S&P 500 Factor Portfolio Scaling",
+    "model": "CAPM: Sigma = sigma_f^2 * beta*beta' + sigma_eps^2 * I",
+    "N_range": [10, 50, 100, 250, 500],
+    "N_benchmark": 10,
+    "f_star_N10": -0.096837,
+    "n_active_N10": 2,
+    "solvers": {
+      "SLSQP":       {"converged": false, "obj": -0.096820, "gap_pct": 0.0175, "N10_ms": 53.7,  "note": "Iteration limit at N=10 (L1 kink; same failure as boundary_trap). Impractical at N>=50."},
+      "trust-constr":{"converged": true,  "obj": -0.096836, "gap_pct": 0.0010, "N10_ms": 206.6, "note": "Converges at N=10; O((2N)^3) Newton step impractical at N>=200."},
+      "Gurobi":      {"converged": true,  "obj": -0.096837, "gap_pct": 0.0, "note": "Converges at N=10; O((2N)^3) Newton step impractical at N>=300."},
+      "GD_stale":    {"converged": null,  "note": "N/A"},
+      "Lean PGD":    {"converged": true,  "obj": -0.096837, "gap_pct": 0.0, "N10_ms": 164, "note": "O(N) factor gradient; certified correct at all N; subprocess overhead ~100 ms."}
+    }
+  }
+}

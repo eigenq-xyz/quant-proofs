@@ -35,8 +35,17 @@
 # Jupyter
 **/.ipynb_checkpoints/
 **/*_files/
-# (no exceptions — backtest-proofs_files has been archived)
+# Quarto rendered output (scenarios + reports): committed so GitHub renders the markdown
+!portfolio-proofs/scenarios/**/*_files/
+!portfolio-proofs/reports/**/*_files/
 
 # macOS
 **/.DS_Store
 .claude/worktrees/
+
+# Antigravity CLI
+.antigravitycli/
+optimization-proofs/pgd_ffi*.so
+optimization-proofs/ffi/pgd_ffi.c
+docs/_build/
+docs/_build/

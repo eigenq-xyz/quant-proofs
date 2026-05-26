@@ -10,7 +10,14 @@
 # Skip in CI runs (pre-commit.ci) where the build tools aren't available;
 # these are run by the per-project GitHub Actions workflows instead.
 ci:
-  skip: [mypy-quant-core, mypy-mortgage-proofs, lean-sorry-check, lean-import-order]
+  skip:
+    - mypy-quant-core
+    - mypy-mortgage-proofs
+    - mypy-portfolio-proofs
+    - lean-sorry-check
+    - lean-import-order
+    - interrogate-portfolio
+    - theorem-refs
 
 # Exclude archived work from all hooks — archive/ is read-only history
 exclude: ^archive/
@@ -46,6 +53,31 @@ repos:
       - id: markdownlint
         args: [--fix, --disable, MD013, MD033, MD041]
 
+  # ─── Spell checking ──────────────────────────────────────────────────────
+  # Two passes with different dictionaries; both are fast and complement each
+  # other (codespell has a broader corpus, typos has better domain-word handling).
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.3.0
+    hooks:
+      - id: codespell
+        # Ignore: "manu" (manual), "nd" (and), "ot" (of the), "fo" (for),
+        # "ba" (base), "te" (the), "lst" (list), "ans" (answer),
+        # "nin" (nine), "ser" (series).  Financial abbreviations and Lean
+        # names will not be flagged because they are not English words.
+        args:
+          - --ignore-words-list=manu,nd,ot,fo,ba,te,lst,ans,nin,ser
+          - --skip=*.lock,*.parquet,*.so,*.c,*.json
+        types_or: [python, markdown, rst, lean, text]
+
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.28.4
+    hooks:
+      - id: typos
+        # typos has built-in understanding of common false-positives in code
+        # (e.g. "uint", "precompile").  --force-exclude skips binary formats.
+        args: [--force-exclude]
+        exclude: '(\.lock|\.parquet|\.so|\.c|\.json|uv\.lock)$'
+
   # ─── Lean 4 checks ───────────────────────────────────────────────────────
   # Skipped in CI (pre-commit.ci) — CI runs lake build which is more thorough.
   # Runs locally to catch mistakes before pushing.
@@ -70,6 +102,32 @@ repos:
         exclude: "(^archive/|\\.lake/)"
         pass_filenames: true
 
+  # ─── Prose + docstring quality ───────────────────────────────────────────
+  # interrogate checks that all public-facing Python functions have docstrings.
+  # Skipped in CI (pre-commit.ci) — run explicitly in portfolio-proofs CI job.
+  - repo: local
+    hooks:
+      - id: interrogate-portfolio
+        name: docstring coverage (portfolio-proofs)
+        language: system
+        entry: bash -c 'cd portfolio-proofs && uv run interrogate lean_pgd.py lean_pgd_direct.py'
+        files: ^portfolio-proofs/(lean_pgd|lean_pgd_direct)\.py$
+        pass_filenames: false
+
+  # ─── Theorem cross-reference check ───────────────────────────────────────
+  # Verifies that any Lean theorem name cited in a Python docstring as
+  # "guaranteed by theorem `X`" actually exists in the Lean source tree.
+  # Skipped in CI (pre-commit.ci) — run explicitly in portfolio-proofs CI job.
+  - repo: local
+    hooks:
+      - id: theorem-refs
+        name: Lean theorem cross-references
+        language: system
+        entry: python3 .github/scripts/check_theorem_refs.py
+        files: ^portfolio-proofs/.*\.py$
+        exclude: "(^archive/|scenarios/|tests/)"
+        pass_filenames: true
+
   # ─── Per-subproject mypy (strict) ────────────────────────────────────────
   # mypy is run per subproject so each gets its own venv and stub set.
   # Each hook fires only when files under its subproject's python/ tree
@@ -85,7 +143,14 @@ repos:
 
       - id: mypy-mortgage-proofs
         name: mypy --strict (mortgage-proofs)
-        entry: bash -c 'cd mortgage-proofs/python && uv run mypy src/ --strict'
+        entry: bash -c 'cd mortgage-proofs && uv run mypy src/ --strict'
         language: system
-        files: ^mortgage-proofs/python/src/.*\.py$
+        files: ^mortgage-proofs/src/.*\.py$
+        pass_filenames: false
+
+      - id: mypy-portfolio-proofs
+        name: mypy --strict (portfolio-proofs)
+        entry: bash -c 'cd portfolio-proofs && uv run mypy lean_pgd.py lean_pgd_direct.py tests/ --strict'
+        language: system
+        files: ^portfolio-proofs/(lean_pgd|lean_pgd_direct|tests/).*\.py$
         pass_filenames: false

@@ -1,0 +1,8 @@
+[core]
+    no_scm = false
+    remote = minio-local
+    analytics = false
+    autostage = true
+['remote "minio-local"']
+    url = s3://quant-proofs-data/dvc-store
+    endpointurl = http://localhost:9000

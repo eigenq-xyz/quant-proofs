@@ -21,6 +21,12 @@ sphinx:
   extra_extensions:
     - sphinx.ext.autodoc
   config:
-    html_theme: sphinx_book_theme
+    html_theme: quantecon_book_theme
     html_show_sourcelink: false
     myst_heading_anchors: 4
+    html_theme_options:
+      header_organisation_url: "https://github.com/eigenq-xyz"
+      header_organisation: "EigenQ Research"
+      # nb_repository_url intentionally omitted: setting it triggers the
+      # launch-buttons code path which errors when no colab_url is provided.
+      # Repository buttons come from html.use_repository_button above.

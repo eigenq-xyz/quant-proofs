@@ -1,7 +1,19 @@
 format: jb-book
 root: intro
 parts:
-  - caption: Active Projects
+  - caption: Portfolio Optimization
+    chapters:
+      - file: portfolio/index
+        sections:
+          - file: portfolio/lean_pgd_performance
+          - file: portfolio/boundary_trap
+          - file: portfolio/phantom_positions
+          - file: portfolio/vix_shock
+          - file: portfolio/sp500_factor
+          - file: portfolio/cholesky_crash
+          - file: portfolio/precision_bleed
+          - file: portfolio/step_divergence
+  - caption: Active Proofs
     chapters:
       - file: ftap-proofs
       - file: options-proofs
