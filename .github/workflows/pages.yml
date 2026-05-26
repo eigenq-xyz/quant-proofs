@@ -35,10 +35,13 @@ jobs:
         with:
           enable-cache: true
 
-      # Pin to v1.x — our docs/_config.yml uses JupyterBook 1 format.
-      # Install quantecon-book-theme in the same tool environment via --with.
+      # Pin to JupyterBook v1 (our docs/_config.yml uses JB1 format).
+      # quantecon-book-theme is the QuantEcon theme for Sphinx/JupyterBook.
+      # Pin to >=0.8 so we get the version compatible with sphinx-book-theme 1.2.
+      # nb_repository_url is intentionally NOT set in _config.yml — setting it
+      # triggers the launch-buttons code path which errors when colab_url is absent.
       - name: Install JupyterBook v1 + QuantEcon theme
-        run: uv tool install "jupyter-book<2" --with quantecon-book-theme
+        run: uv tool install "jupyter-book<2" --with "quantecon-book-theme>=0.8"
 
       # Copy portfolio-proofs content into docs/portfolio/ so Jupyter Book
       # can serve it. Figures live alongside their .md files so relative
