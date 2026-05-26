@@ -1,5 +1,6 @@
 import Mathlib.LinearAlgebra.Matrix.PosDef
 import Mathlib.Analysis.InnerProductSpace.Basic
+import Mathlib.Topology.Order.IntermediateValue
 import Mathlib.Data.Real.StarOrdered
 import OptimizationProofs.ProblemDefs
 
@@ -64,23 +65,245 @@ noncomputable def primalFromDual (y : Fin N → ℝ) (θ μ : ℝ) : Fin N → �
 
 /-! ### P3.2 — Projection feasibility -/
 
-/-- **P3.2** For any `y`, there exist dual variables `θ*, μ* ≥ 0` such that
-    `primalFromDual y θ* μ*` satisfies both the budget and leverage constraints.
+-- Helper (IVT): for 0 ≤ μ, pfd = max(a-μ,0) + min(a+μ,0) where a = y i - θ
+private theorem pfd_eq_maxmin {μ : ℝ} (hμ : 0 ≤ μ) (y : Fin N → ℝ) (θ : ℝ) (i : Fin N) :
+    primalFromDual y θ μ i = max (y i - θ - μ) 0 + min (y i - θ + μ) 0 := by
+  simp only [primalFromDual]; set a := y i - θ
+  by_cases h1 : |a| ≤ μ
+  · simp only [h1, ↓reduceIte, max_eq_right (by linarith [(abs_le.mp h1).2] : a-μ ≤ 0),
+      min_eq_right (by linarith [(abs_le.mp h1).1] : 0 ≤ a+μ), add_zero]
+  · simp only [h1, ↓reduceIte]
+    by_cases h2 : a > 0
+    · have hlt : μ < a := by rw [abs_of_pos h2] at h1; exact not_le.mp h1
+      simp only [h2, ↓reduceIte, max_eq_left (by linarith : 0 ≤ a-μ),
+        min_eq_right (by linarith : 0 ≤ a+μ), add_zero]
+    · have hle := not_lt.mp h2
+      have hlt : a < -μ := by rw [abs_of_nonpos hle] at h1; linarith [not_le.mp h1]
+      simp only [h2, ↓reduceIte, max_eq_right (by linarith : a-μ ≤ 0),
+        min_eq_left (by linarith : a+μ ≤ 0), zero_add]
 
-    **Status**: `sorry`.  Full proof requires the Intermediate Value Theorem applied
-    to the strictly decreasing budget function `θ ↦ ∑ᵢ primalFromDual y θ 0 i`, plus
-    a bisection argument over `μ ≥ 0` to enforce the leverage constraint when
-    `∑ |primalFromDual y θ₀ 0 i| > L`.
+-- Helper (IVT): the budget function ∑ pfd(·, μ) is continuous in θ
+private theorem budget_continuous (y : Fin N → ℝ) {μ : ℝ} (hμ : 0 ≤ μ) :
+    Continuous (fun θ => ∑ i : Fin N, primalFromDual y θ μ i) := by
+  simp_rw [pfd_eq_maxmin hμ]; apply continuous_finsetSum; intro i _; fun_prop
 
-    Additional hypothesis needed: `|B| ≤ L` (otherwise 𝒞 is empty). -/
-theorem projection_feasibility (B L : ℝ) (hL : 1 ≤ L) (y : Fin N → ℝ) :
+-- Helper: primalFromDual y θ 0 i = y i - θ (soft-threshold with μ = 0 is identity shift)
+private theorem primalFromDual_mu_zero (y : Fin N → ℝ) (θ : ℝ) (i : Fin N) :
+    primalFromDual y θ 0 i = y i - θ := by
+  simp only [primalFromDual]
+  split_ifs with h1 h2
+  · linarith [abs_nonneg (y i - θ), (abs_le.mp h1).1, (abs_le.mp h1).2]
+  · ring
+  · ring
+
+-- Helper: budget equals B at the unique budget-fixing θ₀ = (∑ y - B) / N
+private theorem budget_at_theta0 [NeZero N] (y : Fin N → ℝ) (B : ℝ) :
+    ∑ i, primalFromDual y ((∑ i, y i - B) / ↑N) 0 i = B := by
+  simp_rw [primalFromDual_mu_zero]
+  have hN : (N : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (NeZero.ne N)
+  have : ∑ i : Fin N, (y i - (∑ j, y j - B) / ↑N) = B := by
+    rw [Finset.sum_sub_distrib]
+    simp [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+    field_simp; ring
+  exact this
+
+-- Helper: all components are 0 when μ ≥ max |y i - θ|
+private theorem primalFromDual_all_zero (y : Fin N → ℝ) (θ μ : ℝ)
+    (hμ : ∀ i, |y i - θ| ≤ μ) (i : Fin N) : primalFromDual y θ μ i = 0 := by
+  simp only [primalFromDual]; exact if_pos (hμ i)
+
+/-- **P3.2** For any `y : Fin N → ℝ` and feasible `(B, L)` with `|B| ≤ L`,
+    there exist dual variables `θ*, μ* ≥ 0` such that `primalFromDual y θ* μ*`
+    lies in the constraint set `𝒞(B, L)`.
+
+    **Proof** (Cases 1 and 2a complete; Case 2b sorry):
+
+    **Case 1** — μ = 0 suffices: Set `θ₀ = (∑ y − B) / N`. Then
+    `primalFromDual y θ₀ 0 i = y i − θ₀` and `∑(y i − θ₀) = B`. If
+    `∑|y i − θ₀| ≤ L`, use `(θ₀, 0)`. ✓
+
+    **Case 2a** — μ = 0 leverage > L, B = 0: Use `θ = 0` and
+    `μ = ∑|y i| + 1`. All components vanish (Case 1 of soft-threshold), giving
+    budget 0 = B and leverage 0 ≤ L. ✓
+
+    **Case 2b** — B ≠ 0 and μ = 0 leverage > L: sorry.  Requires IVT on the
+    budget-maintaining leverage curve `h(μ) = ∑|primalFromDual y (θ(μ)) μ i|`
+    where `θ(μ)` is the unique root of the budget equation for each fixed μ.
+    `h(0) > L` and `h(μ) → |B| ≤ L` as μ → ∞; IVT gives the witness. -/
+theorem projection_feasibility [NeZero N] (B L : ℝ) (hL : 1 ≤ L) (hBL : |B| ≤ L) (y : Fin N → ℝ) :
     ∃ θ μ : ℝ, 0 ≤ μ ∧ IsInConstraintSet B L (primalFromDual y θ μ) := by
-  sorry
-  -- TODO (Milestone 3):
-  -- The budget function h(θ) = ∑ primalFromDual y θ 0 i is continuous and strictly
-  -- decreasing (as a shifted mean). By IVT, ∃ θ₀ with h(θ₀) = B.
-  -- If ∑|primalFromDual y θ₀ 0 i| ≤ L, done with μ = 0.
-  -- Otherwise, bisect μ > 0 to enforce complementary slackness.
+  set θ₀ := (∑ i, y i - B) / ↑N with hθ₀_def
+  by_cases hlev : ∑ i, |primalFromDual y θ₀ 0 i| ≤ L
+  · -- ── Case 1: μ = 0 works ──────────────────────────────────────────────────
+    exact ⟨θ₀, 0, le_refl _, budget_at_theta0 y B, hlev⟩
+  · push Not at hlev
+    by_cases hB : B = 0
+    · -- ── Case 2a: B = 0, use large μ to zero all components ───────────────
+      subst hB
+      -- All |y i - 0| ≤ ∑|y j| + 1
+      have habs_bound : ∀ i : Fin N, |y i - 0| ≤ ∑ j, |y j| + 1 := fun i => by
+        simp only [sub_zero]
+        calc |y i|
+            ≤ ∑ j, |y j| := Finset.single_le_sum (f := fun j => |y j|)
+                (fun j _ => abs_nonneg _) (Finset.mem_univ i)
+          _ ≤ ∑ j, |y j| + 1 := le_add_of_nonneg_right one_pos.le
+      have hμ_pos : 0 ≤ ∑ j : Fin N, |y j| + 1 :=
+        add_nonneg (Finset.sum_nonneg (fun j _ => abs_nonneg _)) one_pos.le
+      have hzero : ∀ i : Fin N, primalFromDual y 0 (∑ j, |y j| + 1) i = 0 :=
+        fun i => primalFromDual_all_zero y 0 _ habs_bound i
+      refine ⟨0, ∑ i, |y i| + 1, hμ_pos, ?_⟩
+      constructor
+      · -- Budget = 0 = B = 0
+        simp [hzero]
+      · -- Leverage = 0 ≤ L
+        simp [hzero]; linarith
+    · -- ── Case 2b: B ≠ 0, leverage too large at μ = 0 — use IVT ────────────
+      -- Strategy (review insight): for μ_big = ∑|y i − θ₀| + 1:
+      --   • fμ(θ₀) = 0 (all components thresholded)
+      --   • fμ(θ₀ − μ_big) ≥ B (positive components only, sum ≥ B)
+      -- By IVT on [θ₀ − μ_big, θ₀], ∃ θ₁ with fμ(θ₁) = B.
+      -- At θ₁: no Case 3 components (all y i ≤ θ₀ are Case 1), so leverage = B ≤ L.
+      -- WLOG B > 0 (Case B < 0 is symmetric via negating y, B, θ).
+      have hN : (N : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (NeZero.ne N)
+      -- Case split: B > 0 or B < 0
+      rcases lt_or_gt_of_ne hB with hBneg | hBpos
+      · -- B < 0: mirror of B > 0 using the upper IVT endpoint θ₀' + μ_big
+        -- fμ(θ₀') = 0 > B, fμ(θ₀' + μ_big) ≤ B (only negative components survive)
+        have hBneg : B < 0 := hBneg
+        have hBL' : -B ≤ L := by linarith [abs_of_neg hBneg ▸ hBL]
+        set θ₀' := (∑ i, y i - B) / N
+        have hbudget0 : ∑ i : Fin N, (y i - θ₀') = B := by
+          show ∑ i : Fin N, (y i - (∑ j, y j - B) / N) = B
+          have h1 : ∑ i : Fin N, (y i - (∑ j, y j - B) / ↑N) =
+              ∑ i, y i - ↑N * ((∑ j, y j - B) / ↑N) := by
+            rw [Finset.sum_sub_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+          rw [h1, mul_div_cancel₀ _ hN]; ring
+        set μ_big := ∑ i : Fin N, |y i - θ₀'| + 1
+        have hμ_pos : 0 < μ_big :=
+          add_pos_of_nonneg_of_pos (Finset.sum_nonneg fun i _ => abs_nonneg _) one_pos
+        have hbound : ∀ i : Fin N, |y i - θ₀'| < μ_big := fun i =>
+          lt_of_le_of_lt (Finset.single_le_sum (f := fun j => |y j - θ₀'|)
+            (fun j _ => abs_nonneg _) (Finset.mem_univ i)) (lt_add_one _)
+        let fμ : ℝ → ℝ := fun θ => ∑ i : Fin N, primalFromDual y θ μ_big i
+        have hcont : ContinuousOn fμ (Set.Icc θ₀' (θ₀' + μ_big)) :=
+          (budget_continuous y (le_of_lt hμ_pos)).continuousOn.mono (Set.subset_univ _)
+        -- fμ(θ₀') = 0 (all thresholded)
+        have hfθ₀ : fμ θ₀' = 0 := by
+          simp [fμ, show ∀ i : Fin N, primalFromDual y θ₀' μ_big i = 0 from
+            fun i => by simp [primalFromDual, if_pos (hbound i).le]]
+        -- fμ(θ₀' + μ_big) ≤ B < 0: only negative Case 3 components survive
+        have hfhi : fμ (θ₀' + μ_big) ≤ B := by
+          simp only [fμ]
+          have hcomp : ∀ i : Fin N, primalFromDual y (θ₀' + μ_big) μ_big i =
+              if y i < θ₀' then y i - θ₀' else 0 := by
+            intro i; simp only [primalFromDual]
+            have ha : y i - (θ₀' + μ_big) = (y i - θ₀') - μ_big := by ring
+            by_cases hi : y i < θ₀'
+            · have hneg_c : (y i - θ₀') - μ_big < -μ_big := by linarith
+              rw [ha, if_neg (by rw [abs_of_neg (by linarith)]; linarith),
+                     if_neg (by linarith), if_pos hi]; ring
+            · have hge' := not_lt.mp hi
+              have hval : y i - θ₀' < μ_big := by
+                have hb := hbound i; rwa [abs_of_nonneg (by linarith : 0 ≤ y i - θ₀')] at hb
+              rw [ha, if_pos (by rw [abs_of_nonpos (by linarith)]; linarith), if_neg hi]
+          simp_rw [hcomp]
+          calc ∑ i : Fin N, (if y i < θ₀' then y i - θ₀' else 0)
+              ≤ ∑ i : Fin N, (y i - θ₀') := Finset.sum_le_sum fun i _ => by
+                  by_cases h : y i < θ₀'
+                  · simp [h]
+                  · simp [h]; linarith [not_lt.mp h]
+            _ = B := hbudget0
+        -- IVT on [θ₀', θ₀' + μ_big]: fμ(θ₀' + μ_big) ≤ B ≤ 0 = fμ(θ₀')
+        obtain ⟨θ₁, hθ₁_rng, hθ₁_bud⟩ :=
+          intermediate_value_Icc' (by linarith [hμ_pos]) hcont
+            ⟨hfhi, by rw [hfθ₀]; exact hBneg.le⟩
+        -- At θ₁ ∈ [θ₀', θ₀' + μ_big]: all components ≤ 0 (no Case 2)
+        have hle' : ∀ i : Fin N, primalFromDual y θ₁ μ_big i ≤ 0 := fun i => by
+          simp only [primalFromDual]
+          by_cases h1 : |y i - θ₁| ≤ μ_big
+          · rw [if_pos h1]
+          · rw [if_neg h1]; by_cases h2 : y i - θ₁ > 0
+            · rw [if_pos h2]; exfalso
+              -- Case 2: y i - θ₁ > μ_big, but θ₁ ≥ θ₀' so y i - θ₁ ≤ y i - θ₀'
+              -- and |y i - θ₀'| < μ_big, contradiction
+              have hlt : y i - θ₁ > μ_big := by
+                have := not_le.mp h1; rw [abs_of_pos h2] at this; linarith
+              linarith [hbound i, hθ₁_rng.1, le_abs_self (y i - θ₀')]
+            · -- Case 3: y i - θ₁ ≤ 0 and |y i - θ₁| > μ_big
+              rw [if_neg h2]
+              have hle2 := not_lt.mp h2
+              have hlt1 := not_le.mp h1
+              rw [abs_of_nonpos hle2] at hlt1; linarith
+        refine ⟨θ₁, μ_big, le_of_lt hμ_pos, hθ₁_bud, ?_⟩
+        -- Leverage = -B = |B| ≤ L
+        have hlev : ∑ i, |primalFromDual y θ₁ μ_big i| = -B := by
+          simp_rw [abs_of_nonpos (hle' _), Finset.sum_neg_distrib]
+          linarith [hθ₁_bud]
+        linarith [hlev.symm ▸ hBL']
+      · -- B > 0: the main IVT construction
+        have hBpos : 0 < B := hBpos
+        set θ₀' := (∑ i, y i - B) / N
+        have hbudget0 : ∑ i : Fin N, (y i - θ₀') = B := by
+          show ∑ i : Fin N, (y i - (∑ j, y j - B) / N) = B
+          have h1 : ∑ i : Fin N, (y i - (∑ j, y j - B) / ↑N) =
+              ∑ i, y i - ↑N * ((∑ j, y j - B) / ↑N) := by
+            rw [Finset.sum_sub_distrib, Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+          rw [h1, mul_div_cancel₀ _ hN]; ring
+        set μ_big := ∑ i : Fin N, |y i - θ₀'| + 1
+        have hμ_pos : 0 < μ_big :=
+          add_pos_of_nonneg_of_pos (Finset.sum_nonneg fun i _ => abs_nonneg _) one_pos
+        have hbound : ∀ i : Fin N, |y i - θ₀'| < μ_big := fun i =>
+          lt_of_le_of_lt (Finset.single_le_sum (f := fun j => |y j - θ₀'|)
+            (fun j _ => abs_nonneg _) (Finset.mem_univ i)) (lt_add_one _)
+        let fμ : ℝ → ℝ := fun θ => ∑ i : Fin N, primalFromDual y θ μ_big i
+        have hcont : ContinuousOn fμ (Set.Icc (θ₀' - μ_big) θ₀') :=
+          (budget_continuous y (le_of_lt hμ_pos)).continuousOn.mono (Set.subset_univ _)
+        have hfθ₀ : fμ θ₀' = 0 := by
+          simp [fμ, show ∀ i : Fin N, primalFromDual y θ₀' μ_big i = 0 from
+            fun i => by simp [primalFromDual, if_pos (hbound i).le]]
+        have hflo : fμ (θ₀' - μ_big) ≥ B := by
+          simp only [fμ]
+          have hcomp : ∀ i : Fin N, primalFromDual y (θ₀' - μ_big) μ_big i =
+              if y i > θ₀' then y i - θ₀' else 0 := by
+            intro i; simp only [primalFromDual]
+            have ha : y i - (θ₀' - μ_big) = (y i - θ₀') + μ_big := by ring
+            by_cases hi : y i > θ₀'
+            · have hpos : (y i - θ₀') + μ_big > μ_big := by linarith
+              rw [ha, if_neg (by rw [abs_of_pos (by linarith)]; linarith),
+                     if_pos (by linarith), if_pos hi]; ring
+            · have hle := not_lt.mp hi
+              have hnn : 0 ≤ (y i - θ₀') + μ_big := by
+                linarith [(abs_le.mp (hbound i).le).1]
+              rw [ha, if_pos (by rw [abs_of_nonneg hnn]; linarith), if_neg hi]
+          simp_rw [hcomp]
+          calc ∑ i : Fin N, (if y i > θ₀' then y i - θ₀' else 0)
+              ≥ ∑ i : Fin N, (y i - θ₀') := Finset.sum_le_sum fun i _ => by
+                  by_cases h : y i > θ₀'
+                  · simp [h]
+                  · simp [h]; linarith [not_lt.mp h]
+            _ = B := hbudget0
+        obtain ⟨θ₁, hθ₁_rng, hθ₁_bud⟩ :=
+          intermediate_value_Icc' (by linarith [hμ_pos]) hcont
+            ⟨by rw [hfθ₀]; exact hBpos.le, hflo⟩
+        have hge : ∀ i : Fin N, 0 ≤ primalFromDual y θ₁ μ_big i := fun i => by
+          simp only [primalFromDual]
+          by_cases h1 : |y i - θ₁| ≤ μ_big
+          · rw [if_pos h1]
+          · rw [if_neg h1]; by_cases h2 : y i - θ₁ > 0
+            · rw [if_pos h2]
+              have := not_le.mp h1; rw [abs_of_pos h2] at this; linarith
+            · rw [if_neg h2]; exfalso
+              have hle := not_lt.mp h2
+              have hlt3 : -(y i - θ₁) > μ_big := by
+                have := not_le.mp h1; rw [abs_of_nonpos hle] at this; linarith
+              linarith [neg_abs_le (y i - θ₀'), hbound i, hθ₁_rng.2]
+        refine ⟨θ₁, μ_big, le_of_lt hμ_pos, hθ₁_bud, ?_⟩
+        have hlev : ∑ i, |primalFromDual y θ₁ μ_big i| = B := by
+          simp_rw [abs_of_nonneg (hge _)]; exact hθ₁_bud
+        linarith [hlev.symm ▸ (abs_of_pos hBpos ▸ hBL)]
+      -- The leverage h(μ) = ∑|primalFromDual y (θ(μ)) μ i| is continuous in μ,
+      -- h(0) > L (by hlev), and h(μ) → |B| ≤ L as μ → ∞.
+      -- By IVT, ∃ μ* with h(μ*) ≤ L.  Use (θ(μ*), μ*) as the witness.
 
 /-! ### P3.3 — Projection correctness from KKT conditions -/
 

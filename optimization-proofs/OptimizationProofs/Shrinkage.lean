@@ -16,7 +16,7 @@ numerical solvers when the sample covariance is rank-deficient.
 
 ## Main theorems
 
-- **S2.1** `shrinkage_isHermitian` — `Σ*(δ)` is symmetric for any symmetric `S`
+- **S2.1** `shrinkage_isSymmetric` — `Σ*(δ)` is symmetric for any symmetric `S`
 - **S2.2** `shrinkage_psd` — `Σ*(δ)` is strictly positive definite when:
   - `S.PosSemidef` (sample covariance is PSD)
   - `0 < Tr(S)` (non-degenerate sample; at least one nonzero eigenvalue)
@@ -44,19 +44,19 @@ variable {N : ℕ}
 
 /-! ### S2.1 — Symmetry of the shrinkage estimator -/
 
-/-- **S2.1** The Ledoit-Wolf shrinkage matrix is symmetric (Hermitian).
+/-- **S2.1** The Ledoit-Wolf shrinkage matrix is symmetric.
 
-    The identity matrix `I` is Hermitian; scalar multiples and sums of Hermitian
-    matrices are Hermitian.  Hence `Σ*(δ) = δcI + (1−δ)S` is Hermitian whenever
+    The identity matrix `I` is symmetric; scalar multiples and sums of symmetric
+    matrices are symmetric.  Hence `Σ*(δ) = δcI + (1−δ)S` is symmetric whenever
     `S` is, regardless of `δ`. -/
-theorem shrinkage_isHermitian {S : Matrix (Fin N) (Fin N) ℝ}
+theorem shrinkage_isSymmetric {S : Matrix (Fin N) (Fin N) ℝ}
     (hS : S.IsHermitian) (δ : ℝ) :
     (ledoitWolfShrinkage S δ).IsHermitian := by
   unfold ledoitWolfShrinkage
   apply Matrix.IsHermitian.add
-  · -- δ • (c • I) is Hermitian: I is Hermitian, preserved under two scalar multiples
+  · -- δ • (c • I) is symmetric: I is symmetric, preserved under two scalar multiples
     exact (Matrix.isHermitian_one.smul (star_trivial _)).smul (star_trivial _)
-  · -- (1-δ) • S is Hermitian: S is Hermitian, preserved under scalar multiple
+  · -- (1-δ) • S is symmetric: S is symmetric, preserved under scalar multiple
     exact hS.smul (star_trivial _)
 
 /-! ### S2.2 — Strict positive definiteness -/
