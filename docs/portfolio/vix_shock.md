@@ -56,7 +56,6 @@ high of 82.7 on March 16, 2020 — a 5$\times$ increase in under four
 weeks, with the sharpest single-week move between February 21 and
 February 28.
 
-<div id="fig-vix">
 
 ![](vix_shock_files/figure-commonmark/fig-vix-output-1.png)
 
@@ -67,7 +66,6 @@ calibrated on pre-Feb-21 data and using a step size eta =
 1.9/lambda_max(Sigma_pre) would carry a stale eta into the new regime.
 Data: Yahoo Finance.
 
-</div>
 
 In our stylized scenario, $\sigma^2$ doubles from $0.04$ to $0.16$
 overnight (a factor-of-2 increase in $\sigma$, matching the roughly
@@ -177,7 +175,6 @@ kkt_optimum.print_certificate(cert_post, res_post, p_post)
 
       f(w*) = -0.088958333333333
 
-<div id="fig-weights-comparison">
 
 ![](vix_shock_files/figure-commonmark/fig-weights-comparison-output-1.png)
 
@@ -186,7 +183,6 @@ volatility shock. When variance quadruples (sigma^2: 0.04 to 0.16), the
 optimizer diversifies — the cost of concentration rises, so the
 Equity-only portfolio gives way to a three-asset spread.
 
-</div>
 
 ## The step-size stability condition
 
@@ -227,13 +223,10 @@ simplex vertices rather than converging to the interior optimum. The
 norm-to-optimum stays constant at $\approx 0.5$-$0.9$, rather than
 decreasing geometrically.
 
-<div id="tbl-step-size">
 
 Table 1
 
-<div class="cell-output cell-output-display" execution_count="6">
 
-<div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
@@ -252,11 +245,8 @@ Table 1
 | Pre-shock | 0.04 | 0.04 | 50.0 | 47.5000 | — | \|0.90\| = 0.90 |
 | Post-shock | 0.16 | 0.16 | 12.5 | 47.5000  VIOLATES (47.5 \> 12.5) | 11.8750  (\< 12.5) OK | \|6.60\| = 6.60x per step (stale) |
 
-</div>
 
-</div>
 
-</div>
 
 ## Solver results: uncertified gradient descent (stale step size)
 
@@ -446,7 +436,6 @@ the simplex projection prevents $|w_i| \to \infty$, but the gradient
 step direction is so far off that the iterates cycle rather than
 contract.
 
-<div id="fig-trajectory">
 
 ![](vix_shock_files/figure-commonmark/fig-trajectory-output-1.png)
 
@@ -458,7 +447,6 @@ keeps weights on the feasible set, but the stale step size makes the
 gradient direction catastrophically wrong. Both start from w_0 = \[1/3,
 1/3, 1/3\].
 
-</div>
 
 The certified PGD converges to the post-shock optimum in 212 iterations
 (geometric decay visible in the log plot). The uncertified solver with

@@ -64,7 +64,6 @@ risk envelope.
 
 ### VIX during the crisis
 
-<div id="fig-vix">
 
 ![](precision_bleed_files/figure-commonmark/fig-vix-output-1.png)
 
@@ -72,11 +71,9 @@ Figure 1: VIX daily close, February–April 2020. The March 9–18 window
 (shaded) corresponds to the four rolling rebalancing windows in this
 scenario. Data: Yahoo Finance.
 
-</div>
 
 ### Asset returns heatmap
 
-<div id="fig-returns-heatmap">
 
 ![](precision_bleed_files/figure-commonmark/fig-returns-heatmap-output-1.png)
 
@@ -85,7 +82,6 @@ trading days). Red indicates drawdown; green indicates gain. The
 synchronized red across all four assets on March 9, 12, 16, and 18
 illustrates the correlated dislocation. Data: Yahoo Finance.
 
-</div>
 
 ## The feasibility tolerance gap
 
@@ -493,16 +489,13 @@ path adds $\approx 1.6$ ms marshalling at $N = 4$.
 
 The five solvers span four distinct regimes of constraint accuracy:
 
-<div id="tbl-constraint-spectrum">
 
 Table 1: Constraint error (max of \|budget error\|, leverage violation)
 for each solver across the four March 2020 rolling windows. Threshold =
 1e-9 (production halt boundary). SLSQP Window 1 is the only case that
 exceeds the threshold.
 
-<div class="cell-output cell-output-display" execution_count="10">
 
-<div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
@@ -525,11 +518,8 @@ exceeds the threshold.
 | Integer PGD (bp-exact) | 0.0e+00    | 0.0e+00 | 0.0e+00 | 0.0e+00 |
 | Lean 4 PGD (pgd_ffi)   | 0.0e+00    | 0.0e+00 | 3.6e-13 | 2.8e-12 |
 
-</div>
 
-</div>
 
-</div>
 
 The SLSQP Window 1 violation ($2.79 \times 10^{-9}$) is the only case
 that exceeds the production halt threshold. All other solvers satisfy
@@ -572,14 +562,12 @@ def simulate_accum(dtype_str: str, steps: int) -> tuple[float, float]:
     """Apply sequential gradient+re-projection steps and return budget drift.
 
     Parameters
-    ----------
     dtype_str : str
         ``"float32"`` or ``"float64"``.
     steps : int
         Number of update steps.
 
     Returns
-    -------
     tuple[float, float]
         (final_budget_error, elapsed_ms)
     """
@@ -691,7 +679,6 @@ loop is needed: the assertion in `pgd_integer.run_window` verifies this
 on all four March 2020 windows above, and the same guarantee holds for
 any problem with integer-feasible input.
 
-<div id="tbl-scaling-benchmark">
 
 Table 2: Mean and maximum SLSQP constraint error (max of budget error
 and leverage violation) across 20 random strictly-PD problems per N.
@@ -754,7 +741,6 @@ df_scale = pd.DataFrame(rows).set_index("N")
 print(df_scale.to_string())
 ```
 
-<div class="cell-output cell-output-stdout">
 
         SLSQP mean error SLSQP max error Above 1e-09 (20 draws)  Integer PGD error
     N
@@ -763,11 +749,8 @@ print(df_scale.to_string())
     50          9.33e-03        2.66e-02                  20/20  0  (exact, all N)
     100         1.29e-01        1.76e-01                  20/20  0  (exact, all N)
 
-</div>
 
-</div>
 
-<div id="fig-scaling-benchmark">
 
 ![](precision_bleed_files/figure-commonmark/fig-scaling-benchmark-output-1.png)
 
@@ -777,7 +760,6 @@ marks the production halt threshold (1e-9); the dotted orange line marks
 SLSQP’s internal feasibility tolerance (1e-8). Integer PGD error is
 identically zero for all N by the integer-arithmetic invariant.
 
-</div>
 
 SLSQP constraint errors generally remain below the `acc=1e-8` ceiling
 (by definition, since that is the hard stop in the Kraft Fortran code),

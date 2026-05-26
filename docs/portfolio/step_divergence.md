@@ -90,7 +90,6 @@ January-calibrated step size exhibits the failure demonstrated below.
 
 ### VIX during Volmageddon
 
-<div id="fig-vix">
 
 ![](step_divergence_files/figure-commonmark/fig-vix-output-1.png)
 
@@ -99,13 +98,11 @@ calibration period (light gray band) and the February 5 shock (red
 annotation) are highlighted. VIX closed at 37.32 on February 5, a 150%
 single-day increase. Data: Yahoo Finance.
 
-</div>
 
 ## The calibration and shock windows
 
 ### January 2018 calibration (full-rank)
 
-<div id="fig-cal-heatmap">
 
 ![](step_divergence_files/figure-commonmark/fig-cal-heatmap-output-1.png)
 
@@ -113,16 +110,12 @@ Figure 2: Daily returns (%) for 10 US industry portfolios, January 2–31,
 2018. The 21-day window is full-rank (T=21 \> N=10). Source: Ken French
 Data Library, value-weighted returns.
 
-</div>
 
-<div id="tbl-cal-stats">
 
 Table 1: Calibration window covariance diagnostics. The 21-day window is
 full rank, making sample-based step-size calibration valid.
 
-<div class="cell-output cell-output-display" execution_count="4">
 
-<div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
@@ -145,15 +138,11 @@ full rank, making sample-based step-size calibration valid.
 | Stability bound 2/λ_max    | 5615.23                   |
 | Calibrated η (= 1.9/λ_max) | 5334.47  ✓ (inside bound) |
 
-</div>
 
-</div>
 
-</div>
 
 ### Five-day shock window (February 1–5, 2018)
 
-<div id="fig-shock-heatmap">
 
 ![](step_divergence_files/figure-commonmark/fig-shock-heatmap-output-1.png)
 
@@ -163,17 +152,13 @@ February 5, 2018. All sectors fell sharply on February 2 and February 5
 to the January calibration window. Source: Ken French Data Library,
 value-weighted returns.
 
-</div>
 
-<div id="tbl-shock-stats">
 
 Table 2: Post-shock covariance diagnostics. λ_max increases 6.68×
 relative to the January calibration. The calibrated η=5334.47 exceeds
 the post-shock Lipschitz bound by 6.3×.
 
-<div class="cell-output cell-output-display" execution_count="6">
 
-<div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
@@ -198,11 +183,8 @@ the post-shock Lipschitz bound by 6.3×.
 | λ_max ratio (shock / cal) | 6.68× |
 | Divergence growth factor per step | \|η × λ_max − 1\| = 11.687  (\>1 → diverges) |
 
-</div>
 
-</div>
 
-</div>
 
 ## Solver results
 
@@ -224,7 +206,6 @@ res_gd = gd_fixed.run(p)
     After 3 steps       : error amplification ~1596x
 
      Step     ||w||_inf                         weights (first 5)
-    -----------------------------------------------------------------
         0        0.1000  [+0.1000  +0.1000  +0.1000  +0.1000  +0.1000 ...]
         1      103.2207  [-62.5111  -79.8527  -78.7728  -103.2207  -77.1757 ...]
         2     1095.0499  [+678.4979  +782.7050  +852.0107  +1095.0499  +944.3649 ...]
@@ -527,7 +508,6 @@ kkt_optimum.print_certificate(cert, res_kkt, p)
 
        f(w*) = 0.004397215451
 
-<div id="fig-weights">
 
 ![](step_divergence_files/figure-commonmark/fig-weights-output-1.png)
 
@@ -536,7 +516,6 @@ concentrates entirely on Utilities (long 125%) and Energy (short 25%).
 Adaptive PGD matches the KKT solution; the fixed-η gradient descent
 returned no valid weights (diverged).
 
-</div>
 
 ## Algorithmic cost and scaling
 
@@ -695,7 +674,6 @@ for N_bm in Ns_bm:
 pd.DataFrame(results_bm).set_index("N")
 ```
 
-<div id="tbl-benchmark">
 
 Table 3: Wall-clock solve times (median of 5 runs, Apple M-series,
 Python 3.12). Synthetic problems with T = N/5 (rank-deficient raw S,
@@ -704,9 +682,7 @@ O(N^2) gradient + O(N log N) dual-bisection projection. trust-constr and
 Gurobi use the 2N-variable interior-point reformulation with O((2N)^3)
 Newton steps.
 
-<div class="cell-output cell-output-display" execution_count="14">
 
-<div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
@@ -728,11 +704,8 @@ Newton steps.
 | 250 | 67.5 | 916.3 | 44.3 | 4 | 14× | 1× |
 | 500 | 1543.8 | 6235.1 | 157.0 | 74 | 4× | 0× |
 
-</div>
 
-</div>
 
-</div>
 
 The speedup is algorithmic, not incidental.[^11] trust-constr and Gurobi
 both solve a $2N$-variable system; each Newton step requires $O((2N)^3)$

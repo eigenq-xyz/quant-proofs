@@ -29,3 +29,8 @@ sphinx:
       header_organisation: "EigenQ Research"
       nb_repository_url: "https://github.com/eigenq-xyz/quant-proofs"
       nb_branch: "main"
+      # Disable launch buttons — no Binder/Colab/JupyterHub for this repo
+      launch_buttons:
+        colab_url: ""
+        binderhub_url: ""
+        jupyterhub_url: ""

@@ -198,7 +198,6 @@ the KKT optimal, the live position count (number of portfolio weights
 with absolute value above $10^{-9}$), and wall-clock solve time relative
 to Lean PGD.
 
-<div id="tbl-summary">
 
 Table 1: **Table 2.** Solver performance: rows = solvers, columns =
 scenarios (7 total). ✓ = converged to a feasible KKT point; ✗ = failed;
@@ -219,7 +218,6 @@ due to O(N^3) Newton step.
 | GD (stale η) | N/A | N/A | N/A | ✗ | N/A | ✗ | N/A |
 | Lean PGD | ✓ (d) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
-</div>
 
 The Lean PGD timing in the table is the native compiled binary (14.8
 nanoseconds per solve, measured over 1,000 runs in the
@@ -239,7 +237,6 @@ the solver class is not applicable to this failure mode. The Gurobi
 column uses documented values; no Gurobi license was available on the
 benchmark machine.
 
-<div id="tbl-accuracy">
 
 Table 2: **Table 3.** Objective suboptimality gap (%) relative to KKT
 certificate. FAIL = did not converge. N/A = solver not applicable to
@@ -256,7 +253,6 @@ convergence; gap is 0.0000% on all scenarios where a KKT optimum exists.
 | GD (stale η) | N/A | N/A | N/A | FAIL | N/A | FAIL | N/A |
 | Lean PGD | 0.0000% | 0.0000% | 0.0000% | 0.0000% | 0.0000% | 0.0001% | 0.0000% |
 
-</div>
 
 ### 4.2 Speed: Median Wall-Clock Time (ms)
 
@@ -267,7 +263,6 @@ binary solves the boundary_trap N=10 problem in 0.015 ms (14.8 ns); the
 subprocess times shown here include pipe I/O overhead. FAIL cells report
 the time until failure detection.
 
-<div id="tbl-speed">
 
 Table 3: **Table 4.** Median wall-clock solve time (ms), 5 runs, Apple
 M-series. Lean PGD uses persistent subprocess (lean_pgd.py); subprocess
@@ -283,7 +278,6 @@ failure detection (\*). Lean PGD boundary_trap shows native binary time
 | GD (stale η) | N/A | N/A | N/A | 0.0\* | N/A | 0.2\* | N/A |
 | Lean PGD | 0.015† | 22.0 | 4.6 | 21.9 | 12.7 | 41.7 | 165.1 |
 
-</div>
 
 *\* time until failure detection (not a successful solve time)*
 
@@ -292,7 +286,6 @@ ms for first call*
 
 ### 4.3 Combined Speed-Accuracy Figure
 
-<div id="fig-tradeoff">
 
 ![](lean_pgd_performance_files/figure-commonmark/fig-tradeoff-output-1.png)
 
@@ -303,7 +296,6 @@ plotted at the time until failure detection, placed at gap = 0.1% for
 visibility. Lean PGD boundary_trap star = native binary (14.8 ns = 0.015
 ms).
 
-</div>
 
 ## 5. Scenario Results
 
@@ -557,7 +549,6 @@ dual-bisection operator on this constraint set. They transfer to any
 application that uses the same first-order structure, independent of the
 specific loss function or application domain.
 
-------------------------------------------------------------------------
 
 [^1]: Cont, R. (2001). “Empirical properties of asset returns: Stylized
     facts and statistical issues.” Quantitative Finance 1(2): 223-236.

@@ -71,7 +71,6 @@ $O(N)$ per step; even the dense $O(N^2)$ variant costs $O(N^2)$ plus
 $O(N \log N)$ for the Duchi projection. Assuming 25 Newton steps and 500
 PGD steps:
 
-<div id="fig-op-counts">
 
 ![](sp500_factor_files/figure-commonmark/fig-op-counts-output-1.png)
 
@@ -81,7 +80,6 @@ algebra per step. PGD (factor) cost assumes 500 iterations with O(N)
 gradient and O(N log N) projection. Log scale spans 9 orders of
 magnitude.
 
-</div>
 
 ``` python
 N_ref = 500
@@ -227,7 +225,6 @@ df_bm = pd.DataFrame(results_bm).set_index("N")
 df_bm
 ```
 
-<div id="tbl-benchmark">
 
 Table 1: Wall-clock times: PGD = 100 fixed iterations (median of 5
 runs); Gurobi = full barrier solve (median of 3 runs). PGD time measures
@@ -235,9 +232,7 @@ per-iteration cost and grows slowly with N, reflecting the O(N) factor
 gradient. Gurobi time grows with N<sup>2–N</sup>3, reflecting the
 2N-variable dense Newton step.
 
-<div class="cell-output cell-output-display" execution_count="7">
 
-<div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
@@ -259,11 +254,8 @@ gradient. Gurobi time grows with N<sup>2–N</sup>3, reflecting the
 | 250 | 557.3        | 51.0        | 19           | 11                | 0×           |
 | 500 | 633.2        | 161.7       | 36           | 11                | 0×           |
 
-</div>
 
-</div>
 
-</div>
 
 **Reading the table.** The PGD-100 times grow only modestly from
 $N = 10$ to $N = 500$, reflecting the $O(N)$ per-iteration cost
@@ -279,7 +271,6 @@ provides the verified guarantees.[^3]
 
 ## Scaling plot
 
-<div id="fig-scaling">
 
 ![](sp500_factor_files/figure-commonmark/fig-scaling-output-1.png)
 
@@ -288,7 +279,6 @@ Figure 2: Wall-clock time (ms) vs. N on log-log axes. PGD-100 measures
 scaling exponents are estimated by least-squares fit on the log-log data
 points.
 
-</div>
 
 ## Active position count
 
@@ -299,7 +289,6 @@ monotone in $\beta_i$, and the L1 leverage constraint bounds total
 exposure, the optimal portfolio typically holds one long-high-$\beta$
 position and one short-low-$\beta$ position (for $L > 1$).
 
-<div id="fig-active-positions">
 
 ![](sp500_factor_files/figure-commonmark/fig-active-positions-output-1.png)
 
@@ -307,17 +296,13 @@ Figure 3: Active positions (\|w_i\| \> 1e-9) in PGD iterates after 100
 steps, for each benchmark N. The active set is sparse (k \<\< N)
 throughout the optimization.
 
-</div>
 
-<div id="tbl-active">
 
 Table 2: Active positions and sparsity ratio for each benchmark N. The
 PGD Duchi threshold maps most assets to exactly zero weight.
 Interior-point methods cannot achieve this sparsity mid-solve.
 
-<div class="cell-output cell-output-display" execution_count="10">
 
-<div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
@@ -339,11 +324,8 @@ Interior-point methods cannot achieve this sparsity mid-solve.
 | 250 | 19       | 7.6%       | 231          |
 | 500 | 36       | 7.2%       | 464          |
 
-</div>
 
-</div>
 
-</div>
 
 Interior-point methods in the $2N$-variable reformulation cannot exploit
 this sparsity during the solve: the barrier terms prevent $u_i$ or $v_i$
@@ -385,16 +367,13 @@ $$g_k = \nabla f(w_k) = \underbrace{\sigma_f^2 \beta (\beta^\top w_k)}_{\text{O(
 | Per-solve cost   | O(N³) × 25 steps   | O(N²) × K steps | **O(N) × K steps** |
 | N=500 operations | ≈ 3 × 10¹⁰         | ≈ 7 × 10⁷       | **≈ 4.5 × 10³**    |
 
-<div id="tbl-complexity">
 
 Table 3: Absolute operation count estimates at each benchmark N.
 Interior-point assumes 25 Newton steps; PGD assumes K=500 iterations.
 The IP / PGD-factor ratio grows as O(N^2) since IP is O(N^3) and
 PGD-factor is O(N).
 
-<div class="cell-output cell-output-display" execution_count="11">
 
-<div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
@@ -416,11 +395,8 @@ PGD-factor is O(N).
 | 250 | 3.12e+09           | 3.22e+07      | 1.12e+06       | 2.78e+03        |
 | 500 | 2.50e+10           | 1.27e+08      | 2.50e+06       | 1.00e+04        |
 
-</div>
 
-</div>
 
-</div>
 
 **On Python vs. Lean 4 timing.** The Python reference PGD measures the
 per-iteration cost of the factor gradient and bisection projection, but

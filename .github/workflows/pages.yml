@@ -64,6 +64,10 @@ jobs:
             fi
           done
 
+      # Strip Quarto HTML wrappers and footnote separators so Sphinx can parse
+      - name: Clean Quarto GFM for Sphinx compatibility
+        run: python3 docs/strip_quarto_html.py docs/portfolio/*.md
+
       # Build the root overview book (deploys to /)
       - name: Build root JupyterBook
         run: jupyter-book build docs/

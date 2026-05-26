@@ -86,10 +86,12 @@ theorem pgd_descent_lemma
     (hCov : Cov.PosDef)
     (lMax : ℝ) (hlMax_pos : 0 < lMax)
     (hlMax_bound : ∀ w : Fin N → ℝ, w ⬝ᵥ (Cov *ᵥ w) ≤ lMax * (w ⬝ᵥ w))
-    (η : ℝ) (hη_pos : 0 < η) (hη_bound : η * lMax < 2)
+    -- Step size: η ≤ 1/lMax ensures the ‖w₊−w‖² remainder term is non-positive
+    (η : ℝ) (hη_pos : 0 < η) (hη_bound : η * lMax ≤ 1)
     (B L : ℝ)
     (proj : (Fin N → ℝ) → Fin N → ℝ)
     (hproj_feas : ∀ y, IsInConstraintSet B L (proj y))
+    -- Projection inequality: ⟨proj(y) − y, x − proj(y)⟩ ≥ 0 for all feasible x
     (hproj_ineq : ∀ y x, IsInConstraintSet B L x →
                  ∑ i, (proj y i - x i) * (proj y i - y i) ≤ 0)
     (w_star : Fin N → ℝ) (hw_star : IsInConstraintSet B L w_star)
@@ -100,13 +102,41 @@ theorem pgd_descent_lemma
       (1 / (2 * η)) * ((∑ i, (w i - w_star i) ^ 2) - (∑ i, (w_plus i - w_star i) ^ 2)) := by
   sorry
   -- TODO (Milestone 4, Step V4.1):
-  -- 1. Expand `quadObj Σ μ_ret w_plus` using Lipschitz smoothness of ∇f:
-  --      f(w₊) ≤ f(w) + ⟨∇f(w), w₊−w⟩ + (lMax/2)‖w₊−w‖²
-  -- 2. Apply the projection inequality hproj_ineq at x = w_star to get:
-  --      ⟨w₊ − (w − η∇f(w)), w_star − w₊⟩ ≥ 0
-  --    which gives:  ⟨∇f(w), w_star−w₊⟩ ≤ (1/η)⟨w₊−w, w_star−w₊⟩
-  -- 3. Use the identity  ⟨a−b, c−a⟩ = (‖b−c‖²−‖a−c‖²−‖a−b‖²)/2
-  -- 4. Combine with ηlMax < 2 to absorb the ‖w₊−w‖² term.
+  -- Let g i = w i - η * gradObj Cov ret w i (the unconstrained gradient step).
+  -- Let w₊ = proj g.
+  --
+  -- (A) Quadratic identity for symmetric Cov:
+  --   f(w₊) - f(w) = ⟨∇f(w), w₊-w⟩ + ½(w₊-w)ᵀCov(w₊-w)
+  --   Requires: Cov.IsHermitian (from hCov.1)
+  --   Lean step: unfold quadObj/gradObj, use Matrix.IsHermitian.dotProduct_mulVec
+  --
+  -- (B) Lipschitz smoothness:
+  --   ½(w₊-w)ᵀCov(w₊-w) ≤ (lMax/2)·‖w₊-w‖²
+  --   Requires: hlMax_bound applied to (w₊-w)
+  --
+  -- (C) Convexity bound (from quadratic exactness + Cov PSD):
+  --   f(w) - f(w_star) ≤ ⟨∇f(w), w-w_star⟩
+  --   Follows from: f(w_star) = f(w) + ⟨∇f(w), w_star-w⟩ + ½(w_star-w)ᵀCov(w_star-w)
+  --               ≥ f(w) + ⟨∇f(w), w_star-w⟩  (Cov PSD → quadratic term ≥ 0)
+  --
+  -- From (A)+(B)+(C): f(w₊) - f(w*) ≤ ⟨∇f(w), w₊-w_star⟩ + (lMax/2)‖w₊-w‖²
+  --
+  -- (D) Projection inequality at w_star:
+  --   ∑ i, (w₊ i - w_star i) * (w₊ i - g i) ≤ 0
+  --   Expands to: ⟨w₊-w_star, w₊-w⟩ + η⟨∇f(w), w₊-w_star⟩ ≤ 0
+  --   So: η⟨∇f(w), w₊-w_star⟩ ≤ -⟨w₊-w_star, w₊-w⟩
+  --
+  -- (E) Polarization identity:
+  --   ⟨w₊-w_star, w₊-w⟩ = ½(‖w₊-w_star‖² + ‖w₊-w‖² - ‖w-w_star‖²)
+  --   (from: ‖a-b‖² = ‖a‖² - 2⟨a,b⟩ + ‖b‖², expand and rearrange)
+  --
+  -- Combining (from (D) via polarization):
+  --   ⟨∇f(w), w₊-w_star⟩ ≤ (1/(2η))(‖w-w_star‖² - ‖w₊-w_star‖²) - (1/(2η))‖w₊-w‖²
+  --
+  -- Final:
+  --   f(w₊) - f(w*) ≤ (1/(2η))(‖w-w_star‖² - ‖w₊-w_star‖²)
+  --                   + (lMax/2 - 1/(2η))‖w₊-w‖²
+  --   Since η·lMax ≤ 1 → lMax/2 ≤ 1/(2η) → last term ≤ 0. ✓
 
 /-! ### V4.2 — Convergence -/
 
@@ -127,7 +157,8 @@ theorem pgd_convergence
     (hCov : Cov.PosDef)
     (lMax : ℝ) (hlMax_pos : 0 < lMax)
     (hlMax_bound : ∀ w : Fin N → ℝ, w ⬝ᵥ (Cov *ᵥ w) ≤ lMax * (w ⬝ᵥ w))
-    (η : ℝ) (hη_pos : 0 < η) (hη_bound : η * lMax < 2)
+    -- Step size: η ≤ 1/lMax for the clean O(1/k) convergence rate
+    (η : ℝ) (hη_pos : 0 < η) (hη_bound : η * lMax ≤ 1)
     (B L : ℝ)
     (proj : (Fin N → ℝ) → Fin N → ℝ)
     (hproj_feas : ∀ y, IsInConstraintSet B L (proj y))
@@ -144,13 +175,24 @@ theorem pgd_convergence
       quadObj Cov ret (w k) - quadObj Cov ret w_star < ε := by
   sorry
   -- TODO (Milestone 4, Step V4.2):
-  -- 1. Let D₀ := ∑ i, (w 0 i - w_star i)^2.
-  -- 2. Sum pgd_descent_lemma from k = 0 to K-1 (using hrec and hfeas):
-  --      K * (f(w_kMin) − f(w*)) ≤ D₀ / (2η)
-  --    where w_kMin is the minimiser over the K iterates.
-  -- 3. Since f is convex and f(w k) - f(w*) is non-increasing (from descent lemma),
-  --      f(w k) - f(w*) ≤ D₀ / (2η k).
-  -- 4. For ε > 0, choose K = ⌈D₀ / (2η ε)⌉ + 1.
-  -- Key: step (3) uses strict descent from `pgd_descent_lemma`, not just convexity.
+  -- Let D₀ := ∑ i, (w 0 i - w_star i)^2  (squared initial distance).
+  --
+  -- 1. Apply pgd_descent_lemma at each step k:
+  --    f(w (k+1)) - f(w*) ≤ (1/(2η)) * (‖w k - w*‖² - ‖w(k+1) - w*‖²)
+  --    This uses: hrec k + hfeas k + hproj_ineq + hlMax_bound + hη_bound
+  --
+  -- 2. Telescope (induction over K):
+  --    ∑_{k=0}^{K-1} (f(w(k+1)) - f(w*)) ≤ (1/(2η)) D₀
+  --    Key: ‖w K - w*‖² ≥ 0, so positive terms on the right side cancel.
+  --
+  -- 3. Since f(w k) - f(w*) is non-increasing (from descent lemma, ‖w k - w*‖² decreasing)
+  --    and all terms ≥ 0 (from hw_star_opt):
+  --    K * (f(w K) - f(w*)) ≤ ∑_{k=0}^{K-1} (f(w(k+1)) - f(w*)) ≤ (1/(2η)) D₀
+  --
+  -- 4. For ε > 0, choose K = ⌈D₀ / (2η ε)⌉ + 1:
+  --    f(w K) - f(w*) ≤ D₀ / (2η K) < D₀ / (2η (D₀/(2ηε))) = ε
+  --
+  -- Lean steps: Nat.ceil for K, Finset.sum_range_succ for telescoping,
+  --             Nat.cast_pos for K > 0, div_lt_iff for final bound.
 
 end OptimizationProofs

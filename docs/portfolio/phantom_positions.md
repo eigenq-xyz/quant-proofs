@@ -420,7 +420,6 @@ agree on $f(w^*) \approx -0.235$) but position count. An investor
 running a 2-position portfolio expects to see 2 positions in every
 downstream system.
 
-<div id="fig-position-counts">
 
 ![](phantom_positions_files/figure-commonmark/fig-position-counts-output-1.png)
 
@@ -431,17 +430,13 @@ produces algebraically exact zeros. Interior-point solvers
 log-barrier phantom positions. SLSQP is excluded because it did not
 converge.
 
-</div>
 
-<div id="tbl-position-counts">
 
 Table 1: Live position counts for each solver at each threshold level.
 PGD achieves the true support of 2 at all thresholds. Interior-point
 solvers exceed the true support below threshold 1e-6.
 
-<div class="cell-output cell-output-display" execution_count="9">
 
-<div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
@@ -462,11 +457,8 @@ solvers exceed the true support below threshold 1e-6.
 | 1e-8      | 5            | 3      | 2           |
 | 1e-10     | 5            | 4      | 2           |
 
-</div>
 
-</div>
 
-</div>
 
 ## Why the barrier blocks exact zeros
 

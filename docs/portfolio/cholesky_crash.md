@@ -63,7 +63,6 @@ faces a structurally inadmissible covariance matrix.
 
 ### VIX during the crisis
 
-<div id="fig-vix">
 
 ![](cholesky_crash_files/figure-commonmark/fig-vix-output-1.png)
 
@@ -71,11 +70,9 @@ Figure 1: VIX daily close, February–April 2020. The five trading days
 March 9–13 are the window reconstructed in this scenario. The March 16
 record (82.7) is annotated for context. Data: Yahoo Finance.
 
-</div>
 
 ## The five-day return window
 
-<div id="fig-returns-heatmap">
 
 ![](cholesky_crash_files/figure-commonmark/fig-returns-heatmap-output-1.png)
 
@@ -85,16 +82,12 @@ HiTec declined least (mean –1.08%/day); Enrgy fell hardest (mean
 –4.50%/day). Source: Ken French Data Library, value-weighted
 returns[^3].
 
-</div>
 
-<div id="tbl-means">
 
 Table 1: Five-day mean returns and return ranking. All ten sectors
 posted negative mean returns. HiTec declined least; Enrgy fell hardest.
 
-<div class="cell-output cell-output-display" execution_count="4">
 
-<div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
@@ -120,11 +113,8 @@ posted negative mean returns. HiTec declined least; Enrgy fell hardest.
 | Utils | -3.076              | 9    |
 | Enrgy | -4.502              | 10   |
 
-</div>
 
-</div>
 
-</div>
 
 ## Covariance structure
 
@@ -155,7 +145,6 @@ lifts the near-zero eigenvalues of $S$ by
 $\alpha \cdot \frac{\operatorname{tr}(S)}{N}$, guaranteeing
 $\hat\Sigma \succ 0$ for any $\alpha \in (0, 1)$.
 
-<div id="tbl-cov">
 
 Table 2: Covariance matrix properties before and after Ledoit-Wolf
 shrinkage (alpha=0.10). The raw sample covariance S is rank-deficient;
@@ -163,9 +152,7 @@ one float64 eigenvalue is negative due to rounding of a theoretical
 zero. LW shrinkage raises the minimum eigenvalue to 6.667e-4 and reduces
 the condition number to 87.6.
 
-<div class="cell-output cell-output-display" execution_count="5">
 
-<div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
@@ -187,11 +174,8 @@ the condition number to 87.6.
 | Max eigenvalue (shrunk Σ̂)   | 5.842e-02  |
 | Condition number (shrunk Σ̂) | 87.6       |
 
-</div>
 
-</div>
 
-</div>
 
 ## Solver results
 
@@ -624,7 +608,6 @@ for N_bm in Ns_bm:
 pd.DataFrame(results_bm).set_index("N")
 ```
 
-<div id="tbl-benchmark">
 
 Table 3: Wall-clock solve times (median of 5 runs, Apple M-series,
 Python 3.12). Synthetic problems with T = N/5 (same structural
@@ -633,9 +616,7 @@ solving. PGD uses an O(N^2) gradient step plus an O(N log N)
 dual-bisection projection; trust-constr uses the 2N-variable
 interior-point reformulation with O((2N)^3) Newton steps.
 
-<div class="cell-output cell-output-display" execution_count="10">
 
-<div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
@@ -657,11 +638,8 @@ interior-point reformulation with O((2N)^3) Newton steps.
 | 250 | 50 | 29.6 | 911.9 | 37.5 | 4 | 31x | 1x |
 | 500 | 100 | 637.3 | 6299.8 | 155.4 | 74 | 10x | 0x |
 
-</div>
 
-</div>
 
-</div>
 
 The speedup is algorithmic.[^10] trust-constr and Gurobi both solve a
 $2N$-variable system; each Newton step requires $O((2N)^3)$ dense linear
@@ -821,7 +799,6 @@ print("The objective value is uniquely determined; the weight vector is not.")
     Any split between them that sums to their combined weight is equally optimal.
     The objective value is uniquely determined; the weight vector is not.
 
-<div id="fig-weights">
 
 ![](cholesky_crash_files/figure-commonmark/fig-weights-output-1.png)
 
@@ -830,7 +807,6 @@ Both solvers find approximately the same solution (HiTec long, Enrgy
 short), modulo the degenerate HiTec/Telcm split documented in the text.
 All other sectors have near-zero weights.
 
-</div>
 
 The two solvers agree on the objective to 12 significant figures. The
 weight vectors differ slightly due to the degeneracy noted above: LW

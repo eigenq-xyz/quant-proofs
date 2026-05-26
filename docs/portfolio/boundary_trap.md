@@ -66,7 +66,6 @@ solver solving this problem exhibits the failure demonstrated below.
 
 ### VIX during the crisis
 
-<div id="fig-vix">
 
 ![](boundary_trap_files/figure-commonmark/fig-vix-output-1.png)
 
@@ -74,11 +73,9 @@ Figure 1: VIX daily close, July–September 2007. The three-day spike on
 August 7–9 is the period reconstructed in this scenario. Data: Yahoo
 Finance.
 
-</div>
 
 ## The five-day return window
 
-<div id="fig-returns-heatmap">
 
 ![](boundary_trap_files/figure-commonmark/fig-returns-heatmap-output-1.png)
 
@@ -87,16 +84,12 @@ Figure 2: Daily returns (%) for 10 US industry portfolios, August 3–9,
 and Materials/Other fell hardest. Source: Ken French Data Library,
 value-weighted returns.
 
-</div>
 
-<div id="tbl-means">
 
 Table 1: Five-day mean returns and return ranking. Hlth and NoDur are
 the only industries with positive mean returns during the window.
 
-<div class="cell-output cell-output-display" execution_count="4">
 
-<div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
@@ -122,15 +115,11 @@ the only industries with positive mean returns during the window.
 | Manuf | -0.534              | 9    |
 | Telcm | -0.828              | 10   |
 
-</div>
 
-</div>
 
-</div>
 
 ### Cross-sector correlation during the crisis
 
-<div id="fig-corr">
 
 ![](boundary_trap_files/figure-commonmark/fig-corr-output-1.png)
 
@@ -139,7 +128,6 @@ returns. Near-uniform positive correlations (0.93–0.99) across all
 sectors indicate the risk-off regime where rank deficiency arises (T=5
 \< N=10).
 
-</div>
 
 ## Covariance structure
 
@@ -163,13 +151,10 @@ $S$ toward $F$ lifts the near-zero eigenvalues of $S$ by $\alpha \cdot
 \frac{\operatorname{tr}(S)}{N}$, guaranteeing $\hat\Sigma \succ 0$ for
 any $\alpha \in (0, 1)$.
 
-<div id="tbl-cov">
 
 Table 2: Covariance matrix properties before and after shrinkage.
 
-<div class="cell-output cell-output-display" execution_count="6">
 
-<div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
@@ -191,11 +176,8 @@ Table 2: Covariance matrix properties before and after shrinkage.
 | Max eigenvalue (shrunk Σ̂)   | 4.57e-03  |
 | Condition number (shrunk Σ̂) | 86.4      |
 
-</div>
 
-</div>
 
-</div>
 
 ## Solver results
 
@@ -721,7 +703,6 @@ for N_bm in Ns_bm:
 pd.DataFrame(results_bm).set_index("N")
 ```
 
-<div id="tbl-benchmark">
 
 Table 3: Wall-clock solve times (median of 5 runs, Apple M-series,
 Python 3.12). PGD uses an $O(N^2)$ gradient step plus an $O(N \log N)$
@@ -729,9 +710,7 @@ dual-bisection projection. trust-constr and Gurobi both use the
 $2N$-variable interior-point reformulation with $O((2N)^3)$ Newton
 steps.
 
-<div class="cell-output cell-output-display" execution_count="13">
 
-<div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
@@ -753,11 +732,8 @@ steps.
 | 250 | 2.2 | 936.9 | 42.5 | 3 | 431× | 20× |
 | 500 | 10.4 | 6287.5 | 156.4 | 14 | 604× | 15× |
 
-</div>
 
-</div>
 
-</div>
 
 The speedup is algorithmic, not incidental.[^7] trust-constr and Gurobi
 both solve a $2N$-variable system; each Newton step requires $O((2N)^3)$
@@ -818,7 +794,6 @@ w_{\text{Hlth}} = 1.25,\quad w_{\text{Telcm}} = -0.25$$
 **Step 3 — KKT verification** (output produced in the solver results
 section above).
 
-<div id="fig-weights">
 
 ![](boundary_trap_files/figure-commonmark/fig-weights-output-1.png)
 
@@ -827,7 +802,6 @@ concentrates entirely on Health Care (long 125%) and Telecom (short
 25%). trust-constr distributes 25% of the long leg to Consumer Staples,
 leaving the portfolio underallocated to the highest-return industry.
 
-</div>
 
 [^1]: Khandani, A. E. and Lo, A. W. (2011). “What happened to the quants
     in August 2007? Evidence from factors and transactions data.”
