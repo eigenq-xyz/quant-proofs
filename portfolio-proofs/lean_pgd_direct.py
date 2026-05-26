@@ -39,7 +39,7 @@ def solve(
     Parameters
     ----------
     Sigma:
-        N×N positive-definite covariance matrix (Ledoit-Wolf shrunk).
+        NxN positive-definite covariance matrix (Ledoit-Wolf shrunk).
     mu:
         N-vector of expected returns.
     leverage_cap:

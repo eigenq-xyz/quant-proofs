@@ -1,0 +1,82 @@
+version: 2
+updates:
+  # ── GitHub Actions ──────────────────────────────────────────────────────────
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: UTC
+    commit-message:
+      prefix: "Chore(deps)"
+    labels:
+      - dependencies
+      - github-actions
+
+  # ── Python: quant-core ─────────────────────────────────────────────────────
+  - package-ecosystem: pip
+    directory: /quant-core/python
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: UTC
+    commit-message:
+      prefix: "Chore(deps)"
+    labels:
+      - dependencies
+      - python
+    groups:
+      # Group dev-only tools so they produce one PR instead of many.
+      dev-tools:
+        patterns:
+          - "pytest*"
+          - "mypy*"
+          - "ruff*"
+          - "coverage*"
+          - "hypothesis*"
+
+  # ── Python: mortgage-proofs ────────────────────────────────────────────────
+  - package-ecosystem: pip
+    directory: /mortgage-proofs
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: UTC
+    commit-message:
+      prefix: "Chore(deps)"
+    labels:
+      - dependencies
+      - python
+    groups:
+      dev-tools:
+        patterns:
+          - "pytest*"
+          - "mypy*"
+          - "ruff*"
+          - "coverage*"
+
+  # ── Python: portfolio-proofs ───────────────────────────────────────────────
+  - package-ecosystem: pip
+    directory: /portfolio-proofs
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: UTC
+    commit-message:
+      prefix: "Chore(deps)"
+    labels:
+      - dependencies
+      - python
+    groups:
+      dev-tools:
+        patterns:
+          - "pytest*"
+          - "mypy*"
+          - "ruff*"
+          - "coverage*"
+          - "hypothesis*"
+          - "interrogate*"

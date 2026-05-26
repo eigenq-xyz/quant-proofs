@@ -30,7 +30,7 @@ Performance
 Concurrency
 -----------
 All calls are serialised by a module-level ``threading.Lock``.  Each call
-acquires the lock for the full write–flush–readline round trip, so
+acquires the lock for the full write-flush-readline round trip, so
 multi-threaded callers are safe but sequential.
 
 If the Lean process dies between calls (e.g. due to an OOM kill), the wrapper
@@ -128,7 +128,7 @@ def _send_line(line: str) -> str:
         if proc.stdin is None or proc.stdout is None:
             raise RuntimeError(
                 "Lean pgd_solve process unavailable after automatic restart."
-            )
+            ) from None
         proc.stdin.write(line)
         proc.stdin.flush()
         return proc.stdout.readline()
@@ -146,7 +146,7 @@ def _shutdown() -> None:
                 _proc.stdin.write("\n")  # empty line signals EOF to Lean
                 _proc.stdin.flush()
             _proc.wait(timeout=2.0)
-        except Exception:  # noqa: BLE001
+        except Exception:
             _proc.kill()
         _proc = None
 
@@ -167,7 +167,7 @@ def _validate_inputs(
 
     The Lean ``pgdFlat`` theorem assumes:
 
-    - ``sigma`` is an *N × N* matrix (square, rank ≥ 1).
+    - ``sigma`` is an *N x N* matrix (square, rank ≥ 1).
     - ``mu`` is an *N*-vector compatible with ``sigma``.
     - ``leverage_cap > 0`` (otherwise the feasible set is empty).
 
@@ -195,14 +195,14 @@ def _validate_inputs(
     n: int = int(sigma.shape[0])
     m: int = int(sigma.shape[1])
     if n != m:
-        raise ValueError(f"sigma must be square; got {n}×{m}")
+        raise ValueError(f"sigma must be square; got {n}x{m}")
     if n == 0:
         raise ValueError("Portfolio dimension N must be ≥ 1")
     if mu.ndim != 1:
         raise ValueError(f"mu must be a 1-D array; got shape {mu.shape}")
     if len(mu) != n:
         raise ValueError(
-            f"sigma is {n}×{n} but mu has length {len(mu)}; "
+            f"sigma is {n}x{n} but mu has length {len(mu)}; "
             "dimensions must agree"
         )
     if leverage_cap <= 0.0:

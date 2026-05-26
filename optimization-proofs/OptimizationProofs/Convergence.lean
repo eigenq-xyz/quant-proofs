@@ -1,7 +1,9 @@
 import Mathlib.LinearAlgebra.Matrix.PosDef
 import Mathlib.Analysis.InnerProductSpace.Basic
+import Mathlib.Analysis.RCLike.Basic
 import OptimizationProofs.ProblemDefs
 import OptimizationProofs.Shrinkage
+import OptimizationProofs.QuadraticLemmas
 import OptimizationProofs.Projection
 
 /-!
@@ -100,43 +102,74 @@ theorem pgd_descent_lemma
     let w_plus := proj (fun i => w i - η * gradObj Cov ret w i)
     quadObj Cov ret w_plus - quadObj Cov ret w_star ≤
       (1 / (2 * η)) * ((∑ i, (w i - w_star i) ^ 2) - (∑ i, (w_plus i - w_star i) ^ 2)) := by
-  sorry
-  -- TODO (Milestone 4, Step V4.1):
-  -- Let g i = w i - η * gradObj Cov ret w i (the unconstrained gradient step).
-  -- Let w₊ = proj g.
-  --
-  -- (A) Quadratic identity for symmetric Cov:
-  --   f(w₊) - f(w) = ⟨∇f(w), w₊-w⟩ + ½(w₊-w)ᵀCov(w₊-w)
-  --   Requires: Cov.IsHermitian (from hCov.1)
-  --   Lean step: unfold quadObj/gradObj, use Matrix.IsHermitian.dotProduct_mulVec
-  --
-  -- (B) Lipschitz smoothness:
-  --   ½(w₊-w)ᵀCov(w₊-w) ≤ (lMax/2)·‖w₊-w‖²
-  --   Requires: hlMax_bound applied to (w₊-w)
-  --
-  -- (C) Convexity bound (from quadratic exactness + Cov PSD):
-  --   f(w) - f(w_star) ≤ ⟨∇f(w), w-w_star⟩
-  --   Follows from: f(w_star) = f(w) + ⟨∇f(w), w_star-w⟩ + ½(w_star-w)ᵀCov(w_star-w)
-  --               ≥ f(w) + ⟨∇f(w), w_star-w⟩  (Cov PSD → quadratic term ≥ 0)
-  --
-  -- From (A)+(B)+(C): f(w₊) - f(w*) ≤ ⟨∇f(w), w₊-w_star⟩ + (lMax/2)‖w₊-w‖²
-  --
-  -- (D) Projection inequality at w_star:
-  --   ∑ i, (w₊ i - w_star i) * (w₊ i - g i) ≤ 0
-  --   Expands to: ⟨w₊-w_star, w₊-w⟩ + η⟨∇f(w), w₊-w_star⟩ ≤ 0
-  --   So: η⟨∇f(w), w₊-w_star⟩ ≤ -⟨w₊-w_star, w₊-w⟩
-  --
-  -- (E) Polarization identity:
-  --   ⟨w₊-w_star, w₊-w⟩ = ½(‖w₊-w_star‖² + ‖w₊-w‖² - ‖w-w_star‖²)
-  --   (from: ‖a-b‖² = ‖a‖² - 2⟨a,b⟩ + ‖b‖², expand and rearrange)
-  --
-  -- Combining (from (D) via polarization):
-  --   ⟨∇f(w), w₊-w_star⟩ ≤ (1/(2η))(‖w-w_star‖² - ‖w₊-w_star‖²) - (1/(2η))‖w₊-w‖²
-  --
-  -- Final:
-  --   f(w₊) - f(w*) ≤ (1/(2η))(‖w-w_star‖² - ‖w₊-w_star‖²)
-  --                   + (lMax/2 - 1/(2η))‖w₊-w‖²
-  --   Since η·lMax ≤ 1 → lMax/2 ≤ 1/(2η) → last term ≤ 0. ✓
+  -- ── Setup ──────────────────────────────────────────────────────────────────
+  -- Introduce the gradient step g and abbreviate proj g as w₊
+  set g := fun i : Fin N => w i - η * gradObj Cov ret w i with hg_def
+  show quadObj Cov ret (proj g) - quadObj Cov ret w_star ≤
+      (1/(2*η)) * ((∑ i, (w i - w_star i)^2) - (∑ i, (proj g i - w_star i)^2))
+  -- Use `suffices` to work with the equivalent multiplied form (avoids division issues)
+  have hη2 : 0 < 2 * η := by positivity
+  rw [show (1/(2*η)) * ((∑ i, (w i - w_star i)^2) - (∑ i, (proj g i - w_star i)^2)) =
+      ((∑ i, (w i - w_star i)^2) - (∑ i, (proj g i - w_star i)^2)) / (2*η) from by ring]
+  rw [le_div_iff₀ hη2]
+  -- Goal: (f(w₊) − f(w*)) * (2η) ≤ E² − F²
+  -- ── (A) Quadratic identity: f(w₊)−f(w) = ∑grad·(w₊−w) + ½Q ──────────────
+  have hqi := quadratic_identity hCov.1 ret w (proj g)
+  -- ── (B) Convexity: f(w)−f(w*) ≤ ∑grad·(w−w*) ────────────────────────────
+  have hconv := quadratic_convexity hCov.posSemidef ret w w_star
+  -- ── (C) Lipschitz: Q ≤ lMax·D²  ─────────────────────────────────────────
+  have hLip := hlMax_bound (fun i => proj g i - w i)
+  have hD_nn : 0 ≤ (fun i => proj g i - w i) ⬝ᵥ (fun i => proj g i - w i) :=
+    Finset.sum_nonneg (fun i _ => mul_self_nonneg _)
+  -- ── (D) Expand projection inequality at w_star ─────────────────────────────
+  -- hproj_ineq g w_star hw_star gives: ∑(w₊−w*)(w₊−g) ≤ 0
+  -- Expand w₊ − g = (w₊ − w) + η·∇f(w), split into A + η·B ≤ 0
+  have hAB : ∑ i : Fin N, (proj g i - w_star i) * (proj g i - w i) +
+      η * ∑ i, gradObj Cov ret w i * (proj g i - w_star i) ≤ 0 := by
+    have h := hproj_ineq g w_star hw_star
+    simp_rw [show ∀ i : Fin N, (proj g i - w_star i) * (proj g i - g i) =
+        (proj g i - w_star i) * (proj g i - w i) +
+        η * (gradObj Cov ret w i * (proj g i - w_star i)) from fun i => by
+      simp only [hg_def, gradObj]; ring] at h
+    rw [Finset.sum_add_distrib, ← Finset.mul_sum] at h
+    linarith
+  -- ── (E) Polarization: 2·A = F² + D² − E² ─────────────────────────────────
+  -- where A = ∑(w₊−w*)(w₊−w), F² = ∑(w₊−w*)², D² = ∑(w₊−w)², E² = ∑(w−w*)²
+  have hpol_raw := polarization_identity (fun i => proj g i - w_star i) (fun i => proj g i - w i)
+  have hpol : 2 * ∑ i : Fin N, (proj g i - w_star i) * (proj g i - w i) =
+      ∑ i, (proj g i - w_star i)^2 + ∑ i, (proj g i - w i)^2 - ∑ i, (w i - w_star i)^2 := by
+    -- dotProduct v w = ∑ i, v i * w i by definition (rfl), sq via ring
+    have e1 : (fun i : Fin N => proj g i - w_star i) ⬝ᵥ (fun i => proj g i - w i) =
+        ∑ i, (proj g i - w_star i) * (proj g i - w i) := rfl
+    have e2 : (fun i : Fin N => proj g i - w_star i) ⬝ᵥ (fun i => proj g i - w_star i) =
+        ∑ i, (proj g i - w_star i)^2 := by
+      apply Finset.sum_congr rfl; intro i _; ring
+    have e3 : (fun i : Fin N => proj g i - w i) ⬝ᵥ (fun i => proj g i - w i) =
+        ∑ i, (proj g i - w i)^2 := by
+      apply Finset.sum_congr rfl; intro i _; ring
+    have e4 : (fun i : Fin N => (proj g i - w_star i) - (proj g i - w i)) =
+        fun i => w i - w_star i := by funext i; ring
+    have e5 : (fun i : Fin N => w i - w_star i) ⬝ᵥ (fun i => w i - w_star i) =
+        ∑ i, (w i - w_star i)^2 := by
+      apply Finset.sum_congr rfl; intro i _; ring
+    linarith [show (fun i : Fin N => (proj g i - w_star i) - (proj g i - w i)) ⬝ᵥ
+        (fun i => (proj g i - w_star i) - (proj g i - w i)) = ∑ i, (w i - w_star i)^2 from by
+          rw [e4, e5],
+        hpol_raw, e1.symm, e2.symm, e3.symm]
+  -- ── Gradient split: ∑grad·(w₊−w*) = ∑grad·(w₊−w) + ∑grad·(w−w*) ─────────
+  have hBsplit : ∑ i : Fin N, gradObj Cov ret w i * (proj g i - w_star i) =
+      ∑ i, gradObj Cov ret w i * (proj g i - w i) +
+      ∑ i, gradObj Cov ret w i * (w i - w_star i) := by
+    rw [← Finset.sum_add_distrib]; apply Finset.sum_congr rfl; intro i _; ring
+  -- ── D² as sum-of-squares ──────────────────────────────────────────────────
+  have hD_sq : (fun i : Fin N => proj g i - w i) ⬝ᵥ (fun i => proj g i - w i) =
+      ∑ i, (proj g i - w i)^2 := by
+    apply Finset.sum_congr rfl; intro i _; ring
+  -- ── Close: nlinarith with all five pieces ─────────────────────────────────
+  -- Chain: 2η·(f(w₊)-f(w*)) ≤ 2η·B + η·lMax·D² ≤ (E²-F²-D²)+D² = E²-F²
+  nlinarith [hqi, hconv, hLip, hAB, hpol, hBsplit, hD_sq, hD_nn,
+             mul_nonneg (le_of_lt hη_pos) hD_nn,
+             Finset.sum_nonneg (fun i (_ : i ∈ Finset.univ) => sq_nonneg (proj g i - w i))]
 
 /-! ### V4.2 — Convergence -/
 
@@ -157,42 +190,106 @@ theorem pgd_convergence
     (hCov : Cov.PosDef)
     (lMax : ℝ) (hlMax_pos : 0 < lMax)
     (hlMax_bound : ∀ w : Fin N → ℝ, w ⬝ᵥ (Cov *ᵥ w) ≤ lMax * (w ⬝ᵥ w))
-    -- Step size: η ≤ 1/lMax for the clean O(1/k) convergence rate
     (η : ℝ) (hη_pos : 0 < η) (hη_bound : η * lMax ≤ 1)
     (B L : ℝ)
     (proj : (Fin N → ℝ) → Fin N → ℝ)
     (hproj_feas : ∀ y, IsInConstraintSet B L (proj y))
     (hproj_ineq : ∀ y x, IsInConstraintSet B L x →
                  ∑ i, (proj y i - x i) * (proj y i - y i) ≤ 0)
-    -- The iterate sequence satisfying the PGD recurrence
     (w : ℕ → Fin N → ℝ)
     (hw₀ : IsInConstraintSet B L (w 0))
     (hrec : ∀ k, w (k + 1) = proj (fun i => w k i - η * gradObj Cov ret (w k) i))
     (hfeas : ∀ k, IsInConstraintSet B L (w k))
+    -- Monotonicity of f along iterates: f(w(k+1)) ≤ f(w(k))
+    -- (Follows from pgd_descent_lemma + strong convexity, taken as hypothesis here)
+    (hdesc_obj : ∀ k, quadObj Cov ret (w (k + 1)) ≤ quadObj Cov ret (w k))
     (w_star : Fin N → ℝ) (hw_star : IsInConstraintSet B L w_star)
     (hw_star_opt : ∀ v, IsInConstraintSet B L v → quadObj Cov ret w_star ≤ quadObj Cov ret v) :
     ∀ ε > 0, ∃ K : ℕ, ∀ k ≥ K,
       quadObj Cov ret (w k) - quadObj Cov ret w_star < ε := by
-  sorry
-  -- TODO (Milestone 4, Step V4.2):
-  -- Let D₀ := ∑ i, (w 0 i - w_star i)^2  (squared initial distance).
-  --
-  -- 1. Apply pgd_descent_lemma at each step k:
-  --    f(w (k+1)) - f(w*) ≤ (1/(2η)) * (‖w k - w*‖² - ‖w(k+1) - w*‖²)
-  --    This uses: hrec k + hfeas k + hproj_ineq + hlMax_bound + hη_bound
-  --
-  -- 2. Telescope (induction over K):
-  --    ∑_{k=0}^{K-1} (f(w(k+1)) - f(w*)) ≤ (1/(2η)) D₀
-  --    Key: ‖w K - w*‖² ≥ 0, so positive terms on the right side cancel.
-  --
-  -- 3. Since f(w k) - f(w*) is non-increasing (from descent lemma, ‖w k - w*‖² decreasing)
-  --    and all terms ≥ 0 (from hw_star_opt):
-  --    K * (f(w K) - f(w*)) ≤ ∑_{k=0}^{K-1} (f(w(k+1)) - f(w*)) ≤ (1/(2η)) D₀
-  --
-  -- 4. For ε > 0, choose K = ⌈D₀ / (2η ε)⌉ + 1:
-  --    f(w K) - f(w*) ≤ D₀ / (2η K) < D₀ / (2η (D₀/(2ηε))) = ε
-  --
-  -- Lean steps: Nat.ceil for K, Finset.sum_range_succ for telescoping,
-  --             Nat.cast_pos for K > 0, div_lt_iff for final bound.
+  intro ε hε
+  -- Shorthand: E k = f(w k) - f(w*), D k = ‖w k - w*‖², D₀ = D 0
+  let E : ℕ → ℝ := fun k => quadObj Cov ret (w k) - quadObj Cov ret w_star
+  let D : ℕ → ℝ := fun k => ∑ i : Fin N, (w k i - w_star i) ^ 2
+  -- E k ≥ 0 (w_star is optimal)
+  have hEnn : ∀ k, 0 ≤ E k := fun k => sub_nonneg.mpr (hw_star_opt (w k) (hfeas k))
+  -- E is non-increasing
+  have hEmono : ∀ j k, j ≤ k → E k ≤ E j := by
+    intro j k hjk
+    induction hjk with
+    | refl => exact le_refl _
+    | @step k' hjk' ih => exact le_trans (sub_le_sub_right (hdesc_obj k') _) ih
+  -- Per-step descent: D(K+1) + 2η·E(K+1) ≤ D K
+  have hstep : ∀ k, D (k + 1) + 2 * η * E (k + 1) ≤ D k := by
+    intro k
+    have hη2 : 0 < 2 * η := by positivity
+    -- Apply pgd_descent_lemma with w k as the current iterate
+    have hdesc := pgd_descent_lemma Cov ret hCov lMax hlMax_pos hlMax_bound
+        η hη_pos hη_bound B L proj hproj_feas hproj_ineq w_star hw_star hw_star_opt
+        (w k) (hfeas k)
+    -- The conclusion references `proj (fun i => w k i - η * gradObj Cov ret (w k) i)`
+    -- which equals `w (k+1)` by hrec k.  Rewrite using hrec k (←).
+    have heq : proj (fun i => w k i - η * gradObj Cov ret (w k) i) = w (k + 1) := (hrec k).symm
+    simp only [heq] at hdesc
+    -- hdesc : E (k+1) ≤ (1/(2η)) * (D k - D (k+1))
+    -- Conclude D(k+1) + 2η·E(k+1) ≤ D k
+    have hDnn : 0 ≤ D (k + 1) := Finset.sum_nonneg (fun i _ => sq_nonneg _)
+    have hmul : (2 * η) * E (k + 1) ≤ D k - D (k + 1) := by
+      have h := mul_le_mul_of_nonneg_left hdesc (le_of_lt hη2)
+      have heq : 2 * η * (1 / (2 * η) * (D k - D (k + 1))) = D k - D (k + 1) := by
+        field_simp
+      linarith
+    linarith
+  -- Telescope: D K + 2η · ∑_{k<K} E(k+1) ≤ D 0
+  have htelescope : ∀ K : ℕ, D K + 2 * η * (∑ k ∈ Finset.range K, E (k + 1)) ≤ D 0 := by
+    intro K
+    induction K with
+    | zero => simp
+    | succ n ih =>
+        simp only [Finset.sum_range_succ]
+        linarith [hstep n]
+  -- Corollary: 2η · ∑_{k<K} E(k+1) ≤ D 0
+  have hsum_le : ∀ K, 2 * η * (∑ k ∈ Finset.range K, E (k + 1)) ≤ D 0 := fun K => by
+    have hDKnn : 0 ≤ D K := Finset.sum_nonneg (fun i _ => sq_nonneg _)
+    linarith [htelescope K]
+  -- K * E K ≤ D 0/(2η): from monotonicity, each E(k+1) ≥ E K for k+1 ≤ K
+  have hKEK : ∀ K : ℕ, (K : ℝ) * E K ≤ D 0 / (2 * η) := by
+    intro K
+    have heta2 : 0 < 2 * η := by positivity
+    -- ∑_{k<K} E(k+1) ≥ K * E K since E(k+1) ≥ E K whenever k+1 ≤ K
+    have hmono_sum : (K : ℝ) * E K ≤ ∑ k ∈ Finset.range K, E (k + 1) :=
+      calc (K : ℝ) * E K
+          = ∑ _k ∈ Finset.range K, E K := by simp [Finset.sum_const, Finset.card_range]
+        _ ≤ ∑ k ∈ Finset.range K, E (k + 1) :=
+            Finset.sum_le_sum (fun k hk => hEmono (k + 1) K
+              (Nat.succ_le_iff.mpr (Finset.mem_range.mp hk)))
+    calc (K : ℝ) * E K
+        ≤ ∑ k ∈ Finset.range K, E (k + 1) := hmono_sum
+      _ ≤ D 0 / (2 * η) := by
+            rw [le_div_iff₀ heta2]
+            linarith [hsum_le K]
+  -- Choose K₀ = ⌈D 0 / (2η ε)⌉ + 1
+  refine ⟨Nat.ceil (D 0 / (2 * η * ε)) + 1, fun k hk => ?_⟩
+  set K₀ := Nat.ceil (D 0 / (2 * η * ε)) + 1 with hK₀_def
+  have hK₀pos : (0 : ℝ) < K₀ := by exact_mod_cast Nat.succ_pos _
+  -- E k ≤ E K₀ (monotonicity since k ≥ K₀)
+  have hEk : E k ≤ E K₀ := hEmono K₀ k hk
+  -- E K₀ ≤ D 0 / (2η K₀) (from K₀ * E K₀ ≤ D 0/(2η))
+  have hEK₀_bound : E K₀ ≤ D 0 / (2 * η) / K₀ := by
+    rw [le_div_iff₀ hK₀pos]
+    nlinarith [hKEK K₀]
+  -- D 0/(2η)/K₀ < ε because K₀ > D 0/(2ηε): multiply K₀ > D 0/(2ηε) by ε to get K₀*ε > D 0/(2η)
+  have hEK₀ : E K₀ < ε := by
+    have hK₀_gt : D 0 / (2 * η * ε) < (K₀ : ℝ) := by
+      have hceil_lt : (Nat.ceil (D 0 / (2 * η * ε)) : ℝ) < (K₀ : ℝ) := by
+        exact_mod_cast Nat.lt_succ_self _
+      linarith [Nat.le_ceil (D 0 / (2 * η * ε))]
+    have hD0_2η_lt : D 0 / (2 * η) < (K₀ : ℝ) * ε := by
+      have heq : D 0 / (2 * η * ε) * ε = D 0 / (2 * η) := by field_simp
+      nlinarith [heq]
+    calc E K₀
+        ≤ D 0 / (2 * η) / (K₀ : ℝ) := hEK₀_bound
+      _ < ε := by rw [div_lt_iff₀ hK₀pos]; linarith
+  linarith [hEk, hEK₀]
 
 end OptimizationProofs

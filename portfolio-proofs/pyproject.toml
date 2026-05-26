@@ -41,22 +41,64 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --cov=. --cov-report=term-missing --cov-report=xml"
+markers = [
+    "integration: requires the compiled pgd_solve binary (skipped in CI)",
+]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "scenarios/*",
+    "scripts/*",
+    "lean_pgd_direct.py",  # single-shot fallback; covered by integration path
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.interrogate]
+ignore-init-method = true
+ignore-magic = true
+ignore-private = true        # _validate_inputs, _send_line, etc. exempt
+ignore-module = true         # module-level docstrings are not enforced here
+ignore-semiprivate = false
+fail-under = 95
+verbose = 1
+exclude = ["tests", "scenarios", "scripts", "setup.py"]
+
 [tool.ruff]
 line-length = 79
 target-version = "py312"
 
 [tool.ruff.lint]
 select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "F",   # pyflakes
-    "I",   # isort
-    "B",   # flake8-bugbear
-    "C4",  # flake8-comprehensions
-    "UP",  # pyupgrade
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "PERF", # perflint — performance anti-patterns
+    "RUF",  # ruff-specific rules (RUF100: unused noqa, etc.)
+    "S",    # flake8-bandit — security patterns
 ]
 ignore = [
     "E501",  # line too long (handled by formatter)
+    "S101",  # assert — intentional in tests and input validation
+    "S603",  # subprocess call — intentional; Lean binary path is always absolute
+    "S607",  # partial executable path — we use pathlib-resolved absolute paths
 ]
 
 [tool.ruff.format]

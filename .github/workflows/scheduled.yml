@@ -1,0 +1,261 @@
+name: Scheduled Weekly Verification
+
+# Runs every Monday at 08:00 UTC, and on demand via workflow_dispatch.
+# This is the Level 7 verification gate: it catches regressions that only
+# appear over time (dependency drift, data staleness, environment changes)
+# and cannot be caught by per-PR CI alone.
+#
+# Current scope (Levels 1–2 fully implemented):
+#   Level 1 — Lean builds + zero-sorry check across all Lean subprojects
+#   Level 2 — Python CI: pytest, mypy --strict, ruff, docstring coverage
+#
+# Planned scope (infrastructure not yet built — stubs marked TODO):
+#   Level 3 — Hypothesis property-based tests with fresh random seeds
+#   Level 4 — Empirical data quality gate (FRED refresh + computed series)
+#   Level 5 — Regime conditioning + stress-event validation
+#
+# On failure: the job posts a GitHub step summary with the failing level
+# and links to the level-specific diagnostic skill.
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"  # Monday 08:00 UTC
+  workflow_dispatch:
+    inputs:
+      levels:
+        description: "Verification levels to run (comma-separated: 1,2,3)"
+        required: false
+        default: "1,2"
+
+concurrency:
+  group: scheduled-verify
+  cancel-in-progress: false  # never cancel a running weekly gate
+
+jobs:
+  # ── Level 1: Lean build + zero-sorry ───────────────────────────────────────
+  verify-lean:
+    name: "Level 1 — Lean (${{ matrix.subdir }})"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - subdir: quant-core
+            lean-dir: quant-core/lean
+          - subdir: ftap-proofs
+            lean-dir: ftap-proofs
+          - subdir: options-proofs
+            lean-dir: options-proofs
+            dep-lake: quant-core/lean/.lake
+          - subdir: mortgage-proofs
+            lean-dir: mortgage-proofs/lean
+          - subdir: optimization-proofs
+            lean-dir: optimization-proofs
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Cache Lake packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ matrix.lean-dir }}/.lake
+            ${{ matrix.dep-lake }}
+          key: >-
+            lean-sched-${{ matrix.subdir }}-${{ runner.os }}-
+            ${{ hashFiles(format('{0}/lake-manifest.json', matrix.lean-dir)) }}
+          restore-keys: lean-sched-${{ matrix.subdir }}-${{ runner.os }}-
+
+      - name: Fetch mathlib cache
+        working-directory: ${{ matrix.lean-dir }}
+        run: lake exe cache get || echo "Cache miss — building from source"
+
+      - name: Build
+        working-directory: ${{ matrix.lean-dir }}
+        run: lake build
+
+      - name: Check zero sorry
+        run: |
+          count=$(grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake \
+                    "${{ matrix.lean-dir }}/" \
+                  | grep -v '^\s*--' | wc -l | tr -d ' ')
+          if [ "$count" -gt 0 ]; then
+            echo "::error::$count sorry term(s) found in ${{ matrix.subdir }}"
+            grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake \
+              "${{ matrix.lean-dir }}/" | grep -v '^\s*--'
+            exit 1
+          fi
+          echo "PASS: zero sorry in ${{ matrix.subdir }}"
+
+  # ── Level 2a: quant-core Python ────────────────────────────────────────────
+  verify-quant-core:
+    name: "Level 2 — quant-core Python"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        working-directory: quant-core/python
+        run: uv sync --extra dev
+
+      - name: Test
+        working-directory: quant-core/python
+        run: uv run pytest -q --cov=src --cov-report=xml
+
+      - name: Type check
+        working-directory: quant-core/python
+        run: uv run mypy src/ --strict
+
+      - name: Lint
+        working-directory: quant-core/python
+        run: uv run ruff check src/ tests/
+
+  # ── Level 2b: mortgage-proofs Python ───────────────────────────────────────
+  verify-mortgage-proofs:
+    name: "Level 2 — mortgage-proofs Python"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Cache Lake packages
+        uses: actions/cache@v4
+        with:
+          path: mortgage-proofs/lean/.lake
+          key: >-
+            lean-sched-mortgage-${{ runner.os }}-
+            ${{ hashFiles('mortgage-proofs/lean/lean-toolchain') }}
+          restore-keys: lean-sched-mortgage-${{ runner.os }}-
+
+      - name: Build Lean verifier
+        working-directory: mortgage-proofs/lean
+        run: lake build
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        working-directory: mortgage-proofs
+        run: uv sync --all-extras
+
+      - name: Test
+        working-directory: mortgage-proofs
+        run: uv run pytest -m "not integration" -q --cov=src --cov-report=xml
+
+      - name: Type check
+        working-directory: mortgage-proofs
+        run: uv run mypy src/ --strict
+
+      - name: Lint
+        working-directory: mortgage-proofs
+        run: uv run ruff check src/ tests/
+
+  # ── Level 2c: portfolio-proofs Python ──────────────────────────────────────
+  verify-portfolio-proofs:
+    name: "Level 2 — portfolio-proofs Python"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        working-directory: portfolio-proofs
+        run: uv sync --extra dev
+
+      - name: Type check
+        working-directory: portfolio-proofs
+        run: uv run mypy lean_pgd.py lean_pgd_direct.py tests/ --strict
+
+      - name: Lint
+        working-directory: portfolio-proofs
+        run: uv run ruff check lean_pgd.py lean_pgd_direct.py tests/
+
+      - name: Docstring coverage
+        working-directory: portfolio-proofs
+        run: uv run interrogate lean_pgd.py lean_pgd_direct.py
+
+      - name: Theorem cross-reference check
+        run: python3 .github/scripts/check_theorem_refs.py portfolio-proofs/lean_pgd.py
+
+      - name: Test
+        working-directory: portfolio-proofs
+        run: uv run pytest tests/ -q --cov=. --cov-report=xml
+
+  # ── Level 3 placeholder ────────────────────────────────────────────────────
+  # TODO(verify-property): enable when tests/property/ infrastructure is built.
+  # verify-property:
+  #   name: "Level 3 — Property-based tests"
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - run: echo "Level 3 not yet built — see /verify-property skill"
+
+  # ── Level 4 placeholder ────────────────────────────────────────────────────
+  # TODO(verify-empirical): enable when FRED data pipeline + tests/empirical/ built.
+  # verify-empirical:
+  #   name: "Level 4 — Empirical data quality"
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - run: echo "Level 4 not yet built — see /verify-empirical skill"
+
+  # ── Level 5 placeholder ────────────────────────────────────────────────────
+  # TODO(verify-regime): enable when tests/regime/ + regime labels computed.
+  # verify-regime:
+  #   name: "Level 5 — Regime conditioning"
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - run: echo "Level 5 not yet built — see /verify-regime skill"
+
+  # ── Summary ────────────────────────────────────────────────────────────────
+  summary:
+    name: "Verification summary"
+    runs-on: ubuntu-latest
+    needs:
+      - verify-lean
+      - verify-quant-core
+      - verify-mortgage-proofs
+      - verify-portfolio-proofs
+    if: always()
+
+    steps:
+      - name: Post summary
+        run: |
+          echo "## Weekly Verification Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Level | Scope | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 1 | Lean build + zero sorry | ${{ needs.verify-lean.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 2a | quant-core Python | ${{ needs.verify-quant-core.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 2b | mortgage-proofs Python | ${{ needs.verify-mortgage-proofs.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 2c | portfolio-proofs Python | ${{ needs.verify-portfolio-proofs.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 3–5 | Property / empirical / regime | ⏳ not yet built |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Run \`/verify\` locally to diagnose any failures." >> "$GITHUB_STEP_SUMMARY"

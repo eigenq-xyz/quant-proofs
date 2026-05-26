@@ -9,6 +9,10 @@ on:
       - 'mortgage-proofs/tests/**'
       - 'mortgage-proofs/lean/**'
       - 'mortgage-proofs/pyproject.toml'
+      - 'portfolio-proofs/lean_pgd.py'
+      - 'portfolio-proofs/lean_pgd_direct.py'
+      - 'portfolio-proofs/tests/**'
+      - 'portfolio-proofs/pyproject.toml'
   pull_request:
     branches: [main]
 
@@ -103,3 +107,47 @@ jobs:
       - name: Lint
         working-directory: mortgage-proofs
         run: uv run ruff check src/ tests/
+
+  portfolio-python:
+    name: portfolio-proofs Python
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        working-directory: portfolio-proofs
+        run: uv sync --extra dev
+
+      - name: Type check
+        working-directory: portfolio-proofs
+        run: uv run mypy lean_pgd.py lean_pgd_direct.py tests/ --strict
+
+      - name: Lint
+        working-directory: portfolio-proofs
+        run: uv run ruff check lean_pgd.py lean_pgd_direct.py tests/
+
+      - name: Docstring coverage
+        working-directory: portfolio-proofs
+        run: uv run interrogate lean_pgd.py lean_pgd_direct.py
+
+      - name: Theorem cross-reference check
+        run: python3 .github/scripts/check_theorem_refs.py portfolio-proofs/lean_pgd.py
+
+      - name: Test (unit only — integration tests require pgd_solve binary)
+        working-directory: portfolio-proofs
+        # Integration tests are skipped automatically via @requires_binary
+        # when the binary is absent; --cov collects what runs in CI.
+        run: uv run pytest tests/ -q --cov=. --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: portfolio-proofs/coverage.xml
+          flags: portfolio-proofs
+        continue-on-error: true

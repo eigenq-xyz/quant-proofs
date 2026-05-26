@@ -103,7 +103,7 @@ class TestValidateInputs:
         leverage_cap: float = 1.5,
     ) -> None:
         """Import lean_pgd locally so module-level atexit doesn't run twice."""
-        import lean_pgd  # noqa: PLC0415
+        import lean_pgd
 
         lean_pgd._validate_inputs(sigma, mu, leverage_cap)
 
@@ -133,7 +133,7 @@ class TestValidateInputs:
 
     def test_dimension_mismatch(self) -> None:
         sigma = np.eye(3)
-        mu = np.ones(4)  # mismatch: 3×3 vs length-4
+        mu = np.ones(4)  # mismatch: 3x3 vs length-4
         with pytest.raises(ValueError, match="dimensions must agree"):
             self._call(sigma, mu)
 
@@ -148,7 +148,7 @@ class TestValidateInputs:
             self._call(sigma, mu, leverage_cap=-1.0)
 
     def test_valid_inputs_return_n(self) -> None:
-        import lean_pgd  # noqa: PLC0415
+        import lean_pgd
 
         sigma, mu = _identity_problem(5)
         n = lean_pgd._validate_inputs(sigma, mu, 1.5)
@@ -165,8 +165,8 @@ class TestSolve:
 
     @requires_binary
     def test_solve_2x2_symmetric(self) -> None:
-        """Symmetric 2×2 problem; weights should be [0.5, 0.5]."""
-        import lean_pgd  # noqa: PLC0415
+        """Symmetric 2x2 problem; weights should be [0.5, 0.5]."""
+        import lean_pgd
 
         sigma = np.array([[1.0, 0.5], [0.5, 1.0]], dtype=np.float64)
         mu = np.array([0.5, 0.5], dtype=np.float64)
@@ -181,7 +181,7 @@ class TestSolve:
     @requires_binary
     def test_solve_identity_10(self) -> None:
         """10-asset identity covariance; uniform-mu gives uniform weights."""
-        import lean_pgd  # noqa: PLC0415
+        import lean_pgd
 
         n = 10
         sigma, mu = _identity_problem(n)
@@ -193,7 +193,7 @@ class TestSolve:
     @requires_binary
     def test_solve_returns_lambda_max(self) -> None:
         """lambda_max returned by solve() matches np.linalg.eigvalsh."""
-        import lean_pgd  # noqa: PLC0415
+        import lean_pgd
 
         sigma = np.array(
             [[2.0, 0.8, 0.3], [0.8, 1.5, 0.2], [0.3, 0.2, 1.0]],
@@ -209,7 +209,7 @@ class TestSolve:
     @requires_binary
     def test_solve_multiple_calls_reuse_process(self) -> None:
         """Multiple solve() calls reuse the same subprocess handle."""
-        import lean_pgd  # noqa: PLC0415
+        import lean_pgd
 
         sigma, mu = _identity_problem(5)
         # Warm up — starts the process
@@ -228,7 +228,7 @@ class TestSolve:
     @requires_binary
     def test_solve_leverage_constraint_respected(self) -> None:
         """Tight leverage cap (1.0) forces sum|w| ≤ 1 (long-only)."""
-        import lean_pgd  # noqa: PLC0415
+        import lean_pgd
 
         n = 5
         sigma, mu = _identity_problem(n)
@@ -238,7 +238,7 @@ class TestSolve:
     @requires_binary
     def test_solve_different_n(self) -> None:
         """solve() works for N = 1, 2, 10, 20."""
-        import lean_pgd  # noqa: PLC0415
+        import lean_pgd
 
         for n in (1, 2, 10, 20):
             sigma, mu = _identity_problem(n)
@@ -259,7 +259,7 @@ class TestSolve:
         meaning this specific input would flag as BLEEDING in a scenario run.
         Real-world covariance matrices are never this degenerate.
         """
-        import lean_pgd  # noqa: PLC0415
+        import lean_pgd
 
         sigma = np.eye(3, dtype=np.float64)
         mu = np.ones(3, dtype=np.float64) / 3
@@ -282,7 +282,7 @@ class TestSolve:
     @requires_binary
     def test_lean_native_ns_constant(self) -> None:
         """LEAN_NATIVE_NS is the documented benchmark figure."""
-        import lean_pgd  # noqa: PLC0415
+        import lean_pgd
 
         assert lean_pgd.LEAN_NATIVE_NS == pytest.approx(13.834, rel=1e-3)
 
@@ -298,7 +298,7 @@ class TestRestart:
     @requires_binary
     def test_solve_after_process_killed(self) -> None:
         """solve() recovers automatically when _proc is killed externally."""
-        import lean_pgd  # noqa: PLC0415
+        import lean_pgd
 
         sigma, mu = _identity_problem(4)
 
@@ -317,7 +317,7 @@ class TestRestart:
     @requires_binary
     def test_solve_after_proc_set_none(self) -> None:
         """solve() restarts if _proc is manually cleared to None."""
-        import lean_pgd  # noqa: PLC0415
+        import lean_pgd
 
         sigma, mu = _identity_problem(
             4
@@ -343,7 +343,7 @@ class TestThreadSafety:
     @requires_binary
     def test_concurrent_solves(self) -> None:
         """Eight threads calling solve() simultaneously all get valid results."""
-        import lean_pgd  # noqa: PLC0415
+        import lean_pgd
 
         n_threads = 8
         n_assets = 5
@@ -356,7 +356,7 @@ class TestThreadSafety:
         def worker(idx: int) -> None:
             try:
                 results[idx] = lean_pgd.solve(sigma, mu)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 results[idx] = exc
 
         threads = [
@@ -378,7 +378,7 @@ class TestThreadSafety:
     @requires_binary
     def test_concurrent_different_sizes(self) -> None:
         """Concurrent calls with different N do not cross-contaminate frames."""
-        import lean_pgd  # noqa: PLC0415
+        import lean_pgd
 
         configs = [(2, 1.5), (5, 1.2), (10, 1.0), (4, 2.0)]
         results: list[tuple[np.ndarray, float] | Exception] = [
@@ -389,7 +389,7 @@ class TestThreadSafety:
             sigma, mu = _identity_problem(n)
             try:
                 results[idx] = lean_pgd.solve(sigma, mu, leverage_cap=lev)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 results[idx] = exc
 
         threads = [
@@ -422,7 +422,7 @@ class TestTiming:
     @requires_binary
     def test_steady_state_latency_n10(self) -> None:
         """After warm-up, 100 solves at N=10 finish in < 500 ms total."""
-        import lean_pgd  # noqa: PLC0415
+        import lean_pgd
 
         sigma, mu = _identity_problem(10)
         lean_pgd.solve(sigma, mu)  # warm-up: pays the ~35 ms cold-start
