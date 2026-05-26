@@ -1,0 +1,5 @@
+# Lake build artifacts
+/.lake/
+
+# OS
+.DS_Store
