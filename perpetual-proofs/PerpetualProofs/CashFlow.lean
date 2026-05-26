@@ -101,7 +101,7 @@ discharge `CostlessEntry` for the chosen specification.
 The tsum converges (is not vacuously 0) because `OnePeriodMarket.spot_bounded`
 ensures the cash-flow sequence is uniformly bounded. -/
 def CostlessEntry (spec : CashFlowSpec Ω) (market : OnePeriodMarket Ω)
-    (Q : OnePeriodEMM market) (F₀ : ℝ) : Prop :=
+    (Q : OnePeriodEMM Ω market) (F₀ : ℝ) : Prop :=
   geometricExpectation (p := market.κ / (1 + market.r))
     (fun k => ∑ ω : Ω, Q.density ω * spec.cashflow k market F₀ ω) = 0
 
@@ -124,7 +124,7 @@ the only price satisfying `CostlessEntry` is the geometric-expectation price.
 
 Resolves issue #126 (replaces the previous per-state absolute-value formulation
 which was tautological for the same reason). -/
-def NoBuyAndHoldArbitrage (market : OnePeriodMarket Ω) (Q : OnePeriodEMM market)
+def NoBuyAndHoldArbitrage (market : OnePeriodMarket Ω) (Q : OnePeriodEMM Ω market)
     (F₀ : ℝ) : Prop :=
   -- Costless entry at F₀ is necessary for no-arbitrage
   CostlessEntry ackererCashFlow market Q F₀ ∧

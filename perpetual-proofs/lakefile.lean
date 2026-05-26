@@ -9,12 +9,12 @@ package «perpetual-proofs» where
     ⟨`pp.proofs.withType, false⟩
   ]
 
-require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git" @ "master"
-
 require «stopped-time-proofs» from "../stopped-time-proofs"
 
 require «ftap-proofs» from "../ftap-proofs"
+
+require mathlib from git
+  "https://github.com/leanprover-community/mathlib4.git" @ "master"
 
 @[default_target]
 lean_lib PerpetualProofs

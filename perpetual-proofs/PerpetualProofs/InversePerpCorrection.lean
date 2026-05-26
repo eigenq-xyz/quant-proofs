@@ -44,7 +44,7 @@ geometric expectation of the reciprocal spot:
 This follows from the same costless-entry argument as for the linear perpetual,
 applied to coin-denominated cash flows. -/
 noncomputable def inversePerp_noArb_price (market : OnePeriodMarket Ω)
-    (Q : OnePeriodEMM market) : ℝ :=
+    (Q : OnePeriodEMM Ω market) : ℝ :=
   let p := market.κ / (1 + market.r)
   (geometricExpectation p (fun k => ∑ ω : Ω, Q.density ω / market.spot k ω))⁻¹
 
