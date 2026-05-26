@@ -12,6 +12,8 @@ Monorepo for formally verified quantitative finance. Lean 4 proofs + Python/Cyth
 | `optimization-proofs/` | Formally verified abstract PGD & simplex/L1 projection core | `cd optimization-proofs && lake build` (planned) | `grep -rn sorry --include="*.lean" optimization-proofs/` |
 | `portfolio-proofs/` | Formally verified PGD simplex portfolio solver core | `cd portfolio-proofs/lean && lake build` (planned) | `python3 portfolio-proofs/scenarios/cholesky_crash/scipy_slsqp.py` |
 | `mortgage-proofs/` | LangGraph multi-agent mortgage pipeline + Lean 4 invariant checking | `cd mortgage-proofs && lake build` | `cd mortgage-proofs && pytest` |
+| `stopped-time-proofs/` | Geometric PMF + `GeometricExpectation` operator — Mathlib PR candidate, no finance content | `cd stopped-time-proofs && lake build` | `grep -rn '^\s*sorry\b' --include="*.lean" stopped-time-proofs/` |
+| `perpetual-proofs/` | No-arbitrage pricing for perpetual futures (Ackerer-Hugonnier-Jermann 2025); depends on stopped-time-proofs + ftap-proofs | `cd perpetual-proofs && lake build` | same |
 | `archive/` | Superseded work — do not build or extend | — | — |
 
 Planned: `backtest-proofs/` (event-driven backtester, $\mathcal{F}_t$-measurability proofs, after FTAP).
