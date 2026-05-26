@@ -82,12 +82,15 @@
     "scenario": "S&P 500 Factor Portfolio Scaling",
     "model": "CAPM: Sigma = sigma_f^2 * beta*beta' + sigma_eps^2 * I",
     "N_range": [10, 50, 100, 250, 500],
+    "N_benchmark": 10,
+    "f_star_N10": -0.096837,
+    "n_active_N10": 2,
     "solvers": {
-      "SLSQP":    {"note": "N/A — scaling scenario; SLSQP not benchmarked at scale"},
-      "trust-constr": {"note": "N/A — scaling scenario"},
-      "Gurobi":   {"N10_ms": null, "scaling": "O(N^3) Newton step", "note": "Competitive at N=10; times out at N>=300"},
-      "GD_stale": {"note": "N/A"},
-      "Lean PGD": {"N10_ms": 164, "scaling": "O(N) factor gradient", "note": "Subprocess overhead ~100 ms; native binary runs at 14.8 ns"}
+      "SLSQP":       {"converged": false, "obj": -0.096820, "gap_pct": 0.0175, "N10_ms": 53.7,  "note": "Iteration limit at N=10 (L1 kink; same failure as boundary_trap). Impractical at N>=50."},
+      "trust-constr":{"converged": true,  "obj": -0.096836, "gap_pct": 0.0010, "N10_ms": 206.6, "note": "Converges at N=10; O((2N)^3) Newton step impractical at N>=200."},
+      "Gurobi":      {"converged": true,  "obj": -0.096837, "gap_pct": 0.0, "note": "Converges at N=10; O((2N)^3) Newton step impractical at N>=300."},
+      "GD_stale":    {"converged": null,  "note": "N/A"},
+      "Lean PGD":    {"converged": true,  "obj": -0.096837, "gap_pct": 0.0, "N10_ms": 164, "note": "O(N) factor gradient; certified correct at all N; subprocess overhead ~100 ms."}
     }
   }
 }

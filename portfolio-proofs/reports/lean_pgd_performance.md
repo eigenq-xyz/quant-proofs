@@ -31,10 +31,10 @@ complementarity tolerances, diverging after a stale step size violates
 the Lipschitz stability bound, and accumulating floating-point
 constraint drift that silently triggers risk halts. We present Lean PGD,
 a portfolio solver whose convergence, projection correctness, and
-step-size bound are machine-verified in Lean 4. Across six stress
+step-size bound are machine-verified in Lean 4. Across seven stress
 scenarios designed to expose distinct solver failure modes, each paired
 with a KKT-certified analytical optimum for ground truth comparison,
-Lean PGD is the only solver that converges correctly in all six, with
+Lean PGD is the only solver that converges correctly in all seven, with
 exact constraint satisfaction and no phantom positions.
 
 ## 1. Introduction
@@ -82,7 +82,7 @@ $\hat\Sigma$. No runtime test is needed for these properties. They hold
 by construction. The binary produced by compiling the Lean source is the
 same binary whose correctness is certified.
 
-This paper designs six stress scenarios, each targeting one failure
+This paper designs seven stress scenarios, each targeting one failure
 mode, each with a KKT-certified analytical optimum for ground-truth
 comparison. We test Lean PGD against SciPy SLSQP, SciPy trust-constr,
 Gurobi barrier QP, and CVXPY with OSQP. Section 2 describes the solver.
@@ -161,11 +161,11 @@ cd optimization-proofs && lake build pgd_solve
 
 ## 3. Experimental Design
 
-Six scenarios each target one distinct failure mode. For each scenario,
-a KKT-certified analytical optimum is derived by checking stationarity,
-dual feasibility, and complementary slackness conditions by hand. This
-KKT certificate is the ground truth against which all solver outputs are
-compared; it is not obtained by running any solver.
+Seven scenarios each target one distinct failure mode. For each
+scenario, a KKT-certified analytical optimum is derived by checking
+stationarity, dual feasibility, and complementary slackness conditions
+by hand. This KKT certificate is the ground truth against which all
+solver outputs are compared; it is not obtained by running any solver.
 
 **Table 1: Scenario inventory.**
 
@@ -177,9 +177,11 @@ compared; it is not obtained by running any solver.
 | `step_divergence` | Stale Lipschitz step size | 3 | Synthetic stressed covariance |
 | `phantom_positions` | Exact sparsity at L1 boundary | 5 | Synthetic uncorrelated |
 | `vix_shock` | Convergence after volatility shock | 3 | Synthetic, VIX-doubling event |
+| `sp500_factor` | Algorithmic scaling (O(N) vs O(N³)) | 10–500 | Synthetic CAPM factor model |
 
-The `sp500_factor` scenario benchmarks algorithmic scaling across N = 10
-to 500 and is discussed in Section 5.7.
+The summary matrix (Section 4) reports N = 10 correctness results for
+`sp500_factor`. Scaling behavior across N = 10 to 500 is discussed in
+Section 5.7.
 
 ## 4. Summary Matrix
 
@@ -193,21 +195,23 @@ to Lean PGD.
 <div id="tbl-summary">
 
 Table 1: **Table 2.** Solver performance: rows = solvers, columns =
-scenarios. ✓ = converged to a feasible KKT point; ✗ = failed to converge
-or hard error; N/A = solver class not applicable to this failure mode.
-Annotations: (a) suboptimal — trust-constr stops in the slack-variable
-flat valley; (b) phantom positions — inactive-asset weights non-zero at
-~1e-7; (c) non-convex — non-PSD covariance makes convergence certificate
-invalid; (d) Lean PGD native binary timing: 14.8 ns per solve; (e)
-production halt — constraint violation exceeds the 1e-9 halt threshold.
+scenarios (7 total). ✓ = converged to a feasible KKT point; ✗ = failed;
+N/A = not applicable to this failure mode. sp500 scale column shows N=10
+correctness only; scaling behavior is in Section 5.7. Annotations: (a)
+suboptimal — trust-constr stops in the slack-variable flat valley; (b)
+phantom positions — inactive-asset weights non-zero at ~1e-7; (c)
+non-convex — non-PSD covariance makes convergence certificate invalid;
+(d) Lean PGD native binary: 14.8 ns per solve; (e) production halt —
+constraint violation exceeds 1e-9 threshold; (f) impractical at N\>=100
+due to O(N^3) Newton step.
 
-| Solver | bound. trap | chol. crash | prec. bleed | step div. | phantom pos. | VIX shock |
-|:---|:---|:---|:---|:---|:---|:---|
-| SLSQP | ✗ | ✗ | ✓ (e) | ✗ | ✗ | ✓ |
-| trust-constr | ✓ (a) | ✓ (c) | ✓ | ✓ | ✓ (b) | ✓ |
-| Gurobi | ✓ | ✗ | ✓ | ✓ | ✓ (b) | ✓ |
-| GD (stale η) | N/A | N/A | N/A | ✗ | N/A | ✗ |
-| Lean PGD | ✓ (d) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Solver | bound. trap | chol. crash | prec. bleed | step div. | phantom pos. | VIX shock | sp500 scale |
+|:---|:---|:---|:---|:---|:---|:---|:---|
+| SLSQP | ✗ | ✗ | ✓ (e) | ✗ | ✗ | ✓ | ✗ |
+| trust-constr | ✓ (a) | ✓ (c) | ✓ | ✓ | ✓ (b) | ✓ | ✓ (f) |
+| Gurobi | ✓ | ✗ | ✓ | ✓ | ✓ (b) | ✓ | ✓ (f) |
+| GD (stale η) | N/A | N/A | N/A | ✗ | N/A | ✗ | N/A |
+| Lean PGD | ✓ (d) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 </div>
 
@@ -411,7 +415,7 @@ binary I/O or FFI would remove the startup cost.
 
 ## 6. Discussion
 
-Across all six scenarios, Lean PGD is the only solver that succeeds on
+Across all seven scenarios, Lean PGD is the only solver that succeeds on
 every instance. The competing solvers each fail on at least one scenario
 by design. More importantly, three of the failures are silent:
 trust-constr reports `success: True` with phantom positions
@@ -436,21 +440,21 @@ approximately 100 ms overhead that is not representative of the
 algorithm. A production deployment over binary I/O or direct FFI would
 recover the nanosecond-scale timing shown in the native benchmark.
 
-The six scenarios test specific structural failures of convex QP
+The seven scenarios test specific structural failures of convex QP
 solvers. They do not test non-convex constraints, integer constraints,
 or transaction-cost-aware objectives. The formal proofs in the current
 implementation are targets rather than fully discharged certificates:
 the Lean 4 code compiles and runs correctly, the proof structure is
 established, and the formal certificates are works in progress. The
 empirical results are reproducible by running the scenario notebooks in
-the repository. The six scenarios also do not test all known failure
+the repository. The seven scenarios also do not test all known failure
 modes: market microstructure constraints (minimum lot size, no-short
 restrictions by asset), multi-period rebalancing objectives, and
 regime-switching covariance are outside the current scope.
 
 ## 7. Conclusion
 
-Across six stress scenarios targeting distinct solver failure modes,
+Across seven stress scenarios targeting distinct solver failure modes,
 Lean PGD is the only solver to converge correctly in all six: exact
 constraint satisfaction, no phantom positions, correct behavior under
 rank-deficient covariance, and certified convergence after a volatility
