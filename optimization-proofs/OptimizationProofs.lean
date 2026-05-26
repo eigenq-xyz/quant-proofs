@@ -8,5 +8,6 @@ import OptimizationProofs.FFI
 -- Proof modules (require mathlib):
 import OptimizationProofs.ProblemDefs
 import OptimizationProofs.Shrinkage
+import OptimizationProofs.QuadraticLemmas
 import OptimizationProofs.Projection
 import OptimizationProofs.Convergence
