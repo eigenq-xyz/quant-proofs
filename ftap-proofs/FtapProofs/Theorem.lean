@@ -117,12 +117,16 @@ theorem emm_implies_no_arbitrage (m : FinancialMarket Ω)
     -- Q (support f) ≥ Q {ω₀} > 0 by measure monotonicity
     exact lt_of_lt_of_le hQ_pos
       (MeasureTheory.measure_mono (Set.singleton_subset_iff.mpr hmem))
-  -- But risk_neutral_pricing says this integral equals 0 (using zero_cost with ω₀)
+  -- risk_neutral_pricing gives ∫ Ṽ T ∂Q = ∫ Ṽ 0 ∂Q; and Ṽ 0 ≡ 0 by zero_cost
   have hzero : MeasureTheory.integral Q
       (discountedValueProcess m arb.θ ⟨m.T, Nat.lt_succ_self m.T⟩) = 0 := by
-    have h0 := risk_neutral_pricing m arb.θ arb.sf Q hQ ω₀
-    simp only [arb.zero_cost ω₀] at h0
-    exact h0
+    have h0 := risk_neutral_pricing m arb.θ arb.sf Q hQ
+    -- h0 : ∫ Ṽ T ∂Q = ∫ Ṽ 0 ∂Q
+    rw [h0]
+    -- ∫ Ṽ 0 ∂Q = 0 since Ṽ 0 θ ω = 0 for all ω
+    have hzc : discountedValueProcess m arb.θ ⟨0, Nat.zero_lt_succ m.T⟩ = fun _ => 0 :=
+      funext arb.zero_cost
+    rw [hzc, MeasureTheory.integral_zero]
   linarith
 
 /-! ### T5.2 State-price functional (Farkas / cone separation) -/
