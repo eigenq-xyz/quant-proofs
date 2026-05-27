@@ -46,7 +46,9 @@ perpetual-proofs/
 | `no_arb_uniqueness` | `PerpFuturesNoArb.lean` | **Proved** (PR4.1) |
 | `no_arb_existence` | `PerpFuturesNoArb.lean` | **Proved** (PR4.2) |
 | `perp_futures_no_arb_price` | `PerpFuturesNoArb.lean` | **Proved** (PR4.3) |
-| `inverse_perp_convexity_discount` | `InversePerpCorrection.lean` | Planned (I4.3) |
+| `inversePerp_noArb_price` | `InversePerpCorrection.lean` | **Proved** (I4.1) |
+| `geom_exp_inv_gt` | `InversePerpCorrection.lean` | **Proved** (I4.2) |
+| `inverse_perp_convexity_discount` | `InversePerpCorrection.lean` | **Proved** (I4.3) |
 
 ## Build & test commands
 
