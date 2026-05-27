@@ -25,9 +25,9 @@ A probability measure `Q` on `(Ω, ℱ)` is an **equivalent martingale measure**
            process of any self-financing strategy is a `Q`-martingale
 - **Q4.5** `risk_neutral_pricing` — `∫ Ṽ T ∂Q = ∫ Ṽ 0 ∂Q` under any EMM
 
-## Sorry ledger
+## Proof status
 
-*All sorry items discharged as of this commit.*
+*All proof obligations in this file are fully discharged (no admitted goals).*
 -/
 
 namespace FtapProofs
