@@ -1,5 +1,4 @@
-import Mathlib.Topology.Algebra.InfiniteSum.Basic
-import Mathlib.Algebra.GeomSum
+import Mathlib.Analysis.SpecificLimits.Basic
 
 /-!
 # Geometric PMF
@@ -57,6 +56,8 @@ lemma geomPMF_tsum_eq_one {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1) :
     ∑' k : ℕ, geomPMF p k = 1 := by
   simp only [geomPMF]
   rw [tsum_mul_right, tsum_geometric_of_lt_one (by linarith) (by linarith)]
-  field_simp
+  have hp_ne : p ≠ 0 := ne_of_gt hp0
+  field_simp [hp_ne]
+  ring
 
 end StoppedTimeProofs

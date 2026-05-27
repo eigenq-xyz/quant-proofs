@@ -1,5 +1,6 @@
 import StoppedTimeProofs.GeomPMF
-import Mathlib.Topology.Algebra.InfiniteSum.Basic
+import Mathlib.Analysis.Normed.Field.Basic
+import Mathlib.Analysis.Normed.Group.InfiniteSum
 
 /-!
 # Geometric Expectation
@@ -24,8 +25,9 @@ so `geometricExpectation` is a genuine expectation operator.
 
 ## Mathlib touchpoints
 
-- `tsum_eq_zero_add` — splits `∑' k, f k` into `f 0 + ∑' k, f (k+1)`
+- `Summable.tsum_eq_zero_add` — splits `∑' k, f k` into `f 0 + ∑' k, f (k+1)`
 - `Summable.of_norm_bounded` — comparison test for series convergence
+- `Summable.tsum_le_tsum` — monotone comparison of tsums
 - `tsum_mul_left` / `tsum_mul_right` — factor constants out of tsum
 -/
 
@@ -58,15 +60,15 @@ lemma geometricExpectation_summable {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1)
     {f : ℕ → ℝ} (hf : ∃ C, ∀ k, ‖f k‖ ≤ C) :
     Summable (fun k => geomPMF p k * f k) := by
   obtain ⟨C, hC⟩ := hf
-  refine Summable.of_norm_bounded (fun k => geomPMF p k * C) ?_ (fun k => ?_)
-  · -- Bounding series ∑ geomPMF p k * C converges: it's C · ∑ (1-p)^k · p
+  -- Dominating summable series: ∑ geomPMF p k * C
+  have hdom : Summable (fun k : ℕ => geomPMF p k * C) := by
     have hs : Summable (fun k : ℕ => (1 - p) ^ k) :=
       summable_geometric_of_lt_one (by linarith) (by linarith)
     simpa only [geomPMF] using (hs.mul_right p).mul_right C
-  · -- ‖geomPMF p k * f k‖ ≤ geomPMF p k * C
+  exact hdom.of_norm_bounded (fun k => by
     have hg : 0 ≤ geomPMF p k := geomPMF_nonneg hp0 hp1 k
     rw [norm_mul, Real.norm_of_nonneg hg]
-    exact mul_le_mul_of_nonneg_left (hC k) hg
+    exact mul_le_mul_of_nonneg_left (hC k) hg)
 
 /-! ### G1.6 — One-step unrolling -/
 
@@ -74,20 +76,20 @@ lemma geometricExpectation_summable {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1)
 
 `geometricExpectation p f = p * f 0 + (1 - p) * geometricExpectation p (fun k => f (k+1))`
 
-Proof: split the tsum at k = 0 using `tsum_eq_zero_add`, then factor `(1-p)` out of the
+Proof: split the tsum at k = 0 using `Summable.tsum_eq_zero_add`, then factor `(1-p)` out of the
 tail using `tsum_mul_left` and `pow_succ`. -/
 lemma geometricExpectation_unroll {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1)
     {f : ℕ → ℝ} (hf : ∃ C, ∀ k, ‖f k‖ ≤ C) :
     geometricExpectation p f =
       p * f 0 + (1 - p) * geometricExpectation p (fun k => f (k + 1)) := by
   simp only [geometricExpectation]
-  rw [tsum_eq_zero_add (geometricExpectation_summable hp0 hp1 hf)]
+  rw [(geometricExpectation_summable hp0 hp1 hf).tsum_eq_zero_add]
   simp only [geomPMF, pow_zero, one_mul]
   congr 1
   rw [← tsum_mul_left]
   congr 1
   ext k
-  simp only [geomPMF, pow_succ]
+  simp only [pow_succ]
   ring
 
 /-! ### G1.7 — Constant function -/
@@ -106,16 +108,14 @@ lemma geometricExpectation_const {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1) (c : ℝ)
 /-- **G1.8** `geometricExpectation p f ≤ geometricExpectation p g` when `f ≤ g` pointwise.
 
 Since all weights `geomPMF p k ≥ 0`, pointwise inequality of functions implies
-inequality of geometric expectations. Follows from `tsum_le_tsum`. -/
+inequality of geometric expectations. Follows from `Summable.tsum_le_tsum`. -/
 lemma geometricExpectation_mono {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1)
     {f g : ℕ → ℝ} (hf : ∃ C, ∀ k, ‖f k‖ ≤ C) (hg : ∃ C, ∀ k, ‖g k‖ ≤ C)
     (hle : ∀ k, f k ≤ g k) :
     geometricExpectation p f ≤ geometricExpectation p g := by
   simp only [geometricExpectation]
-  apply tsum_le_tsum
-  · intro k
-    exact mul_le_mul_of_nonneg_left (hle k) (geomPMF_nonneg hp0 hp1 k)
-  · exact geometricExpectation_summable hp0 hp1 hf
-  · exact geometricExpectation_summable hp0 hp1 hg
+  exact (geometricExpectation_summable hp0 hp1 hf).tsum_le_tsum
+    (fun k => mul_le_mul_of_nonneg_left (hle k) (geomPMF_nonneg hp0 hp1 k))
+    (geometricExpectation_summable hp0 hp1 hg)
 
 end StoppedTimeProofs
