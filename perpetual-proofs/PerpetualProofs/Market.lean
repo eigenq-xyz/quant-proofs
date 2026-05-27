@@ -97,7 +97,8 @@ structure OnePeriodEMM (market : OnePeriodMarket Ω) where
   /-- Martingale condition: Q-expected spot price is constant across all funding dates.
   In the time-homogeneous model, `E^Q[S_k] = E^Q[S_{k'}]` for all `k`, `k'`. This
   is what allows the geometric expectation in the pricing formula to reduce to a single
-  Q-expectation `E^Q[S_τ]`. Required by `no_arb_existence` (PR4.2). -/
+  Q-expectation `E^Q[S_τ]`. Structural guard ensuring `Q` is a genuine martingale
+  measure; required for future theorems in `InversePerpCorrection.lean` (I4.2–I4.3). -/
   spot_expectation_const : ∀ k k' : ℕ,
     ∑ ω : Ω, density ω * market.spot k ω =
     ∑ ω : Ω, density ω * market.spot k' ω
