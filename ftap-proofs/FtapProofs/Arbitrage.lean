@@ -76,10 +76,12 @@ def attainablePayoffs (m : FinancialMarket Ω) : Set (Ω → ℝ) :=
 
 /-! ### Helper strategies for subspace proofs -/
 
-/-- The zero strategy: hold 0 units of every asset at every time. -/
+/-- The zero strategy: hold 0 units of every asset and 0 units of the bond at every time. -/
 private def zeroStrategy (m : FinancialMarket Ω) : TradingStrategy m where
   holdings _ _ _ := 0
   predictable _ _ := measurable_const
+  bondHolding _ _ := 0
+  bondPredictable _ := measurable_const
 
 /-- Self-financing property of the zero strategy. -/
 private lemma sf_zeroStrategy (m : FinancialMarket Ω) :
@@ -92,11 +94,13 @@ private lemma dvp_zeroStrategy_eq_zero (m : FinancialMarket Ω) (t : Fin (m.T + 
     discountedValueProcess m (zeroStrategy m) t ω = 0 := by
   simp [discountedValueProcess, zeroStrategy]
 
-/-- Sum of two strategies: add holdings pointwise. -/
+/-- Sum of two strategies: add risky asset holdings and bond holdings pointwise. -/
 private def sumStrategy (m : FinancialMarket Ω) (θ₁ θ₂ : TradingStrategy m) :
     TradingStrategy m where
   holdings i t ω := θ₁.holdings i t ω + θ₂.holdings i t ω
   predictable i t := (θ₁.predictable i t).add (θ₂.predictable i t)
+  bondHolding t ω := θ₁.bondHolding t ω + θ₂.bondHolding t ω
+  bondPredictable t := (θ₁.bondPredictable t).add (θ₂.bondPredictable t)
 
 /-- Self-financing is preserved under addition of strategies. -/
 private lemma sf_sumStrategy (m : FinancialMarket Ω) (θ₁ θ₂ : TradingStrategy m)
@@ -111,22 +115,27 @@ private lemma dvp_sumStrategy (m : FinancialMarket Ω) (θ₁ θ₂ : TradingStr
     (t : Fin (m.T + 1)) (ω : Ω) :
     discountedValueProcess m (sumStrategy m θ₁ θ₂) t ω =
     discountedValueProcess m θ₁ t ω + discountedValueProcess m θ₂ t ω := by
-  simp [discountedValueProcess, sumStrategy, add_mul, Finset.sum_add_distrib]
+  simp only [discountedValueProcess, sumStrategy, add_mul, Finset.sum_add_distrib]
+  ring
 
 /-- Scalar multiple of a strategy. -/
 private def smulStrategy (m : FinancialMarket Ω) (c : ℝ) (θ : TradingStrategy m) :
     TradingStrategy m where
   holdings i t ω := c * θ.holdings i t ω
   predictable i t := (θ.predictable i t).const_smul c
+  bondHolding t ω := c * θ.bondHolding t ω
+  bondPredictable t := (θ.bondPredictable t).const_smul c
 
 /-- Self-financing is preserved under scalar multiplication of strategies. -/
 private lemma sf_smulStrategy (m : FinancialMarket Ω) (c : ℝ) (θ : TradingStrategy m)
     (h : selfFinancing m θ) :
     selfFinancing m (smulStrategy m c θ) := by
   intro t ω
-  show ∑ i : Fin m.n, c * θ.holdings i t.succ ω * discountedPrice m i t.castSucc ω =
-       ∑ i : Fin m.n, c * θ.holdings i t.castSucc ω * discountedPrice m i t.castSucc ω
-  simp only [mul_assoc, ← Finset.mul_sum]
+  simp only [smulStrategy, selfFinancing] at *
+  -- Goal: ∑ i, c * θ_i(t+1) * D_i(t) + c * bondHolding(t+1) =
+  --       ∑ i, c * θ_i(t)   * D_i(t) + c * bondHolding(t)
+  -- h: ∑ i, θ_i(t+1) * D_i(t) + bondHolding(t+1) = ∑ i, θ_i(t) * D_i(t) + bondHolding(t)
+  simp only [mul_assoc, ← Finset.mul_sum, ← mul_add]
   congr 1
   exact h t ω
 
@@ -135,7 +144,7 @@ private lemma dvp_smulStrategy (m : FinancialMarket Ω) (c : ℝ) (θ : TradingS
     (t : Fin (m.T + 1)) (ω : Ω) :
     discountedValueProcess m (smulStrategy m c θ) t ω =
     c * discountedValueProcess m θ t ω := by
-  simp [discountedValueProcess, smulStrategy, mul_assoc, Finset.mul_sum]
+  simp only [discountedValueProcess, smulStrategy, mul_assoc, ← Finset.mul_sum, mul_add]
 
 /-! ### A3.4 Attainable payoffs form a linear subspace -/
 
@@ -214,8 +223,7 @@ theorem noArbitrage_iff_attainable_nonneg_eq_zero (m : FinancialMarket Ω) :
         congr_fun hf ω₀
       linarith
   · -- (←) K ∩ ℝ₊^Ω = {0} → NA
-    intro hK
-    intro ⟨arb⟩
+    intro hK ⟨arb⟩
     -- The terminal payoff of arb is in K and is non-negative
     have hf_in_K : (fun ω => discountedValueProcess m arb.θ ⟨m.T, Nat.lt_succ_self m.T⟩ ω)
         ∈ attainablePayoffs m :=

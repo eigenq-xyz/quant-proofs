@@ -86,12 +86,16 @@ theorem discountedValue_martingale_of_emm (m : FinancialMarket Ω)
     intro t
     have prevTime_le_t : FtapProofs.prevTime t ≤ t := by
       simp only [FtapProofs.prevTime, Fin.le_def]; exact Nat.pred_le _
-    have key := Finset.stronglyMeasurable_sum Finset.univ
+    have had_bond : StronglyMeasurable[m.𝒻 t] (θ.bondHolding t) :=
+      ((θ.bondPredictable t).mono (m.𝒻.mono prevTime_le_t) le_rfl).stronglyMeasurable
+    -- had_risky : StronglyMeasurable (∑ i, fun ω => ...) — Pi-sum form
+    have had_risky := Finset.stronglyMeasurable_sum Finset.univ
       (f := fun i ω => θ.holdings i t ω * discountedPrice m i t ω)
       fun i _ =>
         (((θ.predictable i t).mono (m.𝒻.mono prevTime_le_t) le_rfl).stronglyMeasurable).mul
         (discountedPrice_adapted m i t).stronglyMeasurable
-    convert key using 1
+    -- discountedValueProcess = risky_sum + bond; bridge Pi-sum vs lambda form
+    convert had_risky.add had_bond using 1
     ext ω; simp [discountedValueProcess, Finset.sum_apply]
   constructor
   · exact hadp
@@ -101,6 +105,10 @@ theorem discountedValue_martingale_of_emm (m : FinancialMarket Ω)
     have one_step : ∀ (t : Fin m.T),
         Q[discountedValueProcess m θ t.succ | m.𝒻 t.castSucc] =ᵐ[Q]
         discountedValueProcess m θ t.castSucc := fun t => by
+      -- bondHolding(t+1) is ℱ_t-measurable by predictability (prevTime_succ)
+      have hbond_meas : StronglyMeasurable[m.𝒻 t.castSucc] (θ.bondHolding t.succ) := by
+        have h := θ.bondPredictable t.succ; rw [FtapProofs.prevTime_succ] at h
+        exact h.stronglyMeasurable
       -- Per-asset pull-out: E^Q[θ_a(t+1) * S̃_a(t+1) | ℱ t] =ᵐ θ_a(t+1) * S̃_a t
       have ae_per_asset : ∀ a : Fin m.n,
           Q[fun ω => θ.holdings a t.succ ω * discountedPrice m a t.succ ω |
@@ -108,8 +116,7 @@ theorem discountedValue_martingale_of_emm (m : FinancialMarket Ω)
           fun ω => θ.holdings a t.succ ω * discountedPrice m a t.castSucc ω := fun a => by
         -- Holdings at t+1 are ℱ t-measurable by predictability
         have hmeas : StronglyMeasurable[m.𝒻 t.castSucc] (θ.holdings a t.succ) := by
-          have h := θ.predictable a t.succ
-          rw [FtapProofs.prevTime_succ] at h
+          have h := θ.predictable a t.succ; rw [FtapProofs.prevTime_succ] at h
           exact h.stronglyMeasurable
         -- Pull out the ℱ t-measurable factor (explicit f/g to help elaboration)
         have hpull := MeasureTheory.condExp_mul_of_stronglyMeasurable_left
@@ -122,30 +129,60 @@ theorem discountedValue_martingale_of_emm (m : FinancialMarket Ω)
         -- hpull uses Pi.mul form; goal uses lambda form. They're definitionally equal.
         change Q[θ.holdings a t.succ * discountedPrice m a t.succ | m.𝒻 t.castSucc] ω =
           θ.holdings a t.succ ω * discountedPrice m a t.castSucc ω
-        rw [hω1]
-        simp only [Pi.mul_apply, hω2]
-      -- Expand Ṽ(t+1) as a Finset sum
-      have dvp_eq : discountedValueProcess m θ t.succ =
-          ∑ a ∈ Finset.univ,
-            (fun ω => θ.holdings a t.succ ω * discountedPrice m a t.succ ω) := by
-        ext ω; simp [discountedValueProcess]
-      rw [dvp_eq]
-      calc Q[∑ a ∈ Finset.univ,
-                 (fun ω => θ.holdings a t.succ ω * discountedPrice m a t.succ ω) |
-                 m.𝒻 t.castSucc]
-          =ᵐ[Q] ∑ a ∈ Finset.univ,
-              Q[fun ω => θ.holdings a t.succ ω * discountedPrice m a t.succ ω |
-                  m.𝒻 t.castSucc] :=
-            MeasureTheory.condExp_finsetSum
-              (fun _ _ => MeasureTheory.Integrable.of_finite) (m.𝒻 t.castSucc)
+        rw [hω1]; simp only [Pi.mul_apply, hω2]
+      -- Q[bond(t+1) | ℱ_t] = bond(t+1) exactly (ℱ_t-measurable)
+      have hbond_eq : Q[θ.bondHolding t.succ | m.𝒻 t.castSucc] = θ.bondHolding t.succ :=
+        MeasureTheory.condExp_of_stronglyMeasurable (m.𝒻.le t.castSucc)
+          hbond_meas MeasureTheory.Integrable.of_finite
+      -- Rewrite Ṽ(t+1) as risky_sum + bond (exact equality, hence also ae)
+      have dvp_succ_ae : discountedValueProcess m θ t.succ =ᵐ[Q]
+          (∑ a ∈ Finset.univ,
+            (fun ω => θ.holdings a t.succ ω * discountedPrice m a t.succ ω)) +
+          θ.bondHolding t.succ :=
+        MeasureTheory.ae_of_all Q fun ω => by simp [discountedValueProcess, Finset.sum_apply]
+      -- Pre-compute Integrable witnesses with explicit types to unlock NormedAddCommGroup ℝ
+      have hf_int : MeasureTheory.Integrable
+          (∑ a ∈ Finset.univ,
+            (fun ω : Ω => θ.holdings a t.succ ω * discountedPrice m a t.succ ω)) Q :=
+        MeasureTheory.Integrable.of_finite
+      have hg_int : MeasureTheory.Integrable (θ.bondHolding t.succ) Q :=
+        MeasureTheory.Integrable.of_finite
+      -- condExp of (risky + bond) = condExp(risky) + bond
+      calc Q[discountedValueProcess m θ t.succ | m.𝒻 t.castSucc]
+          =ᵐ[Q] Q[(∑ a ∈ Finset.univ,
+                    (fun ω => θ.holdings a t.succ ω * discountedPrice m a t.succ ω)) +
+                   θ.bondHolding t.succ | m.𝒻 t.castSucc] :=
+                MeasureTheory.condExp_congr_ae dvp_succ_ae
+        _ =ᵐ[Q] Q[∑ a ∈ Finset.univ,
+                     (fun ω => θ.holdings a t.succ ω * discountedPrice m a t.succ ω) |
+                     m.𝒻 t.castSucc] + θ.bondHolding t.succ := by
+                -- condExp_add: Q[risky + bond | ℱ_t] =ᵐ Q[risky | ℱ_t] + Q[bond | ℱ_t]
+                -- hbond_eq: Q[bond | ℱ_t] = bond (exact, pointwise via congr_fun)
+                filter_upwards [MeasureTheory.condExp_add (μ := Q)
+                    hf_int hg_int (m.𝒻 t.castSucc)]
+                  with ω hω_add
+                simp only [Pi.add_apply] at hω_add ⊢
+                rw [hω_add]; congr 1; exact congr_fun hbond_eq ω
         _ =ᵐ[Q] fun ω => ∑ a : Fin m.n,
-              θ.holdings a t.succ ω * discountedPrice m a t.castSucc ω := by
-            filter_upwards [eventually_countable_forall.mpr ae_per_asset] with ω hω
-            simp only [Finset.sum_apply]
-            exact Finset.sum_congr rfl fun a _ => hω a
+                    θ.holdings a t.succ ω * discountedPrice m a t.castSucc ω +
+                    θ.bondHolding t.succ ω := by
+                -- Provide f explicitly to fix E = ℝ for condExp_finsetSum
+                have hfsum_int : ∀ (a : Fin m.n), a ∈ Finset.univ →
+                    MeasureTheory.Integrable
+                      (fun ω : Ω =>
+                        θ.holdings a t.succ ω * discountedPrice m a t.succ ω) Q :=
+                  fun _ _ => MeasureTheory.Integrable.of_finite
+                filter_upwards [MeasureTheory.condExp_finsetSum hfsum_int (m.𝒻 t.castSucc),
+                  eventually_countable_forall.mpr ae_per_asset] with ω hω_sum hω_per
+                simp only [Pi.add_apply]
+                -- hω_sum: Q[∑ f_a | ℱ_t] ω = (∑ a, Q[f_a | ℱ_t]) ω
+                -- bridge (∑ a, f a) ω → ∑ a, f a ω via Finset.sum_apply
+                congr 1
+                rw [hω_sum, Finset.sum_apply]
+                exact Finset.sum_congr rfl fun a _ => hω_per a
         _ = discountedValueProcess m θ t.castSucc := by
-            -- self-financing: ∑_a holdings(t+1) * S̃_a t = ∑_a holdings_t * S̃_a t = Ṽ t
-            ext ω; simp only [discountedValueProcess]; exact hθ t ω
+                -- self-financing (with bond): ∑ θ(t+1) * D(t) + bond(t+1) = Ṽ t
+                ext ω; simp only [discountedValueProcess]; exact hθ t ω
     -- General case: induction on k = j.val - i.val
     suffices key : ∀ (k : ℕ) (j : Fin (m.T + 1)), j.val = i.val + k →
         Q[discountedValueProcess m θ j | m.𝒻 i] =ᵐ[Q] discountedValueProcess m θ i from
