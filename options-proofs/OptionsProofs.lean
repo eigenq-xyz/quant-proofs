@@ -3,6 +3,7 @@
 
 import QuantCore.Option
 import QuantCore.OptionInvariants
+import OptionsProofs.Tree
 
 namespace OptionsProofs
 
