@@ -76,14 +76,16 @@ structure TradingStrategy (m : FinancialMarket Ω) where
 
 /-! ### S2.2 — Value process -/
 
-/-- **S2.2** Portfolio value process (undiscounted): `V t θ ω = ∑ᵢ θᵢ t ω · Sᵢ t ω`.
+/-- **S2.2** Portfolio value process (undiscounted):
+`V t θ ω = ∑ᵢ θᵢ t ω · Sᵢ t ω + bondHolding t ω · B t`.
 
-The total market value of the portfolio at time `t` in state `ω`.
-This is the undiscounted value; see `discountedValueProcess` for the version used
-in the FTAP proof. -/
+The total market value of the portfolio at time `t` in state `ω`, including the bond
+position valued at the (undiscounted) numeraire price `B t`. This stays parallel to
+`discountedValueProcess` via `V t θ ω = B t · Ṽ t θ ω` (the bond's discounted price is
+`B t / B t = 1`). See `discountedValueProcess` for the version used in the FTAP proof. -/
 noncomputable def valueProcess (m : FinancialMarket Ω) (θ : TradingStrategy m)
     (t : Fin (m.T + 1)) (ω : Ω) : ℝ :=
-  ∑ i : Fin m.n, θ.holdings i t ω * m.S i t ω
+  ∑ i : Fin m.n, θ.holdings i t ω * m.S i t ω + θ.bondHolding t ω * m.B t
 
 /-! ### S2.3 — Discounted value process -/
 
