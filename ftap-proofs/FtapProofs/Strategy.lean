@@ -66,17 +66,26 @@ structure TradingStrategy (m : FinancialMarket Ω) where
   holdings : Fin m.n → Fin (m.T + 1) → Ω → ℝ
   /-- **Predictability**: `holdings i t` is `ℱ_{t-1}`-measurable — decided before seeing `S t` -/
   predictable : ∀ i t, @Measurable Ω ℝ (m.𝒻 (FtapProofs.prevTime t)) _ (holdings i t)
+  /-- Bond holdings process: `bondHolding t ω` is the number of units of the risk-free bond held
+      over period `[t-1, t)`. The bond has constant discounted price 1 at all times, so bond
+      holdings do not contribute to the gains process but do appear in the value process and the
+      self-financing condition. -/
+  bondHolding : Fin (m.T + 1) → Ω → ℝ
+  /-- **Bond predictability**: `bondHolding t` is `ℱ_{t-1}`-measurable -/
+  bondPredictable : ∀ t, @Measurable Ω ℝ (m.𝒻 (FtapProofs.prevTime t)) _ (bondHolding t)
 
 /-! ### S2.2 — Value process -/
 
-/-- **S2.2** Portfolio value process (undiscounted): `V t θ ω = ∑ᵢ θᵢ t ω · Sᵢ t ω`.
+/-- **S2.2** Portfolio value process (undiscounted):
+`V t θ ω = ∑ᵢ θᵢ t ω · Sᵢ t ω + bondHolding t ω · B t`.
 
-The total market value of the portfolio at time `t` in state `ω`.
-This is the undiscounted value; see `discountedValueProcess` for the version used
-in the FTAP proof. -/
+The total market value of the portfolio at time `t` in state `ω`, including the bond
+position valued at the (undiscounted) numeraire price `B t`. This stays parallel to
+`discountedValueProcess` via `V t θ ω = B t · Ṽ t θ ω` (the bond's discounted price is
+`B t / B t = 1`). See `discountedValueProcess` for the version used in the FTAP proof. -/
 noncomputable def valueProcess (m : FinancialMarket Ω) (θ : TradingStrategy m)
     (t : Fin (m.T + 1)) (ω : Ω) : ℝ :=
-  ∑ i : Fin m.n, θ.holdings i t ω * m.S i t ω
+  ∑ i : Fin m.n, θ.holdings i t ω * m.S i t ω + θ.bondHolding t ω * m.B t
 
 /-! ### S2.3 — Discounted value process -/
 
@@ -87,7 +96,7 @@ Portfolio value denominated in units of the numeraire (risk-free bond). Equivale
 is arbitrage-free iff its discounted value is a martingale under an EMM. -/
 noncomputable def discountedValueProcess (m : FinancialMarket Ω) (θ : TradingStrategy m)
     (t : Fin (m.T + 1)) (ω : Ω) : ℝ :=
-  ∑ i : Fin m.n, θ.holdings i t ω * discountedPrice m i t ω
+  ∑ i : Fin m.n, θ.holdings i t ω * discountedPrice m i t ω + θ.bondHolding t ω
 
 /-! ### S2.4 — Self-financing condition -/
 
@@ -111,8 +120,10 @@ See `selfFinancing_iff_value_eq_init_plus_gains` for an equivalent characterizat
 in terms of the value and gains processes. -/
 def selfFinancing (m : FinancialMarket Ω) (θ : TradingStrategy m) : Prop :=
   ∀ (t : Fin m.T) (ω : Ω),
-    ∑ i : Fin m.n, θ.holdings i t.succ ω * discountedPrice m i t.castSucc ω =
-    ∑ i : Fin m.n, θ.holdings i t.castSucc ω * discountedPrice m i t.castSucc ω
+    ∑ i : Fin m.n, θ.holdings i t.succ ω * discountedPrice m i t.castSucc ω +
+    θ.bondHolding t.succ ω =
+    ∑ i : Fin m.n, θ.holdings i t.castSucc ω * discountedPrice m i t.castSucc ω +
+    θ.bondHolding t.castSucc ω
 
 /-! ### S2.5 — Discounted gains process -/
 
@@ -206,6 +217,10 @@ theorem selfFinancing_iff_value_eq_init_plus_gains (m : FinancialMarket Ω)
           (∑ i : Fin m.n, θ.holdings i t.succ ω * discountedPrice m i t.castSucc ω) := by
         simp [mul_sub, ← Finset.sum_sub_distrib]
       simp only [discountedValueProcess] at hih ⊢
+      -- hih: ∑ θ_t * D_t + bondHolding_t = Ṽ 0 + G_t
+      -- hself: ∑ θ_{t+1} * D_t + bondHolding_{t+1} = ∑ θ_t * D_t + bondHolding_t
+      -- expand: ∑ θ_{t+1} * (D_{t+1} - D_t) = ∑ θ_{t+1} * D_{t+1} - ∑ θ_{t+1} * D_t
+      -- Goal: ∑ θ_{t+1} * D_{t+1} + bondHolding_{t+1} = Ṽ 0 + G_t + ∑ θ_{t+1} * (D_{t+1} - D_t)
       linarith
   · -- (←) Ṽ t = Ṽ 0 + G t for all t implies self-financing
     intro hval t ω
@@ -221,6 +236,9 @@ theorem selfFinancing_iff_value_eq_init_plus_gains (m : FinancialMarket Ω)
         (∑ i : Fin m.n, θ.holdings i t.succ ω * discountedPrice m i t.castSucc ω) := by
       simp [mul_sub, ← Finset.sum_sub_distrib]
     simp only [discountedValueProcess] at hsucc hcast
+    -- hsucc: ∑ θ_{t+1} * D_{t+1} + bondHolding_{t+1} = Ṽ 0 + G_t + ∑ θ_{t+1} * (D_{t+1} - D_t)
+    -- hcast: ∑ θ_t * D_t + bondHolding_t = Ṽ 0 + G_t
+    -- Goal (SF): ∑ θ_{t+1} * D_t + bondHolding_{t+1} = ∑ θ_t * D_t + bondHolding_t
     linarith
 
 end FtapProofs
