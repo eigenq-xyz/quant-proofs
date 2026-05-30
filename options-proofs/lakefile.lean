@@ -9,10 +9,12 @@ package «options-proofs» where
     ⟨`pp.proofs.withType, false⟩
   ]
 
-require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git" @ "master"
-
 require «quant-core» from "../quant-core/lean"
+
+require «ftap-proofs» from "../ftap-proofs"
+
+require mathlib from git
+  "https://github.com/leanprover-community/mathlib4.git" @ "d49d6649f50b54b813042b80d5837fd62561b48f"
 
 
 @[default_target]
