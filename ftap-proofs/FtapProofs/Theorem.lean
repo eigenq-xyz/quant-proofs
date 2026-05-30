@@ -7,6 +7,11 @@ import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Integrals
 import Mathlib.MeasureTheory.Integral.Bochner.Set
 import Mathlib.MeasureTheory.Integral.Bochner.SumMeasure
+import Mathlib.Analysis.LocallyConvex.Separation
+import Mathlib.Analysis.Convex.StdSimplex
+import Mathlib.Analysis.InnerProductSpace.Dual
+import Mathlib.Analysis.InnerProductSpace.PiL2
+import Mathlib.Topology.Algebra.Module.FiniteDimension
 
 /-!
 # The Fundamental Theorem of Asset Pricing
@@ -157,15 +162,109 @@ private theorem state_price_functional (m : FinancialMarket Ω) (hNA : NoArbitra
     ∃ q : Ω → ℝ,
       (∀ ω : Ω, 0 < q ω) ∧
       (∀ f ∈ attainablePayoffs m, ∑ ω : Ω, q ω * f ω = 0) := by
-  sorry
-  -- Tactic path:
-  -- 1. Let K := attainablePayoffs m (shown linear subspace by attainablePayoffs_isLinearSubspace)
-  -- 2. Embed Ω → ℝ as EuclideanSpace ℝ Ω (finite-dimensional inner product space)
-  -- 3. The positive orthant P = {f | ∀ ω, 0 ≤ f ω} is a ProperCone in EuclideanSpace ℝ Ω
-  -- 4. By noArbitrage_iff_attainable_nonneg_eq_zero applied to hNA:
-  --    K ∩ P = {0}
-  -- 5. Apply ProperCone.hyperplane_separation' (or Farkas lemma variant) to get q.
-  -- 6. Translate the inner product ⟪q, f⟫ = ∑ ω, q ω * f ω.
+  classical
+  -- Work in the Euclidean inner product space `E = EuclideanSpace ℝ Ω`. Its carrier is the
+  -- `WithLp` synonym of `Ω → ℝ`; the inclusion `WithLp.ofLp` is a linear isomorphism, so
+  -- attainable payoffs and the standard simplex transfer along it.
+  set E := EuclideanSpace ℝ Ω with hE
+  -- K is the linear subspace of attainable payoffs, viewed as a `Submodule ℝ E`.
+  obtain ⟨hK0, hKadd, hKsmul⟩ := attainablePayoffs_isLinearSubspace m
+  let K : Submodule ℝ E :=
+    { carrier := {x : E | WithLp.ofLp x ∈ attainablePayoffs m}
+      zero_mem' := hK0
+      add_mem' := fun {f g} hf hg => hKadd _ _ hf hg
+      smul_mem' := fun c {f} hf => hKsmul c _ hf }
+  have hKmem : ∀ {f : E}, f ∈ K ↔ WithLp.ofLp f ∈ attainablePayoffs m := fun {f} => Iff.rfl
+  -- K is closed (finite-dimensional subspace) and convex.
+  have hKclosed : IsClosed (K : Set E) := K.closed_of_finiteDimensional
+  have hKconvex : Convex ℝ (K : Set E) := K.convex
+  -- The standard simplex, transferred to `E` as the preimage under `WithLp.ofLp`.
+  let S : Set E := {x : E | WithLp.ofLp x ∈ stdSimplex ℝ Ω}
+  have hSmem : ∀ {x : E}, x ∈ S ↔ (∀ ω, 0 ≤ x ω) ∧ ∑ ω, x ω = 1 := fun {x} => Iff.rfl
+  -- Compactness: `S` is the preimage of the compact simplex under the continuous linear
+  -- equivalence `WithLp.equiv`; its inverse image of a compact set is compact.
+  have hScompact : IsCompact S := by
+    have : S = (EuclideanSpace.equiv Ω ℝ).symm '' (stdSimplex ℝ Ω) := by
+      ext x; simp only [S, Set.mem_setOf_eq, Set.mem_image]
+      constructor
+      · intro hx; exact ⟨WithLp.ofLp x, hx, rfl⟩
+      · rintro ⟨y, hy, rfl⟩; exact hy
+    rw [this]
+    exact (isCompact_stdSimplex ℝ Ω).image (EuclideanSpace.equiv Ω ℝ).symm.continuous
+  have hSconvex : Convex ℝ S :=
+    (convex_stdSimplex ℝ Ω).linear_preimage (WithLp.linearEquiv 2 ℝ (Ω → ℝ)).toLinearMap
+  -- Disjointness: a simplex point is nonnegative and sums to 1, but the NA characterization
+  -- forces any nonnegative attainable payoff to be zero (whose sum is 0 ≠ 1).
+  have hNAchar := (noArbitrage_iff_attainable_nonneg_eq_zero m).mp hNA
+  have hdisj : Disjoint S (K : Set E) := by
+    rw [Set.disjoint_left]
+    rintro x hxS hxK
+    obtain ⟨hxnn, hxsum⟩ := hSmem.mp hxS
+    have hxzero : WithLp.ofLp x = fun _ => 0 := hNAchar _ (hKmem.mp hxK) hxnn
+    rw [show (fun ω => x ω) = WithLp.ofLp x from rfl, hxzero] at hxsum
+    simp at hxsum
+  -- Separate the compact simplex from the closed subspace by a continuous linear functional.
+  obtain ⟨φ, u, v, hSlt, huv, hKgt⟩ :=
+    geometric_hahn_banach_compact_closed hSconvex hScompact hKconvex hKclosed hdisj
+  -- φ vanishes on the subspace K: scaling any `b ∈ K` and using `v < φ (c • b) = c • φ b`
+  -- forces `φ b = 0`. First, `0 ∈ K` gives `v < 0`.
+  have hv_neg : v < 0 := by
+    have := hKgt 0 K.zero_mem
+    simpa using this
+  have hφK : ∀ b ∈ K, φ b = 0 := by
+    intro b hb
+    by_contra hne
+    rcases lt_or_gt_of_ne hne with hlt | hgt
+    · -- φ b < 0: pick large positive c so c * φ b < v, contradicting v < φ (c • b).
+      have hcb : (v / φ b) • b ∈ K := K.smul_mem _ hb
+      have hk := hKgt _ hcb
+      rw [map_smul, smul_eq_mul] at hk
+      rw [div_mul_cancel₀ _ (ne_of_lt hlt)] at hk
+      exact lt_irrefl v hk
+    · have hcb : (v / φ b) • b ∈ K := K.smul_mem _ hb
+      have hk := hKgt _ hcb
+      rw [map_smul, smul_eq_mul] at hk
+      rw [div_mul_cancel₀ _ (ne_of_gt hgt)] at hk
+      exact lt_irrefl v hk
+  -- Represent φ by its Riesz vector q₀ ∈ E: φ b = ⟪q₀, b⟫.
+  let q₀ : E := (InnerProductSpace.toDual ℝ E).symm φ
+  have hrepr : ∀ b : E, φ b = inner ℝ q₀ b := fun b =>
+    (InnerProductSpace.toDual_symm_apply (𝕜 := ℝ) (E := E)).symm
+  -- The underlying coordinate function of the Riesz vector.
+  let qfun : Ω → ℝ := WithLp.ofLp q₀
+  -- Inner product over ℝ unfolds to the coordinate sum ∑ ω, qfun ω * (ofLp b) ω.
+  have hinner_sum : ∀ b : E, inner ℝ q₀ b = ∑ ω : Ω, qfun ω * WithLp.ofLp b ω := fun b => by
+    rw [PiLp.inner_apply]
+    exact Finset.sum_congr rfl (fun ω _ => by
+      rw [RCLike.inner_apply, conj_trivial, mul_comm])
+  -- Strict negativity of qfun at each coordinate via the simplex vertices `single ω 1`.
+  have hq₀_neg : ∀ ω : Ω, qfun ω < 0 := by
+    intro ω
+    have hvert : (WithLp.toLp 2 (Pi.single ω (1 : ℝ)) : E) ∈ S := single_mem_stdSimplex ℝ ω
+    have hlt := hSlt _ hvert
+    rw [hrepr, hinner_sum] at hlt
+    have hsum : ∑ ω' : Ω, qfun ω' * WithLp.ofLp (WithLp.toLp 2 (Pi.single ω (1 : ℝ)) : E) ω' =
+        qfun ω := by
+      rw [Finset.sum_eq_single ω]
+      · simp [Pi.single_eq_same]
+      · intro ω' _ hω'; simp [Pi.single_eq_of_ne hω']
+      · intro h; exact absurd (Finset.mem_univ ω) h
+    rw [hsum] at hlt
+    linarith [huv, hv_neg]
+  -- Answer: q := -qfun, which is strictly positive and still vanishes on K.
+  refine ⟨fun ω => -qfun ω, fun ω => by linarith [hq₀_neg ω], ?_⟩
+  intro f hf
+  -- Lift the attainable payoff `f : Ω → ℝ` to the corresponding vector in `E`.
+  have hfK : (WithLp.toLp 2 f : E) ∈ K := hKmem.mpr hf
+  have hφf : φ (WithLp.toLp 2 f) = 0 := hφK _ hfK
+  rw [hrepr, hinner_sum] at hφf
+  -- ofLp (toLp 2 f) = f, so the sum is over ∑ ω, qfun ω * f ω.
+  have hof : WithLp.ofLp (WithLp.toLp 2 f : E) = f := rfl
+  rw [hof] at hφf
+  -- ∑ ω, qfun ω * f ω = 0, so ∑ ω, (-qfun ω) * f ω = 0.
+  have hneg : ∑ ω : Ω, -qfun ω * f ω = -(∑ ω : Ω, qfun ω * f ω) := by
+    rw [← Finset.sum_neg_distrib]; apply Finset.sum_congr rfl; intro ω _; ring
+  rw [hneg, hφf, neg_zero]
 
 /-! ### T5.3 State prices to EMM -/
 
