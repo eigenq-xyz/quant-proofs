@@ -3,6 +3,7 @@ import FtapProofs.Strategy
 import FtapProofs.Arbitrage
 import FtapProofs.MartingaleMeasure
 import FtapProofs.Theorem
+import FtapProofs.Density
 
 /-!
 # FtapProofs
@@ -25,6 +26,7 @@ NoArbitrage m ↔ ∃ Q, EquivalentMartingaleMeasure m Q
 - `FtapProofs.MartingaleMeasure` — equivalent martingale measures and
   risk-neutral pricing
 - `FtapProofs.Theorem` — the FTAP biconditional and its proof
+- `FtapProofs.Density` — the EMM → singleton-density bridge for finite-state models
 
 ## Status
 
