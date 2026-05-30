@@ -86,6 +86,21 @@ lemma crrNumeraire_zero {T : ℕ} {r : ℝ} :
 def ups {T : ℕ} (t : ℕ) (ω : CRRState T) : ℕ :=
   (Finset.univ.filter (fun j : Fin T => (j : ℕ) < t ∧ ω j = true)).card
 
+/-- The up-count never exceeds the elapsed time: `ups t ω ≤ t`. Needed downstream (O2/O3)
+for `crrPrice` positivity and the one-step price recursion: the up-moves before time `t`
+inject into `{0, …, t-1}` via `Fin.val`. -/
+lemma ups_le_time {T : ℕ} (t : ℕ) (ω : CRRState T) : ups t ω ≤ t := by
+  unfold ups
+  have h : (Finset.univ.filter (fun j : Fin T => (j : ℕ) < t ∧ ω j = true)).card
+      ≤ (Finset.range t).card := by
+    refine Finset.card_le_card_of_injOn (fun j : Fin T => (j : ℕ)) ?_ ?_
+    · intro j hj
+      rw [Finset.mem_coe, Finset.mem_filter] at hj
+      exact Finset.mem_coe.mpr (Finset.mem_range.mpr hj.2.1)
+    · intro j _ k _ hjk
+      exact Fin.ext hjk
+  rwa [Finset.card_range] at h
+
 /-- The risky-asset price at time `t`:
 `S₀ * u ^ (#up-moves before t) * d ^ (#down-moves before t)`. -/
 def crrPrice (T : ℕ) (S₀ u d : ℝ) (t : Fin (T + 1)) (ω : CRRState T) : ℝ :=
