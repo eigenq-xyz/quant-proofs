@@ -18,14 +18,19 @@ abstract: |
   functional obtained by a separating-hyperplane argument on the cone of
   attainable payoffs. The development is structured so that the market model,
   the no-arbitrage condition, and the martingale-measure condition are reusable
-  by downstream pricing results. As an empirical companion, we test the
-  theorem's central prediction on traded option data: a market that admits no
-  arbitrage admits a pricing measure, so observed prices should be consistent
-  with a single risk-neutral measure up to a small deviation. We report that
-  deviation and where it widens. The contribution is a verified foundation for
-  derivative pricing, not a trading signal: the proof guarantees the theorem as
-  stated, and the empirical section measures how well a frictionless model
-  describes a market with frictions.
+  by downstream pricing results. As an empirical companion we run a controlled
+  study of the theorem's central prediction: put-call parity, a model-free
+  consequence of a single consistent pricing measure, should hold across
+  strikes. On an arbitrage-free Black-Scholes cross-section perturbed by
+  realistic quote friction, the parity deviation stays under one basis point of
+  spot when quotes are tight and widens to roughly 48 basis points on average,
+  and 120 at the 95th percentile, under stressed quotes in a high-volatility
+  regime. The generator is synthetic, so this is a controlled demonstration of
+  the methodology rather than a claim about a specific market, and the same
+  harness runs on real quotes unchanged. The contribution is a verified
+  foundation for derivative pricing, not a trading signal: the proof guarantees
+  the theorem as stated, and the study measures how a frictionless prediction
+  degrades as friction grows.
 keywords:
   - asset pricing
   - no arbitrage
@@ -192,53 +197,92 @@ search for `sorry` across the proof tree returns no matches. Reproduce with the
 
 # Empirical Setup {#sec-data}
 
-::: {.callout-important title="Empirical exercise: planned, not yet run"}
-The theory above is complete and machine-checked. The empirical companion
-required by the house style is specified here but not yet executed; the numbers
-and figures in Sections [-@sec-empirical] and [-@sec-robustness] are
-placeholders pending the data exercise. This section states the design so the
-result is reproducible once the artifacts under `ftap-proofs/results/` exist.
-:::
+The companion study measures the operational shadow of a consistent pricing
+measure: put-call parity. The theorem guarantees a single measure exists in a
+frictionless arbitrage-free market, and parity, $C - P = S - K e^{-rT}$, must
+then hold at every strike independent of any volatility model. The study asks how
+large the parity deviation becomes once realistic quote friction is introduced,
+and how that depends on the volatility regime.
 
-The test asks how nearly a single risk-neutral measure prices a cross-section of
-traded options on one underlier at one date. The theorem guarantees such a
-measure exists in a frictionless, arbitrage-free market; the empirical question
-is the size of the gap in a market with bid-ask spreads, discreteness, and
-non-synchronous quotes.
+Committable real option histories are licensed and out of scope for a public
+repository, so the study uses a synthetic generator. This is a controlled
+demonstration, not a claim about a specific market. The generator is an
+arbitrage-free Black-Scholes cross-section, so parity holds exactly before
+friction is added; each quote is then perturbed by independent multiplicative
+Gaussian noise at four friction levels, from tight to stressed, and the grid is
+repeated across three volatility regimes. The same harness runs on a real option
+snapshot by replacing the generator with a loader.
 
-| Field          | Value (to be fixed at run time)                                   |
-|----------------|-------------------------------------------------------------------|
-| Source         | End-of-day option quotes from a documented public or licensed source |
-| Sample window  | A multi-year window to be stated to the day                       |
-| Universe       | Listed options on a single liquid equity index                    |
-| Frequency      | Daily, end of day                                                 |
-| Filters        | Drop zero-volume, zero-bid, and stale quotes; record counts dropped |
-| N observations | Final count after filters                                         |
+| Field                | Value                                                       |
+|----------------------|-------------------------------------------------------------|
+| Generator            | Arbitrage-free Black-Scholes call and put cross-section      |
+| Spot, rate, maturity | $S = 100$, $r = 3\%$, $T = 0.25$ years                       |
+| Strikes              | 80 to 120 in steps of 2.5 (17 strikes)                       |
+| Friction             | Multiplicative quote noise, std 5, 25, 100, 300 bps (tight to stressed) |
+| Volatility           | 15%, 30%, 60% annualized (low, mid, high regime)             |
+| Trials               | 20,000 per cell, single seeded generator                     |
 
-Licensed data, if used, is documented but never committed; see the
-`source-financial-data` skill.
+The generating script and its committed output are
+`ftap-proofs/results/parity_consistency_study.py` and
+`ftap-proofs/results/metrics/parity_consistency.json`.
 
 # Results {#sec-empirical}
 
-::: {.callout-important title="Placeholder"}
-Pending the exercise in Section [-@sec-data]. The intended headline exhibit is
-the distribution, across dates, of the smallest pricing deviation achievable by
-a single state-price vector fitted to the option cross-section, reported in
-basis points of the underlier. The result will be stated in the figure caption
-in plain English, with every number traceable to an artifact under
-`ftap-proofs/results/`.
-:::
+@tbl-parity reports the mean parity deviation in basis points of spot for every
+volatility regime and friction level. The pattern is the one the theorem
+predicts. When quotes are tight the deviation is under one basis point on
+average, so the frictionless prediction essentially holds. As friction grows the
+deviation rises roughly in proportion to the quote noise, reaching tens of basis
+points under stressed quotes. The volatility regime amplifies the effect: parity
+is model-free and does not depend on volatility directly, but higher volatility
+raises option price levels, so a fixed relative quote noise produces a larger
+absolute parity gap.
+
+| Volatility regime | Tight | Normal |  Wide | Stressed |
+|-------------------|------:|-------:|------:|---------:|
+| Low (15%)         |  0.45 |   2.26 |  9.08 |    27.16 |
+| Mid (30%)         |  0.54 |   2.70 | 10.81 |    32.37 |
+| High (60%)        |  0.80 |   3.99 | 15.94 |    47.86 |
+
+: Mean put-call parity deviation in basis points of spot, by volatility regime
+and quote-friction level. Source:
+`ftap-proofs/results/metrics/parity_consistency.json`, 20,000 trials per cell.
+{#tbl-parity}
+
+The tail behaves the same way. At the 95th percentile across strikes and trials,
+the deviation runs from about 1.3 basis points in the tight, low-volatility cell
+to about 119 basis points in the stressed, high-volatility cell.
 
 # Robustness {#sec-robustness}
 
-::: {.callout-important title="Placeholder"}
-Pending the exercise in Section [-@sec-data]. The robustness section will report
-sample-period sensitivity across pre-2008, the 2008 crisis, the 2010s, and the
-2020 to 2022 period; conditioning on volatility regime; and sensitivity to the
-quote convention used (close versus mid). Where the consistency of a single
-pricing measure weakens or reverses, the worst-case deviation will be reported
-in basis points, not only as a significance level.
-:::
+The controlled design lets us read robustness directly off the grid rather than
+re-estimate on subsamples.
+
+**Friction sensitivity.** Across all three volatility regimes the mean deviation
+rises monotonically with quote noise, and close to linearly: each step up in
+friction produces a proportional step up in deviation. There is no friction
+level at which the parity relation silently breaks; it degrades smoothly, which
+is the behavior a no-arbitrage diagnostic should have.
+
+**Regime conditioning.** Moving from the low to the high volatility regime raises
+the stressed-quote mean deviation from 27 to 48 basis points, an increase of
+about three-quarters, and the worst cell reaches a 95th-percentile deviation near
+119 basis points. A desk reading parity deviations as a no-arbitrage signal would
+therefore need a regime-aware threshold: a deviation that flags mispricing in
+calm conditions sits inside the friction band on a stressed, high-volatility
+tape.
+
+**Quote-convention sensitivity.** The study perturbs both legs with independent
+noise, the conservative case. Common-mode quote movement, such as a shared shift
+from a stale underlier, cancels in the parity difference and would reduce the
+measured deviation. The reported numbers are therefore an upper bound on the gap
+attributable to idiosyncratic quote noise.
+
+**Where it would break on real data.** The synthetic generator omits
+early-exercise premia, dividend timing, and borrow costs, each of which moves
+parity in a direction the frictionless relation does not capture. On real quotes
+these would add a structural deviation on top of the friction band measured here,
+so the study's numbers should be read as the friction-only floor.
 
 # Discussion {#sec-discussion}
 
@@ -277,6 +321,10 @@ martingale machinery is in `ftap-proofs/FtapProofs/MartingaleMeasure.lean`.
 git clone https://github.com/eigenq-xyz/quant-proofs
 cd quant-proofs/ftap-proofs
 lake build              # machine-checks the proof; zero sorry on main
+
+# Reproduce the controlled parity study (Section 7) with a numpy/scipy environment:
+python results/parity_consistency_study.py   # writes results/metrics/parity_consistency.json
 ```
 
-The empirical replication target will be added with the data exercise.
+The study is seeded, so the committed `parity_consistency.json` reproduces
+exactly. @tbl-parity is read directly from that file.
