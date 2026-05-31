@@ -5,6 +5,7 @@ import QuantCore.Option
 import QuantCore.OptionInvariants
 import OptionsProofs.Tree
 import OptionsProofs.RiskNeutral
+import OptionsProofs.PutCallParity
 
 namespace OptionsProofs
 
