@@ -55,10 +55,12 @@ lemma emmDensity_nonneg (Q : Measure Ω) (ω : Ω) : 0 ≤ emmDensity Q ω :=
   ENNReal.toReal_nonneg
 
 /-- Under measure equivalence `Q ~ P` with a full-support reference measure `P`, the density
-is strictly positive at every state. -/
-lemma emmDensity_pos (m : FinancialMarket Ω) (Q : Measure Ω) [IsFiniteMeasure Q]
+is strictly positive at every state. Finiteness of `Q` comes from `EquivalentMeasure` itself
+(it carries `IsProbabilityMeasure Q`), so it need not be assumed separately. -/
+lemma emmDensity_pos (m : FinancialMarket Ω) (Q : Measure Ω)
     (hequiv : EquivalentMeasure m Q) (hP : ∀ ω, 0 < m.P {ω}) (ω : Ω) :
     0 < emmDensity Q ω := by
+  haveI : IsProbabilityMeasure Q := hequiv.1
   have hQpos : 0 < Q {ω} := (hequiv.2 ω).mp (hP ω)
   rw [emmDensity, ENNReal.toReal_pos_iff]
   exact ⟨hQpos, measure_lt_top Q {ω}⟩
