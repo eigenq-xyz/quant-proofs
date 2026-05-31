@@ -1,62 +1,31 @@
-# quant-proofs — EigenQ Research Series
+# EigenQ Research Series
 
-Formally verified quantitative finance — Lean 4 machine-checked proofs paired with
-production-quality Python execution.
+The central question in quantitative research is not "what does the model say?" It is "should we trust it?" Standard testing tells you the code ran. Formal verification tells you the code is correct, as a machine-checked mathematical theorem.
 
-The organizing principle: the durable skill in quantitative research is not running
-backtests — it is knowing whether to trust them. Every project here takes a named
-result from financial theory and makes it formally verifiable: theorem statement as
-spec, Lean 4 proof as test, zero `sorry` on main.
+Every project in the EigenQ Research Series takes a named result from financial theory, or a deployed decision system, and makes it formally verifiable. The theorem statement is the specification. The Lean 4 proof is the test. Zero `sorry` on main means no gaps.
 
-## Active projects
+## What this means in practice
 
-### ftap-proofs
+A proof in Lean 4 is checked by a small, independently audited kernel. When a theorem carries zero `sorry`, every inference step has been verified, not sampled and not spot-checked. The result either compiles or it does not.
 
-Lean 4 proof of the Discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981):
-a finite-state, discrete-time market is arbitrage-free if and only if an equivalent
-martingale measure exists. This is the foundational result underlying all of derivative
-pricing theory. Targeting a mathlib PR.
+This is different from unit tests, which check behavior on selected inputs. It is different from type checking, which rules out a class of runtime errors. Formal verification rules out all counterexamples to the stated theorem, within the model as defined.
 
-**Status:** In progress — see [ROADMAP](https://github.com/eigenq-xyz/quant-proofs/blob/main/ftap-proofs/ROADMAP.md) for the 5-phase task breakdown.
+The honest caveat: a proof guarantees the theorem as stated, not that the model faithfully represents reality. Whether the model captures the right phenomenon is a separate question, answered by economic reasoning and empirical evidence, not by Lean. The proofs here are explicit about what they assume and what they conclude. See [How we verify](how-we-verify.md) for the method and its limits.
 
-### options-proofs
+## Three pillars
 
-Lean 4 proof of put-call parity via the Cox-Ross-Rubinstein binomial model. Imports
-`quant-core` for shared option types; the no-arbitrage argument cites `ftap-proofs`.
+**[No-Arbitrage Pricing](pillar-pricing.md).** The arc from the Fundamental Theorem of Asset Pricing through derivative pricing to perpetual futures. The discrete Harrison-Pliska theorem (complete, zero sorry) underlies put-call parity via the Cox-Ross-Rubinstein model (complete, zero sorry) and perpetual futures no-arbitrage pricing (complete, zero sorry).
 
-**Status:** Planned — depends on `ftap-proofs`.
+**[Verified Optimization](pillar-optimization.md).** Formally verified projected gradient descent: convergence, projection correctness, and covariance shrinkage proofs (all complete, zero sorry), paired with seven stress scenarios where standard solvers fail and the verified solver holds.
 
-### quant-core
+**[Verified AI Decision Systems](pillar-ai-systems.md).** A multi-agent mortgage pipeline whose routing decisions are recorded and checked against Lean 4 invariants. Formal auditability for deployed systems built on large language models.
 
-Shared pricing primitives: `EuropeanOption` type, payoff bounds, Black-Scholes, GBM
-simulator. 8 theorems, zero `sorry`, stable.
+## Start here
 
-### mortgage-proofs
+Choose the entry point that matches your background:
 
-LangGraph multi-agent mortgage pipeline (intake, risk, compliance, underwriter) with
-Lean 4-checked routing invariants. Agent decisions are recorded as `DecisionRecord` JSON
-and validated via `lake exe verify-trace`.
-
-**Status:** Active development.
-
-## Portfolio optimization
-
-Seven stress scenarios benchmark Lean PGD against SciPy, Gurobi, and naive gradient
-descent. Each scenario targets one solver failure mode with a KKT-certified analytical
-optimum as ground truth. Lean PGD is the only solver that passes all seven.
-See [Portfolio Optimization](portfolio/index).
-
-## Status
-
-| Project | Theorems | Status |
-|---------|----------|--------|
-| `portfolio-proofs` | 0 (scaffolded) | Active — 7 stress scenarios, performance report |
-| `ftap-proofs` | — | In progress |
-| `options-proofs` | — | Planned (depends on ftap-proofs) |
-| `quant-core` | 8 (zero sorry) | v1.0 stable |
-| `mortgage-proofs` | — | Active |
-
-## Repository
-
-- **GitHub:** [eigenq-xyz/quant-proofs](https://github.com/eigenq-xyz/quant-proofs)
-- **License:** Apache 2.0
+- [For formal methods researchers and the Lean/mathlib community](audience/formal-methods.md)
+- [For quantitative researchers and practitioners](audience/quant-researchers.md)
+- [For finance academics in asset pricing and derivatives](audience/finance-academics.md)
+- [For asset managers, risk managers, and compliance](audience/asset-managers.md)
+- [For engineers building verified quantitative infrastructure](audience/engineering-leaders.md)

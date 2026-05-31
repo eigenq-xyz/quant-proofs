@@ -1,10 +1,17 @@
 format: jb-book
 root: intro
 parts:
-  - caption: Portfolio Optimization
+  - caption: Method
     chapters:
-      - file: portfolio/index
+      - file: how-we-verify
+  - caption: No-Arbitrage Pricing
+    chapters:
+      - file: pillar-pricing
+  - caption: Verified Optimization
+    chapters:
+      - file: pillar-optimization
         sections:
+          - file: portfolio/index
           - file: portfolio/lean_pgd_performance
           - file: portfolio/boundary_trap
           - file: portfolio/phantom_positions
@@ -13,12 +20,13 @@ parts:
           - file: portfolio/cholesky_crash
           - file: portfolio/precision_bleed
           - file: portfolio/step_divergence
-  - caption: Active Proofs
+  - caption: Verified AI Decision Systems
     chapters:
-      - file: ftap-proofs
-      - file: options-proofs
-      - file: quant-core
-      - file: mortgage-proofs
-  - caption: Archive
+      - file: pillar-ai-systems
+  - caption: Audience guides
     chapters:
-      - file: backtest-proofs
+      - file: audience/formal-methods
+      - file: audience/quant-researchers
+      - file: audience/finance-academics
+      - file: audience/asset-managers
+      - file: audience/engineering-leaders
