@@ -1,0 +1,464 @@
+---
+title: "Put-Call Parity in the Binomial Model: A Machine-Checked Proof via the Fundamental Theorem of Asset Pricing"
+subtitle: "options-proofs: EigenQ Research Series"
+author:
+  - name: eigenq-xyz
+    affiliation: eigenq-xyz
+    email: research@eigenq.xyz
+date: today
+date-format: long
+abstract: |
+  Does the classical put-call parity relation hold exactly in the discrete
+  Cox-Ross-Rubinstein binomial model, and can that exactness be verified by a
+  machine? We answer both questions affirmatively. Starting from the
+  Harrison-Pliska no-arbitrage condition, we construct the unique risk-neutral
+  probability measure for the CRR binomial market, prove that discounted prices
+  are martingales under this measure, and derive put-call parity: the relation
+  $C - P = S_0 - K(1+r)^{-T}$ for European calls and puts with the same strike
+  and expiry: as a theorem that follows from the linearity of expectation and a
+  model-free payoff identity. All three results are proven in Lean 4 with zero
+  `sorry`, machine-checked against mathlib, and available as open-source
+  artifacts in `options-proofs/`. The formalization imports `ftap-proofs`
+  directly, so the no-arbitrage guarantee is inherited from the companion paper
+  rather than re-proved. An empirical companion (filled separately) confirms
+  that the discrete parity relation holds to machine precision in simulation and
+  that CRR prices converge to Black-Scholes prices as the number of periods
+  grows. The scope of the formalization is the frictionless, finite-period
+  binomial model; continuous-time limits and transaction costs are not covered.
+keywords:
+  - quantitative finance
+  - formal verification
+  - Lean 4
+  - put-call parity
+  - binomial model
+  - Cox-Ross-Rubinstein
+jel:
+  - G12
+  - G13
+  - C63
+---
+
+# Introduction
+
+Put-call parity is the foundational no-arbitrage constraint of options theory: a
+European call and a European put with the same strike and expiry, written on the
+same underlying, satisfy $C - P = S_0 - K(1+r)^{-T}$ in any frictionless
+arbitrage-free market. This paper proves that relation in Lean 4, machine-checked
+to zero `sorry`, inside the Cox-Ross-Rubinstein binomial model
+[@cox1979option], using the Fundamental Theorem of Asset Pricing as its
+logical spine.
+
+**Why now.** Practitioners rely on put-call parity constantly: it grounds relative
+value trades, converts implied volatility surfaces from calls to puts, and anchors
+the no-arbitrage discipline of any options desk. Yet the proof is almost always
+presented informally, with key steps like "by the linearity of expectation" or
+"since the discounted price is a martingale" stated without derivation. When those
+steps are encoded in software, the gap between the informal argument and the
+running code is where implementation risk lives. A machine-checked proof closes
+that gap: every step from model primitives to the headline equation is verified
+against a fixed, publicly auditable formal system.
+
+**What we do.** We instantiate the CRR binomial tree as a concrete instance of the
+market structure established in the companion paper on the Fundamental Theorem of
+Asset Pricing [@harrison1981martingales]. We then prove three results in sequence.
+First, the risk-neutral probability $q = (1+r-d)/(u-d)$ is well-defined and
+strictly between zero and one under the no-arbitrage band $0 < d < 1+r < u$.
+Second, discounted prices are martingales under this measure, so the measure is an
+equivalent martingale measure and the market is arbitrage-free by the easy direction
+of the FTAP. Third, and centrally, put-call parity holds exactly. An empirical
+companion study (filled separately) verifies the parity numerically and illustrates
+CRR convergence to the Black-Scholes price.
+
+**What is new.** Echenim, Guiol, and Peltier [-@echenim2021] formalized CRR pricing
+in Isabelle/HOL, establishing European option prices and their correctness via an
+equivalent martingale measure construction. Our contribution differs in two respects.
+First, we work in Lean 4 against the current mathlib library, which is maintained
+and growing; the Isabelle formalization predates mathlib's probability theory
+infrastructure and does not import an independent FTAP proof. Second, by importing
+`ftap-proofs` as a dependency, we prove parity as a corollary of a separately
+machine-checked FTAP rather than from scratch, demonstrating that formal results in
+quantitative finance can compose across proof libraries.
+
+**Roadmap.** Section [-@sec-setup] defines the CRR market and states the standing
+assumptions. Section [-@sec-results] presents the three main results informally
+and formally. Section [-@sec-formalization] maps each result to its Lean 4 artifact
+and states the formalization claim. Sections [-@sec-data] through
+[-@sec-robustness] are reserved for the empirical companion. Section
+[-@sec-discussion] interprets what the formalization does and does not guarantee
+and identifies extensions.
+
+# Setup {#sec-setup}
+
+## The binomial path space
+
+Fix a positive integer $T$ (the number of periods). The sample space is the set of
+all binary strings of length $T$:
+$$
+  \Omega = \{u, d\}^T,
+$$
+so $|\Omega| = 2^T$. Each element $\omega = (\omega_1, \ldots, \omega_T) \in \Omega$
+is a path, where $\omega_t = u$ means the asset moved up in period $t$ and
+$\omega_t = d$ means it moved down.
+
+::: {#def-natural-filtration}
+**(Natural filtration.)** For $0 \le t \le T$, let $\Filt_t$ be the
+$\sigma$-algebra generated by the first $t$ coordinates of $\omega$. Then
+$(\Filt_t)_{t=0}^T$ is the natural filtration of the binomial model.
+$\Filt_0 = \{\emptyset, \Omega\}$ (no information) and $\Filt_T = 2^\Omega$
+(full information).
+:::
+
+The physical probability measure $\Prob$ is any measure that assigns strictly
+positive weight to every path. The precise weights under $\Prob$ do not affect
+prices; only the support does.
+
+## Asset prices and the numeraire
+
+Fix parameters $S_0 > 0$, $u > 1 > d > 0$, and $r > 0$ (the gross risk-free rate
+minus one). The risky asset price at time $t$ on path $\omega$ is
+$$
+  S_t(\omega) = S_0 \cdot u^{N_t(\omega)} \cdot d^{t - N_t(\omega)},
+$$
+where $N_t(\omega) = \#\{s \le t : \omega_s = u\}$ is the number of up-moves
+through period $t$. The numeraire (money-market account) is
+$$
+  B_t = (1 + r)^t.
+$$
+The discounted price process is $\tilde{S}_t = S_t / B_t$.
+
+::: {#def-crr-market}
+**(CRR market.)** The Cox-Ross-Rubinstein market is the tuple
+$(\Omega, \Filt, (\Filt_t)_{t=0}^T, \Prob, S, B)$ defined above. It is
+instantiated as a member of the market structure in `ftap-proofs` so that
+no-arbitrage results from that library apply without re-proof.
+:::
+
+## Standing assumptions
+
+Two assumptions are in force throughout the paper.
+
+> **Assumption A1 (Positivity).** $S_0 > 0$.
+
+> **Assumption A2 (No-arbitrage band).** $0 < d < 1 + r < u$.
+
+Assumption A2 is exactly the condition that rules out arbitrage in the one-period
+binomial model: if $1 + r \ge u$, then holding the bond dominates holding the stock,
+and if $1 + r \le d$, then holding the stock dominates holding the bond. Both
+comparisons are strict, which is what gives the risk-neutral probability a value in
+$(0, 1)$ rather than on the boundary.
+
+## Options
+
+A European call option with strike $K > 0$ and expiry $T$ pays
+$$
+  \max(S_T - K, 0) = (S_T - K)^+
+$$
+at time $T$. A European put with the same strike and expiry pays $(K - S_T)^+$.
+Both options are priced by discounted expectation under the risk-neutral measure
+$\Q$ defined in Section [-@sec-results]:
+$$
+  C = (1+r)^{-T} \, \E^\Q[(S_T - K)^+], \qquad
+  P = (1+r)^{-T} \, \E^\Q[(K - S_T)^+].
+$$
+The option payoff primitives are imported from `quant-core`, the shared pricing
+library in this monorepo, so the call and put types are defined once and reused
+across all proof projects.
+
+# Main Results {#sec-results}
+
+## The risk-neutral measure
+
+Under Assumption A2, the quantity
+$$
+  q = \frac{(1+r) - d}{u - d}
+$$
+satisfies $0 < q < 1$. Define the probability measure $\Q$ on $\Omega$ by
+assigning each up-move probability $q$ and each down-move probability $1 - q$,
+independently across periods. Concretely, for a path with $k$ up-moves and $T - k$
+down-moves,
+$$
+  \Q(\omega) = q^k (1-q)^{T-k}.
+$$
+Since $q \in (0,1)$, the measure $\Q$ assigns strictly positive weight to every
+path, so it is equivalent to $\Prob$.
+
+::: {#thm-rn-measure}
+**(Risk-neutral probability.)** Under Assumptions A1 and A2, the probability
+$q = (1+r-d)/(u-d)$ lies in $(0,1)$, and the measure $\Q$ constructed above is
+well-defined and equivalent to $\Prob$.
+:::
+
+*Proof sketch.* The inequality $0 < q$ follows from $1+r > d$, and $q < 1$ follows
+from $1+r < u$; both are immediate from Assumption A2. Equivalence follows because
+every singleton path has $\Q$-probability $q^k(1-q)^{T-k} > 0$. The full proof is
+machine-checked in Lean 4; see Section [-@sec-formalization].
+
+## The martingale property
+
+::: {#thm-martingale}
+**(Discounted price is a martingale.)** The discounted price process
+$\tilde{S}_t = S_t / (1+r)^t$ is a martingale under $\Q$ with respect to the
+natural filtration $(\Filt_t)_{t=0}^T$.
+:::
+
+*Proof sketch.* It suffices to show that $\E^\Q[\tilde{S}_{t+1} \mid \Filt_t] =
+\tilde{S}_t$ for each $t$. Given $\Filt_t$, the next move is up with probability
+$q$ and down with probability $1-q$ under $\Q$, independently of the path so far.
+Therefore:
+$$
+  \E^\Q[\tilde{S}_{t+1} \mid \Filt_t]
+  = \frac{1}{(1+r)^{t+1}} \bigl(q \cdot u \cdot S_t + (1-q) \cdot d \cdot S_t\bigr)
+  = \frac{S_t}{(1+r)^{t+1}} \cdot \bigl(qu + (1-q)d\bigr).
+$$
+Substituting $q = (1+r-d)/(u-d)$ gives $qu + (1-q)d = 1+r$, so the right-hand
+side equals $S_t/(1+r)^t = \tilde{S}_t$.
+
+Because $\tilde{S}$ is a martingale under $\Q$ and $\Q \sim \Prob$, the measure
+$\Q$ is an equivalent martingale measure for the CRR market. By the easy direction
+of the FTAP (imported from `ftap-proofs`), the market is therefore arbitrage-free.
+
+::: {#cor-no-arb}
+**(No arbitrage.)** Under Assumptions A1 and A2, the CRR market admits no arbitrage.
+:::
+
+## Put-call parity
+
+::: {#thm-pcp}
+**(Put-call parity.)** Let $C$ and $P$ be the time-zero prices of a European call
+and put, respectively, with the same strike $K > 0$ and expiry $T$, priced by
+discounted risk-neutral expectation. Then
+$$
+  C - P = S_0 - \frac{K}{(1+r)^T}.
+$$
+:::
+
+*Proof sketch.* The key is the model-free payoff identity: for any real number $x$,
+$$
+  (x - K)^+ - (K - x)^+ = x - K.
+$$
+Applying this identity with $x = S_T(\omega)$ pointwise in $\omega$, then taking
+discounted expectation under $\Q$:
+$$
+  C - P
+  = (1+r)^{-T}\, \E^\Q[(S_T - K)^+ - (K - S_T)^+]
+  = (1+r)^{-T}\, \E^\Q[S_T - K].
+$$
+By linearity of expectation:
+$$
+  C - P = (1+r)^{-T}\, \E^\Q[S_T] - K(1+r)^{-T}.
+$$
+The martingale property (@thm-martingale) gives $\E^\Q[\tilde{S}_T] = \tilde{S}_0 =
+S_0$, i.e., $\E^\Q[S_T] = S_0 (1+r)^T$. Substituting:
+$$
+  C - P = (1+r)^{-T} \cdot S_0 (1+r)^T - K(1+r)^{-T}
+          = S_0 - K(1+r)^{-T}.
+$$
+
+The proof uses exactly three ingredients: the payoff identity (algebraic, model-free),
+linearity of expectation (a property of $\Q$ as a measure), and the martingale
+property of discounted prices (Theorem [-@thm-martingale]). No path-by-path
+calculation is needed. The full proof is machine-checked in Lean 4.
+
+# Formalization {#sec-formalization}
+
+## Lean 4 artifacts {#sec-artifacts}
+
+The formal development lives in
+[`options-proofs/`](https://github.com/eigenq-xyz/quant-proofs/tree/main/options-proofs)
+within the quant-proofs monorepo. It is organized into three modules, each
+corresponding to a layer of the mathematical development.
+
+| Paper result | Lean name | File |
+|---|---|---|
+| CRR market (@def-crr-market) | `crrMarket` | `OptionsProofs/Tree.lean` |
+| Risk-neutral probability (@thm-rn-measure) | `riskNeutralProb` | `OptionsProofs/RiskNeutral.lean` |
+| EMM construction | `crrRNMeasure_emm` | `OptionsProofs/RiskNeutral.lean` |
+| Martingale property (@thm-martingale) | `crrRNMeasure_martingale` | `OptionsProofs/RiskNeutral.lean` |
+| No arbitrage (@cor-no-arb) | `crr_no_arbitrage` | `OptionsProofs/RiskNeutral.lean` |
+| Put-call parity (@thm-pcp) | `put_call_parity` | `OptionsProofs/PutCallParity.lean` |
+
+: Mapping from paper results to Lean 4 theorem names. {#tbl-artifacts}
+
+The module `OptionsProofs/Tree.lean` defines the binomial path space, the asset price
+process, the numeraire, and the natural filtration, and registers `crrMarket` as an
+instance of the market structure that `ftap-proofs` defines. This instance
+registration is what allows `crr_no_arbitrage` to be proved by invoking the FTAP
+directly rather than by a standalone arbitrage argument.
+
+The module `OptionsProofs/RiskNeutral.lean` constructs the risk-neutral measure
+`crrRNMeasure` from the parameter `q = (1+r-d)/(u-d)`, proves it is an equivalent
+martingale measure (`crrRNMeasure_emm`), and verifies the martingale property of
+the discounted price process (`crrRNMeasure_martingale`). The no-arbitrage corollary
+(`crr_no_arbitrage`) is then discharged by the easy direction of the FTAP imported
+from `FtapProofs.NoArbitrage`.
+
+The module `OptionsProofs/PutCallParity.lean` proves the headline theorem
+(`put_call_parity`) from `crrRNMeasure_martingale` and the payoff identity. Option
+payoff primitives (call payoff, put payoff) are imported from `quant-core`'s
+`OptionKind` type rather than re-defined, ensuring that the call and put types used
+in the parity proof are the same types used across all other proofs in the monorepo.
+
+::: {.callout-note title="Formalization claim"}
+At the current state of the `main` branch, `lake build` succeeds for `options-proofs`
+and `grep -rn sorry --include="*.lean" options-proofs/` returns no matches in the
+proof tree. The build imports `quant-core` for option type primitives and
+`ftap-proofs` for the FTAP. Reproduce with:
+
+```bash
+cd options-proofs && lake build
+grep -rn sorry --include="*.lean" .
+```
+:::
+
+## Scope of formalization
+
+**Formalized.** Each theorem in Section [-@sec-results] is proven from Assumptions
+A1 and A2, the binomial market definition, and the mathlib probability library,
+without any axiom beyond mathlib's standard axioms. The no-arbitrage guarantee is
+inherited from `ftap-proofs` by instance resolution rather than re-proved, so the
+logical chain from the FTAP to put-call parity is entirely machine-checked.
+
+**Not formalized.** The continuous-time limit (CRR prices converging to
+Black-Scholes as $T \to \infty$) is not a formal theorem here; it is the subject of
+the empirical companion and noted as a future extension in Section [-@sec-discussion].
+Floating-point execution, data ingestion, and statistical claims in the empirical
+companion rely on numerical approximations and are not formal theorems. Transaction
+costs, bid-ask spreads, and early-exercise features (American options) are outside
+the scope of the current formalization.
+
+# Empirical Setup {#sec-data}
+
+::: {.callout-note title="Empirical companion filled separately"}
+This section is reserved for the empirical companion study. The lead author will
+replace this placeholder with data sources, sample window, universe, filters, and
+observation count following the template table format. The planned study covers:
+(a) verification that the discrete CRR parity relation $C - P = S_0 - K(1+r)^{-T}$
+holds to machine precision in simulation, confirming the formal result numerically;
+and (b) convergence of the CRR call price to the Black-Scholes call price as the
+number of periods $T$ grows, illustrating the discrete model approximating the
+continuous limit and quantifying the rate of convergence.
+:::
+
+# Results {#sec-empirical}
+
+::: {.callout-note title="Empirical companion filled separately"}
+This section is reserved for the empirical companion study. The lead author will
+replace this placeholder with headline figures, tables, and the primary empirical
+results following the eigenq-xyz house style for exhibit captions and result
+reporting.
+:::
+
+# Robustness {#sec-robustness}
+
+::: {.callout-note title="Empirical companion filled separately"}
+This section is reserved for the empirical companion study. The lead author will
+replace this placeholder with sub-period sensitivity analysis, parameter sensitivity
+(varying $u$, $d$, $r$, $T$, $K$, and $S_0$), and any cases where numerical parity
+deviations exceed machine epsilon, following the mandatory robustness structure of
+the eigenq-xyz template.
+:::
+
+# Discussion {#sec-discussion}
+
+**What the formalization guarantees.** The Lean 4 proof establishes that
+$C - P = S_0 - K(1+r)^{-T}$ holds exactly, without numerical error, whenever
+the model parameters satisfy Assumptions A1 and A2 and prices are computed by
+discounted risk-neutral expectation in the CRR binomial model. This is a statement
+about the mathematical model, not about real markets. The guarantee is deductive:
+if the assumptions hold, the equation holds, with no statistical uncertainty and no
+floating-point rounding.
+
+The empirical companion converts this mathematical guarantee into an empirical claim
+by running the model in software. That conversion introduces floating-point
+arithmetic, which is not formalized. The gap between the theorem (exact equality)
+and the software output (equality to numerical tolerance) is not closed by the Lean
+proof; it is the subject of the `verify-empirical` and `verify-property` checks in
+the monorepo's verification pyramid.
+
+**Scope of generalization.** The parity result is model-free in one sense: the
+payoff identity $(x-K)^+ - (K-x)^+ = x - K$ holds for any real $x$, so parity
+holds in any arbitrage-free market with a risk-neutral measure, not only the
+binomial model. The CRR-specific content of the formalization is the construction
+of that measure and the proof that discounted prices are martingales under it. The
+headline theorem itself could be re-stated and re-proved in any model for which a
+companion paper establishes the equivalent martingale measure; the proof template
+in `OptionsProofs/PutCallParity.lean` is designed to be legible for that purpose.
+
+**Extensions.** Three concrete follow-up directions emerge from this work.
+
+First, the continuous-time limit. The CRR binomial model converges to the
+Black-Scholes model as the number of steps grows and step size shrinks; proving
+this convergence formally in Lean 4 would require a formalized weak convergence
+theorem and is a natural next project once mathlib's continuous-time stochastic
+calculus library matures further.
+
+Second, American options. Put-call parity does not hold for American options
+because early exercise breaks the payoff identity argument. A formalization of the
+American option pricing problem in the binomial model would need to replace the
+linear pricing functional with a Snell envelope construction, which is available in
+mathlib in discrete time.
+
+Third, transaction costs. Leland [-@leland1985] showed that, with proportional
+transaction costs, the effective volatility used in Black-Scholes hedging should be
+adjusted upward, and put-call parity holds only approximately. A formalization of
+the Leland correction in the discrete setting would complement the frictionless
+result proved here and give a machine-checked bound on the parity deviation as a
+function of the cost rate.
+
+# Appendix {.appendix}
+
+## A. Principal lemmas
+
+The proof of @thm-pcp in `OptionsProofs/PutCallParity.lean` rests on three
+intermediate results, stated here in plain English for reference.
+
+**Lemma A.1 (Payoff identity).** For all $x, K \in \mathbb{R}$,
+$(x - K)^+ - (K - x)^+ = x - K$.
+This is a pointwise algebraic fact about the positive-part function; its Lean
+proof is by case analysis on the sign of $x - K$.
+
+**Lemma A.2 (Linearity of discounted expectation).** For any two bounded
+$\Filt_T$-measurable functions $f$ and $g$,
+$(1+r)^{-T}\,\E^\Q[f - g] = (1+r)^{-T}\,\E^\Q[f] - (1+r)^{-T}\,\E^\Q[g]$.
+This follows from linearity of the integral, which is a theorem in mathlib's
+measure theory library.
+
+**Lemma A.3 (Terminal expectation).** $\E^\Q[S_T] = S_0 (1+r)^T$.
+This follows from @thm-martingale by applying the martingale property $T$ times
+from $t = 0$ to $t = T$: $\E^\Q[\tilde{S}_T] = \tilde{S}_0 = S_0$, so
+$\E^\Q[S_T/(1+r)^T] = S_0$.
+
+The full proofs of all three lemmas are in the Lean source at the file paths listed
+in @tbl-artifacts.
+
+## B. Replication
+
+The formal artifacts and empirical companion can be reproduced from the
+`quant-proofs` monorepo:
+
+```bash
+git clone https://github.com/eigenq-xyz/quant-proofs
+cd quant-proofs/options-proofs
+lake build
+grep -rn sorry --include="*.lean" .
+```
+
+An empty result from the `grep` command confirms zero `sorry` in the proof tree.
+The `verify-lean` skill in the monorepo's `.claude/skills/` directory runs the same
+checks as part of the full verification pyramid.
+
+## C. Relationship to the companion FTAP paper
+
+The `options-proofs` library imports `ftap-proofs` as a direct dependency. The
+instance `crrMarket : Market` in `OptionsProofs/Tree.lean` is the point of contact:
+it registers the CRR binomial market as a member of the abstract market typeclass
+defined in `FtapProofs`, which makes the FTAP's no-arbitrage characterization
+available by typeclass resolution. The parity theorem therefore does not assume
+no-arbitrage as an axiom; it inherits the proof from the companion library through
+the instance mechanism.
+
+This architecture means that any future strengthening of the FTAP proof in
+`ftap-proofs` (for example, an extension to markets with more than two states at
+each node) propagates automatically to `options-proofs` without requiring changes
+to the parity proof itself, provided the strengthened version remains compatible
+with the `Market` typeclass.

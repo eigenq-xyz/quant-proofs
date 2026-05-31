@@ -1,0 +1,100 @@
+{
+  "description": "CRR put-call parity exactness and Black-Scholes convergence. Parity residual is |\uff08C - P) - (S0 - K e^{-rT})|, which the theorem makes zero; it stays at machine-epsilon scale. CRR-minus-BS error shrinks at first order in the step size. Deterministic, exact reproduce.",
+  "parameters": {
+    "spot": 100.0,
+    "strike": 100.0,
+    "rate": 0.05,
+    "sigma": 0.2,
+    "maturity_years": 1.0,
+    "step_counts": [
+      10,
+      25,
+      50,
+      100,
+      250,
+      500,
+      1000,
+      2500,
+      5000
+    ]
+  },
+  "black_scholes": {
+    "call": 10.45058357,
+    "put": 5.57352602
+  },
+  "max_parity_residual": 4.8395065732620424e-11,
+  "steps": [
+    {
+      "n_steps": 10,
+      "crr_call": 10.25340904,
+      "crr_put": 5.37635149,
+      "call_abs_err_vs_bs": 0.19717453,
+      "put_abs_err_vs_bs": 0.19717453,
+      "parity_residual": 1.0302869668521453e-13
+    },
+    {
+      "n_steps": 25,
+      "crr_call": 10.52096562,
+      "crr_put": 5.64390807,
+      "call_abs_err_vs_bs": 0.07038205,
+      "put_abs_err_vs_bs": 0.07038205,
+      "parity_residual": 1.1102230246251565e-13
+    },
+    {
+      "n_steps": 50,
+      "crr_call": 10.41069154,
+      "crr_put": 5.53363399,
+      "call_abs_err_vs_bs": 0.03989203,
+      "put_abs_err_vs_bs": 0.03989203,
+      "parity_residual": 2.149391775674303e-13
+    },
+    {
+      "n_steps": 100,
+      "crr_call": 10.43061166,
+      "crr_put": 5.55355411,
+      "call_abs_err_vs_bs": 0.01997191,
+      "put_abs_err_vs_bs": 0.01997191,
+      "parity_residual": 8.43769498715119e-13
+    },
+    {
+      "n_steps": 250,
+      "crr_call": 10.44258871,
+      "crr_put": 5.56553116,
+      "call_abs_err_vs_bs": 0.00799486,
+      "put_abs_err_vs_bs": 0.00799486,
+      "parity_residual": 1.3908874052503961e-12
+    },
+    {
+      "n_steps": 500,
+      "crr_call": 10.44658514,
+      "crr_put": 5.56952759,
+      "call_abs_err_vs_bs": 0.00399844,
+      "put_abs_err_vs_bs": 0.00399844,
+      "parity_residual": 2.185807090882008e-12
+    },
+    {
+      "n_steps": 1000,
+      "crr_call": 10.4485841,
+      "crr_put": 5.57152655,
+      "call_abs_err_vs_bs": 0.00199947,
+      "put_abs_err_vs_bs": 0.00199947,
+      "parity_residual": 2.5357493882438575e-12
+    },
+    {
+      "n_steps": 2500,
+      "crr_call": 10.44978372,
+      "crr_put": 5.57272617,
+      "call_abs_err_vs_bs": 0.00079985,
+      "put_abs_err_vs_bs": 0.00079985,
+      "parity_residual": 1.894484569220367e-11
+    },
+    {
+      "n_steps": 5000,
+      "crr_call": 10.45018364,
+      "crr_put": 5.57312609,
+      "call_abs_err_vs_bs": 0.00039993,
+      "put_abs_err_vs_bs": 0.00039993,
+      "parity_residual": 4.8395065732620424e-11
+    }
+  ]
+}

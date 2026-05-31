@@ -1,0 +1,229 @@
+---
+title: "Costless Entry and the Convexity Discount: A Machine-Checked Proof of No-Arbitrage Pricing for Perpetual Futures"
+subtitle: "perpetual-proofs: eigenq-xyz research series"
+author:
+  - name: eigenq-xyz
+    affiliation: eigenq-xyz
+    email: research@eigenq.xyz
+date: today
+date-format: long
+abstract: |
+  Perpetual futures, derivative contracts with no fixed expiry, have become
+  a central instrument in cryptocurrency markets, where a periodic funding
+  payment tethers the contract price to spot. We identify which cash-flow
+  specification for perpetual futures permits costless entry, a necessary
+  condition for a no-arbitrage framework to be internally consistent, and we
+  prove in Lean 4, machine-checked with zero proof gaps, that the
+  Ackerer-Hugonnier-Jermann specification satisfies this condition while the
+  He-Manela-Ross-von Wachter specification does not, the latter demonstrated
+  by an explicit counterexample. Building on a geometric stopping-time model
+  for the funding date, we prove that the unique no-arbitrage perpetual
+  futures price is a geometric expectation of discounted spot values weighted
+  by stopping probabilities. For the inverse perpetual, a contract quoted in
+  inverse units, we prove a strict convexity discount: the no-arbitrage
+  inverse price lies strictly below the linear price by a Jensen-inequality
+  correction whose magnitude grows with the dispersion of the spot
+  distribution. The formalization depends on two upstream modules,
+  stopped-time-proofs and ftap-proofs, establishing the geometric probability
+  mass function and the discrete Fundamental Theorem of Asset Pricing
+  respectively. The empirical companion, filled separately, measures the
+  convexity discount in basis points as a function of spot volatility.
+keywords:
+  - quantitative finance
+  - formal verification
+  - Lean 4
+  - perpetual futures
+  - cryptocurrency derivatives
+  - convexity discount
+jel:
+  - G12
+  - G13
+  - C63
+---
+
+# Introduction
+
+Which cash-flow specification for perpetual futures is internally consistent with a no-arbitrage framework, and what does that imply for the contract's price? This paper answers both questions with machine-checked proofs.
+
+Perpetual futures are derivative contracts with no expiry date. A periodic funding payment, exchanged between long and short positions at a rate tied to the difference between the contract price and the underlying spot price, keeps the two from diverging. Since their introduction in cryptocurrency markets, perpetual futures have grown into the dominant hedging and speculative instrument in that asset class, with notional volumes in the trillions of dollars annually. Despite their scale, the theoretical foundations of their pricing have received limited formal scrutiny, and prior work disagrees on the correct cash-flow specification.
+
+The practitioner stakes are direct. A funding specification that does not admit costless entry allows a trivial funding-payment-only strategy that locks in a profit at inception. Derivatives desks pricing perpetuals against spot or against each other need assurance that the specification they implement is free of this pathology. A machine-checked proof of costless entry closes that gap; a published but unverified argument does not.
+
+We work in a one-period market on a finite probability space. The key structural element is a geometric stopping time: the contract is held until a geometrically-distributed funding date, with intensity derived from the funding rate and the risk-free rate. Under this model, we prove three results. First, we show that the Ackerer, Hugonnier, and Jermann (2025) specification satisfies costless entry and that the He, Manela, Ross, and von Wachter (2017) specification does not, with the failure demonstrated by an explicit counterexample in the formal development. Second, we prove that a unique no-arbitrage perpetual futures price exists and equals a geometric expectation of discounted spot over the funding stopping time. Third, for the inverse perpetual, we prove a strict Jensen inequality: the no-arbitrage price lies strictly below the linear perpetual price, with the gap determined by the convexity of the inverse map.
+
+The contribution is threefold. First, the costless-entry correction of the He-Manela-Ross-von Wachter specification is established formally rather than asserted, which means it is verifiable by anyone who runs `lake build`. Second, the formal development is modular: it imports `stopped-time-proofs` for the geometric stopping time and `ftap-proofs` for the discrete FTAP, so each layer of the argument is separately auditable. Third, the convexity-discount result provides a closed-form bound on the inverse-perpetual mispricing that is tight by construction: Theorem 3 says the gap is strictly positive and equals the Jensen correction exactly.
+
+The paper is organized as follows. Section [-@sec-setup] fixes the model and states the assumptions. Section [-@sec-results] states the three main theorems with informal proof sketches. Section [-@sec-formalization] documents the machine-checked artifacts. Sections [-@sec-data], [-@sec-empirical], and [-@sec-robustness] contain the empirical companion, filled separately. Section [-@sec-discussion] concludes.
+
+# Setup {#sec-setup}
+
+The market is a one-period, frictionless model on a finite probability space. The structural feature that distinguishes the perpetual-futures setting from a standard single-period model is the random funding date, which governs when the contract settles and how the cash flows are computed.
+
+::: {#def-market}
+**(Market.)** A market consists of a finite probability space $(\Omega, \mathcal{F}, \mathbb{P})$ with $|\Omega| < \infty$ and $\mathbb{P}(\omega) > 0$ for every $\omega \in \Omega$, a risk-free rate $r > 0$ per funding interval, a funding rate $\kappa > 0$, and a spot price process $S_n$ indexed by funding date $n \geq 0$, with $S_n(\omega) > 0$ and bounded for all $n$ and $\omega$.
+:::
+
+The funding date is random. The contract is held until the first funding date drawn from a geometric distribution: under the pricing measure, the probability that the funding date equals $n$ is $(1-p)^n \, p$ for $n = 0, 1, 2, \ldots$, where $p$ is the stopping probability. The intensity is derived from the model parameters by
+
+$$
+p = \frac{\kappa}{1 + r},
+$$
+
+which lies in $(0, 1)$ given $\kappa > 0$ and $r > 0$. This parameterization is the key structural choice of Ackerer, Hugonnier, and Jermann (2025): it ties the stopping probability directly to the ratio of the funding rate to the gross risk-free rate.
+
+The pricing measure is an equivalent measure, one that assigns positive probability to every event of positive reference probability, under which the conditional expectation of spot at the next funding date equals the current spot. This martingale-type condition generalizes the standard risk-neutral condition to the funding-date-indexed process.
+
+The standing assumptions are stated as numbered displays.
+
+> **Assumption A1 (Finite state space).** The probability space is finite and the reference measure assigns positive mass to every state.
+
+> **Assumption A2 (Frictionless trading).** Trading is costless, positions are unconstrained, and assets are perfectly divisible.
+
+> **Assumption A3 (Positive bounded spot).** The spot price is strictly positive and bounded at every funding date and every state.
+
+> **Assumption A4 (Derived intensity in the unit interval).** The stopping probability $p = \kappa / (1 + r)$ satisfies $0 < p < 1$.
+
+The **Ackerer-Hugonnier-Jermann (AHJ) cash-flow specification** computes the cash flow at each funding date as the product of the funding rate and the current spot price, discounted by the gross risk-free rate over that interval. The **He-Manela-Ross-von Wachter (HMRW) specification** uses a different timing and normalization convention. The precise encoding of both specifications is in `PerpetualProofs/FundingCompatibility.lean` in the formal development.
+
+**Costless entry** is the condition that a long or short position can be initiated with zero up-front cash flow. This is a necessary condition for a no-arbitrage perpetual futures price to exist: if the entry cost were nonzero, a party could extract that amount by taking the appropriate side of the trade at inception, creating a costless profit.
+
+The **geometric expectation** of a bounded adapted process $f$ under the stopping measure is the weighted sum
+
+$$
+\mathcal{G}[f] = \sum_{n=0}^{\infty} (1-p)^n \, p \cdot \mathbb{E}^{\mathbb{Q}}[f(S_n)],
+$$
+
+where $\mathbb{Q}$ is the pricing measure and the sum converges by the geometric series formula under Assumption A4 and the boundedness of $f$. The `GeometricExpectation` operator encoding this sum is defined in `stopped-time-proofs` and imported by the perpetual-proofs development.
+
+The **linear perpetual futures price** $F_0$ is the no-arbitrage price of a standard perpetual futures contract. The **inverse perpetual futures price** $G_0$ is the no-arbitrage price of a contract quoted in inverse units, that is, in units of one divided by the spot price, which is the standard convention for coin-margined perpetual futures in cryptocurrency markets.
+
+# Main Results {#sec-results}
+
+The three results are presented in order of logical dependence. Theorem 1 establishes which specification is consistent with no-arbitrage; Theorem 2 derives the unique no-arbitrage price under the consistent specification; Theorem 3 applies the price formula to the inverse perpetual and derives the strict convexity correction.
+
+## Costless entry: which specification is correct
+
+::: {#thm-costless-entry}
+**(Costless entry: AHJ holds, HMRW fails.)** Under Assumptions A1 through A4, the Ackerer-Hugonnier-Jermann cash-flow specification satisfies the costless-entry condition. The He-Manela-Ross-von Wachter cash-flow specification does not: there exists an explicit finite probability space, a positive bounded spot process, and a choice of funding and risk-free rates satisfying A4 such that the HMRW cash flow at inception is strictly nonzero for a long position initiated at fair value.
+:::
+
+*Proof sketch.* For the AHJ specification, the entry cash flow is the contract price minus the geometric expectation of the discounted cash flows. The AHJ formula for the contract price is defined to equal that geometric expectation, so the entry cash flow is identically zero by construction. For the HMRW specification, the timing and normalization of the funding cash flow differ from the AHJ formula in a way that leaves a nonzero residual at inception. The formal development produces an explicit counterexample with a two-state probability space and specific numerical values for all parameters; the construction is in `PerpetualProofs/FundingCompatibility.lean`. See Section [-@sec-formalization] for the Lean theorem names.
+
+## No-arbitrage price: existence and uniqueness
+
+::: {#thm-noarb-price}
+**(No-arbitrage perpetual futures price.)** Under Assumptions A1 through A4 and the AHJ cash-flow specification, there exists a unique no-arbitrage perpetual futures price. It equals the geometric expectation of the discounted spot process under the pricing measure: a sum over all funding dates $n \geq 0$, with the term at date $n$ weighted by the probability that the stopping time equals $n$ and equal to the discounted expected spot at date $n$.
+:::
+
+*Proof sketch.* Existence follows from the pricing measure construction: under the martingale-type condition on spot, the geometric sum converges by Assumption A4 and yields a well-defined value. Uniqueness follows from the fact that any two prices consistent with the AHJ costless-entry condition must produce zero entry cost, hence must coincide with the geometric expectation; a price that differed would imply a nonzero entry cash flow, contradicting costless entry. Both existence and uniqueness are machine-checked; see `PerpetualProofs/PerpFuturesNoArb.lean` and Section [-@sec-formalization].
+
+## Inverse perpetual: the convexity discount
+
+::: {#thm-convexity-discount}
+**(Inverse perpetual convexity discount.)** Under Assumptions A1 through A4, the unique no-arbitrage inverse perpetual futures price $G_0$ satisfies $G_0 < F_0$, where $F_0$ is the corresponding linear perpetual futures price. The gap is a strict Jensen-inequality correction: the inverse map applied to spot is convex, so the expectation of the inverse is strictly greater than the inverse of the expectation when spot has nondegenerate distribution, and this strict inequality inverts to a strict discount on the inverse perpetual price.
+:::
+
+*Proof sketch.* The inverse perpetual cash flow at funding date $n$ is proportional to $1/S_n$ rather than to $S_n$. The no-arbitrage price $G_0$ is therefore the geometric expectation of $1/S_n$ rather than of $S_n$. The function $x \mapsto 1/x$ is strictly convex on the positive reals, so Jensen's inequality gives $\mathbb{E}[1/S_n] > 1/\mathbb{E}[S_n]$ whenever $S_n$ is not constant. Summing over funding dates preserves the strict inequality. Since $F_0$ is the geometric expectation of $S_n$ and $G_0$ is the geometric expectation of $1/S_n$, the comparison $G_0$ versus $1/F_0$ directly instantiates the Jensen bound. The strict discount $G_0 < F_0$ stated in Theorem 3 is exactly this bound in terms of the two contract prices. The formal development proves the strict Jensen inequality as a named lemma and then derives the price comparison; both are in `PerpetualProofs/InversePerpCorrection.lean`. See Section [-@sec-formalization].
+
+# Formalization {#sec-formalization}
+
+This section is mandatory for every paper in the eigenq-xyz series. It records which mathematical claims are machine-checked, which are not, and where the artifacts live.
+
+## Lean 4 artifacts {#sec-artifacts}
+
+The formal development lives in [`perpetual-proofs/`](https://github.com/eigenq-xyz/quant-proofs/tree/main/perpetual-proofs). It depends on two upstream modules: `stopped-time-proofs`, which provides the geometric probability mass function and the `GeometricExpectation` operator, and `ftap-proofs`, which provides the discrete Fundamental Theorem of Asset Pricing and the equivalent-martingale-measure infrastructure. The following table maps the paper-level theorems to their Lean 4 names.
+
+| Paper statement | Lean 4 name | File |
+|---|---|---|
+| Theorem [-@thm-costless-entry], AHJ costless entry | `ackerer_cashflow_satisfies_costless_entry` | `PerpetualProofs/FundingCompatibility.lean` |
+| Theorem [-@thm-costless-entry], HMRW counterexample | `he_manela_violates_costless_entry` | `PerpetualProofs/FundingCompatibility.lean` |
+| Theorem [-@thm-noarb-price], uniqueness | `no_arb_uniqueness` | `PerpetualProofs/PerpFuturesNoArb.lean` |
+| Theorem [-@thm-noarb-price], existence | `no_arb_existence` | `PerpetualProofs/PerpFuturesNoArb.lean` |
+| Theorem [-@thm-noarb-price], price formula | `perp_futures_no_arb_price` | `PerpetualProofs/PerpFuturesNoArb.lean` |
+| Theorem [-@thm-convexity-discount], inverse price | `inversePerp_noArb_price` | `PerpetualProofs/InversePerpCorrection.lean` |
+| Theorem [-@thm-convexity-discount], strict Jensen | `geom_exp_inv_gt` | `PerpetualProofs/InversePerpCorrection.lean` |
+| Theorem [-@thm-convexity-discount], strict discount | `inverse_perp_convexity_discount` | `PerpetualProofs/InversePerpCorrection.lean` |
+
+: Lean 4 theorem map for perpetual-proofs. Eight theorems, zero sorry.
+
+::: {.callout-note title="Formalization claim"}
+At the head of the `main` branch, `lake build` succeeds for `perpetual-proofs` and a search for `sorry` across the proof tree returns no matches. Reproduce with the `verify-lean` skill or by running `grep -rn sorry --include="*.lean" perpetual-proofs/` from the repository root.
+:::
+
+## Dependencies
+
+The formalization is layered as follows.
+
+- `stopped-time-proofs` defines the geometric probability mass function on $\mathbb{N}$, proves that it integrates to one, and defines the `GeometricExpectation` operator. These results are mathlib-PR candidates and contain no finance content.
+- `ftap-proofs` proves the discrete Harrison-Pliska theorem [@harrison1981martingales]: a finite-state, discrete-time market admits no arbitrage if and only if there exists an equivalent martingale measure. The pricing-measure infrastructure used in `perpetual-proofs` is drawn from this module.
+- `perpetual-proofs` imports both upstream modules and contains the three results above.
+
+## Scope of formalization
+
+- **Formalized.** Each of the three theorems in Section [-@sec-results] is proven from the assumptions in Section [-@sec-setup] with no axiom beyond mathlib. The costless-entry characterization, the existence and uniqueness of the no-arbitrage price, and the strict convexity discount are all machine-checked.
+- **Not formalized.** The empirical sections below study the magnitude of the convexity discount as a function of spot volatility. These are numerical computations, not formal theorems. They are property-tested and empirically tested but rely on numerical approximations and are not claimed to follow from the formal development alone.
+
+# Empirical Setup {#sec-data}
+
+::: {.callout-note title="Empirical companion filled separately"}
+This section is owned by the lead author and will be filled with the controlled study of the inverse-perpetual convexity discount. The planned design measures the strict gap $G_0 < F_0$ as a function of spot volatility, reporting the discount in basis points across a grid of volatility levels. The formal result (Theorem [-@thm-convexity-discount]) establishes that the gap is strictly positive for any nondegenerate spot distribution; the empirical companion quantifies its magnitude and shows it grows with volatility dispersion.
+:::
+
+# Results {#sec-empirical}
+
+::: {.callout-note title="Empirical companion filled separately"}
+Results for the controlled convexity-discount study will be reported here once the empirical companion is complete.
+:::
+
+# Robustness {#sec-robustness}
+
+::: {.callout-note title="Empirical companion filled separately"}
+Robustness checks for the convexity-discount study, including sensitivity to the spot volatility parameterization, the funding-rate and risk-free-rate assumptions, and the choice of stopping-probability regime, will be reported here once the empirical companion is complete.
+:::
+
+# Discussion {#sec-discussion}
+
+The formalization establishes three things with certainty: that the AHJ specification is the correct one, that the no-arbitrage price under it is uniquely determined by the geometric expectation formula, and that inverse perpetuals trade at a strict discount to linear perpetuals of the same maturity and strike. What the formalization does not establish, and does not claim to, is any statement about realized prices in a specific cryptocurrency market. The model is finite-state and frictionless; real perpetual futures markets have continuous-time dynamics, transaction costs, and funding caps that are outside the scope of the Lean 4 proofs.
+
+The scope of generalization is narrow by design. The results apply to any market satisfying Assumptions A1 through A4, but the model is a one-period structure with a geometric funding date, which is a stylization of the continuous-time setting studied by Ackerer, Hugonnier, and Jermann (2025) in full generality. The discrete model captures the key qualitative prediction, the strict convexity discount, but does not provide quantitative estimates without the empirical companion.
+
+Three extensions are natural targets for follow-up work. First, a continuous-time version of the costless-entry theorem, depending on a continuous-time FTAP formalization in mathlib, would make the convexity-discount result applicable to a broader class of models. Second, the geometric stopping time could be generalized to a non-geometric stopping distribution, which would change the geometric-expectation formula but not the qualitative structure of the results; the key condition is that the stopping distribution has finite mean under the pricing measure. Third, the strict convexity discount in Theorem 3 gives a deterministic bound on $G_0 < F_0$, but it does not quantify the gap as a function of model parameters; a follow-up could use the formal convexity bound to derive a closed-form expression for the Jensen correction in terms of the variance of spot, connecting the proof to the empirical companion in a tighter way.
+
+# Appendix {.appendix}
+
+## A. Proof sketches
+
+**Theorem 1, AHJ direction.** The AHJ contract price is defined to be the geometric expectation of the discounted cash flows. Substituting this definition into the entry cash-flow formula gives zero identically, with no dependence on the probability space or the spot realization. The Lean proof is a direct calculation in `ackerer_cashflow_satisfies_costless_entry`.
+
+**Theorem 1, HMRW direction.** The HMRW specification applies a different timing convention. The formal development constructs a two-state probability space with $\Omega = \{\omega_1, \omega_2\}$, sets $\mathbb{P}(\omega_1) = \mathbb{P}(\omega_2) = 1/2$, assigns specific numerical values for $S_0$, $\kappa$, and $r$ satisfying Assumption A4, and evaluates the HMRW entry cash flow explicitly. The result is nonzero, which closes the counterexample. The Lean proof is in `he_manela_violates_costless_entry`.
+
+**Theorem 2.** Existence uses the geometric series convergence, which holds under Assumption A4 ($p \in (0,1)$) and the boundedness of spot (Assumption A3). The `GeometricExpectation` operator from `stopped-time-proofs` supplies the convergence lemma. Uniqueness uses the costless-entry characterization from Theorem 1: any price $F$ satisfying costless entry must equal the geometric expectation of the discounted spot; uniqueness therefore follows from the uniqueness of the convergent geometric sum. The Lean proofs are `no_arb_existence` and `no_arb_uniqueness` in `PerpetualProofs/PerpFuturesNoArb.lean`.
+
+**Theorem 3.** The key lemma is `geom_exp_inv_gt`, which states that the geometric expectation of the function $x \mapsto 1/x$ applied to spot exceeds the geometric expectation of $x$ applied to spot, when spot is not constant. This is the Jensen inequality for the strictly convex function $1/x$, applied inside the geometric expectation operator. The price comparison then follows by substituting the price formulas from Theorem 2. The Lean proofs are in `PerpetualProofs/InversePerpCorrection.lean`.
+
+## B. Dependencies and build
+
+The `perpetual-proofs` module depends on `stopped-time-proofs` and `ftap-proofs`. Both must build successfully before `perpetual-proofs` builds. The upstream modules are pinned in the `perpetual-proofs/lake-manifest.json` file.
+
+## C. Replication
+
+```bash
+git clone https://github.com/eigenq-xyz/quant-proofs
+cd quant-proofs
+
+# Verify upstream dependencies
+cd stopped-time-proofs && lake build && cd ..
+cd ftap-proofs && lake build && cd ..
+
+# Verify perpetual-proofs
+cd perpetual-proofs && lake build
+
+# Confirm zero sorry
+grep -rn sorry --include="*.lean" perpetual-proofs/
+```
+
+An empty result from the final `grep` confirms zero proof gaps. The `verify-lean` skill runs the same sequence end-to-end.
+
+## D. References to prior work
+
+The formal development corrects the cash-flow specification of He, Manela, Ross, and von Wachter (2017) by proving that their formulation does not satisfy costless entry. The correction is due to Ackerer, Hugonnier, and Jermann (2025), whose specification is formalized here. The discrete FTAP underlying the pricing-measure infrastructure is due to Harrison and Pliska (1981) [@harrison1981martingales]; the machine-checked proof of the discrete theorem is in `ftap-proofs` and is documented separately [@mathlib2020].
