@@ -113,8 +113,18 @@ def measure(
     call, put = bs_call_put(SPOT, STRIKES, RATE, sigma, MATURITY)
     target = parity_target(SPOT, STRIKES, RATE, MATURITY)
     n_strikes = STRIKES.shape[0]
-    call_noise = 1.0 + rng.normal(0.0, noise_std, size=(N_TRIALS, n_strikes))
-    put_noise = 1.0 + rng.normal(0.0, noise_std, size=(N_TRIALS, n_strikes))
+    # A quote is a positive multiple of the true price. The multiplicative noise
+    # factor 1 + N(0, noise_std) is therefore floored at a small positive value:
+    # at the friction levels used here a negative draw is effectively impossible
+    # (the stressed level is ~33 sigma away), but the clamp keeps the model
+    # well-defined if the harness is ever pushed to extreme stress (noise_std > ~0.1).
+    floor = 1.0e-6
+    call_noise = np.maximum(
+        1.0 + rng.normal(0.0, noise_std, size=(N_TRIALS, n_strikes)), floor
+    )
+    put_noise = np.maximum(
+        1.0 + rng.normal(0.0, noise_std, size=(N_TRIALS, n_strikes)), floor
+    )
     obs_call = call[None, :] * call_noise
     obs_put = put[None, :] * put_noise
     dev_bps = np.abs((obs_call - obs_put) - target[None, :]) / SPOT * 1.0e4
