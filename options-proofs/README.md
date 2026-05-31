@@ -13,9 +13,10 @@ C - P = S - K · B(0, T)
 
 where S is the current spot price and B(0, T) is the present value of 1 unit at T.
 
-This is a **skeleton** — the `OptionsProofs` namespace is defined; proof content
-depends on `ftap-proofs` reaching a stable interface for no-arbitrage and equivalent
-martingale measures.
+The proof is **complete**: zero `sorry`. The CRR market (`Tree`), the explicit
+risk-neutral measure `q = (1 + r - d) / (u - d)` with no-arbitrage established via
+the FTAP (`RiskNeutral`), and put-call parity `C - P = S - K / (1 + r)^T`
+(`PutCallParity`) are all proved.
 
 ## Build
 
@@ -35,21 +36,23 @@ grep -rn sorry --include="*.lean" options-proofs/
 
 ```
 options-proofs/
-  OptionsProofs.lean    — root module; re-exports submodules as they are added
-  lakefile.lean         — lake project config (mathlib + quant-core dependencies)
-  lean-toolchain        — pinned Lean 4 toolchain version
+  OptionsProofs.lean: root module; re-exports all submodules
+  OptionsProofs/
+    Tree.lean: CRR binomial market model (up/down/risk-free factors)
+    RiskNeutral.lean: explicit risk-neutral measure q = (1+r-d)/(u-d);
+                               no-arbitrage via FTAP
+    PutCallParity.lean: put-call parity: C - P = S - K/(1+r)^T
+  lakefile.lean: lake project config (mathlib + quant-core + ftap-proofs)
+  lean-toolchain: pinned Lean 4 toolchain version
 ```
-
-Planned submodules: `OptionsProofs.Tree`, `OptionsProofs.RiskNeutral`,
-`OptionsProofs.PutCallParity`.
 
 ## Dependencies
 
-- [`quant-core`](../quant-core/) — shared option primitives (`OptionKind`,
+- [`quant-core`](../quant-core/): shared option primitives (`OptionKind`,
   `EuropeanOption`, payoff theorems from `QuantCore.OptionInvariants`).
-- [`ftap-proofs`](../ftap-proofs/) — FTAP direction (arbitrage-free → EMM exists);
-  added as a dependency once `ftap-proofs` exposes a stable interface.
-- `mathlib` — measure theory, expectation, finite probability.
+- [`ftap-proofs`](../ftap-proofs/): FTAP biconditional (arbitrage-free iff EMM exists);
+  provides the no-arbitrage infrastructure used in `RiskNeutral`.
+- `mathlib`: measure theory, expectation, finite probability.
 
 ## References
 
