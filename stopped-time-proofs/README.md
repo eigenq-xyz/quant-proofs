@@ -16,16 +16,31 @@ The weights `geomPMF p k := (1-p)^k * p` form a valid probability mass function 
 
 ## Theorem status
 
+All theorems are proved, zero `sorry`.
+
 | Theorem | File | Status |
 |---|---|---|
-| `geomPMF_nonneg` | `GeomPMF.lean` | Planned (G1.2) |
-| `geomPMF_tsum_eq_one` | `GeomPMF.lean` | Planned (G1.3) |
-| `geometricExpectation_summable` | `GeomExpectation.lean` | Planned (G1.5) |
-| `geometricExpectation_unroll` | `GeomExpectation.lean` | Planned (G1.6) |
-| `geometricExpectation_const` | `GeomExpectation.lean` | Planned (G1.7) |
-| `geometricExpectation_mono` | `GeomExpectation.lean` | Planned (G1.8) |
-| `jensen_geom_convex` | `Jensen.lean` | Planned (G2.1) |
-| `jensen_geom_strict_convex` | `Jensen.lean` | Planned (G2.2) |
+| `geomPMF_nonneg` | `GeomPMF.lean` | Proved (G1.2) |
+| `geomPMF_tsum_eq_one` | `GeomPMF.lean` | Proved (G1.3) |
+| `geometricExpectation_summable` | `GeomExpectation.lean` | Proved (G1.5) |
+| `geometricExpectation_unroll` | `GeomExpectation.lean` | Proved (G1.6) |
+| `geometricExpectation_const` | `GeomExpectation.lean` | Proved (G1.7) |
+| `geometricExpectation_mono` | `GeomExpectation.lean` | Proved (G1.8) |
+| `jensen_geom_convex` | `Jensen.lean` | Proved (G2.1) |
+| `jensen_geom_strict_convex` | `Jensen.lean` | Proved (G2.2) |
+
+## Project structure
+
+```
+stopped-time-proofs/
+  StoppedTimeProofs.lean: root module; re-exports all submodules
+  StoppedTimeProofs/
+    GeomPMF.lean: geometric PMF definition and normalization theorems
+    GeomExpectation.lean: GeometricExpectation operator and key properties
+    Jensen.lean: Jensen's inequality for the geometric expectation
+  lakefile.lean: lake project config (mathlib dependency)
+  lean-toolchain: pinned Lean 4 toolchain version
+```
 
 ## Build
 
@@ -37,7 +52,7 @@ lake build
 
 ## Used by
 
-- [`perpetual-proofs`](../perpetual-proofs/) — imports `geometricExpectation` and
+- [`perpetual-proofs`](../perpetual-proofs/): imports `geometricExpectation` and
   Jensen's inequality for the perpetual futures pricing theorems.
 
 ## Mathlib candidacy
@@ -48,4 +63,4 @@ module is deleted and `perpetual-proofs/lakefile.lean` switches the import to
 
 ## License
 
-Apache License 2.0 — matches mathlib's licensing.
+Apache License 2.0: matches mathlib's licensing.

@@ -13,12 +13,18 @@ Lean 4 formalization of the no-arbitrage pricing theorem for perpetual futures.
 
 ## Theorem status
 
+All eight theorems are proved, zero `sorry`.
+
 | Theorem | File | Status |
 |---|---|---|
-| `ackerer_cashflow_satisfies_costless_entry` | `FundingCompatibility.lean` | Planned (F3.2) |
-| `he_manela_violates_costless_entry` | `FundingCompatibility.lean` | Planned (F3.4) |
-| `perp_futures_no_arb_price` | `PerpFuturesNoArb.lean` | Planned (PR4.3) |
-| `inverse_perp_convexity_discount` | `InversePerpCorrection.lean` | Planned (I4.3) |
+| `ackerer_cashflow_satisfies_costless_entry` | `FundingCompatibility.lean` | Proved (F3.2) |
+| `he_manela_violates_costless_entry` | `FundingCompatibility.lean` | Proved (F3.4) |
+| `no_arb_uniqueness` | `PerpFuturesNoArb.lean` | Proved (PR4.1) |
+| `no_arb_existence` | `PerpFuturesNoArb.lean` | Proved (PR4.2) |
+| `perp_futures_no_arb_price` | `PerpFuturesNoArb.lean` | Proved (PR4.3) |
+| `inversePerp_noArb_price` | `InversePerpCorrection.lean` | Proved (I4.1) |
+| `geom_exp_inv_gt` | `InversePerpCorrection.lean` | Proved (I4.2) |
+| `inverse_perp_convexity_discount` | `InversePerpCorrection.lean` | Proved (I4.3) |
 
 ## Build
 
@@ -50,11 +56,11 @@ perpetual-proofs/
 
 ## Dependencies
 
-- [`stopped-time-proofs`](../stopped-time-proofs/) — `geometricExpectation`,
+- [`stopped-time-proofs`](../stopped-time-proofs/): `geometricExpectation`,
   Jensen's inequality (Mathlib PR candidate, no finance content)
-- [`ftap-proofs`](../ftap-proofs/) — `FtapProofs.Market` (complete),
+- [`ftap-proofs`](../ftap-proofs/): `FtapProofs.Market` (complete),
   `FtapProofs.Strategy` (complete)
-- `mathlib` — measure theory, probability, analysis
+- `mathlib`: measure theory, probability, analysis
 
 ## The He et al. error
 

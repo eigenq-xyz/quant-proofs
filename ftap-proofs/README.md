@@ -10,8 +10,9 @@ Lean 4 formalization of the discrete Fundamental Theorem of Asset Pricing
 > Theory of Continuous Trading." *Stochastic Processes and Their Applications*
 > 11, no. 3 (1981): 215–260.
 
-This is a **skeleton** — the `FtapProofs` namespace is defined; proof content is
-planned. The intended endpoint is a mathlib PR.
+The proof is **complete**: all modules are proved, zero `sorry`, and the full
+biconditional `NoArbitrage m ↔ ∃ Q, EquivalentMartingaleMeasure m Q` is established
+in `FtapProofs.Theorem`. The intended endpoint is a mathlib PR.
 
 ## Build
 
@@ -33,23 +34,27 @@ grep -rn sorry --include="*.lean" ftap-proofs/
 
 ```
 ftap-proofs/
-  FtapProofs.lean       — root module; re-exports submodules as they are added
-  lakefile.lean         — lake project config (mathlib dependency)
-  lean-toolchain        — pinned Lean 4 toolchain version
+  FtapProofs.lean: root module; re-exports all submodules
+  FtapProofs/
+    Market.lean: finite-state market model and price processes
+    Strategy.lean: trading strategies and portfolio value
+    Arbitrage.lean: arbitrage definition and no-arbitrage condition
+    MartingaleMeasure.lean: equivalent martingale measure definition
+    Density.lean: EMM-to-density bridge (Radon-Nikodym direction)
+    Theorem.lean: main FTAP biconditional (NoArbitrage ↔ EMM exists)
+  lakefile.lean: lake project config (mathlib dependency)
+  lean-toolchain: pinned Lean 4 toolchain version
 ```
-
-Planned submodules: `FtapProofs.Market`, `FtapProofs.Arbitrage`,
-`FtapProofs.MartingaleMeasure`, `FtapProofs.Theorem`.
 
 ## Dependencies
 
-- `mathlib` — measure theory, probability, linear algebra
+- `mathlib`: measure theory, probability, linear algebra
 
 ## Used by
 
-- [`options-proofs`](../options-proofs/) — imports this library once it exposes a
-  stable interface for equivalent martingale measures and no-arbitrage conditions.
+- [`options-proofs`](../options-proofs/): imports this library for equivalent
+  martingale measures and no-arbitrage conditions; put-call parity proof is complete.
 
 ## License
 
-Apache License 2.0 — matches mathlib's licensing so contributions can flow upstream.
+Apache License 2.0: matches mathlib's licensing so contributions can flow upstream.
