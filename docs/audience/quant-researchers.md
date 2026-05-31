@@ -38,15 +38,16 @@ Details are in [how-we-verify.md](../how-we-verify.md).
 The optimization pillar ([pillar-optimization.md](../pillar-optimization.md))
 covers two subprojects:
 
-**`optimization-proofs/`** proves nine theorems about the projected gradient
+**`optimization-proofs/`** proves ten theorems about the projected gradient
 descent (PGD) algorithm at the abstract level:
 
 - The projection onto the probability simplex is correct (the result is always
   feasible and is the nearest feasible point).
 - The descent lemma holds: each step reduces the objective by a provable amount
   relative to the gradient step size.
-- The dual-bisection projection runs in O(N log N) time and produces a result
-  that satisfies the KKT conditions exactly.
+- The projection produces a result that satisfies the optimality (KKT)
+  conditions exactly. (The dual-bisection implementation runs in O(N log N)
+  time, which is a property of the code, not one of the formal theorems.)
 - The shrinkage operator preserves positive semidefiniteness of a covariance
   matrix.
 

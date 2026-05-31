@@ -16,7 +16,7 @@ The honest caveat: a proof guarantees the theorem as stated, not that the model 
 
 **[No-Arbitrage Pricing](pillar-pricing.md).** The arc from the Fundamental Theorem of Asset Pricing through derivative pricing to perpetual futures. The discrete Harrison-Pliska theorem (complete, zero sorry) underlies put-call parity via the Cox-Ross-Rubinstein model (complete, zero sorry) and perpetual futures no-arbitrage pricing (complete, zero sorry).
 
-**[Verified Optimization](pillar-optimization.md).** Formally verified projected gradient descent: convergence, projection correctness, and covariance shrinkage proofs (all complete, zero sorry), paired with seven stress scenarios where standard solvers fail and the verified solver holds.
+**[Verified Optimization](pillar-optimization.md).** Formally verified projected gradient descent: convergence (under a Lipschitz step-size condition), projection correctness, and covariance shrinkage proofs (all complete, zero sorry), paired with seven stress scenarios where standard solvers fail and the verified solver holds.
 
 **[Verified AI Decision Systems](pillar-ai-systems.md).** A multi-agent mortgage pipeline whose routing decisions are recorded and checked against Lean 4 invariants. Formal auditability for deployed systems built on large language models.
 

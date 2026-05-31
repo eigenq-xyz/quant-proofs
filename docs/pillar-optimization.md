@@ -16,16 +16,20 @@ that guarantee is worth having.
 
 Projected gradient descent minimizes a convex quadratic objective by alternating gradient
 steps with projection onto the feasible set (here, the probability simplex or a box
-constraint). Nine theorems are proved in Lean 4, all zero sorry:
+constraint). Ten theorems are proved in Lean 4, all zero sorry. Three are representative:
 
 - **`shrinkage_psd`**: covariance shrinkage produces a matrix that is symmetric and positive
   semidefinite. This ensures the quadratic objective is convex, which PGD requires.
 - **`projection_correctness`**: the simplex/box projection is feasible (the projected point
   is in the constraint set) and correct (it is the closest feasible point to the
-  pre-projection iterate). The projection uses an O(N log N) dual-bisection method.
+  pre-projection iterate). The projection uses an O(N log N) dual-bisection method; that
+  complexity is a characteristic of the implementation, not part of the formal claim, which
+  is feasibility and optimality.
 - **`pgd_descent_lemma`**: each PGD step strictly decreases the objective when the step
   size is set to the reciprocal of the Lipschitz constant of the gradient. This is the
-  key monotonicity property that makes the algorithm converge.
+  key monotonicity property behind convergence. A separate theorem, `pgd_convergence`,
+  establishes convergence to the global minimum under that same step-size condition (the
+  step below twice the reciprocal of the gradient's Lipschitz constant).
 
 These are not implementation tests. They are proofs about the mathematical structure of the
 algorithm, independent of floating-point arithmetic.

@@ -50,8 +50,9 @@ The optimization pillar ([pillar-optimization.md](../pillar-optimization.md)) is
 the best illustration of the pipeline architecture:
 
 1. `optimization-proofs/` proves abstract properties of projected gradient descent
-   in Lean 4: projection correctness, the descent lemma, the O(N log N) dual-bisection
-   algorithm, shrinkage PSD preservation.
+   in Lean 4: projection correctness, the descent lemma, convergence under the
+   step-size condition, and shrinkage PSD preservation. (The dual-bisection
+   projection is O(N log N), an implementation property rather than a theorem.)
 2. `portfolio-proofs/` instantiates the abstract solver for the portfolio problem
    (simplex constraint, long-only constraint) and connects the Lean proofs to a
    Cython implementation via the integer FFI contract.
