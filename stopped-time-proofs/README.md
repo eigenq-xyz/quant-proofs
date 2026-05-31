@@ -26,8 +26,8 @@ All theorems are proved, zero `sorry`.
 | `geometricExpectation_unroll` | `GeomExpectation.lean` | Proved (G1.6) |
 | `geometricExpectation_const` | `GeomExpectation.lean` | Proved (G1.7) |
 | `geometricExpectation_mono` | `GeomExpectation.lean` | Proved (G1.8) |
-| `jensen_geom_convex` | `Jensen.lean` | Proved (G2.1) |
-| `jensen_geom_strict_convex` | `Jensen.lean` | Proved (G2.2) |
+| `geomPMF_pos` | `Jensen.lean` | Proved (G2.1) |
+| `geometricExpectation_strict_mono` | `Jensen.lean` | Proved (G2.2) |
 
 ## Project structure
 
@@ -37,7 +37,7 @@ stopped-time-proofs/
   StoppedTimeProofs/
     GeomPMF.lean: geometric PMF definition and normalization theorems
     GeomExpectation.lean: GeometricExpectation operator and key properties
-    Jensen.lean: Jensen's inequality for the geometric expectation
+    Jensen.lean: strict monotonicity of the geometric expectation (the Jensen-type step)
   lakefile.lean: lake project config (mathlib dependency)
   lean-toolchain: pinned Lean 4 toolchain version
 ```
