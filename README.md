@@ -1,4 +1,4 @@
-# quant-proofs — EigenQ Research Series
+# quant-proofs
 
 Formally verified quantitative finance — machine-checked Lean 4 proofs paired with production Python.
 
