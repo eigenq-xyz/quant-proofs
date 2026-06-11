@@ -16,7 +16,10 @@ where:
 *   $Q \in \mathbb{R}^{N \times N}$ is a symmetric, strictly positive definite (PD) matrix.
 *   $c \in \mathbb{R}^N$ is a linear coefficient vector.
 *   $\mathcal{C} \subset \mathbb{R}^N$ is a convex constraint set defined by the intersection of a budget hyperplane and a gross exposure $L_1$-ball:
-    $$\mathcal{C} = \left\{ x \in \mathbb{R}^N \;\middle|\; \sum_{i=1}^N x_i = B, \quad \sum_{i=1}^N |x_i| \le L \right\}$$
+  
+```math
+\mathcal{C} = \left\{x \in \mathbb{R}^N \;\middle|\; \sum_{i=1}^N x_i = B, \quad \sum_{i=1}^N |x_i| \le L\right\}
+```
 
 ---
 
@@ -25,7 +28,7 @@ where:
 PGD iteratively computes the optimal allocation $x^*$ by alternating between unconstrained gradient updates and analytical geometric projections:
 
 ```
-                  x_{k+1} = Π_C ( x_k - η (Q x_k + c) )
+x_{k+1} = Π_C ( x_k - η (Q x_k + c) )
 ```
 
 where $\eta > 0$ is the learning rate, and $\Pi_{\mathcal{C}}$ is the Euclidean projection operator onto the constraint set $\mathcal{C}$.
