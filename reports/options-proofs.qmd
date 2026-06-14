@@ -328,35 +328,76 @@ the scope of the current formalization.
 
 # Empirical Setup {#sec-data}
 
-::: {.callout-note title="Empirical companion filled separately"}
-This section is reserved for the empirical companion study. The lead author will
-replace this placeholder with data sources, sample window, universe, filters, and
-observation count following the template table format. The planned study covers:
-(a) verification that the discrete CRR parity relation $C - P = S_0 - K(1+r)^{-T}$
-holds to machine precision in simulation, confirming the formal result numerically;
-and (b) convergence of the CRR call price to the Black-Scholes call price as the
-number of periods $T$ grows, illustrating the discrete model approximating the
-continuous limit and quantifying the rate of convergence.
-:::
+The companion study is a deterministic numerical check of the two claims the proof
+makes about the discrete model: that put-call parity is exact, and that the model
+is the right discretization of continuous-time pricing. There is no sampled data
+and no randomness, so the committed output reproduces exactly.
+
+The study prices a European call and put on a single underlier in the CRR model,
+calibrated to a Black-Scholes reference in the standard way (up and down factors
+$u = e^{\sigma \sqrt{\Delta t}}$, $d = 1/u$, per-step growth $e^{r \Delta t}$), and
+varies the number of binomial steps over a fixed one-year horizon.
+
+| Field | Value |
+|-------|-------|
+| Underlier | $S_0 = 100$, strike $K = 100$ |
+| Rate, volatility, horizon | $r = 5\%$, $\sigma = 20\%$, $T = 1$ year |
+| Binomial steps | 10 to 5000 |
+| Reference | Black-Scholes closed form (call 10.4506, put 5.5735) |
+| Randomness | none (deterministic) |
+
+The script and its committed output are
+`options-proofs/results/crr_convergence_study.py` and
+`options-proofs/results/metrics/crr_convergence.json`.
 
 # Results {#sec-empirical}
 
-::: {.callout-note title="Empirical companion filled separately"}
-This section is reserved for the empirical companion study. The lead author will
-replace this placeholder with headline figures, tables, and the primary empirical
-results following the eigenq-xyz house style for exhibit captions and result
-reporting.
-:::
+Two findings, both consistent with the theorem.
+
+Parity is exact. Across every step count, the parity residual
+$\lvert (C - P) - (S_0 - K e^{-rT}) \rvert$ stays at the floating-point floor, with
+a maximum of $4.8 \times 10^{-11}$ over all step counts. The slight growth with
+step count is summation rounding over more terminal nodes, not a model error. This
+is the numerical shadow of the proved identity: parity is not approximate in the
+CRR model, it is exact.
+
+Convergence is first order. @tbl-crr reports the CRR call price and its absolute
+error against the Black-Scholes reference. The error halves as the step count
+doubles, the textbook order one-over-N rate for the CRR model, falling from about
+0.20 at 10 steps to 0.0004 at 5000.
+
+| Steps | CRR call | Abs error vs BS | Parity residual |
+|------:|---------:|----------------:|----------------:|
+| 10    | 10.2534  | 1.97e-01        | 1.0e-13         |
+| 50    | 10.4107  | 3.99e-02        | 2.1e-13         |
+| 250   | 10.4426  | 7.99e-03        | 1.4e-12         |
+| 1000  | 10.4486  | 2.00e-03        | 2.5e-12         |
+| 5000  | 10.4502  | 4.00e-04        | 4.8e-11         |
+
+: CRR call price, absolute error against the Black-Scholes reference (10.4506), and
+put-call parity residual, by binomial step count. Source:
+`options-proofs/results/metrics/crr_convergence.json`. {#tbl-crr}
 
 # Robustness {#sec-robustness}
 
-::: {.callout-note title="Empirical companion filled separately"}
-This section is reserved for the empirical companion study. The lead author will
-replace this placeholder with sub-period sensitivity analysis, parameter sensitivity
-(varying $u$, $d$, $r$, $T$, $K$, and $S_0$), and any cases where numerical parity
-deviations exceed machine epsilon, following the mandatory robustness structure of
-the eigenq-xyz template.
-:::
+**Parity exactness is structural, not fitted.** The parity residual sits at machine
+epsilon because parity is an identity in the model, proved as a theorem, so it does
+not depend on the parameter values. The residual would stay at the floating-point
+floor for any strike, rate, or step count. The only growth is the rounding that
+accumulates when summing over more terminal nodes, which reaches $5 \times 10^{-11}$
+at 5000 steps, many orders of magnitude below any economically meaningful deviation.
+
+**Convergence rate.** The first-order convergence to Black-Scholes is a property of
+this calibration. The CRR model converges to the same continuous limit under any
+admissible up and down factors in the no-arbitrage band, though the constant in
+front of the one-over-N term depends on the calibration. The standard
+$e^{\sigma \sqrt{\Delta t}}$ choice is the one reported here.
+
+**Scope.** This is a deterministic numerical check, not a market study. It confirms
+the discrete theorem holds in computation and situates the model in its continuous
+limit. It makes no claim about traded option prices, which carry frictions the
+frictionless CRR model omits. The companion FTAP paper measures that friction band
+directly.
 
 # Discussion {#sec-discussion}
 
