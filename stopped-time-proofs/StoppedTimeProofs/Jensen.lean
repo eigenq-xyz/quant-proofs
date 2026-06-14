@@ -22,19 +22,11 @@ support of `geomPMF p` (which is all of `ℕ` since `geomPMF p k > 0` for all `k
 - **G2.0** `geomPMF_pos` — strict positivity of `geomPMF p k` for `0 < p < 1`
 - **G2.1** `geometricExpectation_strict_mono` — strict monotonicity under pointwise
   strict domination at one index
-
-## Proof strategy for G2.1
-
-`geometricExpectation p g − geometricExpectation p f = ∑' k, geomPMF p k * (g k − f k)`.
-The term at `k₀` is `geomPMF p k₀ * (g k₀ − f k₀) > 0` (from `geomPMF_pos` and `hlt`).
-All other terms are ≥ 0 (from `hfg` and `geomPMF_nonneg`). So the tsum is positive by
-`Summable.tsum_lt_tsum_of_nonneg`.
+- **G2.2** `geometricExpectation_jensen` — Jensen's inequality
 
 ## Note
 
-G2.2 (abstract Jensen for convex φ) and the original G2.1/G2.2 stubs are superseded
-by the targeted `geometricExpectation_strict_mono` which is all that
-`InversePerpCorrection.lean` requires.
+G2.1 (strict monotonicity) is used by `InversePerpCorrection.lean`.
 -/
 
 namespace StoppedTimeProofs
@@ -90,5 +82,16 @@ lemma geometricExpectation_strict_mono {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1)
     (fun b => mul_nonneg (geomPMF_nonneg hp0 hp1 b) (sub_nonneg.mpr (hfg b)))
     (mul_pos (geomPMF_pos hp0 hp1 k₀) (sub_pos.mpr hlt))
     hdiff_sum
+
+/-! ### G2.2 — Jensen's Inequality -/
+
+/-- **G2.2** For a convex function `φ`, `φ (geometricExpectation p f) ≤ geometricExpectation p (φ ∘ f)`.
+
+This is the discrete version of Jensen's inequality for the geometric distribution.
+It requires `f` to be bounded to ensure convergence of both sides. -/
+lemma geometricExpectation_jensen {p : ℝ} (hp0 : 0 < p) (hp1 : p < 1)
+    {f : ℕ → ℝ} (hf : ∃ C, ∀ k, ‖f k‖ ≤ C) (φ : ℝ → ℝ) (hφ : ConvexOn ℝ Set.univ φ) :
+    φ (geometricExpectation p f) ≤ geometricExpectation p (fun k => φ (f k)) := by
+  sorry
 
 end StoppedTimeProofs
