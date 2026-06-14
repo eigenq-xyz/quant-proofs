@@ -18,14 +18,15 @@ The weights `geomPMF p k := (1-p)^k * p` form a valid probability mass function 
 
 | Theorem | File | Status |
 |---|---|---|
-| `geomPMF_nonneg` | `GeomPMF.lean` | Planned (G1.2) |
-| `geomPMF_tsum_eq_one` | `GeomPMF.lean` | Planned (G1.3) |
-| `geometricExpectation_summable` | `GeomExpectation.lean` | Planned (G1.5) |
-| `geometricExpectation_unroll` | `GeomExpectation.lean` | Planned (G1.6) |
-| `geometricExpectation_const` | `GeomExpectation.lean` | Planned (G1.7) |
-| `geometricExpectation_mono` | `GeomExpectation.lean` | Planned (G1.8) |
-| `jensen_geom_convex` | `Jensen.lean` | Planned (G2.1) |
-| `jensen_geom_strict_convex` | `Jensen.lean` | Planned (G2.2) |
+| `geomPMF_nonneg` | `GeomPMF.lean` | Verified (G1.2) |
+| `geomPMF_tsum_eq_one` | `GeomPMF.lean` | Verified (G1.3) |
+| `geometricExpectation_summable` | `GeomExpectation.lean` | Verified (G1.5) |
+| `geometricExpectation_unroll` | `GeomExpectation.lean` | Verified (G1.6) |
+| `geometricExpectation_const` | `GeomExpectation.lean` | Verified (G1.7) |
+| `geometricExpectation_mono` | `GeomExpectation.lean` | Verified (G1.8) |
+| `geomPMF_pos` | `Jensen.lean` | Verified (G2.0) |
+| `geometricExpectation_strict_mono` | `Jensen.lean` | Verified (G2.1) |
+| `geometricExpectation_jensen` | `Jensen.lean` | Planned (G2.2) |
 
 ## Build
 

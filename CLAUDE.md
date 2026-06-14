@@ -10,7 +10,7 @@ Monorepo for formally verified quantitative finance. Lean 4 proofs + Python/Cyth
 | `options-proofs/` | Put-call parity via Cox-Ross-Rubinstein; depends on ftap-proofs | `cd options-proofs && lake build` | same |
 | `quant-core/` | Shared pricing primitives (OptionKind, payoffs, Black-Scholes, GBM) | `cd quant-core/lean && lake build` | `cd quant-core/python && pytest` |
 | `optimization-proofs/` | Formally verified abstract PGD & simplex/L1 projection core | `cd optimization-proofs && lake build` (planned) | `grep -rn sorry --include="*.lean" optimization-proofs/` |
-| `portfolio-proofs/` | Formally verified PGD simplex portfolio solver core | `cd portfolio-proofs/lean && lake build` (planned) | `python3 portfolio-proofs/scenarios/cholesky_crash/scipy_slsqp.py` |
+| `portfolio-proofs/` | Formally verified PGD simplex portfolio solver core | `cd portfolio-proofs/lean && lake build` (planned) | `python3 portfolio_proofs/scenarios/cholesky_crash/scipy_slsqp.py` |
 | `mortgage-proofs/` | LangGraph multi-agent mortgage pipeline + Lean 4 invariant checking | `cd mortgage-proofs && lake build` | `cd mortgage-proofs && pytest` |
 | `stopped-time-proofs/` | Geometric PMF + `GeometricExpectation` operator — Mathlib PR candidate, no finance content | `cd stopped-time-proofs && lake build` | `grep -rn '^\s*sorry\b' --include="*.lean" stopped-time-proofs/` |
 | `perpetual-proofs/` | No-arbitrage pricing for perpetual futures (Ackerer-Hugonnier-Jermann 2025); depends on stopped-time-proofs + ftap-proofs | `cd perpetual-proofs && lake build` | same |
@@ -30,9 +30,9 @@ Each active subdir has its own CLAUDE.md with architecture details. Read that be
 
 ## Summer 2026 sequence
 
-1. **FTAP proof** (`ftap-proofs/`) — Harrison-Pliska 1981. Complete the Lean 4 proof. This is the theoretical spine everything else cites.
-2. **Put-call parity** (`options-proofs/`) — CRR binomial model; proof cites FTAP.
-3. **Real backtester** (new `backtest-proofs/`) — event-driven engine with $\mathcal{F}_t$-measurability proofs. Cites ftap-proofs results.
+1. ✅ **FTAP proof** (`ftap-proofs/`) — Harrison-Pliska 1981 (Complete).
+2. ✅ **Put-call parity** (`options-proofs/`) — CRR binomial model (Complete).
+3. ⏳ **Real backtester** (new `backtest-proofs/`) — event-driven engine with $\mathcal{F}_t$-measurability proofs. Cites ftap-proofs results.
 
 Read López de Prado (AFML Ch 1–4, 8–11) and Grinold & Kahn (Ch 1–6) in parallel with FTAP work.
 
@@ -52,4 +52,4 @@ Run `/onboard-to-eigenq` for the full codebase briefing.
 
 ## Why this repo exists
 
-The durable skill in quant work is directing and auditing AI-generated output — which requires being able to verify it formally. Every project here demonstrates that capability.
+The durable skill in quant work is directing and auditing AI-generated output — which requires being on the side of verifying it formally. Every project here demonstrates that capability.

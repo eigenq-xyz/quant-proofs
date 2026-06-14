@@ -1,54 +1,38 @@
 # ftap-proofs
 
-Lean 4 formalization of the discrete Fundamental Theorem of Asset Pricing
-(FTAP, Harrison-Pliska 1981).
+Lean 4 formalization of the discrete Fundamental Theorem of Asset Pricing (FTAP, Harrison-Pliska 1981).
 
-> **Theorem (FTAP, discrete-time, finite-state).** A market is arbitrage-free
-> if and only if there exists an equivalent martingale measure (EMM).
+> **Theorem (FTAP, discrete-time, $\mathcal{F}_t$-complete market).** A market is arbitrage-free if and only if there exists an equivalent martingale measure (EMM).
 >
-> Harrison, J.M., and S.R. Pliska. "Martingales and Stochastic Integrals in the
-> Theory of Continuous Trading." *Stochastic Processes and Their Applications*
-> 11, no. 3 (1981): 215–260.
+> Harrison, J.M., and S.R. Pliska. "Martingales and Stochastic Integrals in the Theory of Continuous Trading." *Stochastic Processes and Their Applications* 11, no. 3 (1981): 215–260.
 
-This is a **skeleton** — the `FtapProofs` namespace is defined; proof content is
-planned. The intended endpoint is a mathlib PR.
+This is a complete formalization of the discrete FTAP (Harrison-Pliska 1981). The `FtapProofs` namespace is defined and all theorems are verified with zero `sorry`.
 
-## Build
+## Build & Test Commands
 
-```bash
-cd ftap-proofs && lake exe cache get   # fetch mathlib build cache (first run)
-cd ftap-proofs && lake build           # build the library
-```
+- `lake exe cache get` — fetch mathlib build cache (run after `lake update`)
+- `lake build` — build the library
+- `lake update` — refresh mathlib dependency to current master
+- `lake build --watch` — rebuild on file changes
 
-The first cache fetch + build takes several minutes.
+## Architecture
 
-## Test
-
-```bash
-# Zero sorry check (empty output means clean)
-grep -rn sorry --include="*.lean" ftap-proofs/
-```
-
-## Project structure
-
-```
-ftap-proofs/
-  FtapProofs.lean       — root module; re-exports submodules as they are added
-  lakefile.lean         — lake project config (mathlib dependency)
-  lean-toolchain        — pinned Lean 4 toolchain version
-```
-
-Planned submodules: `FtapProofs.Market`, `FtapProofs.Arbitrage`,
-`FtapProofs.MartingaleMeasure`, `FtapProofs.Theorem`.
+Single Lean library `FtapProofs`. Submodules include:
+- `FtapProofs.Market`
+- `FtapProofs.Arbitrage`
+- `FtapProofs.MartingaleMeasure`
+- `FtapProofs.Theorem`
+- `FtapProofs.Strategy`
+- `FtapProofs.Density`
 
 ## Dependencies
 
-- `mathlib` — measure theory, probability, linear algebra
+- `mathlib` — measure theory, probability, linear
+- `quant-core` (as dependency for shared primitives)
 
 ## Used by
 
-- [`options-proofs`](../options-proofs/) — imports this library once it exposes a
-  stable interface for equivalent martingale measures and no-arbitrage conditions.
+- [`options-proofs`](../options-proofs/) — uses the stable interface for equivalent martingale measures and no-arbitrage conditions provided by this library.
 
 ## License
 
