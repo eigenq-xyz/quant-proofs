@@ -10,14 +10,14 @@ The proof route: the CRR binomial model is a finite-state, discrete-time market.
 
 ## Status
 
-**In progress** — skeleton scaffolded, depends on `ftap-proofs`.
+**Complete** — 31 theorems, zero `sorry`. The main result `OptionsProofs.put_call_parity` depends only on the standard axioms `[propext, Classical.choice, Quot.sound]` (verified via `#print axioms`).
 
-Implementation begins once the FTAP proof exposes a stable interface for the no-arbitrage condition and the EMM.
+The module builds the CRR binomial market, proves its risk-neutral measure is an equivalent martingale measure (`crrRNMeasure_emm`) and that the market is arbitrage-free (`crr_no_arbitrage`), then derives `put_call_parity` (`C − P = S₀ − K/(1+r)^T`) under the standard CRR no-arbitrage condition `0 < d < 1 + r < u`.
 
 ## Dependencies
 
 - `quant-core` — `EuropeanOption` types, payoff functions, and 8 payoff theorems (active path dependency; Lake builds it automatically).
-- `ftap-proofs` — risk-neutral measure and no-arbitrage condition (planned; not yet wired).
+- `ftap-proofs` — risk-neutral measure and no-arbitrage condition (wired in).
 
 ## Building
 

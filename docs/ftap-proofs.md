@@ -10,11 +10,11 @@ This is the foundational result of modern mathematical finance. The discrete ver
 
 ## Status
 
-**In progress** — skeleton scaffolded, implementation in progress.
+**Complete** — 16 theorems, zero `sorry`. The main result `FtapProofs.ftap` depends only on the standard axioms `[propext, Classical.choice, Quot.sound]` (verified via `#print axioms`).
 
-The `FtapProofs` namespace is open; the proof structure (`FtapProofs.Market`, `FtapProofs.Arbitrage`, `FtapProofs.MartingaleMeasure`, `FtapProofs.Theorem`) will be filled in during development.
+The proof spans `FtapProofs.Market`, `FtapProofs.Arbitrage`, `FtapProofs.MartingaleMeasure`, `FtapProofs.Strategy`, `FtapProofs.Density`, and `FtapProofs.Theorem`. The hard direction (no-arbitrage ⟹ EMM) is proved via the separating-hyperplane theorem on the cone of attainable payoffs; the easy direction uses risk-neutral pricing. The theorem assumes the standard finite-state full-support condition (`∀ ω, 0 < P {ω}`).
 
-Target: mathlib PR once proof is complete and stable.
+Target: mathlib PR.
 
 ## Building
 
