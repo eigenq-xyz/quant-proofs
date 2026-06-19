@@ -5,6 +5,13 @@ issue and close it in the same PR cycle. Develop on a branch; **never merge a `s
 
 ## Phase 1 — Formal core (Lean)
 
+- ✅ **Strategy-agnostic engine.** `Strategy` protocol + registry; cross-sectional and
+  time-series alphas through one interface; pluggable portfolio constructors; engine hands
+  each strategy only `as_of(t)`, so non-anticipation is inherited (issue #153).
+- ✅ **No-leakage contract.** `embargo_blocks_label_leakage` (`NoLeakage.lean`, `sorry`-free):
+  OOS embargo ≥ horizon ⇒ no training label leaks into the test window; runtime witness
+  `oos.leakage_gap` + property test (issue #156).
+- ✅ **CLI + artifacts.** `rp list / run / validate`; `results/<id>/` (issue #154).
 1. **Concrete signal is non-anticipating.** Model a discrete momentum map in Lean and prove
    it satisfies `NonAnticipating` (instantiating `decision_uses_no_future`). No `sorry`.
 2. **Backtester PnL invariance.** Prove cumulative PnL through `t` is a function of the path

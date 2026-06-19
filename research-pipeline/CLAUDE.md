@@ -11,17 +11,20 @@ rigorous. **Status: In progress.** Read [`ROADMAP.md`](ROADMAP.md) before workin
 | Stage | Where | Role |
 |-------|-------|------|
 | Formal core | `lean/ResearchPipeline/NoLookahead.lean` | `NonAnticipating` + `decision_uses_no_future` (proved, `sorry`-free) |
+| Formal core | `lean/ResearchPipeline/NoLeakage.lean` | `embargo_blocks_label_leakage`: OOS embargo >= horizon => no label leak (proved, `sorry`-free) |
 | 1 Data | `src/research_pipeline/data.py` | point-in-time `PricePanel`; `as_of(t)` witnesses the info set |
-| 2 Signals | `signals.py` | non-anticipating known alphas + conditional hook |
-| 3 Stats | `stats.py` | IC + HAC (Newey-West) t-stat, decay, factor overlap, bootstrap, PSR/DSR |
-| 4 Portfolio | `portfolio.py` | baseline + bridge to the verified PGD solver (`portfolio-proofs`) |
-| 5 Backtest | `backtest.py` | `𝓕ₜ`-aligned, net-of-cost event loop |
-| 6 Evaluation | `evaluation.py` | performance, drawdowns, OLS factor attribution |
+| 2 Signals + strategy | `signals.py`, `strategy.py` | non-anticipating alphas; `Strategy` protocol + name-keyed registry (alpha-agnostic) |
+| 3 Stats | `stats.py` | IC + HAC (Newey-West) t-stat, decay, bootstrap, PSR/DSR |
+| 4 Combination | `combination.py` | signal overlap + orthogonalised incremental IC ("disguised beta?") |
+| 5 Portfolio | `portfolio.py` | pluggable constructors (registry) + bridge to the verified PGD solver |
+| 6 Backtest | `backtest.py` | `𝓕ₜ`-aligned, net-of-cost event loop; configurable horizon |
+| 7 Evaluation | `evaluation.py` | performance, drawdowns, OLS factor attribution |
+| 8 OOS | `oos.py` | expanding walk-forward + embargo; `leakage_gap` runtime witness |
+| — Orchestration | `study.py` | runs the stages into a `StudyReport` (opt-in X-sec metrics, optional combination) |
+| — CLI | `cli.py` | `rp list / run / validate`; flags + JSON config replay; `results/<id>/` artifacts |
 | — Cross-asset | `crossasset.py` | same pipeline across asset classes |
-| — Orchestration | `study.py` | runs 1→6 into a `StudyReport` |
-| OOS | `oos.py` | expanding walk-forward + embargo (purge) |
 | Real data | `data_sources.py` | Ken French (free) + WRDS/CRSP (**licensed — never committed**) |
-| Validation (Track 1) | `validation.py` | A/B synthetic-truth: detection power, false-positive rate, planted-leak red-team |
+| Validation (Track 1) | `validation.py`, `tests/test_properties.py` | synthetic-truth + property contracts: detection power, false-positive rate, planted-leak red-team, estimator/accounting invariants |
 | Study (Track 2) | `scripts/run_study.py`, `studies/REPORT.md` | real study driver + report template |
 
 **Two tracks.** *Track 1 (validate the pipeline)* — `validation.py` + `tests/test_validation.py`/`test_reference.py` prove the pipeline detects planted alpha, stays null on noise, catches injected look-ahead, and matches `statsmodels`/`scipy`. *Track 2 (use the pipeline)* — `run_study.py` runs a real OOS study (Ken French now; CRSP via your WRDS creds) into `studies/REPORT.md`, which cites Track 1. A report from an unvalidated pipeline is not written.
@@ -30,10 +33,11 @@ rigorous. **Status: In progress.** Read [`ROADMAP.md`](ROADMAP.md) before workin
 
 ```bash
 cd research-pipeline/lean && lake build
-grep -rn '\bsorry\b' --include="*.lean" lean/        # must be empty on main
+grep -rn '^\s*sorry\b' --include="*.lean" lean/      # must be empty on main (strips docstrings)
 cd research-pipeline && pip install -e ".[dev]"
-pytest -q
-python -m scripts.run_demo
+pytest -q                                             # unit + hypothesis property contracts
+rp list && rp validate                                # registry + no-look-ahead/no-leakage gates
+rp run momentum --oos --out results/                  # full study -> results/<id>/
 mypy --strict src/                                    # scipy is import-ignored; pandas needs pandas-stubs
 ruff check .
 ```
