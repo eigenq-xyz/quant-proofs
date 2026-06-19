@@ -7,7 +7,7 @@ layer is unverified but rigorous — it is where numpy/pandas/scipy discipline i
 """
 
 from .data import PricePanel, make_synthetic_panel
-from .signals import momentum_signal, reversal_signal, conditional_scale
+from .signals import momentum_signal, ts_momentum_signal, reversal_signal, conditional_scale
 from .stats import (
     ic_summary,
     ic_decay,
@@ -21,7 +21,17 @@ from .stats import (
 )
 from .oos import walk_forward_splits, run_walk_forward
 from .validation import detection_rate, false_positive_rate, boundary_lookahead_discrepancy
-from .portfolio import signal_to_weights, verified_pgd_weights
+from .portfolio import (
+    signal_to_weights,
+    long_only_weights,
+    long_short_quantile_weights,
+    directional_weights,
+    verified_pgd_weights,
+    register_portfolio,
+    available_portfolios,
+    get_portfolio,
+)
+from .combination import signal_overlap, incremental_ic
 from .costs import proportional_cost
 from .backtest import BacktestResult, run_backtest
 from .evaluation import (
@@ -45,6 +55,7 @@ __all__ = [
     "PricePanel",
     "make_synthetic_panel",
     "momentum_signal",
+    "ts_momentum_signal",
     "reversal_signal",
     "conditional_scale",
     "ic_summary",
@@ -62,7 +73,15 @@ __all__ = [
     "false_positive_rate",
     "boundary_lookahead_discrepancy",
     "signal_to_weights",
+    "long_only_weights",
+    "long_short_quantile_weights",
+    "directional_weights",
     "verified_pgd_weights",
+    "register_portfolio",
+    "available_portfolios",
+    "get_portfolio",
+    "signal_overlap",
+    "incremental_ic",
     "proportional_cost",
     "BacktestResult",
     "run_backtest",

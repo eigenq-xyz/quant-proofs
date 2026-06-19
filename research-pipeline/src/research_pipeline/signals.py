@@ -24,6 +24,17 @@ def momentum_signal(panel: PricePanel, lookback: int = 252, skip: int = 21) -> p
     return _cross_sectional_demean(raw)
 
 
+def ts_momentum_signal(panel: PricePanel, lookback: int = 252, skip: int = 21) -> pd.DataFrame:
+    """Time-series (absolute) momentum: an asset's OWN trailing return ``t-lookback -> t-skip``.
+
+    Not cross-sectionally demeaned, so it expresses a directional (net long/short) view and
+    works for a single asset. Pair with the ``directional`` portfolio constructor; demeaning
+    it would collapse a single-asset book to zero. Non-anticipating (uses prices ``<= t``).
+    """
+    p = panel.prices
+    return p.shift(skip) / p.shift(lookback) - 1.0
+
+
 def reversal_signal(panel: PricePanel, lookback: int = 21) -> pd.DataFrame:
     """Short-term reversal: negative of the last ``lookback``-day return."""
     p = panel.prices

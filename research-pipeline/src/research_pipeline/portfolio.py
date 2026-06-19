@@ -11,9 +11,13 @@ from __future__ import annotations
 
 import pathlib
 import sys
+from typing import Callable
 
 import numpy as np
 import pandas as pd
+
+# A portfolio constructor maps one cross-sectional score row to target weights.
+PortfolioConstructor = Callable[..., pd.Series]
 
 
 def signal_to_weights(signal_row: pd.Series, gross: float = 1.0) -> pd.Series:
@@ -27,6 +31,55 @@ def signal_to_weights(signal_row: pd.Series, gross: float = 1.0) -> pd.Series:
     if denom == 0.0 or not np.isfinite(denom):
         return pd.Series(0.0, index=s.index)
     return s / denom * gross
+
+
+def long_only_weights(signal_row: pd.Series, gross: float = 1.0) -> pd.Series:
+    """Long-only tilt: hold above-average names ∝ their demeaned score; ``sum(w) = gross``.
+
+    Below-average names get zero weight. Suits a constrained book that cannot short.
+    """
+    s = signal_row.dropna()
+    s = (s - s.mean()).clip(lower=0.0)
+    denom = float(s.sum())
+    if denom == 0.0 or not np.isfinite(denom):
+        return pd.Series(0.0, index=s.index)
+    return s / denom * gross
+
+
+def long_short_quantile_weights(
+    signal_row: pd.Series, gross: float = 1.0, quantile: float = 1.0 / 3.0
+) -> pd.Series:
+    """Equal-weight long/short of the top/bottom ``quantile`` cross-sectional names.
+
+    ``sum(w) = 0``, ``sum(|w|) = gross``. The classic cross-sectional decile/tercile book;
+    less sensitive to score outliers than the proportional ``signal_to_weights``.
+    """
+    s = signal_row.dropna()
+    n = len(s)
+    if n < 3:
+        return pd.Series(0.0, index=s.index)
+    k = max(1, int(n * quantile))
+    ranked = s.sort_values()
+    shorts, longs = ranked.index[:k], ranked.index[-k:]
+    w = pd.Series(0.0, index=s.index)
+    w.loc[longs] = 0.5 * gross / len(longs)
+    w.loc[shorts] = -0.5 * gross / len(shorts)
+    return w
+
+
+def directional_weights(signal_row: pd.Series, gross: float = 1.0) -> pd.Series:
+    """Sign-based weights WITHOUT cross-sectional demeaning, scaled to ``sum(|w|) = gross``.
+
+    Unlike the dollar-neutral constructors this does not net to zero, so it carries a
+    directional (net long/short) position. Required for single-asset / time-series alphas,
+    where cross-sectional demeaning would annihilate the only position.
+    """
+    s = signal_row.dropna()
+    sign = np.sign(s)
+    denom = float(sign.abs().sum())
+    if denom == 0.0 or not np.isfinite(denom):
+        return pd.Series(0.0, index=s.index)
+    return sign / denom * gross
 
 
 def verified_pgd_weights(
@@ -63,3 +116,33 @@ def verified_pgd_weights(
     except Exception:
         # Verified binary not built / unavailable in this environment.
         return signal_to_weights(mu)
+
+
+# --- registry ---------------------------------------------------------------
+# Registers the row-to-weights constructors (signature ``(signal_row, gross=...) -> Series``).
+# ``verified_pgd_weights`` is intentionally absent: it needs a covariance matrix, a different
+# interface, so it is wired in explicitly rather than selected by name.
+
+_PORTFOLIO_REGISTRY: dict[str, PortfolioConstructor] = {
+    "dollar_neutral": signal_to_weights,
+    "long_only": long_only_weights,
+    "long_short_quantile": long_short_quantile_weights,
+    "directional": directional_weights,
+}
+
+
+def register_portfolio(name: str, fn: PortfolioConstructor) -> None:
+    """Register a portfolio constructor under ``name`` (overwrites an existing entry)."""
+    _PORTFOLIO_REGISTRY[name] = fn
+
+
+def available_portfolios() -> list[str]:
+    """Names of all registered portfolio constructors, sorted."""
+    return sorted(_PORTFOLIO_REGISTRY)
+
+
+def get_portfolio(name: str) -> PortfolioConstructor:
+    """Look up a registered portfolio constructor by name."""
+    if name not in _PORTFOLIO_REGISTRY:
+        raise KeyError(f"unknown portfolio {name!r}; available: {available_portfolios()}")
+    return _PORTFOLIO_REGISTRY[name]

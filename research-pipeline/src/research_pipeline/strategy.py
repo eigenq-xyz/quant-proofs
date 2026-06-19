@@ -22,13 +22,11 @@ from typing import Callable, Protocol, runtime_checkable
 import pandas as pd
 
 from .data import PricePanel
-from .portfolio import signal_to_weights
-from .signals import momentum_signal, reversal_signal
+from .portfolio import PortfolioConstructor, get_portfolio, signal_to_weights
+from .signals import momentum_signal, reversal_signal, ts_momentum_signal
 
 # A signal maps a (point-in-time) panel to a dates x assets score frame.
 SignalFn = Callable[[PricePanel], pd.DataFrame]
-# A portfolio constructor maps one cross-sectional score row to target weights.
-PortfolioConstructor = Callable[..., pd.Series]
 
 
 @runtime_checkable
@@ -97,13 +95,29 @@ def get_strategy(name: str, **params: object) -> Strategy:
 # --- built-in strategies (known controls) -----------------------------------
 
 
-def _momentum(lookback: int = 252, skip: int = 21) -> Strategy:
-    return SignalStrategy("momentum", lambda p: momentum_signal(p, lookback=lookback, skip=skip))
+def _momentum(lookback: int = 252, skip: int = 21, portfolio: str = "dollar_neutral") -> Strategy:
+    return SignalStrategy(
+        "momentum",
+        lambda p: momentum_signal(p, lookback=lookback, skip=skip),
+        get_portfolio(portfolio),
+    )
 
 
-def _reversal(lookback: int = 21) -> Strategy:
-    return SignalStrategy("reversal", lambda p: reversal_signal(p, lookback=lookback))
+def _reversal(lookback: int = 21, portfolio: str = "dollar_neutral") -> Strategy:
+    return SignalStrategy(
+        "reversal", lambda p: reversal_signal(p, lookback=lookback), get_portfolio(portfolio)
+    )
+
+
+def _ts_momentum(lookback: int = 252, skip: int = 21, portfolio: str = "directional") -> Strategy:
+    """Time-series momentum: directional by default (single-asset capable)."""
+    return SignalStrategy(
+        "ts_momentum",
+        lambda p: ts_momentum_signal(p, lookback=lookback, skip=skip),
+        get_portfolio(portfolio),
+    )
 
 
 register("momentum", _momentum)
 register("reversal", _reversal)
+register("ts_momentum", _ts_momentum)
