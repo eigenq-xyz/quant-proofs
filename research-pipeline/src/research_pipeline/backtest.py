@@ -44,9 +44,10 @@ def run_backtest(
     cost_bps: float = 10.0,
     gross: float = 1.0,
     weight_fn: WeightFn = signal_to_weights,
+    horizon: int = 1,
 ) -> BacktestResult:
     signal = signal_fn(panel)
-    fwd = panel.forward_returns(1)
+    fwd = panel.forward_returns(horizon)
     dates = signal.dropna(how="all").index.intersection(fwd.index)
 
     assets = panel.assets

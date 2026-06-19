@@ -32,6 +32,13 @@ from .evaluation import (
     factor_attribution,
 )
 from .crossasset import run_cross_asset
+from .strategy import (
+    Strategy,
+    SignalStrategy,
+    register,
+    available_strategies,
+    get_strategy,
+)
 from .study import StudyReport, run_research_study, print_report
 
 __all__ = [
@@ -65,6 +72,11 @@ __all__ = [
     "turnover",
     "factor_attribution",
     "run_cross_asset",
+    "Strategy",
+    "SignalStrategy",
+    "register",
+    "available_strategies",
+    "get_strategy",
     "StudyReport",
     "run_research_study",
     "print_report",
