@@ -3,6 +3,7 @@
 -- pointwise analogue of 𝓕ₜ-measurability against the natural filtration of the price path.
 
 import ResearchPipeline.NoLookahead
+import ResearchPipeline.NoLeakage
 
 namespace ResearchPipeline
 

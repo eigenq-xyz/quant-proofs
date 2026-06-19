@@ -19,7 +19,7 @@ from .stats import (
     deflated_sharpe_ratio,
     permutation_ic_test,
 )
-from .oos import walk_forward_splits, run_walk_forward
+from .oos import walk_forward_splits, run_walk_forward, leakage_gap, no_leakage_holds
 from .validation import detection_rate, false_positive_rate, boundary_lookahead_discrepancy
 from .portfolio import (
     signal_to_weights,
@@ -69,6 +69,8 @@ __all__ = [
     "permutation_ic_test",
     "walk_forward_splits",
     "run_walk_forward",
+    "leakage_gap",
+    "no_leakage_holds",
     "detection_rate",
     "false_positive_rate",
     "boundary_lookahead_discrepancy",

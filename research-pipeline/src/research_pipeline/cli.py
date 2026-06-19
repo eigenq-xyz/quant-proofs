@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from .data import PricePanel, make_synthetic_panel
-from .oos import run_walk_forward
+from .oos import leakage_gap, run_walk_forward, walk_forward_splits
 from .portfolio import available_portfolios
 from .strategy import SignalFn, available_strategies, get_strategy
 from .study import StudyReport, print_report, run_research_study
@@ -177,7 +177,26 @@ def cmd_validate(args: argparse.Namespace) -> int:
     print(
         f"  clean signal (momentum):             {clean:.6f}  -> {'ok' if clean == 0 else 'LEAK'}"
     )
-    return 0 if (leak > 0 and clean == 0) else 1
+
+    # No-leakage contract on the OOS splits (runtime witness of the Lean theorem).
+    horizon = 1
+    idx = panel.prices.index
+    safe = walk_forward_splits(idx, n_splits=5, embargo=horizon)  # embargo >= horizon
+    unsafe = walk_forward_splits(idx, n_splits=5, embargo=0)  # embargo < horizon
+    safe_gap = leakage_gap(idx, safe, horizon)
+    unsafe_gap = leakage_gap(idx, unsafe, horizon)
+    print(
+        "\n[validate] OOS no-leakage contract (embargo_blocks_label_leakage; slack >= 1 == clean)"
+    )
+    print(
+        f"  embargo >= horizon: min slack = {safe_gap:>3}  -> {'clean' if safe_gap >= 1 else 'LEAK'}"
+    )
+    print(
+        f"  embargo  < horizon: min slack = {unsafe_gap:>3}  -> {'CAUGHT' if unsafe_gap < 1 else 'MISSED'}"
+    )
+
+    ok = leak > 0 and clean == 0 and safe_gap >= 1 and unsafe_gap < 1
+    return 0 if ok else 1
 
 
 def build_parser() -> argparse.ArgumentParser:

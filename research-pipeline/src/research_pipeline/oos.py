@@ -31,6 +31,32 @@ def walk_forward_splits(
     return splits
 
 
+def leakage_gap(index: pd.Index, splits: list[tuple[pd.Index, pd.Index]], horizon: int = 1) -> int:
+    """Minimum slack (in index positions) between a training label's forward window and the
+    first test index, over all splits.
+
+    Runtime witness of the Lean ``ResearchPipeline.embargo_blocks_label_leakage`` contract on
+    the splits actually produced: ``slack = first_test_pos - (last_train_pos + horizon)``.
+    ``slack >= 1`` for every split means no training label bleeds into its test window;
+    ``slack <= 0`` means a label leaks. Returns the minimum (the worst case).
+    """
+    slacks: list[int] = []
+    for train, test in splits:
+        if len(train) == 0 or len(test) == 0:
+            continue
+        last_train_pos = int(index.get_indexer([train[-1]])[0])
+        first_test_pos = int(index.get_indexer([test[0]])[0])
+        slacks.append(first_test_pos - (last_train_pos + horizon))
+    return min(slacks) if slacks else 0
+
+
+def no_leakage_holds(
+    index: pd.Index, splits: list[tuple[pd.Index, pd.Index]], horizon: int = 1
+) -> bool:
+    """True iff no training label leaks into any test window (``leakage_gap >= 1``)."""
+    return leakage_gap(index, splits, horizon) >= 1
+
+
 def run_walk_forward(
     panel: PricePanel,
     signal_fn: SignalFn,
