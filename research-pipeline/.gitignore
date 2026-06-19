@@ -1,0 +1,17 @@
+# Licensed / downloaded data — NEVER commit (repo hard rule: no WRDS/OptionMetrics in git)
+data/
+*.parquet
+*.csv
+*.zip
+
+# Lean / Python build + cache
+.lake/
+lake-manifest.json
+build/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.venv/

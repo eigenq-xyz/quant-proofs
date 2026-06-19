@@ -23,3 +23,7 @@ ser = "ser"  # "ser" in --ignore-words-list
 # Ken French 10-Industry Portfolio standard abbreviations.
 Enrgy = "Enrgy"  # "Energy" industry short label
 Durbl = "Durbl"  # "Durables" industry short label
+
+# Quant-finance domain terms (research-pipeline and beyond).
+Pn = "Pn"        # the "Pn" camel-token typos splits out of "PnL" (profit and loss)
+strat = "strat"  # common abbreviation for "strategy"

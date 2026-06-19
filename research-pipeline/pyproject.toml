@@ -1,0 +1,47 @@
+[project]
+name = "research-pipeline"
+version = "0.0.1"
+description = "Full quant-research-desk workflow with a formally verified backtesting stage (no look-ahead)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Akhil Karra" }]
+
+dependencies = [
+    "numpy>=1.26.0",
+    "pandas>=2.0.0",
+    "scipy>=1.11.0",
+    "pandas-datareader>=0.10.0",  # Ken French (free) loader
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "mypy>=1.12.0",
+    "ruff>=0.6.0",
+    "pandas-stubs>=2.0.0",
+    "statsmodels>=0.14.0",  # ground-truth reference for stats tests
+    "hypothesis>=6.100.0",  # property-based tests
+]
+wrds = ["wrds>=3.1.0"]  # licensed CRSP access (your credentials; data never committed)
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/research_pipeline"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.mypy]
+strict = true
+files = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["scipy.*"]
+ignore_missing_imports = true
