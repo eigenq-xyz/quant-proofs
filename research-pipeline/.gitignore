@@ -4,6 +4,9 @@ data/
 *.csv
 *.zip
 
+# Ad-hoc CLI run artifacts (curated study outputs live under studies/)
+results/
+
 # Lean / Python build + cache
 .lake/
 lake-manifest.json
