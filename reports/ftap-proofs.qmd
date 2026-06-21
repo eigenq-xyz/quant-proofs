@@ -1,0 +1,330 @@
+---
+title: "No Arbitrage and the Existence of a Pricing Measure: A Machine-Checked Proof of the Discrete Fundamental Theorem of Asset Pricing"
+subtitle: "ftap-proofs: eigenq-xyz research series"
+author:
+  - name: eigenq-xyz
+    affiliation: eigenq-xyz
+    email: research@eigenq.xyz
+date: today
+date-format: long
+abstract: |
+  The Fundamental Theorem of Asset Pricing states that a finite-state,
+  discrete-time market admits no arbitrage if and only if there exists an
+  equivalent martingale measure under which discounted asset prices are
+  martingales. We give a complete machine-checked proof of the discrete
+  Harrison-Pliska theorem in Lean 4, verified against mathlib with zero proof
+  gaps. The forward direction is a short separation argument; the reverse
+  direction is the substantive content, established through a state-price
+  functional obtained by a separating-hyperplane argument on the cone of
+  attainable payoffs. The development is structured so that the market model,
+  the no-arbitrage condition, and the martingale-measure condition are reusable
+  by downstream pricing results. As an empirical companion we run a controlled
+  study of the theorem's central prediction: put-call parity, a model-free
+  consequence of a single consistent pricing measure, should hold across
+  strikes. On an arbitrage-free Black-Scholes cross-section perturbed by
+  realistic quote friction, the parity deviation stays under one basis point of
+  spot when quotes are tight and widens to roughly 48 basis points on average,
+  and 120 at the 95th percentile, under stressed quotes in a high-volatility
+  regime. The generator is synthetic, so this is a controlled demonstration of
+  the methodology rather than a claim about a specific market, and the same
+  harness runs on real quotes unchanged. The contribution is a verified
+  foundation for derivative pricing, not a trading signal: the proof guarantees
+  the theorem as stated, and the study measures how a frictionless prediction
+  degrades as friction grows.
+keywords:
+  - asset pricing
+  - no arbitrage
+  - equivalent martingale measure
+  - formal verification
+  - Lean 4
+jel:
+  - G12
+  - G13
+  - C63
+---
+
+# Introduction
+
+Does the absence of arbitrage in a market guarantee that a single, consistent
+set of prices explains every traded asset? The Fundamental Theorem of Asset
+Pricing answers yes, and this paper makes that answer machine-checked.
+
+The practitioner stakes are concrete. Every relative-value desk, every option
+model, and every risk system rests on the assumption that prices admit a
+risk-neutral measure. When that assumption is stated as folklore rather than as
+a theorem with explicit hypotheses, it is easy to apply it where its
+assumptions fail, in markets with frictions, in incomplete markets, or over
+horizons where the discrete model is the wrong idealization. A proof states
+exactly what must hold for the conclusion to follow.
+
+We formalize the discrete Harrison-Pliska theorem in Lean 4. On a finite
+probability space with a finite trading horizon, we prove that the market
+admits no arbitrage if and only if there exists a probability measure,
+equivalent to the reference measure, under which every discounted asset price
+is a martingale. The forward implication follows from the martingale property
+by a short argument. The reverse implication is the substantive one: from no
+arbitrage we construct a strictly positive linear pricing functional on the
+space of attainable payoffs by separating the no-arbitrage cone from the
+nonnegative orthant, then normalize that functional into the desired measure.
+
+The contribution is threefold. First, the theorem is established with no
+admitted steps and no axioms beyond those of mathlib, so the result is checked
+rather than asserted. Second, the formal model is written as a reusable
+interface: a market, a trading strategy, a no-arbitrage predicate, and a
+martingale-measure predicate, so that subsequent pricing results cite the
+theorem rather than re-deriving it. Third, we pair the proof with an empirical
+exercise that asks how well the frictionless conclusion describes a real market,
+reporting the magnitude of the gap rather than only its statistical
+significance.
+
+The remainder of the paper is organized as follows. Section [-@sec-setup] fixes
+the market model and states the assumptions. Section [-@sec-results] states the
+theorem and sketches both directions. Section [-@sec-formalization] documents
+the machine-checked artifacts and the precise scope of what is proven. Section
+[-@sec-data] describes the empirical sample, Section [-@sec-empirical] reports
+the pricing-measure consistency test, and Section [-@sec-robustness] reports
+where it holds and where it breaks. Section [-@sec-discussion] concludes.
+
+# Setup {#sec-setup}
+
+The market is a finite, discrete-time, frictionless model. We fix the
+primitives so that the theorem statement in Section [-@sec-results] is
+unambiguous, and we match the notation of the formal development where it does
+not conflict with standard usage.
+
+::: {#def-primitive}
+**(Market.)** A market consists of a finite probability space, a finite trading
+horizon with dates indexed from the start to the terminal date, a finite
+collection of risky assets with adapted price processes, a strictly positive
+deterministic numeraire normalized to one at the start, and a filtration that
+encodes the information available at each date. The reference probability
+measure assigns positive mass to every state.
+:::
+
+Discounting is by the numeraire: the discounted price of an asset is its price
+divided by the numeraire at that date. A trading strategy assigns, at each date,
+holdings in each risky asset and the numeraire, with holdings chosen on the
+information available at the previous date. A strategy is self-financing when
+each rebalancing is funded entirely by the current portfolio, with no inflow or
+outflow.
+
+We state the standing assumptions as numbered displays rather than burying them
+in prose, because the theorem holds exactly under them and not otherwise.
+
+> **Assumption A1 (Finite state space and horizon).** The set of states is
+> finite, and trading occurs at finitely many dates.
+
+> **Assumption A2 (Frictionless trading).** Trading is costless, positions are
+> unconstrained in sign and size, and assets are perfectly divisible.
+
+> **Assumption A3 (Positive numeraire).** The numeraire is strictly positive at
+> every date and normalized to one at the start.
+
+An *arbitrage* is a self-financing strategy with zero initial cost, nonnegative
+terminal value in every state, and strictly positive terminal value in at least
+one state. The market is *arbitrage-free* when no such strategy exists. A
+probability measure is an *equivalent martingale measure* when it agrees with
+the reference measure on which states have positive probability and every
+discounted asset price is a martingale under it.
+
+# Main Results {#sec-results}
+
+::: {#thm-headline}
+**(Fundamental Theorem of Asset Pricing, discrete case.)** Under Assumptions
+A1 through A3, the market is arbitrage-free if and only if there exists an
+equivalent martingale measure.
+:::
+
+*Proof sketch.* The reverse direction first. Suppose an equivalent martingale
+measure exists. The discounted value of any self-financing strategy is then a
+martingale under that measure, so its terminal expectation equals its initial
+value. A candidate arbitrage has zero initial cost, hence zero expected
+discounted terminal value, yet a nonnegative payoff that is strictly positive
+in some state of positive measure. A nonnegative random variable with zero mean
+under a measure of full support must be zero everywhere, contradicting the
+strict-positivity requirement. No arbitrage can exist.
+
+The forward direction carries the content. Suppose the market is arbitrage-free.
+The set of discounted terminal payoffs attainable at zero cost is a linear
+subspace; the requirement of no arbitrage says this subspace meets the
+nonnegative orthant only at the origin. Separating the subspace from the
+compact base of the orthant by a hyperplane yields a strictly positive linear
+functional that annihilates every zero-cost attainable payoff. Representing that
+functional by its values on the states and normalizing gives a strictly positive
+probability vector, equivalent to the reference measure, under which discounted
+prices have constant conditional expectation, which is the martingale property.
+This is the desired measure.
+
+Both directions are established formally; the precise statements and the
+machine-checked artifacts are documented in Section [-@sec-formalization].
+
+# Formalization {#sec-formalization}
+
+This section is mandatory for every paper in the eigenq-xyz series. It records
+which mathematical claims are machine-checked, which are not, and where the
+artifacts live.
+
+## Lean 4 artifacts {#sec-artifacts}
+
+The formal development lives in
+[`ftap-proofs/`](https://github.com/eigenq-xyz/quant-proofs/tree/main/ftap-proofs).
+The following table maps the paper-level statements to their Lean 4 names.
+
+| Paper statement            | Lean 4 name                          | File                                  |
+|----------------------------|--------------------------------------|---------------------------------------|
+| @thm-headline (full)       | `FtapProofs.ftap`                    | `ftap-proofs/FtapProofs/Theorem.lean` |
+| Reverse direction (EMM ⇒ NA) | `FtapProofs.emm_implies_no_arbitrage` | `ftap-proofs/FtapProofs/Theorem.lean` |
+| Forward direction (NA ⇒ EMM) | `FtapProofs.no_arbitrage_implies_emm` | `ftap-proofs/FtapProofs/Theorem.lean` |
+| Value process is a martingale under any EMM | `FtapProofs.discountedValue_martingale_of_emm` | `ftap-proofs/FtapProofs/MartingaleMeasure.lean` |
+| Risk-neutral pricing identity | `FtapProofs.risk_neutral_pricing`  | `ftap-proofs/FtapProofs/MartingaleMeasure.lean` |
+
+::: {.callout-note title="Formalization claim"}
+At the head of the `main` branch, `lake build` succeeds for `ftap-proofs` and a
+search for `sorry` across the proof tree returns no matches. Reproduce with the
+`verify-lean` skill.
+:::
+
+## Scope of formalization
+
+- **Formalized.** The biconditional in Section [-@sec-results] is proven from
+  the assumptions in Section [-@sec-setup] with no axiom beyond mathlib. The
+  separating-hyperplane construction, the martingale property of the discounted
+  value process, and the risk-neutral pricing identity are all machine-checked.
+- **Not formalized.** Everything in the empirical sections below. The data
+  ingestion, the estimation of an implied pricing measure, and the deviation
+  statistics are numerical and rely on a continuous model used as an
+  approximation. They are not theorems and are not claimed to be.
+
+# Empirical Setup {#sec-data}
+
+The companion study measures the operational shadow of a consistent pricing
+measure: put-call parity. The theorem guarantees a single measure exists in a
+frictionless arbitrage-free market, and parity, $C - P = S - K e^{-rT}$, must
+then hold at every strike independent of any volatility model. The study asks how
+large the parity deviation becomes once realistic quote friction is introduced,
+and how that depends on the volatility regime.
+
+Committable real option histories are licensed and out of scope for a public
+repository, so the study uses a synthetic generator. This is a controlled
+demonstration, not a claim about a specific market. The generator is an
+arbitrage-free Black-Scholes cross-section, so parity holds exactly before
+friction is added; each quote is then perturbed by independent multiplicative
+Gaussian noise at four friction levels, from tight to stressed, and the grid is
+repeated across three volatility regimes. The same harness runs on a real option
+snapshot by replacing the generator with a loader.
+
+| Field                | Value                                                       |
+|----------------------|-------------------------------------------------------------|
+| Generator            | Arbitrage-free Black-Scholes call and put cross-section      |
+| Spot, rate, maturity | $S = 100$, $r = 3\%$, $T = 0.25$ years                       |
+| Strikes              | 80 to 120 in steps of 2.5 (17 strikes)                       |
+| Friction             | Multiplicative quote noise, std 5, 25, 100, 300 bps (tight to stressed) |
+| Volatility           | 15%, 30%, 60% annualized (low, mid, high regime)             |
+| Trials               | 20,000 per cell, single seeded generator                     |
+
+The generating script and its committed output are
+`ftap-proofs/results/parity_consistency_study.py` and
+`ftap-proofs/results/metrics/parity_consistency.json`.
+
+# Results {#sec-empirical}
+
+@tbl-parity reports the mean parity deviation in basis points of spot for every
+volatility regime and friction level. The pattern is the one the theorem
+predicts. When quotes are tight the deviation is under one basis point on
+average, so the frictionless prediction essentially holds. As friction grows the
+deviation rises roughly in proportion to the quote noise, reaching tens of basis
+points under stressed quotes. The volatility regime amplifies the effect: parity
+is model-free and does not depend on volatility directly, but higher volatility
+raises option price levels, so a fixed relative quote noise produces a larger
+absolute parity gap.
+
+| Volatility regime | Tight | Normal |  Wide | Stressed |
+|-------------------|------:|-------:|------:|---------:|
+| Low (15%)         |  0.45 |   2.26 |  9.08 |    27.16 |
+| Mid (30%)         |  0.54 |   2.70 | 10.81 |    32.37 |
+| High (60%)        |  0.80 |   3.99 | 15.94 |    47.86 |
+
+: Mean put-call parity deviation in basis points of spot, by volatility regime
+and quote-friction level. Source:
+`ftap-proofs/results/metrics/parity_consistency.json`, 20,000 trials per cell.
+{#tbl-parity}
+
+The tail behaves the same way. At the 95th percentile across strikes and trials,
+the deviation runs from about 1.3 basis points in the tight, low-volatility cell
+to about 119 basis points in the stressed, high-volatility cell.
+
+# Robustness {#sec-robustness}
+
+The controlled design lets us read robustness directly off the grid rather than
+re-estimate on subsamples.
+
+**Friction sensitivity.** Across all three volatility regimes the mean deviation
+rises monotonically with quote noise, and close to linearly: each step up in
+friction produces a proportional step up in deviation. There is no friction
+level at which the parity relation silently breaks; it degrades smoothly, which
+is the behavior a no-arbitrage diagnostic should have.
+
+**Regime conditioning.** Moving from the low to the high volatility regime raises
+the stressed-quote mean deviation from 27 to 48 basis points, an increase of
+about three-quarters, and the worst cell reaches a 95th-percentile deviation near
+119 basis points. A desk reading parity deviations as a no-arbitrage signal would
+therefore need a regime-aware threshold: a deviation that flags mispricing in
+calm conditions sits inside the friction band on a stressed, high-volatility
+tape.
+
+**Quote-convention sensitivity.** The study perturbs both legs with independent
+noise, the conservative case. Common-mode quote movement, such as a shared shift
+from a stale underlier, cancels in the parity difference and would reduce the
+measured deviation. The reported numbers are therefore an upper bound on the gap
+attributable to idiosyncratic quote noise.
+
+**Where it would break on real data.** The synthetic generator omits
+early-exercise premia, dividend timing, and borrow costs, each of which moves
+parity in a direction the frictionless relation does not capture. On real quotes
+these would add a structural deviation on top of the friction band measured here,
+so the study's numbers should be read as the friction-only floor.
+
+# Discussion {#sec-discussion}
+
+The proof and the planned measurement answer two different questions. The proof
+settles a mathematical equivalence: in a frictionless finite market, no
+arbitrage is exactly the existence of a consistent pricing measure, with no
+hidden assumptions. The measurement asks how good an approximation that
+idealization is for a market with frictions, and the honest expectation is that
+the gap is small in calm regimes and widens in stress. Neither result is a
+trading signal. The value of the verified foundation is that every downstream
+pricing claim in this series can cite a checked theorem rather than restate
+folklore, and can be explicit about the assumptions under which its prices are
+guaranteed to be consistent.
+
+Three extensions are natural. The first is the multi-period incomplete-market
+case, where the pricing measure is no longer unique and the object of interest
+is the set of consistent measures. The second is an explicit treatment of
+transaction costs, where no arbitrage corresponds to a cone of consistent
+price systems rather than a single measure. The third is the empirical exercise
+above, executed across several underliers and reported with the deviations
+broken out by regime.
+
+# Appendix {.appendix}
+
+## A. Proof references
+
+The full proofs are machine-checked; rather than reproduce them, we point to the
+source. The forward direction's separation argument is in
+`ftap-proofs/FtapProofs/Theorem.lean`, building on the attainable-payoff and
+no-arbitrage definitions in `ftap-proofs/FtapProofs/Arbitrage.lean`. The
+martingale machinery is in `ftap-proofs/FtapProofs/MartingaleMeasure.lean`.
+
+## B. Replication
+
+```bash
+git clone https://github.com/eigenq-xyz/quant-proofs
+cd quant-proofs/ftap-proofs
+lake build              # machine-checks the proof; zero sorry on main
+
+# Reproduce the controlled parity study (Section 7) with a numpy/scipy environment:
+python results/parity_consistency_study.py   # writes results/metrics/parity_consistency.json
+```
+
+The study is seeded, so the committed `parity_consistency.json` reproduces
+exactly. @tbl-parity is read directly from that file.

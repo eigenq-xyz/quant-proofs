@@ -1,0 +1,139 @@
+{
+  "description": "Controlled put-call parity consistency study. Parity deviation in basis points of spot, on an arbitrage-free Black-Scholes cross-section perturbed by multiplicative quote noise. Synthetic generator; the harness runs on real quotes unchanged.",
+  "parameters": {
+    "seed": 20260530,
+    "spot": 100.0,
+    "rate": 0.03,
+    "maturity_years": 0.25,
+    "strikes": [
+      80.0,
+      82.5,
+      85.0,
+      87.5,
+      90.0,
+      92.5,
+      95.0,
+      97.5,
+      100.0,
+      102.5,
+      105.0,
+      107.5,
+      110.0,
+      112.5,
+      115.0,
+      117.5,
+      120.0
+    ],
+    "n_trials": 20000
+  },
+  "cells": [
+    {
+      "vol_regime": "low_vol",
+      "friction": "tight",
+      "sigma": 0.15,
+      "noise_std": 0.0005,
+      "mean_dev_bps": 0.4514,
+      "p95_dev_bps": 1.3321,
+      "max_dev_bps": 4.7438
+    },
+    {
+      "vol_regime": "low_vol",
+      "friction": "normal",
+      "sigma": 0.15,
+      "noise_std": 0.0025,
+      "mean_dev_bps": 2.2592,
+      "p95_dev_bps": 6.6483,
+      "max_dev_bps": 21.5316
+    },
+    {
+      "vol_regime": "low_vol",
+      "friction": "wide",
+      "sigma": 0.15,
+      "noise_std": 0.01,
+      "mean_dev_bps": 9.0797,
+      "p95_dev_bps": 26.7655,
+      "max_dev_bps": 86.271
+    },
+    {
+      "vol_regime": "low_vol",
+      "friction": "stressed",
+      "sigma": 0.15,
+      "noise_std": 0.03,
+      "mean_dev_bps": 27.1605,
+      "p95_dev_bps": 80.2371,
+      "max_dev_bps": 299.6641
+    },
+    {
+      "vol_regime": "mid_vol",
+      "friction": "tight",
+      "sigma": 0.3,
+      "noise_std": 0.0005,
+      "mean_dev_bps": 0.5401,
+      "p95_dev_bps": 1.4426,
+      "max_dev_bps": 4.0386
+    },
+    {
+      "vol_regime": "mid_vol",
+      "friction": "normal",
+      "sigma": 0.3,
+      "noise_std": 0.0025,
+      "mean_dev_bps": 2.7029,
+      "p95_dev_bps": 7.2098,
+      "max_dev_bps": 23.333
+    },
+    {
+      "vol_regime": "mid_vol",
+      "friction": "wide",
+      "sigma": 0.3,
+      "noise_std": 0.01,
+      "mean_dev_bps": 10.8071,
+      "p95_dev_bps": 28.8628,
+      "max_dev_bps": 83.9208
+    },
+    {
+      "vol_regime": "mid_vol",
+      "friction": "stressed",
+      "sigma": 0.3,
+      "noise_std": 0.03,
+      "mean_dev_bps": 32.3654,
+      "p95_dev_bps": 86.6169,
+      "max_dev_bps": 259.442
+    },
+    {
+      "vol_regime": "high_vol",
+      "friction": "tight",
+      "sigma": 0.6,
+      "noise_std": 0.0005,
+      "mean_dev_bps": 0.796,
+      "p95_dev_bps": 1.9862,
+      "max_dev_bps": 6.9083
+    },
+    {
+      "vol_regime": "high_vol",
+      "friction": "normal",
+      "sigma": 0.6,
+      "noise_std": 0.0025,
+      "mean_dev_bps": 3.9933,
+      "p95_dev_bps": 9.9772,
+      "max_dev_bps": 28.6442
+    },
+    {
+      "vol_regime": "high_vol",
+      "friction": "wide",
+      "sigma": 0.6,
+      "noise_std": 0.01,
+      "mean_dev_bps": 15.938,
+      "p95_dev_bps": 39.7483,
+      "max_dev_bps": 105.8149
+    },
+    {
+      "vol_regime": "high_vol",
+      "friction": "stressed",
+      "sigma": 0.6,
+      "noise_std": 0.03,
+      "mean_dev_bps": 47.8555,
+      "p95_dev_bps": 119.412,
+      "max_dev_bps": 313.9649
+    }
+  ]
+}
