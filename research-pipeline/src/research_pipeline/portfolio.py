@@ -12,10 +12,13 @@ from __future__ import annotations
 import pathlib
 import sys
 import warnings
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 import pandas as pd
+
+if TYPE_CHECKING:
+    from .data import PricePanel
 
 # A portfolio constructor maps one cross-sectional score row to target weights.
 PortfolioConstructor = Callable[..., pd.Series]
@@ -146,6 +149,68 @@ def verified_pgd_weights(
             stacklevel=2,
         )
         return signal_to_weights(mu)
+
+
+def _ledoit_wolf_shrink(cov: np.ndarray, intensity: float = 0.1) -> np.ndarray:
+    """Shrink a sample covariance toward a scaled identity; guarantees positive definiteness.
+
+    Mirrors the ``shrinkage_psd`` theorem in ``optimization-proofs``:
+    ``delta * (trace/n) * I + (1 - delta) * cov`` is positive definite for any symmetric PSD
+    ``cov``, so the verified PGD solver always receives a well-posed (PD) covariance.
+    """
+    n = cov.shape[0]
+    target = (np.trace(cov) / n) * np.eye(n)
+    return np.asarray(intensity * target + (1.0 - intensity) * cov, dtype=float)
+
+
+def make_verified_pgd_weight_fn(
+    panel: "PricePanel",
+    lookback: int = 252,
+    leverage_cap: float = 1.5,
+    min_obs: int = 120,
+    shrink: float = 0.1,
+    periods_per_year: int = 252,
+    risk_aversion: float = 1.0,
+) -> PortfolioConstructor:
+    """Build a per-date weight function that routes construction through the **verified** PGD solver.
+
+    Returns a standard ``(signal_row, gross=...) -> Series`` constructor so it drops straight into
+    :func:`research_pipeline.backtest.run_backtest`. At each date ``t`` (``= signal_row.name``) it
+    forms a trailing Ledoit--Wolf covariance from returns with timestamp ``<= t`` *only* (preserving
+    the verified no-look-ahead property end to end), takes the signal row as expected returns ``mu``,
+    and solves the verified budget-constrained mean-variance problem
+    (``sum w = 1``, ``sum|w| <= leverage_cap``). Names with a missing signal or an incomplete
+    covariance window at ``t`` are dropped; fewer than three survivors yields a flat book.
+
+    This is the **budget** book (``sum w = 1``) — the constraint the projection is *proven* for. It
+    is a different book from the dollar-neutral baseline; the dollar-neutral (``sum w = 0``) verified
+    projection is a tracked ``optimization-proofs`` theorem (see ROADMAP). ``gross`` is ignored: the
+    verified solver normalises to ``sum w = 1``.
+    """
+    rets = panel.prices.astype(float).pct_change()
+
+    def _verified_pgd_weight_fn(signal_row: pd.Series, gross: float = 1.0) -> pd.Series:
+        flat = pd.Series(0.0, index=signal_row.index)
+        mu_row = signal_row.dropna()
+        if len(mu_row) < 3:
+            return flat
+        window = rets.loc[: signal_row.name].iloc[-lookback:]
+        window = window.loc[:, mu_row.index].dropna(axis=1, how="any")
+        if window.shape[0] < min_obs or window.shape[1] < 3:
+            return flat
+        assets = list(window.columns)
+        # Put Sigma on the SAME (annual) horizon as the momentum mu. The signal is a ~12-month return,
+        # but np.cov of daily returns is a per-DAY covariance, so without annualising, the risk term
+        # (1/2) w' Sigma w is ~252x too small relative to mu' w and the MV solution degenerates into a
+        # concentrated max-return corner bet. risk_aversion further scales the risk term.
+        sample = np.cov(window.to_numpy(dtype=float), rowvar=False) * (
+            risk_aversion * periods_per_year
+        )
+        cov_df = pd.DataFrame(_ledoit_wolf_shrink(sample, shrink), index=assets, columns=assets)
+        w = verified_pgd_weights(mu_row.loc[assets], cov_df, leverage_cap=leverage_cap)
+        return w.reindex(signal_row.index).fillna(0.0)
+
+    return _verified_pgd_weight_fn
 
 
 # --- registry ---------------------------------------------------------------

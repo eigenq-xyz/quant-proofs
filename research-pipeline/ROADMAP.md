@@ -3,6 +3,31 @@
 Taking the scaffold to a complete research desk. Each item is issue-sized; open a GitHub
 issue and close it in the same PR cycle. Develop on a branch; **never merge a `sorry` to main.**
 
+## Near-term focus (Jun–Jul 2026) — certify → validate → extend
+
+The active sprint, as three technical briefs:
+
+- **W1 — Validate by reproduction.** Wire the AQR TSMOM/VME loaders (`data_sources.py`, free) into a
+  per-sleeve Sharpe-vs-published table (equities/FI/FX/commodities), matching sign and rough magnitude
+  of each paper's reported figure. `crossasset.py` already ingests the streams and builds the
+  correlation matrix; extend rather than rebuild. Add a one-line verification-status line (Lean build
+  green ⇒ invariants proven) the study can print. Deliverable: the reproduction table in `REPORT.md`.
+- **W2 — Extend: verified total-portfolio combine.** Feed the reproduced sleeve return streams into the
+  verified solver (μ = trailing sleeve means, Σ = Ledoit-Wolf-shrunk sleeve covariance, the proven-PSD
+  target) through `verified_pgd_weights` (budget simplex `sum w = 1`, `sum|w| ≤ cap`). This reuses the
+  existing projection/convergence proof verbatim — **no new theorem** (the dollar-neutral `sum w = 0`
+  theorem stays parked). Compare vs 1/N-across-sleeves OOS, net of costs, with deflated/probabilistic
+  Sharpe. This is the regime where mean-variance is supposed to help (few diversifying sleeves, decades
+  of monthly data, estimable stable Σ). The single-name 49-industry MV result (net Sharpe 0.60, −95% DD,
+  loses to 1/N) stays as the contrast: the same optimizer destroys value on noisy single names.
+- **W3 — Package: one-command reproduction.** A single `make reproduce` that downloads data, prints
+  reproduced-vs-published Sharpes, prints the Lean verification status, runs the verified combine, and
+  prints the deflated-Sharpe verdict, plus a one-page `REPORT.md` summary on the certify→validate→extend
+  arc.
+
+**Out of scope for this sprint:** dollar-neutral verified projection (new theorem), perpetual-futures
+proofs, capacity/impact models, multi-period optimization, CRSP single-name upgrade. Parked to keep focus.
+
 ## Priority order (status: most items complete as of Jun 2026)
 
 The completion path that turns the scaffold into a defensible end-to-end research artifact: a
@@ -20,10 +45,13 @@ formally verified. Perpetual-futures proofs are **parked** as an extension, off 
    filtration, citing `ftap-proofs`, proved `sorry`-free in `lean/ResearchPipeline/Measurability.lean`
    (`momentumSignal_adapted`). The shipped guarantee is now both the pointwise non-anticipation predicate and
    adapted-process 𝓕ₜ-measurability.
-4. **Live verified-PGD wiring** (Phase 3, item 7 below — in progress): `verified_pgd_weights` now **raises
-   instead of silently substituting an unverified baseline** (no silent fallback). Remaining: build/route a
-   persistent `pgd_solve` path in the study by default, and extend the verified projection to the
-   dollar-neutral simplex (`sum w = 0`), a new `optimization-proofs` theorem.
+4. **Live verified-PGD wiring** (Phase 3, item 7 below — DONE for the budget simplex): `verified_pgd_weights`
+   raises instead of silently substituting an unverified baseline (no silent fallback), and is wired live via
+   `make_verified_pgd_weight_fn`. **Finding:** on single-name 49-industry cross-sectional momentum the verified
+   MV book amplifies estimation error (net Sharpe 0.60, −95% DD, loses to 1/N) — the textbook Michaud/DeMiguel
+   result, kept as the honest *contrast*. The optimizer's real home is the **verified total-portfolio combine**
+   across diversifying sleeves — see brief W2 in "Near-term focus" above (reuses the existing budget-simplex
+   proof; the dollar-neutral `sum w = 0` theorem stays parked).
 5. ✅ **Bounded cross-asset study on FREE published data** (Phase 4, item 10 below): uses AQR's free
    "Time Series Momentum" / "Value and Momentum Everywhere" datasets (equities, bonds, currencies,
    commodities), same momentum signal, no per-asset tuning. `REPORT.md` §7 reports per-asset deflated Sharpe
