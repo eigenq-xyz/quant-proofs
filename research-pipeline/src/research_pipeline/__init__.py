@@ -11,6 +11,8 @@ from .signals import momentum_signal, ts_momentum_signal, reversal_signal, condi
 from .stats import (
     ic_summary,
     ic_decay,
+    quantile_spread,
+    rolling_ic_stability,
     mean_ic,
     newey_west_tstat,
     signal_correlation,
@@ -41,7 +43,7 @@ from .evaluation import (
     turnover,
     factor_attribution,
 )
-from .crossasset import run_cross_asset
+from .crossasset import run_cross_asset, analyze_return_streams
 from .strategy import (
     Strategy,
     SignalStrategy,
@@ -60,6 +62,8 @@ __all__ = [
     "conditional_scale",
     "ic_summary",
     "ic_decay",
+    "quantile_spread",
+    "rolling_ic_stability",
     "mean_ic",
     "newey_west_tstat",
     "signal_correlation",
@@ -93,6 +97,7 @@ __all__ = [
     "turnover",
     "factor_attribution",
     "run_cross_asset",
+    "analyze_return_streams",
     "Strategy",
     "SignalStrategy",
     "register",

@@ -75,7 +75,7 @@ def run_backtest(
         "net_sharpe": sharpe(net_s),
         "mean_IC": mean_ic(signal, fwd),
         "avg_turnover": turnover(weights_df),
-        "cum_net_return": float((1.0 + net_s).prod() - 1.0),
+        "cum_net_return": float((1.0 + net_s.to_numpy(dtype=float)).prod() - 1.0),
         "n_days": float(len(net_s)),
     }
     return BacktestResult(gross_s, net_s, weights_df, summary)

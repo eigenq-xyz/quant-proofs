@@ -44,8 +44,8 @@ def leakage_gap(index: pd.Index, splits: list[tuple[pd.Index, pd.Index]], horizo
     for train, test in splits:
         if len(train) == 0 or len(test) == 0:
             continue
-        last_train_pos = int(index.get_indexer([train[-1]])[0])
-        first_test_pos = int(index.get_indexer([test[0]])[0])
+        last_train_pos = int(index.get_indexer(pd.Index([train[-1]]))[0])
+        first_test_pos = int(index.get_indexer(pd.Index([test[0]]))[0])
         slacks.append(first_test_pos - (last_train_pos + horizon))
     return min(slacks) if slacks else 0
 

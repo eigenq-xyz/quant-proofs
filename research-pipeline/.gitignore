@@ -9,7 +9,6 @@ results/
 
 # Lean / Python build + cache
 .lake/
-lake-manifest.json
 build/
 __pycache__/
 *.pyc

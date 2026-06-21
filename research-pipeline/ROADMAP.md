@@ -3,6 +3,37 @@
 Taking the scaffold to a complete research desk. Each item is issue-sized; open a GitHub
 issue and close it in the same PR cycle. Develop on a branch; **never merge a `sorry` to main.**
 
+## Priority order (status: most items complete as of Jun 2026)
+
+The completion path that turns the scaffold into a defensible end-to-end research artifact: a
+backtested signal with an honest Sharpe and real signal diagnostics, with the load-bearing steps
+formally verified. Perpetual-futures proofs are **parked** as an extension, off this critical path.
+
+1. ✅ **Real study on FREE data first (Ken French daily), not CRSP.** Ran the OOS study and filled
+   `studies/REPORT.md` with honest net-of-cost / deflated-Sharpe / walk-forward results. The Ken French
+   loaders work with no credentials; CRSP is an optional single-stock upgrade (`studies/WRDS_DATA_REQUEST.md`).
+2. ✅ **Signal-diagnostics report panel.** `REPORT.md` now reports rank IC, IC IR, Newey-West HAC t-stat,
+   IC decay by horizon, **decile-spread monotonicity**, **rolling / subperiod IC stability**, and incremental
+   IC vs. known factors (`combination.py`). The Track 1 validation harness (planted-alpha detection, noise
+   rejection, injected-leak red-team) is the defensibility backbone for using a known alpha as a control.
+3. ✅ **Measure-theoretic 𝓕ₜ upgrade** (Phase 1, item 3 below): genuine 𝓕ₜ-measurability against the natural
+   filtration, citing `ftap-proofs`, proved `sorry`-free in `lean/ResearchPipeline/Measurability.lean`
+   (`momentumSignal_adapted`). The shipped guarantee is now both the pointwise non-anticipation predicate and
+   adapted-process 𝓕ₜ-measurability.
+4. **Live verified-PGD wiring** (Phase 3, item 7 below — in progress): `verified_pgd_weights` now **raises
+   instead of silently substituting an unverified baseline** (no silent fallback). Remaining: build/route a
+   persistent `pgd_solve` path in the study by default, and extend the verified projection to the
+   dollar-neutral simplex (`sum w = 0`), a new `optimization-proofs` theorem.
+5. ✅ **Bounded cross-asset study on FREE published data** (Phase 4, item 10 below): uses AQR's free
+   "Time Series Momentum" / "Value and Momentum Everywhere" datasets (equities, bonds, currencies,
+   commodities), same momentum signal, no per-asset tuning. `REPORT.md` §7 reports per-asset deflated Sharpe
+   plus a cross-asset correlation table, scoped as breadth evidence (not routed through the verified backtester).
+
+**Verification-scope honesty guardrail:** the no-look-ahead theorem covers the daily event-driven backtester.
+Either route the cross-asset runs through that same verified backtester, or scope the "verified" claim to the
+daily equity backtest and present cross-asset as breadth/generalization evidence. Never let "verified" stretch
+silently over runs it did not touch.
+
 ## Phase 1 — Formal core (Lean)
 
 - ✅ **Strategy-agnostic engine.** `Strategy` protocol + registry; cross-sectional and

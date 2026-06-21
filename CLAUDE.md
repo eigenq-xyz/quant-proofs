@@ -14,9 +14,10 @@ Monorepo for formally verified quantitative finance. Lean 4 proofs + Python/Cyth
 | `mortgage-proofs/` | LangGraph multi-agent mortgage pipeline + Lean 4 invariant checking | `cd mortgage-proofs && lake build` | `cd mortgage-proofs && pytest` |
 | `stopped-time-proofs/` | Geometric PMF + `GeometricExpectation` operator — Mathlib PR candidate, no finance content | `cd stopped-time-proofs && lake build` | `grep -rn '^\s*sorry\b' --include="*.lean" stopped-time-proofs/` |
 | `perpetual-proofs/` | No-arbitrage pricing for perpetual futures (Ackerer-Hugonnier-Jermann 2025); depends on stopped-time-proofs + ftap-proofs | `cd perpetual-proofs && lake build` | same |
+| `research-pipeline/` | **Flagship** — full quant-research-desk workflow (data→signals→stats→portfolio→backtest→eval→cross-asset); backtest stage proves no look-ahead (non-anticipation / $\mathcal{F}_t$-measurability); unifies the verified modules. In progress | `cd research-pipeline/lean && lake build` | `cd research-pipeline && pytest` |
 | `archive/` | Superseded work — do not build or extend | — | — |
 
-Planned: `backtest-proofs/` (event-driven backtester, $\mathcal{F}_t$-measurability proofs, after FTAP).
+`research-pipeline/` is scaffolded (full desk workflow runs; backtest no-look-ahead core proved `sorry`-free; statistical layer rigorous but unverified). Next: measure-theoretic $\mathcal{F}_t$-measurability upgrade citing `ftap-proofs` + verified-solver wiring — see `research-pipeline/ROADMAP.md`.
 
 Each active subdir has its own CLAUDE.md with architecture details. Read that before working in a subdir.
 

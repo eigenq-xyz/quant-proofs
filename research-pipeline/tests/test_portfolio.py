@@ -68,3 +68,37 @@ def test_degenerate_inputs_return_zero() -> None:
     assert float(signal_to_weights(flat).abs().sum()) == 0.0
     nan = pd.Series({"A": np.nan})
     assert float(directional_weights(nan).abs().sum()) == 0.0
+
+
+def test_verified_solver_unavailable_is_runtime_error() -> None:
+    from research_pipeline.portfolio import VerifiedSolverUnavailable
+
+    assert issubclass(VerifiedSolverUnavailable, RuntimeError)
+
+
+def test_verified_pgd_no_silent_fallback() -> None:
+    # cov missing the requested assets forces the solver path to fail deterministically,
+    # regardless of whether the compiled binary is present. Default: it must RAISE, never
+    # silently substitute an unverified baseline.
+    import pytest
+
+    from research_pipeline.portfolio import VerifiedSolverUnavailable, verified_pgd_weights
+
+    mu = pd.Series({"X": 0.1, "Y": -0.1, "Z": 0.05})
+    cov = pd.DataFrame(np.eye(2), index=["A", "B"], columns=["A", "B"])
+    with pytest.raises(VerifiedSolverUnavailable):
+        verified_pgd_weights(mu, cov)
+
+
+def test_verified_pgd_fallback_is_loud() -> None:
+    # Opting into the fallback must WARN (never silent) and return the baseline weights.
+    import pytest
+
+    from research_pipeline.portfolio import verified_pgd_weights
+
+    mu = pd.Series({"X": 0.1, "Y": -0.1, "Z": 0.05})
+    cov = pd.DataFrame(np.eye(2), index=["A", "B"], columns=["A", "B"])
+    with pytest.warns(UserWarning):
+        w = verified_pgd_weights(mu, cov, allow_fallback=True)
+    assert list(w.index) == list(mu.index)
+    assert np.isfinite(w.to_numpy()).all()

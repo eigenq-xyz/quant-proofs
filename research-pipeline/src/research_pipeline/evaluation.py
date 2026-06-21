@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from scipy import stats as _st
 
 
 def sharpe(returns: pd.Series, periods_per_year: int = 252) -> float:
@@ -34,22 +35,24 @@ def performance_summary(returns: pd.Series, periods_per_year: int = 252) -> pd.S
     n = len(r)
     if n < 2:
         return pd.Series(dtype=float)
-    sd = float(r.std())
-    ann_return = float((1.0 + r).prod() ** (periods_per_year / n) - 1.0)
+    a = r.to_numpy(dtype=float)
+    sd = float(a.std())
+    ann_return = float((1.0 + a).prod() ** (periods_per_year / n) - 1.0)
     mdd = max_drawdown(r)
-    return pd.Series(
-        {
-            "sharpe": sharpe(r, periods_per_year),
-            "ann_return": ann_return,
-            "ann_vol": sd * np.sqrt(periods_per_year),
-            "max_drawdown": mdd,
-            "calmar": ann_return / abs(mdd) if mdd < 0 else float("nan"),
-            "hit_rate": float((r > 0).mean()),
-            "skew": float(r.skew()),
-            "kurtosis": float(r.kurt()),
-            "n": float(n),
-        }
-    )
+    out: dict[str, float] = {
+        "sharpe": sharpe(r, periods_per_year),
+        "ann_return": ann_return,
+        "ann_vol": sd * np.sqrt(periods_per_year),
+        "max_drawdown": mdd,
+        "calmar": ann_return / abs(mdd) if mdd < 0 else float("nan"),
+        "hit_rate": float((a > 0).mean()),
+        "skew": float(_st.skew(a, bias=False)),  # bias-corrected, matches pandas .skew()
+        "kurtosis": float(
+            _st.kurtosis(a, fisher=True, bias=False)
+        ),  # excess, matches pandas .kurt()
+        "n": float(n),
+    }
+    return pd.Series(out, dtype=float)
 
 
 def factor_attribution(strategy_returns: pd.Series, factor_returns: pd.DataFrame) -> pd.Series:

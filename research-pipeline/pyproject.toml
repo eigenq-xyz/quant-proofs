@@ -6,16 +6,15 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Akhil Karra" }]
-
-[project.scripts]
-rp = "research_pipeline.cli:main"
-
 dependencies = [
     "numpy>=1.26.0",
     "pandas>=2.0.0",
     "scipy>=1.11.0",
-    "pandas-datareader>=0.10.0",  # Ken French (free) loader
+    "openpyxl>=3.1.0",  # read AQR .xlsx factor datasets (data_sources.load_aqr_*)
 ]
+
+[project.scripts]
+rp = "research_pipeline.cli:main"
 
 [project.optional-dependencies]
 dev = [
@@ -46,5 +45,5 @@ strict = true
 files = ["src"]
 
 [[tool.mypy.overrides]]
-module = ["scipy.*"]
+module = ["scipy.*", "openpyxl.*"]
 ignore_missing_imports = true

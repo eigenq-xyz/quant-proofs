@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import pathlib
 import sys
+import warnings
 from typing import Callable
 
 import numpy as np
@@ -79,19 +80,35 @@ def directional_weights(signal_row: pd.Series, gross: float = 1.0) -> pd.Series:
     denom = float(sign.abs().sum())
     if denom == 0.0 or not np.isfinite(denom):
         return pd.Series(0.0, index=s.index)
-    return sign / denom * gross
+    return pd.Series(sign / denom * gross, index=s.index)
+
+
+class VerifiedSolverUnavailable(RuntimeError):
+    """The compiled Lean PGD solver could not be reached.
+
+    Raised by :func:`verified_pgd_weights` instead of silently degrading to an unverified
+    baseline. A result is "verified end-to-end" only if it actually ran through the verified
+    solver; a silent fallback would let unverified weights masquerade as verified ones, which
+    is precisely the data-mining failure this project exists to rule out.
+    """
 
 
 def verified_pgd_weights(
     mu: pd.Series,
     cov: pd.DataFrame,
     leverage_cap: float = 1.5,
+    allow_fallback: bool = False,
 ) -> pd.Series:
     """Budget-constrained mean-variance weights via the verified Lean 4 PGD solver.
 
     Solves ``sum(w) ≈ 1``, ``sum|w| ≤ leverage_cap``. Requires the compiled ``pgd_solve``
-    binary in ``portfolio-proofs`` (``cd portfolio-proofs/.. ; lake exe pgd_solve``); falls
-    back to the dollar-neutral baseline if the verified solver is unavailable.
+    binary in ``portfolio-proofs`` (``cd portfolio-proofs && lake build``).
+
+    **No silent fallback.** If the verified solver is unavailable this *raises*
+    :class:`VerifiedSolverUnavailable` (the default), so a study can never present an
+    unverified baseline as a verified result. Pass ``allow_fallback=True`` to degrade to the
+    dollar-neutral baseline instead, in which case a :class:`UserWarning` is emitted and the
+    fallback is loud, never silent.
 
     NOTE: the verified projection currently targets the budget simplex (``sum w = 1``).
     Extending it to the dollar-neutral simplex (``sum w = 0``) for cross-sectional L/S
@@ -113,8 +130,21 @@ def verified_pgd_weights(
             leverage_cap,
         )
         return pd.Series(w, index=assets)
-    except Exception:
-        # Verified binary not built / unavailable in this environment.
+    except VerifiedSolverUnavailable:
+        raise
+    except Exception as exc:  # solver not built / import or runtime failure
+        if not allow_fallback:
+            raise VerifiedSolverUnavailable(
+                "verified PGD solver unavailable (build portfolio-proofs: "
+                "`cd portfolio-proofs && lake build`). Refusing to silently substitute an "
+                "unverified baseline; pass allow_fallback=True to opt in to a loud fallback."
+            ) from exc
+        warnings.warn(
+            f"verified PGD solver unavailable ({exc}); falling back to the UNVERIFIED "
+            "dollar-neutral baseline. These weights are NOT verified.",
+            UserWarning,
+            stacklevel=2,
+        )
         return signal_to_weights(mu)
 
 

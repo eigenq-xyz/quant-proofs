@@ -23,10 +23,11 @@ Status legend: **Complete** = builds with zero `sorry` and `#print axioms` repor
 | [`stopped-time-proofs/`](stopped-time-proofs/) | Geometric stopping-time expectations; mathlib-candidate (no finance content) | **In progress** — Jensen (G2.2) is an open `sorry` |
 | [`perpetual-proofs/`](perpetual-proofs/) | Perpetual-futures no-arbitrage pricing and the inverse-perp convexity correction | **Complete** — 10 theorems, zero `sorry`; both headline theorems verified (axioms clean). Builds under v4.30.0; depends on `stopped-time-proofs`, whose Jensen (G2.2) is an *unused* open `sorry` |
 | [`portfolio-proofs/`](portfolio-proofs/) | Mean-variance allocation with Ledoit-Wolf shrinkage built on `optimization-proofs` (Lean + Python/Cython); stressed-solver scenarios | Applied / empirical |
+| [`research-pipeline/`](research-pipeline/) | **Flagship** — a full quant-research-desk workflow (data → signals → statistical testing → portfolio → backtest → evaluation → cross-asset) unifying the verified modules end-to-end. The backtesting stage carries a proved no-look-ahead guarantee (non-anticipation / $\mathcal{F}_t$-measurability; `decision_uses_no_future`, zero `sorry`); the statistical layer (IC/HAC-significance/PSR/DSR) is unverified but rigorous | **In progress** — measure-theoretic upgrade citing `ftap-proofs` + verified-solver wiring (see [`research-pipeline/ROADMAP.md`](research-pipeline/ROADMAP.md)) |
 
 ## Planned
 
-**Formally verified backtester** — an event-driven backtesting engine where the central formal claim is $\mathcal{F}_t$-measurability of signals: provably no look-ahead bias, enforced by the Lean 4 type system. Correctness proofs will cite `ftap-proofs` (now complete).
+The **formally verified backtester** is now one stage of the [`research-pipeline/`](research-pipeline/) flagship (see the table above): the non-anticipation core is proved `sorry`-free and the full desk workflow runs end-to-end on synthetic data. Remaining work — the measure-theoretic 𝓕ₜ-measurability upgrade citing `ftap-proofs`, real point-in-time data, and routing portfolio construction through the verified PGD solver — is tracked in [`research-pipeline/ROADMAP.md`](research-pipeline/ROADMAP.md).
 
 ## Archive
 

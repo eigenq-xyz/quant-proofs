@@ -11,14 +11,14 @@ package «research-pipeline» where
 
 -- The no-look-ahead core (NoLookahead.lean) is pure-Lean and builds with no deps.
 --
--- PLANNED (see ROADMAP.md): the measure-theoretic upgrade — stating signal
--- 𝓕ₜ-measurability against the natural filtration of the price process — will
--- cite `ftap-proofs`. Uncomment to wire the dependency (pulls ftap's pinned mathlib):
---
--- require «ftap-proofs» from "../../ftap-proofs"
--- require «quant-core» from "../../quant-core/lean"
--- require mathlib from git
---   "https://github.com/leanprover-community/mathlib4.git" @ "d49d6649f50b54b813042b80d5837fd62561b48f"
+-- The measure-theoretic upgrade (Measurability.lean) states signal
+-- 𝓕ₜ-measurability against the natural filtration of the price process and
+-- cites `ftap-proofs`. The mathlib rev below is pinned to ftap's resolved rev
+-- (d49d66…) so the shared mathlib build stays consistent; do NOT run
+-- `lake update` (it would bump mathlib to master and break the pin).
+require «ftap-proofs» from "../../ftap-proofs"
+require mathlib from git
+  "https://github.com/leanprover-community/mathlib4.git" @ "d49d6649f50b54b813042b80d5837fd62561b48f"
 
 @[default_target]
 lean_lib ResearchPipeline

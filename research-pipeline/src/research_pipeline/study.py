@@ -21,7 +21,14 @@ from .combination import incremental_ic, signal_overlap
 from .data import PricePanel
 from .evaluation import performance_summary
 from .portfolio import signal_to_weights
-from .stats import deflated_sharpe_ratio, ic_decay, ic_summary, probabilistic_sharpe_ratio
+from .stats import (
+    deflated_sharpe_ratio,
+    ic_decay,
+    ic_summary,
+    probabilistic_sharpe_ratio,
+    quantile_spread,
+    rolling_ic_stability,
+)
 
 
 @dataclass
@@ -34,6 +41,8 @@ class StudyReport:
     cross_sectional: bool = True
     ic: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))  # empty if not X-sec
     decay: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    monotonicity: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))  # decile spread
+    ic_stability: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))  # subperiod IC
     combination: pd.Series | None = None  # incremental IC + overlap vs known signals
 
 
@@ -76,6 +85,8 @@ def run_research_study(
         cross_sectional=is_xsec,
         ic=ic_summary(signal, fwd) if is_xsec else pd.Series(dtype=float),
         decay=ic_decay(signal, panel) if is_xsec else pd.Series(dtype=float),
+        monotonicity=quantile_spread(signal, fwd) if is_xsec else pd.Series(dtype=float),
+        ic_stability=rolling_ic_stability(signal, fwd) if is_xsec else pd.Series(dtype=float),
         combination=combination,
     )
 
@@ -87,6 +98,10 @@ def print_report(rep: StudyReport) -> None:
         print(rep.ic.round(4).to_string())
         print("\n[3] IC decay by horizon (days)")
         print(rep.decay.round(4).to_string())
+        print("\n[3] Decile-spread monotonicity (mean fwd return by signal bucket)")
+        print(rep.monotonicity.round(5).to_string())
+        print("\n[3] Subperiod IC stability")
+        print(rep.ic_stability.round(4).to_string())
     else:
         print("\n[3] Signal statistics (IC): n/a (non-cross-sectional alpha)")
     if rep.combination is not None:
