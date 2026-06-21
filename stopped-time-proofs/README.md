@@ -1,51 +1,46 @@
 # stopped-time-proofs
 
-Lean 4 library for probability-weighted expectations under a geometric stopping time.
+> A small, self-contained Lean 4 library for expectations under a geometric stopping time: the probability mass function, the expectation operator, and its core properties including strict monotonicity. **No finance content**, written to mathlib conventions as an upstream-PR candidate. Zero `sorry`, axioms verified.
 
-**No finance-specific content.** This module is a Mathlib PR candidate.
+[![Lean CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/lean-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
 
-## Primary definition
+## What it provides
 
-`geometricExpectation p f` is the expectation of `f : ℕ → ℝ` under a geometric
-random variable with success probability `p`:
+`geometricExpectation p f` is the expectation of `f : ℕ → ℝ` under a geometric random variable with success probability `p`:
 
-$$\mathrm{geometricExpectation}(p, f) = \sum_{k=0}^\infty (1-p)^k \cdot p \cdot f(k)$$
+$$\mathrm{geometricExpectation}(p, f) = \sum_{k=0}^{\infty} (1-p)^k\, p\, f(k).$$
 
-The weights `geomPMF p k := (1-p)^k * p` form a valid probability mass function on `ℕ`
-(`geomPMF_tsum_eq_one`), so `geometricExpectation` is a genuine expectation operator.
+The weights `geomPMF p k = (1-p)^k · p` are proved to form a genuine probability mass function on `ℕ` (`geomPMF_tsum_eq_one`), so this is a true expectation operator, and the library proves the algebraic properties downstream results need: summability, an unrolling recurrence, the constant case, and monotonicity.
 
-## Theorem status
+## Why it exists separately
 
-| Theorem | File | Status |
-|---|---|---|
-| `geomPMF_nonneg` | `GeomPMF.lean` | Planned (G1.2) |
-| `geomPMF_tsum_eq_one` | `GeomPMF.lean` | Planned (G1.3) |
-| `geometricExpectation_summable` | `GeomExpectation.lean` | Planned (G1.5) |
-| `geometricExpectation_unroll` | `GeomExpectation.lean` | Planned (G1.6) |
-| `geometricExpectation_const` | `GeomExpectation.lean` | Planned (G1.7) |
-| `geometricExpectation_mono` | `GeomExpectation.lean` | Planned (G1.8) |
-| `jensen_geom_convex` | `Jensen.lean` | Planned (G2.1) |
-| `jensen_geom_strict_convex` | `Jensen.lean` | Planned (G2.2) |
+The geometric-stopping-time expectation is general probability infrastructure with no finance in it, which makes it a clean candidate for mathlib. It is factored out here so [`perpetual-proofs`](../perpetual-proofs/) can import it for the perpetual-futures pricing theorems, where the price is an expectation of the underlying sampled at a geometric stopping time. If `geomPMF` and `geometricExpectation` are accepted upstream, this module is deleted and the dependent import switches to `mathlib` directly.
 
-## Build
+## Verify it yourself
 
 ```bash
 cd stopped-time-proofs
-lake exe cache get   # fetch mathlib cache (first run)
-lake build
+lake exe cache get     # fetch prebuilt mathlib (first run only)
+lake build             # compile and machine-check every proof
+grep -rn '^[[:space:]]*sorry\b' --include="*.lean" --exclude-dir=.lake .   # empty = clean
 ```
+
+`#print axioms` on the lemmas reports only `[propext, Classical.choice, Quot.sound]`.
+
+## What's inside
+
+| File | Contents |
+| ---- | -------- |
+| `GeomPMF.lean` | `geomPMF`; nonnegativity, positivity, and that it sums to one |
+| `GeomExpectation.lean` | `geometricExpectation`; summability, unrolling, constant, monotonicity |
+| `Jensen.lean` | strict monotonicity of the expectation operator |
+
+All eight lemmas are proved with zero `sorry`: `geomPMF_nonneg`, `geomPMF_pos`, `geomPMF_tsum_eq_one`, `geometricExpectation_summable`, `geometricExpectation_unroll`, `geometricExpectation_const`, `geometricExpectation_mono`, `geometricExpectation_strict_mono`.
 
 ## Used by
 
-- [`perpetual-proofs`](../perpetual-proofs/) — imports `geometricExpectation` and
-  Jensen's inequality for the perpetual futures pricing theorems.
-
-## Mathlib candidacy
-
-If `geomPMF` and `geometricExpectation` are accepted into Mathlib upstream, this
-module is deleted and `perpetual-proofs/lakefile.lean` switches the import to
-`mathlib` directly.
+- [`perpetual-proofs`](../perpetual-proofs/): the geometric-stopping-time expectation and its strict monotonicity (the latter gives the inverse-perpetual convexity correction).
 
 ## License
 
-Apache License 2.0 — matches mathlib's licensing.
+Apache License 2.0, matching mathlib so the work can flow upstream.

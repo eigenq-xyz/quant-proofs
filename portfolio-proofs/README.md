@@ -1,101 +1,104 @@
-# portfolio-proofs — Formally Verified Convex Portfolio Optimizer Core
+# portfolio-proofs
 
-An elegant, decoupled, and compiler-verified portfolio allocation module in Lean 4 and Python/Cython. It leverages the general-purpose optimization core in [`optimization-proofs`](file:///Users/akhilkarra/ode/eigenq/quant-proofs/optimization-proofs) and applies it to Mean-Variance asset allocation using stable Ledoit-Wolf shrinkage, designed to eradicate model instability and constraint violations in systematic portfolio construction.
+> Two distinct problems in quantitative finance, optimal **allocation** and optimal **hedging**, each reduce to the same convex quadratic program. This project solves that program with a projected-gradient solver whose convergence and constraint-feasibility are **proved in Lean 4** (see [`optimization-proofs`](../optimization-proofs/)), and demonstrates it on both.
 
----
+[![Lean CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/lean-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eigenq-xyz/quant-proofs/blob/main/notebooks/portfolio_solver_stress.ipynb)
 
-## 🚨 The Problem Statement: Stressed Solver Failures
+## Two finance problems, one optimization core
 
-In systematic portfolio construction, the asset allocation layer (e.g., Mean-Variance, Risk Parity, Black-Litterman) is the mathematical core of the trading desk. However, traditional numerical QP solvers—both open-source (SciPy's SLSQP or trust-constr) and commercial (Gurobi)—experience critical **mathematical and operational failures** under stressed market regimes:
+### Optimal allocation
 
-### 1. The Eigenvalue Deficit (The Cholesky Crash)
-*   **The Scenario**: During market shocks (e.g., the March 2020 liquidity freeze), assets become highly correlated, and historical sample windows must be shrunk to capture the new regime.
-*   **Traditional Solver Failure**: When the lookback window is shorter than the number of assets ($T < N$), the sample covariance matrix $S$ becomes rank-deficient and singular (contains negative or zero eigenvalues due to rounding).
-    *   **SciPy / SLSQP** fails to converge and hits the iteration limit.
-    *   **Gurobi** halts immediately and throws a fatal error: `Error 10020: Objective Q is not PSD`. Setting `NonConvex=2` switches Gurobi to a highly inefficient spatial branch-and-bound MIP solver, causing system latency to explode.
+An investor spreads capital across `N` assets with random returns, expected excess returns `μ`, and return covariance `Σ`. The Markowitz objective trades expected return against variance: for risk aversion `γ`,
 
-### 2. Constraint Bleed & Floating-Point Drift (The Leverage Leak)
-*   **The Scenario**: In high-turnover rebalancing strategies executing hundreds of sequential trades, we enforce a strict leverage cap (e.g., gross exposure $\sum |w_i| \le 1.5$) to satisfy risk limits or regulatory guidelines.
-*   **Traditional Solver Failure**: Standard double-precision floating-point arithmetic (`float64`) accumulates rounding errors at every iteration. Over hundreds of steps, the constraints "bleed": standard solvers output weights violating the budget constraint ($\sum w_i = 1.00003$) or leverage limit ($\sum |w_i| = 1.50008$). In live institutional trading, even a $0.01\%$ pre-trade breach triggers risk halts, blocking trades.
+$$\max_w\ \mu^\top w - \tfrac{\gamma}{2}\, w^\top \Sigma w \quad\Longleftrightarrow\quad \min_w\ \tfrac{\gamma}{2}\, w^\top \Sigma w - \mu^\top w$$
 
-### 3. The Non-Differentiability Boundary Trap
-*   **The Scenario**: Optimizing a long-short portfolio under an $L_1$ leverage cap ($\sum |w_i| \le L$).
-*   **Traditional Solver Failure**: Because the absolute value function $|w_i|$ is non-differentiable at zero, general-purpose solvers must introduce **$2N$ slack variables and $2N$ inequality constraints** to smooth the boundary. Under ill-conditioned matrices, this slack inflation creates extremely flat, degenerate valleys.
-    *   **Active-Set Solvers (SciPy SLSQP)**: Get trapped in infinite boundary search cycles, exceeding their iteration limits.
-    *   **Interior-Point Solvers (SciPy `trust-constr`)**: Terminate early in suboptimal flat penalty valleys due to slack-variable expansion, failing to reach the true global minimum.
+subject to a budget `Σwᵢ = 1` (fully invested) and a gross-leverage cap `Σ|wᵢ| ≤ L` (a long-short or regulatory limit). With a positive-definite `Σ`, this is a convex quadratic program in the weights `w`.
 
----
+### Optimal hedging
 
-## 🏆 The Verified Solution: Projected Gradient Descent (PGD)
+A desk holds a liability with random payoff `H` at horizon `T`, for example an index option, and offsets it by trading `n` instruments whose price changes are `ΔS`. The residual after hedging is `H − ξᵀΔS`. Minimizing the mean-square hedging error,
 
-Our solver solves these three structural failures at the **compiler level** by deploying a **specialized Projected Gradient Descent (PGD) solver with analytical simplex/leverage projection** verified in Lean 4:
+$$\min_\xi\ \mathbb{E}\big[(H - \xi^\top \Delta S)^2\big] \;=\; \min_\xi\ \tfrac{1}{2}\,\xi^\top C\,\xi - b^\top \xi \;+\; \text{const},$$
 
-1.  **Guaranteed PSD Covariance**: We formally prove the **`shrinkage_psd`** theorem: our Ledoit-Wolf shrinkage estimator is mathematically guaranteed to output strictly positive eigenvalues ($\lambda_i > 0$) under all inputs, eliminating Cholesky crashes.
-2.  **Unconditional Convergence**: We formally prove that the gradient steps converge strictly to the global minimum, with the step size analytically bounded at compile time by the maximum eigenvalue of the covariance matrix ($\eta < \frac{2}{\lambda_{\text{max}}}$).
-3.  **Zero-Drift Scaled-Integers**: The solver runs entirely on **scaled-integer basis-point arithmetic (integers $\times 10,000$)**. Because all calculations use integer-perfect bounds, floating-point rounding drift is **strictly zero**, preserving constraints perfectly over infinite steps.
-4.  **No Slack Variables**: We project weights directly onto the simplex and leverage caps using an explicit, analytical $O(N \log N)$ sorting-based bisection projection, outperforming general-purpose solvers in both speed and accuracy.
+where `C = E[ΔS·ΔSᵀ]` is the instruments' second-moment matrix and `b = E[H·ΔS]` is the claim's cross-moment with each instrument. Under a hedge-budget normalization `Σξⱼ = B` and a gross-leverage cap `Σ|ξⱼ| ≤ L`, this is again a convex quadratic program, now in the hedge positions `ξ`. This is the variance-optimal (quadratic) hedge of Schweizer (1995).
 
----
+### How the two are related, honestly
 
-## 🏁 Empirical Head-to-Head Benchmark
+They are distinct problems. Allocation prices an *appetite for return*: its linear term `μ` is a preference, scaled by risk aversion, and there is no liability to replicate. Hedging prices the *cost of tracking error against a fixed liability*: its linear term `b = E[H·ΔS]` is a projection coefficient forced by the claim's correlation with the instruments, not a return. Substituting one into the other yields nothing economically meaningful (`E[H·ΔS]` is not an expected return). The two touch only in the degenerate minimum-variance corner (allocation with `μ = 0` and a pinned position behaves like a hedge), which is a shared special case rather than a reduction. What they genuinely share is their reduced form: the convex quadratic program below.
 
-We stress-tested SciPy's SLSQP (Active-Set) and `trust-constr` (Interior-Point) solvers against our specialized PGD solver on the **L1 boundary-trap scenario** (August 2007, $N = 10$ industries, gross leverage cap $L = 1.5$, Ledoit-Wolf shrinkage applied so $\hat\Sigma \succ 0$). The failure mode here is the non-differentiable L1 leverage constraint, not rank deficiency — see `scenarios/cholesky_crash/` for the rank-deficiency crash:
+## The general convex QP
 
-| Solver | Mathematical Family | Convergence | Objective Value | Leverage Violation | Practical Behavior |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **SciPy SLSQP** | **Active-Set SQP** | ❌ **FAILED** (`Iteration limit reached`) | `-0.011282` | `3.76e-07` | **Boundary Oscillation**: Gets trapped in infinite active-set searches navigating non-differentiable $L_1$ bounds. |
-| **SciPy `trust-constr`** | **Interior-Point (Barrier)** | ✅ **Passed** | `-0.011282` | `0.00e+00` | **Suboptimal Termination**: Slack variables double the problem dimension, creating flat, degenerate penalty valleys. Solver stops early. |
-| **Our Verified PGD** | **Analytical Projection** | ✅ **Passed (106 steps)** | **`-0.011622` (Best)** | `0.00e+00` (Perfect) | **Absolute Convergence**: Avoids slack variables entirely. Steps directly and projects analytically to find the *true* global minimum. |
+$$\min_x\ \tfrac{1}{2}\, x^\top Q\, x - c^\top x \qquad \text{s.t.}\qquad \sum_i x_i = B,\quad \sum_i |x_i| \le L,$$
 
----
+with `Q` symmetric positive definite. The feasible set is the intersection of a budget hyperplane and a gross-exposure `L₁` ball: convex, compact, with a unique minimizer. Allocation is the instance `(Q, c) = (Σ, μ)`; hedging is the instance `(Q, c) = (C, b)`.
 
-## 🚀 Run the Failure Scenarios
+## Why projected gradient descent
 
-We have packaged the mathematical and numerical failure tests directly into independent, executable Python modules under the `scenarios/` directory.
+The feasible set admits an exact analytical `O(N log N)` projection (dual-bisection onto the simplex ∩ `L₁` ball), so projected-gradient iterates stay *exactly* feasible with no slack variables and no constraint drift. The alternatives fail in characteristic ways on stressed inputs, documented with data in [`scenarios/`](scenarios/):
 
-### Prerequisites
-*   Python 3.10+
-*   `numpy`, `pandas`, `scipy`
+- Active-set solvers (SciPy SLSQP) introduce `2N` slack variables for the `L₁` kink and cycle on the non-differentiable boundary until they hit the iteration limit.
+- Interior-point and commercial solvers (Gurobi) require a positive-definite `Q`, refuse a rank-deficient sample covariance outright, and stop early in flat penalty valleys.
 
-### Scenario: Cholesky Crash (Non-PSD Covariance Matrix)
-Executes solvers under rolling March 2020 parameters where $T < N$, demonstrating rank-deficiency crashes:
+Projected gradient descent needs none of that, and its convergence rate is governed by a single explicit constant, the largest eigenvalue of `Q`. That is exactly what makes the method tractable to verify formally.
+
+## What is proven (in `optimization-proofs`, zero `sorry`)
+
+| Guarantee | Theorem |
+| --------- | ------- |
+| The covariance is positive definite for any sample (Ledoit-Wolf shrinkage) | `shrinkage_psd` |
+| The analytical projection is the exact Euclidean projection onto the feasible set | `projection_correctness` |
+| Every iterate satisfies the budget and leverage constraints exactly | `projection_feasibility` |
+| The iterates converge to the global optimum for `η < 2/λ_max(Q)` | `pgd_convergence` |
+
+Because both finance problems reduce to the same QP, these guarantees apply to both. The hedging second-moment matrix `C` is a Gram matrix and hence symmetric positive semidefinite, so `shrinkage_psd` applies to it directly.
+
+## Results
+
+### Allocation: stressed-solver scenarios
+
+Seven scenarios in [`scenarios/`](scenarios/) each target one solver failure mode (rank-deficient covariance, `L₁` boundary cycling, floating-point constraint drift, step-size divergence, interior-point phantom positions, volatility-regime change, and `N`-scaling). Each has a KKT-certified analytical optimum as ground truth. The verified PGD is the only solver that passes all seven. Run the stress demo: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eigenq-xyz/quant-proofs/blob/main/notebooks/portfolio_solver_stress.ipynb)
+
+### Hedging: variance-optimal index-option hedge
+
+[`hedging/`](hedging/) builds `C` and `b` from Monte Carlo option scenarios under Black-Scholes (no licensed data), solves for the variance-optimal hedge with the verified solver, and benchmarks the out-of-sample hedging-error variance against the Black-Scholes delta hedge. Minimum-variance hedging is known to reduce hedged-PnL variance out of sample relative to the practitioner delta (Hull and White, 2017). The framing is deliberate: this is the verifiable convex counterpart to black-box deep hedging (Bühler et al., 2019), trading some empirical hedging performance for a machine-checked global-optimality and feasibility guarantee. Run it: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eigenq-xyz/quant-proofs/blob/main/notebooks/variance_optimal_hedge.ipynb)
+
+## Build and run
+
 ```bash
-# Run SciPy SLSQP (fails with Iteration Limit Reached)
+# Build the verified solver binary (from the repo root)
+cd optimization-proofs && lake exe cache get && lake build pgd_solve
+
+# Install Python deps and run the test suite (from portfolio-proofs/)
+cd ../portfolio-proofs && uv sync --extra dev
+uv run pytest tests/test_lean_pgd.py -v -k "not integration"
+
+# Reproduce a stress scenario (allocation)
 python3 scenarios/cholesky_crash/scipy_slsqp.py
 
-# Run Gurobi simulation (explains the Non-PSD Error 10020 crash)
-python3 scenarios/cholesky_crash/gurobi_non_psd.py
-
-# Run CVXPY/OSQP simulation (explains DCP errors and ADMM solver failure)
-python3 scenarios/cholesky_crash/cvxpy_osqp.py
+# Run the variance-optimal hedge (hedging)
+uv run python hedging/variance_optimal_hedge.py
 ```
 
-### Scenario: Boundary Trap (Non-Differentiable L1 Bounds)
-Executes solvers on ill-conditioned PSD matrices under $L_1$ leverage bounds:
-```bash
-# Run SciPy SLSQP (fails with Iteration Limit Reached)
-python3 scenarios/boundary_trap/scipy_slsqp.py
+## Architecture
 
-# Run SciPy trust-constr (converges but stops early in suboptimal flat valley)
-python3 scenarios/boundary_trap/scipy_trust_constr.py
-
-# Run Gurobi simulation (explains Newton-Raphson barrier complementarity gaps)
-python3 scenarios/boundary_trap/gurobi_interior_point.py
+```text
+portfolio-proofs/
+  lean_pgd.py            persistent-subprocess bridge to the verified pgd_solve binary
+  hedging/               variance-optimal hedge: Monte Carlo -> C, b -> verified solve, vs BS delta
+  scenarios/             seven allocation stress scenarios (Quarto + solver modules)
+  tests/                 deterministic unit tests + Hypothesis property tests
+  data/                  DVC-managed French 10-industry daily returns
 ```
 
-### Scenario: Precision Bleed (Floating-Point Rounding Drift)
-Executes sequential rolling rebalances to demonstrate constraint leaking over long paths:
-```bash
-# Run SciPy SLSQP (demonstrates float64 leverage limit leakages)
-python3 scenarios/precision_bleed/scipy_slsqp.py
+## References
 
-# Run CVXPY simulation (demonstrates float32 truncation accumulation over 100,000 steps)
-python3 scenarios/precision_bleed/cvxpy_float.py
-```
+- Markowitz, H. (1952). "Portfolio Selection." *Journal of Finance* 7(1): 77-91.
+- Schweizer, M. (1995). "Variance-Optimal Hedging in Discrete Time." *Mathematics of Operations Research* 20(1): 1-32.
+- Ledoit, O., and M. Wolf (2004). "A Well-Conditioned Estimator for Large-Dimensional Covariance Matrices." *Journal of Multivariate Analysis* 88(2): 365-411.
+- Hull, J., and A. White (2017). "Optimal Delta Hedging for Options." *Journal of Banking and Finance* 82: 180-190.
+- Bühler, H., L. Gonon, J. Teichmann, and B. Wood (2019). "Deep Hedging." *Quantitative Finance* 19(8): 1271-1291.
 
-### Scenario: Step-Size Divergence (Lipschitz Bound Violations)
-Executes standard gradient descent to show weight path explosions during volatility shocks:
-```bash
-# Run unverified solver (demonstrates explosion to infinity when η > 2/λ_max)
-python3 scenarios/step_divergence/unverified_gd.py
-```
+## License
+
+Apache License 2.0.

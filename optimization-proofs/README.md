@@ -1,78 +1,72 @@
-# optimization-proofs — Formally Verified Convex Optimization Core
+# optimization-proofs
 
-A specialized, high-performance, and compiler-verified numerical optimization engine in Lean 4, implementing **Projected Gradient Descent (PGD)** with an analytical, high-dimensional **simplex and $L_1$-ball intersection projection** kernel.
+> A convex quadratic-program solver whose convergence and constraint-feasibility are **proved in Lean 4**, not just tested. Where SLSQP and Gurobi can silently return an infeasible or suboptimal answer under stress, this solver carries a machine-checked guarantee that it cannot. General-purpose, zero finance dependencies, 10 theorems, zero `sorry`.
 
-This module is designed to be **general-purpose, mathematically abstract, and zero-dependency**, decouplable from financial return series and domain-specific trading code.
+[![Lean CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/lean-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
 
----
+## The result
 
-## 🚨 The Mathematical Formulation
+The engine solves convex quadratic programs
 
-The engine solves general Convex Quadratic Programs (QP) of the form:
+$$\min_{x \in \mathcal{C}} \tfrac{1}{2} x^T Q x + c^T x, \qquad \mathcal{C} = \Big\{ x : \sum_i x_i = B,\ \sum_i |x_i| \le L \Big\}$$
 
-$$\min_{x \in \mathcal{C}} \frac{1}{2} x^T Q x + c^T x$$
+with $Q$ symmetric positive definite, over the intersection of a budget hyperplane and a gross-exposure $L_1$ ball. It uses Projected Gradient Descent: alternate an unconstrained gradient step with a Euclidean projection back onto $\mathcal{C}$.
 
-where:
-*   $Q \in \mathbb{R}^{N \times N}$ is a symmetric, strictly positive definite (PD) matrix.
-*   $c \in \mathbb{R}^N$ is a linear coefficient vector.
-*   $\mathcal{C} \subset \mathbb{R}^N$ is a convex constraint set defined by the intersection of a budget hyperplane and a gross exposure $L_1$-ball:
-    $$\mathcal{C} = \left\{ x \in \mathbb{R}^N \;\middle|\; \sum_{i=1}^N x_i = B, \quad \sum_{i=1}^N |x_i| \le L \right\}$$
+Two things about that loop are proved correct in Lean, rather than assumed:
 
----
+- **Convergence.** For any step size satisfying $\eta < 2/\lambda_{\max}(Q)$, the iterates converge to the unique global minimum. The Lipschitz bound is the largest eigenvalue of $Q$, so the admissible step size is known at compile time.
+- **Projection correctness.** The analytical $O(N \log N)$ dual-bisection projection returns the exact Euclidean projection onto $\mathcal{C}$, so every iterate satisfies the budget and leverage constraints exactly.
 
-## 🏆 The Algorithm: Projected Gradient Descent (PGD)
+## Why prove it formally
 
-PGD iteratively computes the optimal allocation $x^*$ by alternating between unconstrained gradient updates and analytical geometric projections:
+General-purpose QP solvers handle the non-differentiable $L_1$ constraint by introducing $2N$ slack variables and $2N$ inequalities. Under ill-conditioned inputs that machinery fails in characteristic ways: active-set solvers (SLSQP) cycle on the non-smooth boundary and hit their iteration limit, interior-point solvers terminate early in flat penalty valleys, and a non-PSD covariance makes Gurobi refuse the problem outright. The failures are documented, with data, in [`portfolio-proofs/scenarios/`](../portfolio-proofs/).
 
-```
-                  x_{k+1} = Π_C ( x_k - η (Q x_k + c) )
-```
+This solver sidesteps all of it by projecting analytically (no slack variables) and proving the two properties that matter. A solver that *reports* optimality is not the same as a solver that is *proved* to reach it. This one is the latter, which is the whole point: the answer can be trusted without re-checking it.
 
-where $\eta > 0$ is the learning rate, and $\Pi_{\mathcal{C}}$ is the Euclidean projection operator onto the constraint set $\mathcal{C}$.
+## Run the benchmark
 
-### 1. The Lipschitz Stability Bound
-For gradient descent to converge on a convex function $f$ with $L$-Lipschitz continuous gradients ($\nabla f$), the step size $\eta$ must be strictly bounded:
-
-$$\eta < \frac{2}{L}$$
-
-In a quadratic program, the Lipschitz constant $L$ is exactly the maximum eigenvalue of the matrix $Q$ ($\lambda_{\text{max}}(Q)$).
-*   **The Formal Invariant**: We formally prove in Lean 4 that under all step sizes satisfying $\eta < \frac{2}{\lambda_{\text{max}}(Q)}$, the optimization sequence $x_k$ converges strictly and unconditionally to the unique global minimum $x^*$.
-
-### 2. Analytical Dual-Bisection Projection ($O(N \log N)$)
-Traditional solvers introduce $2N$ slack variables and $2N$ inequality constraints to smooth the non-differentiable $L_1$ absolute value bounds. This increases problem dimensionality and creates degenerate, flat valleys.
-
-Instead, we project the unconstrained gradient step $y = x_k - \eta \nabla f(x_k)$ onto the intersection of the hyperplane $\sum x_i = B$ and the $L_1$-ball $\sum |x_i| \le L$ analytically:
-1.  **Formulate the Dual**: The projection problem is:
-    $$\min_{x} \frac{1}{2} \|x - y\|_2^2 \quad \text{s.t.} \quad \sum x_i = B, \quad \sum |x_i| \le L$$
-2.  **Apply Lagrange Duality**: The analytical solution is given by:
-    $$x_i(\theta, \mu) = \text{sign}(y_i - \theta) \max(|y_i - \theta| - \mu, 0)$$
-    where $\theta \in \mathbb{R}$ is the budget dual multiplier, and $\mu \ge 0$ is the leverage dual multiplier.
-3.  **Root-Finding via Sorting/Bisection**: We solve for $(\theta^*, \mu^*)$ in $O(N \log N)$ time using a nested dual bisection search.
-*   **The Formal Invariant**: We formally prove in Lean 4 that the analytical projection operator $\Pi_{\mathcal{C}}(y)$ strictly minimizes the Euclidean distance to $y$ subject to the constraints, guaranteeing zero constraint violations.
-
----
-
-## 📂 Formally Verified Lean 4 Module Structure
-
-```
-optimization-proofs/
-├── lakefile.lean         # Lean 4 project configuration
-├── lean-toolchain        # Lean 4 compiler toolchain lock
-└── OptimizationProofs/
-    ├── Projection.lean   # Analytical dual-bisection projection algorithm & correctness proofs
-    └── PGD.lean          # Projected Gradient Descent core & convergence theorems under η < 2/λ_max
+```bash
+cd optimization-proofs
+lake exe cache get          # fetch prebuilt mathlib (first run only)
+lake build                  # build both binaries and machine-check every proof
+lake exe pgd_bench          # time 1000 solves at N = 10
+grep -rn '^[[:space:]]*sorry\b' --include="*.lean" --exclude-dir=.lake .   # empty = clean
 ```
 
----
+`lake build` produces two binaries: `pgd_solve` (a stdin/stdout server that Python drives as a persistent subprocess) and `pgd_bench` (the embedded benchmark). The wire protocol is documented in `CLI.lean`. For the applied side, see the [portfolio stress-test notebook](https://colab.research.google.com/github/eigenq-xyz/quant-proofs/blob/main/notebooks/portfolio_solver_stress.ipynb).
 
-## 🎯 Lean 4 Theorem Targets
+## What's inside
 
-We formally verify the optimization engine under the following theorem roadmap:
+| Module | Role |
+| ------ | ---- |
+| `PGDFlat.lean` | Production PGD loop and projection (unboxed `FloatArray`); drives the CLI |
+| `PGD.lean` | Reference PGD loop and projection (`Array Float`) |
+| `Projection.lean` | Dual-bisection projection: feasibility and optimality proofs |
+| `Convergence.lean` | Descent lemma and the convergence theorem |
+| `Shrinkage.lean` | Ledoit-Wolf shrinkage: symmetry and positive-definiteness proofs |
+| `QuadraticLemmas.lean` | Supporting algebra (convexity, polarization identity) |
+| `CLI.lean` / `Main.lean` | `pgd_solve` server and `pgd_bench` entry points |
+| `FFI.lean` | `@[export]` bindings for the Cython path (latency hedge; subprocess is default) |
 
-1.  **`projection_correctness`**:
-    $$\forall y \in \mathbb{R}^N, \quad \Pi_{\mathcal{C}}(y) = \text{arg min}_{x \in \mathcal{C}} \|x - y\|_2$$
-    *   *Proof Strategy*: Prove using Karush-Kuhn-Tucker (KKT) optimality conditions on the dual function.
-2.  **`pgd_convergence`**:
-    *   *Theorem*: The sequence $x_{k+1} = \Pi_{\mathcal{C}}(x_k - \eta \nabla f(x_k))$ satisfies:
-        $$\lim_{k \to \infty} f(x_k) = f(x^*)$$
-    *   *Proof Strategy*: Prove using the contraction mapping theorem and the spectral properties of positive definite $Q$.
+Headline theorems (all complete, zero `sorry`):
+
+| Theorem | What it states |
+| ------- | -------------- |
+| `pgd_convergence` | PGD iterates converge to the global minimum for $\eta < 2/\lambda_{\max}(Q)$ |
+| `projection_correctness` | The analytical projection is the exact Euclidean projection onto $\mathcal{C}$ |
+| `projection_feasibility` | Every projected point satisfies the budget and leverage constraints |
+| `shrinkage_psd` | The Ledoit-Wolf shrinkage estimator is positive definite for any input |
+
+10 theorems total.
+
+## Dependencies
+
+- `mathlib` (linear algebra, analysis, spectral bounds)
+
+## Used by
+
+This engine is finance-agnostic by design. Two distinct finance problems reduce to its QP and are demonstrated in [`portfolio-proofs`](../portfolio-proofs/): mean-variance **allocation** (instance `(Q, c) = (Σ, μ)`) and variance-optimal **hedging** (instance `(Q, c) = (C, b)`). Neither reduces to the other; the QP is their shared form.
+
+## License
+
+Apache License 2.0, matching mathlib so the work can flow upstream.

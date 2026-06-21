@@ -67,7 +67,7 @@ repos:
         args:
           # Ignore-list: short-form tokens and Lean hypothesis names that codespell
           # would flag as misspellings.  See _typos.toml for the typos counterpart.
-          - --ignore-words-list=manu,nd,ot,fo,ba,te,lst,ans,nin,ser,hge
+          - --ignore-words-list=manu,nd,ot,fo,ba,te,lst,ans,nin,ser,hge,strat
           - --skip=*.lock,*.parquet,*.so,*.c,*.json
         types_or: [python, markdown, rst, lean, text]
 
