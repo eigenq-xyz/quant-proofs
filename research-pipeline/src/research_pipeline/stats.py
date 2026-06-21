@@ -52,7 +52,9 @@ def newey_west_tstat(x: pd.Series, lags: int | None = None) -> float:
     for lag in range(1, lags + 1):
         w = 1.0 - lag / (lags + 1.0)
         var += 2.0 * w * float(e[lag:] @ e[:-lag]) / n
-    se = np.sqrt(var / n)
+    # Strong negative autocorrelation can drive the Bartlett-weighted sum negative; clamp at 0
+    # so the sqrt never raises (then the se > 0 guard returns NaN for the degenerate case).
+    se = np.sqrt(max(var, 0.0) / n)
     return float(arr.mean() / se) if se > 0 else float("nan")
 
 
@@ -103,6 +105,11 @@ def quantile_spread(
 
     Needs at least ``n_quantiles`` names in the cross-section; falls back to fewer buckets if
     the cross-section is too thin on a given date.
+
+    Edge case: when ``qcut(..., duplicates="drop")`` collapses tied edges into fewer than
+    ``n_quantiles`` buckets, the monotonicity score is computed over the surviving buckets only
+    and their labels are re-ranked sequentially. On a dense cross-section (e.g. 49 industries)
+    this never triggers; on a sparse universe it can read as more monotone than it is.
     """
     dates = signal.index.intersection(fwd_returns.index)
     bucket_rets: dict[int, list[float]] = {q: [] for q in range(n_quantiles)}

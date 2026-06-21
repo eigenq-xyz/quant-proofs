@@ -118,7 +118,13 @@ measurable rule (e.g. `g a b = a - b` for a price-difference momentum, or a log
 ratio).
 
 Because both `t - skip ≤ t` and `t - lookback ≤ t`, the value at time `t` reads
-only the information in `𝓕ₜ`. -/
+only the information in `𝓕ₜ`.
+
+Note on early dates: `Nat` truncated subtraction means that for `t < skip` (resp.
+`t < lookback`) the index clamps to `0`, so the signal reads `price 0` rather than
+producing a sentinel. This is harmless for the adaptedness statement (the index is
+still `≤ t`), but it is slightly more permissive than the Python implementation,
+which emits `NaN` for an incomplete rolling window. -/
 noncomputable def momentumSignal (price : ℕ → Ω → ℝ) (skip lookback : ℕ)
     (g : ℝ → ℝ → ℝ) : ℕ → Ω → ℝ :=
   fun t ω => g (price (t - skip) ω) (price (t - lookback) ω)
@@ -141,5 +147,25 @@ theorem momentumSignal_adapted
   have h2 : Measurable[naturalFiltration price hp t] (price (t - lookback)) :=
     price_measurable_natural price hp (Nat.sub_le t lookback)
   exact hg.comp (h1.prodMk h2)
+
+/-- **The momentum signal is adapted to any filtration the price is adapted to.**
+This is the composition of `momentumSignal_adapted` with
+`naturalFiltration_le_of_adapted`: since the natural filtration is the coarsest one
+making the price adapted, a signal that is `𝓕ₜ`-measurable against it is also
+measurable against every coarser-information filtration `𝒻` (i.e. any `𝒻` with
+`Adapted 𝒻 price`).
+
+The motivating instance is the FTAP market filtration: for an `ℕ`-indexed market
+price process that is `Adapted m.𝒻`, the momentum signal is `Adapted m.𝒻` too. The
+`Fin (m.T + 1)`-indexed `FtapProofs.FinancialMarket` is bridged separately by
+`market_price_natural_le_filtration`; this lemma is the `ℕ`-time form that the
+pipeline's signal layer actually consumes. -/
+theorem momentumSignal_adapted_of_le
+    (price : ℕ → Ω → ℝ) (hp : ∀ t, StronglyMeasurable (price t))
+    (𝒻 : Filtration ℕ ‹MeasurableSpace Ω›) (hadapted : Adapted 𝒻 price)
+    (skip lookback : ℕ) {g : ℝ → ℝ → ℝ} (hg : Measurable g.uncurry) :
+    Adapted 𝒻 (momentumSignal price skip lookback g) := fun t =>
+  (momentumSignal_adapted price hp skip lookback hg t).mono
+    (naturalFiltration_le_of_adapted price hp 𝒻 hadapted t) le_rfl
 
 end ResearchPipeline

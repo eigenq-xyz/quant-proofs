@@ -190,6 +190,13 @@ def make_verified_pgd_weight_fn(
     rets = panel.prices.astype(float).pct_change()
 
     def _verified_pgd_weight_fn(signal_row: pd.Series, gross: float = 1.0) -> pd.Series:
+        if gross != 1.0:
+            warnings.warn(
+                f"make_verified_pgd_weight_fn ignores gross (got {gross}); the verified solver "
+                "normalises to sum w = 1. Use leverage_cap to scale gross exposure.",
+                UserWarning,
+                stacklevel=2,
+            )
         flat = pd.Series(0.0, index=signal_row.index)
         mu_row = signal_row.dropna()
         if len(mu_row) < 3:
