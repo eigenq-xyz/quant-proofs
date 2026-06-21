@@ -1,0 +1,85 @@
+{
+  "name": "momentum (TSMOM) across asset classes / AQR (free)",
+  "dataset": "tsmom",
+  "verification": "Pre-built AQR factor return streams, NOT routed through the verified daily backtester. Breadth/generalisation evidence only; the no-look-ahead guarantee is scoped to the daily equity backtest.",
+  "n_asset_classes": 4,
+  "periods_per_year": 12,
+  "date_start": "1985-01-31",
+  "date_end": "2025-01-31",
+  "per_class_summary": {
+    "equities": {
+      "sharpe": 0.5366933734420775,
+      "ann_return": 0.11514583990209126,
+      "ann_vol": 0.27522640013696453,
+      "max_drawdown": -0.8045626754702813,
+      "calmar": 0.14311605970881816,
+      "hit_rate": 0.5841995841995842,
+      "skew": -0.19609106102016616,
+      "kurtosis": 1.5320533185017355,
+      "n": 481.0,
+      "deflated_sharpe": 0.9888245510108644
+    },
+    "fixed_income": {
+      "sharpe": 0.623678006811102,
+      "ann_return": 0.15146699283671627,
+      "ann_vol": 0.29843394756824965,
+      "max_drawdown": -0.5610980681640423,
+      "calmar": 0.2699474502422159,
+      "hit_rate": 0.5654885654885655,
+      "skew": 0.0061107268431399,
+      "kurtosis": 0.6726605221396307,
+      "n": 481.0,
+      "deflated_sharpe": 0.9979037274901982
+    },
+    "currencies": {
+      "sharpe": 0.5692091509596028,
+      "ann_return": 0.09128565327187177,
+      "ann_vol": 0.1831677433145729,
+      "max_drawdown": -0.33677847853217846,
+      "calmar": 0.27105548332462587,
+      "hit_rate": 0.5758835758835759,
+      "skew": 0.1753784958910738,
+      "kurtosis": 1.6256840816902427,
+      "n": 481.0,
+      "deflated_sharpe": 0.9946686452082608
+    },
+    "commodities": {
+      "sharpe": 0.6426923728126921,
+      "ann_return": 0.08733164563937024,
+      "ann_vol": 0.14755610215448067,
+      "max_drawdown": -0.46044188927650165,
+      "calmar": 0.18966920185432215,
+      "hit_rate": 0.5925155925155925,
+      "skew": 0.01730705118566632,
+      "kurtosis": 1.640743381764044,
+      "n": 481.0,
+      "deflated_sharpe": 0.9985182066209819
+    }
+  },
+  "correlation": {
+    "equities": {
+      "equities": 1.0,
+      "fixed_income": 0.12046250215646122,
+      "currencies": 0.15737981784907074,
+      "commodities": 0.15217572037535199
+    },
+    "fixed_income": {
+      "equities": 0.12046250215646122,
+      "fixed_income": 1.0,
+      "currencies": 0.17519877859380992,
+      "commodities": 0.11617959731911624
+    },
+    "currencies": {
+      "equities": 0.15737981784907074,
+      "fixed_income": 0.17519877859380992,
+      "currencies": 1.0,
+      "commodities": 0.24807304792748883
+    },
+    "commodities": {
+      "equities": 0.15217572037535199,
+      "fixed_income": 0.11617959731911624,
+      "currencies": 0.24807304792748883,
+      "commodities": 1.0
+    }
+  }
+}

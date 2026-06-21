@@ -1,0 +1,22 @@
+# Licensed / downloaded data — NEVER commit (repo hard rule: no WRDS/OptionMetrics in git)
+data/
+*.parquet
+*.csv
+*.zip
+
+# Ad-hoc CLI run artifacts (curated study outputs live under studies/)
+results/
+
+# Long-run study logs (curated JSON results under studies/ are committed; raw logs are not)
+studies/*.log
+
+# Lean / Python build + cache
+.lake/
+build/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
