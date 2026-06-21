@@ -27,3 +27,11 @@ Durbl = "Durbl"  # "Durables" industry short label
 # Quant-finance domain terms (research-pipeline and beyond).
 Pn = "Pn"        # the "Pn" camel-token typos splits out of "PnL" (profit and loss)
 strat = "strat"  # common abbreviation for "strategy"
+
+# Quarto cross-reference prefixes used in reports/*.qmd (theorem environments
+# from _quarto.yml crossref config). These are label prefixes, not prose.
+thm = "thm"  # theorem crossref prefix (#thm-x, @thm-x)
+lem = "lem"  # lemma crossref prefix
+cor = "cor"  # corollary crossref prefix
+prp = "prp"  # proposition crossref prefix
+exm = "exm"  # example crossref prefix
