@@ -3,8 +3,11 @@
 Full quant-research-desk workflow (data → signals → **statistical testing** → portfolio →
 backtest → evaluation → cross-asset), orchestrated by `study.run_research_study`. The
 **backtesting stage** carries a formal no-look-ahead guarantee (Lean
-`ResearchPipeline.NonAnticipating`); the statistical/evaluation layers are unverified but
-rigorous. **Status: In progress.** Read [`ROADMAP.md`](ROADMAP.md) before working here.
+`ResearchPipeline.NonAnticipating`), upgraded to genuine `𝓕ₜ`-measurability of the signal map
+against the natural filtration (`Measurability.lean`, cites `ftap-proofs`); the
+statistical/evaluation layers are unverified but rigorous. The real Ken French momentum study is
+run and reported in [`studies/REPORT.md`](studies/REPORT.md). Read [`ROADMAP.md`](ROADMAP.md) before
+working here.
 
 ## Architecture (one module per desk stage)
 
@@ -12,11 +15,12 @@ rigorous. **Status: In progress.** Read [`ROADMAP.md`](ROADMAP.md) before workin
 |-------|-------|------|
 | Formal core | `lean/ResearchPipeline/NoLookahead.lean` | `NonAnticipating` + `decision_uses_no_future` (proved, `sorry`-free) |
 | Formal core | `lean/ResearchPipeline/NoLeakage.lean` | `embargo_blocks_label_leakage`: OOS embargo >= horizon => no label leak (proved, `sorry`-free) |
+| Formal core | `lean/ResearchPipeline/Measurability.lean` | `momentumSignal_adapted`: signal is `Adapted` to the natural filtration `σ(price s : s ≤ t)` (proved, `sorry`-free; cites `ftap-proofs`, needs mathlib) |
 | 1 Data | `src/research_pipeline/data.py` | point-in-time `PricePanel`; `as_of(t)` witnesses the info set |
 | 2 Signals + strategy | `signals.py`, `strategy.py` | non-anticipating alphas; `Strategy` protocol + name-keyed registry (alpha-agnostic) |
 | 3 Stats | `stats.py` | IC + HAC (Newey-West) t-stat, decay, bootstrap, PSR/DSR |
 | 4 Combination | `combination.py` | signal overlap + orthogonalised incremental IC ("disguised beta?") |
-| 5 Portfolio | `portfolio.py` | pluggable constructors (registry) + bridge to the verified PGD solver |
+| 5 Portfolio | `portfolio.py` | pluggable constructors (registry) + bridge to the verified PGD solver; `verified_pgd_weights` raises rather than silently falling back to an unverified baseline |
 | 6 Backtest | `backtest.py` | `𝓕ₜ`-aligned, net-of-cost event loop; configurable horizon |
 | 7 Evaluation | `evaluation.py` | performance, drawdowns, OLS factor attribution |
 | 8 OOS | `oos.py` | expanding walk-forward + embargo; `leakage_gap` runtime witness |
