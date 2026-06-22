@@ -49,7 +49,7 @@ jobs:
             lean-dir: foundations/options-proofs
             dep-lake: foundations/quant-core/lean/.lake
           - subdir: mortgage-proofs
-            lean-dir: extensions/extensions/mortgage-proofs/lean
+            lean-dir: extensions/mortgage-proofs/lean
           - subdir: optimization-proofs
             lean-dir: foundations/optimization-proofs
 
