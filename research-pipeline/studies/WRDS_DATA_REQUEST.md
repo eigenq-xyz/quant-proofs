@@ -19,7 +19,7 @@ without guessing.
   datasets (equities, bonds, currencies, commodities).
 
 So we can produce honest IC, IC decay, decile monotonicity, net-of-cost Sharpe, deflated Sharpe,
-and a cross-asset table **today**, with zero licensed data. This matches the ROADMAP's explicit
+and a cross-asset table **today**, with zero licensed data. This matches the project's explicit
 guardrail: *do not block the study on WRDS/CRSP creds.*
 
 **What WRDS *upgrades* (optional, strictly nice-to-have):**

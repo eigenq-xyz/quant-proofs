@@ -6,8 +6,8 @@ backtest → evaluation → cross-asset), orchestrated by `study.run_research_st
 `ResearchPipeline.NonAnticipating`), upgraded to genuine `𝓕ₜ`-measurability of the signal map
 against the natural filtration (`Measurability.lean`, cites `ftap-proofs`); the
 statistical/evaluation layers are unverified but rigorous. The real Ken French momentum study is
-run and reported in [`studies/REPORT.md`](studies/REPORT.md). Read [`ROADMAP.md`](ROADMAP.md) before
-working here.
+run and reported in [`studies/REPORT.md`](studies/REPORT.md). Active work is tracked in the open
+GitHub issues under the **research-pipeline completion sprint** milestone.
 
 ## Architecture (one module per desk stage)
 
@@ -57,5 +57,5 @@ ruff check .
 
 ## How to proceed
 
-Ordered, issue-sized plan in [`ROADMAP.md`](ROADMAP.md). Open a GitHub issue per task; close
-it in the same PR cycle.
+Work is tracked as GitHub issues under the **research-pipeline completion sprint** milestone.
+Open a GitHub issue per task; close it in the same PR cycle.

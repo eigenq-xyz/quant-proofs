@@ -39,7 +39,7 @@ object is the pipeline's correctness. Cross-asset (AQR time-series momentum): a 
 multiple-testing-significant Sharpe in equities, bonds, currencies, and commodities, with low
 cross-asset correlation (breadth evidence; see §7 of the report).
 
-→ [`research-pipeline/README.md`](research-pipeline/README.md) · [`ROADMAP.md`](research-pipeline/ROADMAP.md)
+→ [`research-pipeline/README.md`](research-pipeline/README.md)
 
 ## Verified foundations
 

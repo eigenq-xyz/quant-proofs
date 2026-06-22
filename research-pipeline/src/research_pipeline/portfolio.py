@@ -115,7 +115,7 @@ def verified_pgd_weights(
 
     NOTE: the verified projection currently targets the budget simplex (``sum w = 1``).
     Extending it to the dollar-neutral simplex (``sum w = 0``) for cross-sectional L/S
-    books is a tracked ROADMAP item (a new ``optimization-proofs`` theorem).
+    books is tracked as a GitHub issue (a new ``optimization-proofs`` theorem).
     """
     try:
         repo = (
@@ -184,7 +184,7 @@ def make_verified_pgd_weight_fn(
 
     This is the **budget** book (``sum w = 1``) — the constraint the projection is *proven* for. It
     is a different book from the dollar-neutral baseline; the dollar-neutral (``sum w = 0``) verified
-    projection is a tracked ``optimization-proofs`` theorem (see ROADMAP). ``gross`` is ignored: the
+    projection is tracked as an ``optimization-proofs`` theorem (a GitHub issue). ``gross`` is ignored: the
     verified solver normalises to ``sum w = 1``.
     """
     rets = panel.prices.astype(float).pct_change()
