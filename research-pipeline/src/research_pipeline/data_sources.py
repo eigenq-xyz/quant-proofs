@@ -273,3 +273,41 @@ def load_aqr_vme_monthly(momentum_only: bool = True) -> pd.DataFrame:
         present = [c for c in _VME_MOMENTUM_CLASSES if c in df.columns]
         df = df[present].rename(columns=_VME_MOMENTUM_CLASSES)
     return df.dropna(how="all")
+
+
+# --------------------------------------------------------------------------------------------
+# Published reference Sharpe ratios — for the validate-by-reproduction table. The bar is sign
+# and rough magnitude, not exact decimals: the free AQR datasets extend the published samples
+# and differ in construction detail. See ``crossasset.reproduction_table``.
+# --------------------------------------------------------------------------------------------
+
+# Asness, Moskowitz, Pedersen, "Value and Momentum Everywhere," Journal of Finance 68(3) (2013),
+# Table I (pp. 940-943): per-market MOMENTUM long/short *Factor* (signal-weighted, zero-cost)
+# annualised Sharpe ratios, GROSS of costs, each market over its own full sample (start dates
+# vary, 1972-2011). Keys match ``load_aqr_vme_monthly(momentum_only=True)`` readable names.
+VME_PUBLISHED_MOMENTUM_SHARPE: dict[str, float] = {
+    "equities_us": 0.45,
+    "equities_uk": 0.88,
+    "equities_europe": 1.07,
+    "equities_japan": 0.37,  # statistically insignificant in the paper (P3-P1 alpha t-stat ~0.84)
+    "equity_indices": 1.00,
+    "currencies": 1.28,
+    "fixed_income": 0.20,  # statistically insignificant in the paper (mean t-stat ~1.08)
+    "commodities": 0.62,
+}
+VME_PUBLISHED_SOURCE = (
+    "Asness, Moskowitz, Pedersen (2013), 'Value and Momentum Everywhere', "
+    "Journal of Finance 68(3), Table I; momentum Factor, gross, each market's own sample."
+)
+
+# Moskowitz, Ooi, Pedersen, "Time Series Momentum," Journal of Financial Economics 104(2) (2012)
+# does NOT tabulate per-asset-class Sharpe ratios (Figure 2 plots instrument-level bars only).
+# The single published aggregate is the diversified all-asset TSMOM composite, reported in prose
+# as ">1.0" (gross, 1985-2009). Per-sleeve TSMOM Sharpes are therefore COMPUTED from the free AQR
+# data, replicating the construction, and must not be presented as quoted from the paper.
+TSMOM_PUBLISHED_DIVERSIFIED_SHARPE: float = 1.0
+TSMOM_PUBLISHED_SOURCE = (
+    "Moskowitz, Ooi, Pedersen (2012), 'Time Series Momentum', JFE 104(2): the diversified "
+    "all-asset TSMOM Sharpe is reported as >1.0 (gross, 1985-2009); the paper does not tabulate "
+    "per-sleeve Sharpes, so per-sleeve figures here are computed from the AQR data, not quoted."
+)
