@@ -2,7 +2,7 @@
 name: write-python-code
 description: >
   Python coding standards for the quant-proofs monorepo. Use whenever writing
-  or modifying Python or Cython code in backtest-proofs/ or mortgage-proofs/.
+  or modifying Python or Cython code in backtest-proofs/ or extensions/mortgage-proofs/.
   Covers types, docstrings, validation, FFI rules, and the pre-commit checklist.
 paths:
   - "**/*.py"
@@ -33,7 +33,7 @@ backtest-proofs/python/
   pyproject.toml
   setup_ffi.py          # compiles Cython extension against Lean IR
 
-mortgage-proofs/
+extensions/mortgage-proofs/
   src/
     mortgage_proofs/
       __init__.py

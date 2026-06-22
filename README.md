@@ -48,11 +48,11 @@ The theorems the flagship rests on. Status legend: **Complete** = builds with ze
 
 | Module | What it proves | Status |
 |--------|----------------|--------|
-| [`ftap-proofs/`](ftap-proofs/) | Discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981): no arbitrage iff an equivalent martingale measure exists | **Complete** — 16 theorems, zero `sorry` |
-| [`options-proofs/`](options-proofs/) | Put-call parity `C − P = S₀ − K/(1+r)^T` via the Cox-Ross-Rubinstein binomial model (builds the CRR market, proves it is an EMM and arbitrage-free, then derives parity); cites `ftap-proofs` | **Complete** — 31 theorems, zero `sorry` |
-| [`quant-core/`](quant-core/) | Shared pricing primitives: option-type invariants, payoff bounds, Black-Scholes, GBM | **Complete** — 8 theorems |
-| [`optimization-proofs/`](optimization-proofs/) | Projected gradient descent for convex QP with an analytical simplex ∩ L₁-ball projection; convergence and projection correctness | **Complete** — 10 theorems, zero `sorry` |
-| [`portfolio-proofs/`](portfolio-proofs/) | Mean-variance allocation with Ledoit-Wolf shrinkage on the verified PGD solver (Lean + Python/Cython); stressed-solver scenarios | Applied / empirical |
+| [`foundations/ftap-proofs/`](foundations/ftap-proofs/) | Discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981): no arbitrage iff an equivalent martingale measure exists | **Complete** — 16 theorems, zero `sorry` |
+| [`foundations/options-proofs/`](foundations/options-proofs/) | Put-call parity `C − P = S₀ − K/(1+r)^T` via the Cox-Ross-Rubinstein binomial model (builds the CRR market, proves it is an EMM and arbitrage-free, then derives parity); cites `ftap-proofs` | **Complete** — 31 theorems, zero `sorry` |
+| [`foundations/quant-core/`](foundations/quant-core/) | Shared pricing primitives: option-type invariants, payoff bounds, Black-Scholes, GBM | **Complete** — 8 theorems |
+| [`foundations/optimization-proofs/`](foundations/optimization-proofs/) | Projected gradient descent for convex QP with an analytical simplex ∩ L₁-ball projection; convergence and projection correctness | **Complete** — 10 theorems, zero `sorry` |
+| [`foundations/portfolio-proofs/`](foundations/portfolio-proofs/) | Mean-variance allocation with Ledoit-Wolf shrinkage on the verified PGD solver (Lean + Python/Cython); stressed-solver scenarios | Applied / empirical |
 
 ## Extensions
 
@@ -60,9 +60,9 @@ Self-contained results that branch off the core. Not on the flagship's critical 
 
 | Module | What it proves | Status |
 |--------|----------------|--------|
-| [`perpetual-proofs/`](perpetual-proofs/) | Perpetual-futures no-arbitrage pricing and the inverse-perp convexity correction; cites `stopped-time-proofs` + `ftap-proofs` | **Complete** — 10 theorems, zero `sorry` |
-| [`stopped-time-proofs/`](stopped-time-proofs/) | Geometric stopping-time expectations; a mathlib-candidate library (no finance content) | **In progress** — Jensen (G2.2) is an open, *unused* `sorry` |
-| [`mortgage-proofs/`](mortgage-proofs/) | LangGraph multi-agent routing invariants with Lean 4-checked trace verification (auditable AI for high-stakes decisions) | **Complete** — 13 theorems, zero `sorry` |
+| [`extensions/perpetual-proofs/`](extensions/perpetual-proofs/) | Perpetual-futures no-arbitrage pricing and the inverse-perp convexity correction; cites `stopped-time-proofs` + `ftap-proofs` | **Complete** — 10 theorems, zero `sorry` |
+| [`extensions/stopped-time-proofs/`](extensions/stopped-time-proofs/) | Geometric stopping-time expectations; a mathlib-candidate library (no finance content) | **In progress** — Jensen (G2.2) is an open, *unused* `sorry` |
+| [`extensions/mortgage-proofs/`](extensions/mortgage-proofs/) | LangGraph multi-agent routing invariants with Lean 4-checked trace verification (auditable AI for high-stakes decisions) | **Complete** — 13 theorems, zero `sorry` |
 
 ## Archive
 

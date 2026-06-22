@@ -26,9 +26,9 @@ Ground truth was established from the Lean source and `#print axioms`, not from 
 ## TODO (still need to do)
 
 1. **Align Lean toolchains.** They diverge across modules that depend on each other:
-   - `v4.30.0-rc2`: `ftap-proofs`, `options-proofs`, `quant-core/lean`, `optimization-proofs`
+   - `v4.30.0-rc2`: `ftap-proofs`, `options-proofs`, `foundations/quant-core/lean`, `optimization-proofs`
    - `v4.30.0`: `stopped-time-proofs`, `perpetual-proofs`
-   - `v4.26.0`: `mortgage-proofs/lean`
+   - `v4.26.0`: `extensions/mortgage-proofs/lean`
 
    `perpetual-proofs` `require`s `ftap-proofs` via local path, so the rc2-built ftap oleans gave
    `incompatible header` under v4.30.0. I rebuilt locally to fix it, but the `lean-toolchain`
@@ -43,10 +43,10 @@ Ground truth was established from the Lean source and `#print axioms`, not from 
    unproven. Prove it, or clearly mark the file as WIP so it isn't mistaken for complete.
 
 3. **Remove the stray nested duplicate dir** (left for you — not deleted):
-   `stopped-time-proofs/stopped-time-proofs/StoppedTimeProofs/Jensen.lean` — untracked accidental
+   `extensions/stopped-time-proofs/stopped-time-proofs/StoppedTimeProofs/Jensen.lean` — untracked accidental
    copy, has its own `sorry` (line 102), differs from the real file. Run:
    ```bash
-   rm -rf stopped-time-proofs/stopped-time-proofs
+   rm -rf extensions/stopped-time-proofs/stopped-time-proofs
    ```
 
 4. **`.claude/skills/verify-lean/SKILL.md` is stale** — builds the **archived** `backtest-proofs/lean`
@@ -54,14 +54,14 @@ Ground truth was established from the Lean source and `#print axioms`, not from 
    classifier (it guards skill/config files), so **apply this manually**:
    - Module set / build order (deps respected):
      ```
-     COMPLETE: quant-core/lean  ftap-proofs  options-proofs  optimization-proofs  mortgage-proofs/lean
+     COMPLETE: foundations/quant-core/lean  ftap-proofs  options-proofs  optimization-proofs  extensions/mortgage-proofs/lean
      WIP:      stopped-time-proofs  perpetual-proofs
      ```
    - Drop `backtest-proofs/lean` entirely (archived).
    - Treat `stopped-time`/`perpetual` as report-only (stopped-time has the known Jensen `sorry`).
    - Add the authoritative gate: `#print axioms <headline thm>` must be ⊆
      `[propext, Classical.choice, Quot.sound]` (no `sorryAx`, no `Lean.ofReduceBool`).
-   - The zero-sorry grep should `--exclude-dir=.lake`, skip `stopped-time-proofs/stopped-time-proofs/`,
+   - The zero-sorry grep should `--exclude-dir=.lake`, skip `extensions/stopped-time-proofs/stopped-time-proofs/`,
      and strip `--` comments (docstrings saying "0 sorry" cause false positives).
 
 5. **Same stale `backtest-proofs` reference** in `.claude/skills/write-lean4-proofs/ANTI_PATTERNS.md`

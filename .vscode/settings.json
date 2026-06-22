@@ -1,13 +1,13 @@
 {
-  "python.defaultInterpreterPath": "${workspaceFolder}/portfolio-proofs/.venv/bin/python",
+  "python.defaultInterpreterPath": "${workspaceFolder}/foundations/portfolio-proofs/.venv/bin/python",
   "python.terminal.activateEnvInCurrentTerminal": true,
   "python.analysis.extraPaths": [
-    "${workspaceFolder}/portfolio-proofs"
+    "${workspaceFolder}/foundations/portfolio-proofs"
   ],
   "python.analysis.indexing": true,
   "python.analysis.typeCheckingMode": "strict",
   "ruff.interpreter": [
-    "${workspaceFolder}/portfolio-proofs/.venv/bin/python"
+    "${workspaceFolder}/foundations/portfolio-proofs/.venv/bin/python"
   ],
   "ruff.enable": true,
   "[python]": {

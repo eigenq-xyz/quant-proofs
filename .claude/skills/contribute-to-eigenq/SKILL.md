@@ -47,7 +47,7 @@ Before opening a PR — and before requesting review — verify every item:
   ```
   (An empty result is required. `-- sorry` comments in docs are fine; actual `sorry` terms
   are not.)
-- [ ] If `options-proofs/` is changed, also build `ftap-proofs/` — the dependency goes
+- [ ] If `foundations/options-proofs/` is changed, also build `foundations/ftap-proofs/` — the dependency goes
   `options-proofs → ftap-proofs`, so `ftap-proofs` must still build cleanly.
 - [ ] New theorems have `-- Proof sketch:` comments explaining the high-level argument.
 
@@ -93,7 +93,7 @@ High-level argument for the main theorem(s) introduced or modified:
 
 ## Mathlib upstream process
 
-When a proof in `ftap-proofs/` or `options-proofs/` is ready for mathlib:
+When a proof in `foundations/ftap-proofs/` or `foundations/options-proofs/` is ready for mathlib:
 
 ### Namespace requirements
 
@@ -111,7 +111,7 @@ Lean 4 identifiers must conform to mathlib style:
 
 1. **Create a `mathlib/<subdir>/<module-name>` branch** from the current `main`.
 2. **Restructure the namespace.** Move from `FtapProofs.X` to `Mathlib.Finance.X` (or
-   agreed parent). Update all imports in `options-proofs/` accordingly.
+   agreed parent). Update all imports in `foundations/options-proofs/` accordingly.
 3. **Strip non-mathlib dependencies.** The submitted file must import only from `Mathlib`
    and `Std`. Remove any local utility lemmas that duplicate existing mathlib lemmas —
    search `Mathlib` first.
@@ -129,7 +129,7 @@ Lean 4 identifiers must conform to mathlib style:
 Do not open the mathlib PR until:
 - `lake build` is clean on the `mathlib/` branch with zero `sorry`.
 - The proof has been stable on `main` for at least one week (no further edits anticipated).
-- The `options-proofs/` dependency on the FTAP result has been tested post-namespace-change.
+- The `foundations/options-proofs/` dependency on the FTAP result has been tested post-namespace-change.
 
 ## PR sequencing and dependency management
 

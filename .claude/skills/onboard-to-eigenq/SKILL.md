@@ -20,24 +20,24 @@ work**, which requires two things that AI cannot self-supply:
 
 Every subdir in this repo is a concrete demonstration of that thesis. The Lean 4 kernel in
 `backtest-proofs/` proves that the Python backtester cannot silently miscount P&L. The FTAP
-proof in `ftap-proofs/` shows that no-arbitrage pricing follows from a constructively verified
-argument. The binomial model in `options-proofs/` closes the loop from abstract theorem to
-concrete option pricing formula. The mortgage agent in `mortgage-proofs/` shows that even
+proof in `foundations/ftap-proofs/` shows that no-arbitrage pricing follows from a constructively verified
+argument. The binomial model in `foundations/options-proofs/` closes the loop from abstract theorem to
+concrete option pricing formula. The mortgage agent in `extensions/mortgage-proofs/` shows that even
 LLM-driven pipelines can have their routing decisions formally audited.
 
 ## Project map
 
 ```
 quant-proofs/
-├── quant-core/           # Shared pricing primitives (QuantCore namespace)
+├── foundations/quant-core/           # Shared pricing primitives (QuantCore namespace)
 │   ├── lean/             # Lean 4: AssetId, OptionKind, EuropeanOption, payoff theorems
 │   └── python/           # Python: Black-Scholes pricer, GBM simulator, PricePath
 ├── backtest-proofs/      # Options delta-hedging backtester
 │   ├── lean/             # Lean 4 accounting kernel (BacktestProofs namespace)
 │   └── python/           # Cython FFI + Python backtester (backtest_proofs package)
-├── ftap-proofs/          # Discrete FTAP proof (FtapProofs namespace)
-├── options-proofs/       # Put-call parity via CRR model (OptionsProofs namespace)
-└── mortgage-proofs/      # LangGraph mortgage pipeline (MortgageProofs namespace)
+├── foundations/ftap-proofs/          # Discrete FTAP proof (FtapProofs namespace)
+├── foundations/options-proofs/       # Put-call parity via CRR model (OptionsProofs namespace)
+└── extensions/mortgage-proofs/      # LangGraph mortgage pipeline (MortgageProofs namespace)
     ├── agents/           # intake, risk, compliance, underwriter LangGraph agents
     ├── lean/             # Lean 4 invariant definitions
     └── traces/           # DecisionRecord JSON output (gitignored if containing PII)
@@ -54,8 +54,8 @@ mortgage-proofs           (standalone)
 ```
 
 Key implications:
-- Always build `quant-core/lean` before `backtest-proofs/lean` or `options-proofs/`.
-- Changes to `quant-core/lean` may require rebuilding both dependents.
+- Always build `foundations/quant-core/lean` before `backtest-proofs/lean` or `foundations/options-proofs/`.
+- Changes to `foundations/quant-core/lean` may require rebuilding both dependents.
 - `ftap-proofs` and `mortgage-proofs` are independent of `quant-core`.
 
 ## What each subdir does
@@ -71,20 +71,20 @@ The 26 theorems (zero `sorry`, all on `main`) cover:
 The Python side (`backtest_proofs` package) calls the Lean-compiled kernel via Cython FFI.
 **Before working here:** read `backtest-proofs/CLAUDE.md`.
 
-### `ftap-proofs/`
+### `foundations/ftap-proofs/`
 A Lean 4 proof of the discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981):
 a finite market admits no arbitrage if and only if there exists a risk-neutral probability
 measure. Namespace: `FtapProofs`. Targeting a mathlib PR once complete.
-**Before working here:** read `ftap-proofs/CLAUDE.md`. The mathlib PR process is described
+**Before working here:** read `foundations/ftap-proofs/CLAUDE.md`. The mathlib PR process is described
 in `/contribute-to-eigenq`.
 
-### `options-proofs/`
+### `foundations/options-proofs/`
 A Lean 4 proof of put-call parity using the Cox-Ross-Rubinstein binomial model. Imports
 `FtapProofs.NoArbitrage` to ground the no-arbitrage argument. Namespace: `OptionsProofs`.
-**Before working here:** read `options-proofs/CLAUDE.md`. Ensure `ftap-proofs/` builds
+**Before working here:** read `foundations/options-proofs/CLAUDE.md`. Ensure `foundations/ftap-proofs/` builds
 cleanly first.
 
-### `mortgage-proofs/`
+### `extensions/mortgage-proofs/`
 A LangGraph multi-agent pipeline for mortgage application processing. Four agents:
 - **intake** — parses application, extracts structured fields
 - **risk** — computes DTI, LTV, credit-score band
@@ -94,7 +94,7 @@ A LangGraph multi-agent pipeline for mortgage application processing. Four agent
 Every routing decision is emitted as a `DecisionRecord` JSON object. The Lean 4 side
 (`MortgageProofs` namespace) defines invariants (e.g., `compliance_before_underwriter`,
 `risk_score_nonneg`) and validates traces via `lake exe verify-trace <trace.json>`.
-**Before working here:** read `mortgage-proofs/CLAUDE.md`.
+**Before working here:** read `extensions/mortgage-proofs/CLAUDE.md`.
 
 ## Session start checklist
 
@@ -129,22 +129,22 @@ immediately rather than tracking in conversation. Close issues in the same PR cy
 | Writing Python or Cython | `/write-python-code` |
 | Opening a PR or commit | `/write-commits-and-prs` |
 | Contributing to mathlib upstream | `/contribute-to-eigenq` |
-| Working on mortgage agents | `/write-python-code`, then read `mortgage-proofs/CLAUDE.md` |
+| Working on mortgage agents | `/write-python-code`, then read `extensions/mortgage-proofs/CLAUDE.md` |
 | Sourcing or citing financial data | `/source-financial-data` |
 
 ## Build and test commands
 
 | Subdir | Build | Verify no sorry | Python tests |
 |--------|-------|-----------------|--------------|
-| `quant-core/` | `cd quant-core/lean && lake build` | `grep -rn sorry quant-core/lean --include="*.lean"` | `cd quant-core/python && pytest` |
+| `foundations/quant-core/` | `cd foundations/quant-core/lean && lake build` | `grep -rn sorry foundations/quant-core/lean --include="*.lean"` | `cd foundations/quant-core/python && pytest` |
 | `backtest-proofs/` | `cd backtest-proofs/lean && lake build` | `grep -rn sorry backtest-proofs/lean --include="*.lean"` | `cd backtest-proofs/python && pytest` |
-| `ftap-proofs/` | `cd ftap-proofs && lake build` | `grep -rn sorry ftap-proofs --include="*.lean"` | — |
-| `options-proofs/` | `cd options-proofs && lake build` | `grep -rn sorry options-proofs --include="*.lean"` | — |
-| `mortgage-proofs/` | `cd mortgage-proofs && lake build` | `grep -rn sorry mortgage-proofs/lean --include="*.lean"` | `cd mortgage-proofs && pytest` |
+| `foundations/ftap-proofs/` | `cd foundations/ftap-proofs && lake build` | `grep -rn sorry ftap-proofs --include="*.lean"` | — |
+| `foundations/options-proofs/` | `cd foundations/options-proofs && lake build` | `grep -rn sorry options-proofs --include="*.lean"` | — |
+| `extensions/mortgage-proofs/` | `cd extensions/mortgage-proofs && lake build` | `grep -rn sorry extensions/mortgage-proofs/lean --include="*.lean"` | `cd extensions/mortgage-proofs && pytest` |
 
-Build `quant-core/lean` before `backtest-proofs/lean` or `options-proofs/` on a fresh checkout.
+Build `foundations/quant-core/lean` before `backtest-proofs/lean` or `foundations/options-proofs/` on a fresh checkout.
 
-Run mypy on Python: `mypy --strict <subdir>/python/src/` (or `mortgage-proofs/src/`).
+Run mypy on Python: `mypy --strict <subdir>/python/src/` (or `extensions/mortgage-proofs/src/`).
 
 ## Key invariants and rules
 
@@ -171,8 +171,8 @@ Run mypy on Python: `mypy --strict <subdir>/python/src/` (or `mortgage-proofs/sr
 | Python package layout | `<subdir>/python/` or `<subdir>/src/` |
 | Proof strategy for a theorem | `<subdir>/CLAUDE.md` and existing `.lean` files |
 | Cython FFI bindings | `backtest-proofs/python/src/backtest_proofs/` |
-| Agent routing logic | `mortgage-proofs/agents/` |
-| Lean invariant definitions | `mortgage-proofs/lean/` |
-| Trace validation | `lake exe verify-trace` in `mortgage-proofs/` |
+| Agent routing logic | `extensions/mortgage-proofs/agents/` |
+| Lean invariant definitions | `extensions/mortgage-proofs/lean/` |
+| Trace validation | `lake exe verify-trace` in `extensions/mortgage-proofs/` |
 | Mathlib PR process | `/contribute-to-eigenq` skill |
 | Commit/PR standards | `/write-commits-and-prs` skill |

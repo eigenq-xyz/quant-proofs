@@ -116,8 +116,8 @@ repos:
       - id: interrogate-portfolio
         name: docstring coverage (portfolio-proofs)
         language: system
-        entry: bash -c 'cd portfolio-proofs && uv run interrogate lean_pgd.py lean_pgd_direct.py'
-        files: ^portfolio-proofs/(lean_pgd|lean_pgd_direct)\.py$
+        entry: bash -c 'cd foundations/portfolio-proofs && uv run interrogate lean_pgd.py lean_pgd_direct.py'
+        files: ^foundations/portfolio-proofs/(lean_pgd|lean_pgd_direct)\.py$
         pass_filenames: false
 
   # ─── Theorem cross-reference check ───────────────────────────────────────
@@ -130,7 +130,7 @@ repos:
         name: Lean theorem cross-references
         language: system
         entry: python3 .github/scripts/check_theorem_refs.py
-        files: ^portfolio-proofs/.*\.py$
+        files: ^foundations/portfolio-proofs/.*\.py$
         exclude: "(^archive/|scenarios/|tests/)"
         pass_filenames: true
 
@@ -142,21 +142,21 @@ repos:
     hooks:
       - id: mypy-quant-core
         name: mypy --strict (quant-core)
-        entry: bash -c 'cd quant-core/python && uv run mypy src/ --strict'
+        entry: bash -c 'cd foundations/quant-core/python && uv run mypy src/ --strict'
         language: system
-        files: ^quant-core/python/src/.*\.py$
+        files: ^foundations/quant-core/python/src/.*\.py$
         pass_filenames: false
 
       - id: mypy-mortgage-proofs
         name: mypy --strict (mortgage-proofs)
-        entry: bash -c 'cd mortgage-proofs && uv run mypy src/ --strict'
+        entry: bash -c 'cd extensions/mortgage-proofs && uv run mypy src/ --strict'
         language: system
-        files: ^mortgage-proofs/src/.*\.py$
+        files: ^extensions/mortgage-proofs/src/.*\.py$
         pass_filenames: false
 
       - id: mypy-portfolio-proofs
         name: mypy --strict (portfolio-proofs)
-        entry: bash -c 'cd portfolio-proofs && uv run mypy lean_pgd.py lean_pgd_direct.py tests/ --strict'
+        entry: bash -c 'cd foundations/portfolio-proofs && uv run mypy lean_pgd.py lean_pgd_direct.py tests/ --strict'
         language: system
-        files: ^portfolio-proofs/(lean_pgd|lean_pgd_direct|tests/).*\.py$
+        files: ^foundations/portfolio-proofs/(lean_pgd|lean_pgd_direct|tests/).*\.py$
         pass_filenames: false

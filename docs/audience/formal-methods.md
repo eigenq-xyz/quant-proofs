@@ -18,7 +18,7 @@ The verification methodology is described in full at [how-we-verify.md](../how-w
 
 Two subprojects are being prepared for upstream contribution to mathlib:
 
-**`ftap-proofs/`** formalizes the discrete Fundamental Theorem of Asset Pricing
+**`foundations/ftap-proofs/`** formalizes the discrete Fundamental Theorem of Asset Pricing
 (Harrison-Pliska 1981). The central result is that a finite financial market
 admits no arbitrage if and only if there exists an equivalent martingale measure.
 The proof constructs both directions: the forward direction using a separating
@@ -28,7 +28,7 @@ formalization makes all measure-theoretic hypotheses explicit and uses the mathl
 probability and measure theory library throughout. See the [No-Arbitrage Pricing
 pillar](../pillar-pricing.md) for the full theorem list.
 
-**`stopped-time-proofs/`** formalizes the geometric probability mass function and a
+**`extensions/stopped-time-proofs/`** formalizes the geometric probability mass function and a
 `GeometricExpectation` operator over a stopping time on a discrete filtered
 probability space. This module contains no financial content and is designed as a
 standalone mathlib contribution.
@@ -38,15 +38,15 @@ standalone mathlib contribution.
 The pricing pillar ([pillar-pricing.md](../pillar-pricing.md)) has the most
 structurally interesting proof work:
 
-- `ftap-proofs/` uses a compact convex separation argument. The attainable payoff
+- `foundations/ftap-proofs/` uses a compact convex separation argument. The attainable payoff
   set is shown to be a linear subspace of the finite-dimensional real vector space
   of payoffs; the no-arbitrage condition rules out any nonnegative nonzero element
   of that subspace; a Hahn-Banach-type separation then produces the martingale
   measure.
-- `options-proofs/` proves put-call parity and arbitrage-freeness for the
-  Cox-Ross-Rubinstein binomial model, citing the FTAP result from `ftap-proofs/`
+- `foundations/options-proofs/` proves put-call parity and arbitrage-freeness for the
+  Cox-Ross-Rubinstein binomial model, citing the FTAP result from `foundations/ftap-proofs/`
   as a dependency.
-- `perpetual-proofs/` includes a formal counterexample: a published specification
+- `extensions/perpetual-proofs/` includes a formal counterexample: a published specification
   of perpetual futures pricing (He-Manela) is shown to admit arbitrage under the
   stated hypotheses. The corrected specification follows Ackerer-Hugonnier-Jermann
   (2025). Formal counterexamples of this kind are uncommon in the finance

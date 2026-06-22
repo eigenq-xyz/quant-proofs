@@ -34,7 +34,7 @@ of the gradient step that precedes it. A solver whose projection step is proved
 correct cannot produce infeasible weights, even under numerical inputs that
 would cause a floating-point solver to violate the constraints.
 
-The `portfolio-proofs/` subproject runs seven empirical stress scenarios, comparing
+The `foundations/portfolio-proofs/` subproject runs seven empirical stress scenarios, comparing
 the verified solver against SciPy SLSQP, SciPy trust-constr, and Gurobi. The
 scenarios are designed to expose constraint violations under conditions (low
 liquidity, correlated shocks, near-singular covariance matrices) where
@@ -48,7 +48,7 @@ internal documentation.
 ## AI decision pipelines with formally checked routing rules
 
 The AI systems pillar ([pillar-ai-systems.md](../pillar-ai-systems.md)) covers
-`mortgage-proofs/`, a multi-agent pipeline for processing structured decisions
+`extensions/mortgage-proofs/`, a multi-agent pipeline for processing structured decisions
 (in this case, mortgage applications) using a LangGraph orchestration layer.
 
 The key governance feature is the `DecisionRecord` contract. Every routing
@@ -73,13 +73,13 @@ where auditability is required.
 The pricing pillar ([pillar-pricing.md](../pillar-pricing.md)) provides
 machine-checked proofs of results that underpin derivatives pricing:
 
-- The discrete Fundamental Theorem of Asset Pricing (`ftap-proofs/`): no arbitrage
+- The discrete Fundamental Theorem of Asset Pricing (`foundations/ftap-proofs/`): no arbitrage
   is equivalent to the existence of a risk-neutral measure. This result, proved
   by Harrison and Pliska (1981), is the theoretical foundation for all derivatives
   pricing in a no-arbitrage framework.
-- Put-call parity for European options in the CRR binomial model (`options-proofs/`):
+- Put-call parity for European options in the CRR binomial model (`foundations/options-proofs/`):
   C - P = S0 - K/(1+r)^T, proved by constructing the replicating portfolio.
-- Perpetual futures no-arbitrage conditions (`perpetual-proofs/`), including a
+- Perpetual futures no-arbitrage conditions (`extensions/perpetual-proofs/`), including a
   formal demonstration that a previously published specification was incorrect.
 
 For risk and compliance teams, the explicit-hypothesis discipline of the

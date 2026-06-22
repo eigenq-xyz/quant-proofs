@@ -16,7 +16,7 @@ allowed-tools: Bash(uv run *) Read Write Edit Glob
 
 ```
 backtest-proofs/python/src/backtest_proofs/<subpackage>/<module>.py
-mortgage-proofs/src/mortgage_proofs/<subpackage>/<module>.py
+extensions/mortgage-proofs/src/mortgage_proofs/<subpackage>/<module>.py
 ```
 
 ## Required file header

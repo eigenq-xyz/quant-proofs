@@ -43,13 +43,13 @@ jobs:
             # Single subdir requested
             case "$INPUT" in
               quant-core)
-                echo 'matrix={"include":[{"subdir":"quant-core","work-dir":"quant-core/python","src-path":"src/"}]}' >> "$GITHUB_OUTPUT"
+                echo 'matrix={"include":[{"subdir":"quant-core","work-dir":"foundations/quant-core/python","src-path":"src/"}]}' >> "$GITHUB_OUTPUT"
                 ;;
               mortgage-proofs)
-                echo 'matrix={"include":[{"subdir":"mortgage-proofs","work-dir":"mortgage-proofs","src-path":"src/"}]}' >> "$GITHUB_OUTPUT"
+                echo 'matrix={"include":[{"subdir":"mortgage-proofs","work-dir":"extensions/mortgage-proofs","src-path":"src/"}]}' >> "$GITHUB_OUTPUT"
                 ;;
               portfolio-proofs)
-                echo 'matrix={"include":[{"subdir":"portfolio-proofs","work-dir":"portfolio-proofs","src-path":"lean_pgd.py lean_pgd_direct.py"}]}' >> "$GITHUB_OUTPUT"
+                echo 'matrix={"include":[{"subdir":"portfolio-proofs","work-dir":"foundations/portfolio-proofs","src-path":"lean_pgd.py lean_pgd_direct.py"}]}' >> "$GITHUB_OUTPUT"
                 ;;
               *)
                 echo "Unknown subdir: $INPUT" && exit 1
@@ -57,7 +57,7 @@ jobs:
             esac
           else
             # All subdirs
-            echo 'matrix={"include":[{"subdir":"quant-core","work-dir":"quant-core/python","src-path":"src/"},{"subdir":"mortgage-proofs","work-dir":"mortgage-proofs","src-path":"src/"},{"subdir":"portfolio-proofs","work-dir":"portfolio-proofs","src-path":"lean_pgd.py lean_pgd_direct.py"}]}' >> "$GITHUB_OUTPUT"
+            echo 'matrix={"include":[{"subdir":"quant-core","work-dir":"foundations/quant-core/python","src-path":"src/"},{"subdir":"mortgage-proofs","work-dir":"extensions/mortgage-proofs","src-path":"src/"},{"subdir":"portfolio-proofs","work-dir":"foundations/portfolio-proofs","src-path":"lean_pgd.py lean_pgd_direct.py"}]}' >> "$GITHUB_OUTPUT"
           fi
 
   # ─────────────────────────────────────────────────────────────────────────────
@@ -188,7 +188,7 @@ jobs:
           echo "The following counts indicate proof surface area to target with manual mutation:" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
-          for dir in ftap-proofs options-proofs quant-core/lean mortgage-proofs/lean; do
+          for dir in foundations/ftap-proofs foundations/options-proofs foundations/quant-core/lean extensions/mortgage-proofs/lean; do
             if [ -d "$dir" ]; then
               THEOREMS=$(grep -rn '^\(theorem\|lemma\) ' --include="*.lean" \
                            --exclude-dir=".lake" "$dir" 2>/dev/null | wc -l | tr -d ' ')
@@ -209,11 +209,11 @@ jobs:
           echo "Checking for potential vacuous proofs..."
           grep -rn 'exact absurd\|exact False.elim\|exfalso' \
             --include="*.lean" --exclude-dir=".lake" \
-            ftap-proofs/ options-proofs/ quant-core/lean/ mortgage-proofs/lean/ 2>/dev/null | \
+            foundations/ftap-proofs/ foundations/options-proofs/ foundations/quant-core/lean/ extensions/mortgage-proofs/lean/ 2>/dev/null | \
             grep -v '^\s*--' || echo "None found."
 
           # Theorems with empty hypothesis list (⊢ P where P is non-trivial)
           # These are either base cases (fine) or suspicious.
           grep -rn '^theorem [a-zA-Z].*:$\|^lemma [a-zA-Z].*:$' \
             --include="*.lean" --exclude-dir=".lake" \
-            ftap-proofs/ options-proofs/ 2>/dev/null | head -20 || echo "None found."
+            foundations/ftap-proofs/ foundations/options-proofs/ 2>/dev/null | head -20 || echo "None found."

@@ -408,7 +408,7 @@ certified_pgd.print_result(res_pgd, p)
     exactly zero (hard threshold, not numerical convergence).
     The Lean 4 theorem projection_correctness certifies this property.
 
-The Lean 4 theorem `projection_correctness` in `optimization-proofs/`
+The Lean 4 theorem `projection_correctness` in `foundations/optimization-proofs/`
 certifies that the Duchi projection satisfies this property as a `Prop`
 – not as a floating-point approximation but as a mathematical statement
 about the algorithm’s output structure.
@@ -533,7 +533,7 @@ projection’s condition for $w_i^* = 0$ is satisfied in one projection
 call, as soon as the gradient step moves the iterate into the correct
 region.
 
-The Lean 4 theorem `projection_correctness` in `optimization-proofs/`
+The Lean 4 theorem `projection_correctness` in `foundations/optimization-proofs/`
 formalizes this as a `Prop`: for any input $y$ and dual solution
 $(\theta^*, \mu^*)$ returned by the bisection, the output
 $w^* = \operatorname{sign}(y - \theta^*) \cdot

@@ -7,10 +7,10 @@ on:
       - 'docs/**'
       - 'README.md'
       - '*/README.md'
-      - 'portfolio-proofs/reports/*.md'
-      - 'portfolio-proofs/reports/**/*_files/**'
-      - 'portfolio-proofs/scenarios/**/*.md'
-      - 'portfolio-proofs/scenarios/**/*_files/**'
+      - 'foundations/portfolio-proofs/reports/*.md'
+      - 'foundations/portfolio-proofs/reports/**/*_files/**'
+      - 'foundations/portfolio-proofs/scenarios/**/*.md'
+      - 'foundations/portfolio-proofs/scenarios/**/*_files/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -51,18 +51,18 @@ jobs:
           mkdir -p docs/portfolio
 
           # Research report
-          if [ -f "portfolio-proofs/reports/lean_pgd_performance.md" ]; then
-            cp portfolio-proofs/reports/lean_pgd_performance.md docs/portfolio/
-            cp -r portfolio-proofs/reports/lean_pgd_performance_files \
+          if [ -f "foundations/portfolio-proofs/reports/lean_pgd_performance.md" ]; then
+            cp foundations/portfolio-proofs/reports/lean_pgd_performance.md docs/portfolio/
+            cp -r foundations/portfolio-proofs/reports/lean_pgd_performance_files \
                   docs/portfolio/ 2>/dev/null || true
           fi
 
           # Scenario notebooks (rendered .md + figure directories)
           for s in boundary_trap phantom_positions vix_shock sp500_factor \
                    cholesky_crash precision_bleed step_divergence; do
-            if [ -f "portfolio-proofs/scenarios/$s/$s.md" ]; then
-              cp "portfolio-proofs/scenarios/$s/$s.md" docs/portfolio/
-              cp -r "portfolio-proofs/scenarios/$s/${s}_files" \
+            if [ -f "foundations/portfolio-proofs/scenarios/$s/$s.md" ]; then
+              cp "foundations/portfolio-proofs/scenarios/$s/$s.md" docs/portfolio/
+              cp -r "foundations/portfolio-proofs/scenarios/$s/${s}_files" \
                     docs/portfolio/ 2>/dev/null || true
             fi
           done

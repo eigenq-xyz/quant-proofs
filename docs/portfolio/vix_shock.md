@@ -303,7 +303,7 @@ gradient step destroys.
 
 The certified solver recomputes $\eta$ from the post-shock covariance
 before every solve, yielding $\eta_{\text{post}} = 1.9 / 0.16 = 11.875$.
-The Lean 4 proof of `pgd_convergence` in `optimization-proofs/`
+The Lean 4 proof of `pgd_convergence` in `foundations/optimization-proofs/`
 certifies this inequality as a `Prop` at compile time: no runtime code
 path can pass a step size that violates $\eta < 2 / \lambda_{\max}$.
 
@@ -463,7 +463,7 @@ optimum $[0.6458, 0.3333, 0.0208]$.
 The step-size condition $\eta < 2 / \lambda_{\max}(\Sigma)$ is not a
 recommendation; it is a hard mathematical requirement for convergence
 (Nesterov 2004, Theorem 2.1.5).[^4] The Lean 4 proof of
-`pgd_convergence` in `optimization-proofs/` certifies this condition as
+`pgd_convergence` in `foundations/optimization-proofs/` certifies this condition as
 a `Prop` at compile time:
 
 - The theorem statement takes $\eta$ and $\Sigma$ as explicit arguments

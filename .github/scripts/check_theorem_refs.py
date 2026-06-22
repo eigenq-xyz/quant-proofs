@@ -22,10 +22,10 @@ Usage
 ::
 
     # Check specific files (from the monorepo root):
-    python3 .github/scripts/check_theorem_refs.py portfolio-proofs/lean_pgd.py
+    python3 .github/scripts/check_theorem_refs.py foundations/portfolio-proofs/lean_pgd.py
 
     # Check all Python sources (excluding scenarios and tests):
-    python3 .github/scripts/check_theorem_refs.py $(find portfolio-proofs \
+    python3 .github/scripts/check_theorem_refs.py $(find foundations/portfolio-proofs \
         -name "*.py" -not -path "*/scenarios/*" -not -path "*/tests/*")
 """
 
@@ -104,7 +104,9 @@ def _extract_docstrings(py_file: Path) -> list[tuple[int, str]]:
 
     results: list[tuple[int, str]] = []
     for node in ast.walk(tree):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Module)):
+        if not isinstance(
+            node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Module)
+        ):
             continue
         docstring = ast.get_docstring(node)
         if docstring:

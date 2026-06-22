@@ -32,9 +32,9 @@ tests or utilities.
 uv tool install vulture 2>/dev/null || pip install vulture -q
 
 # Scan each active Python src/
-vulture quant-core/python/src/ --min-confidence 80
-vulture mortgage-proofs/src/ --min-confidence 80
-vulture portfolio-proofs/lean_pgd.py portfolio-proofs/lean_pgd_direct.py --min-confidence 80
+vulture foundations/quant-core/python/src/ --min-confidence 80
+vulture extensions/mortgage-proofs/src/ --min-confidence 80
+vulture foundations/portfolio-proofs/lean_pgd.py foundations/portfolio-proofs/lean_pgd_direct.py --min-confidence 80
 ```
 
 The `--min-confidence 80` threshold reduces false positives from Pydantic models
@@ -62,7 +62,7 @@ no theorem proof body in any other `.lean` file in the same subdir.
 grep -rn '^\(def\|theorem\|lemma\|noncomputable def\|noncomputable theorem\) [A-Z][A-Za-z]' \
   --include="*.lean" \
   --exclude-dir=".lake" \
-  ftap-proofs/ options-proofs/ quant-core/lean/ mortgage-proofs/lean/ 2>/dev/null | \
+  foundations/ftap-proofs/ foundations/options-proofs/ foundations/quant-core/lean/ extensions/mortgage-proofs/lean/ 2>/dev/null | \
   grep -v 'private\|protected'
 
 # For each identifier found, check if it is referenced in another file

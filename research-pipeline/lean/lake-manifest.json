@@ -16,7 +16,7 @@
    "name": "«ftap-proofs»",
    "manifestFile": "lake-manifest.json",
    "inherited": false,
-   "dir": "../../ftap-proofs",
+   "dir": "../../foundations/ftap-proofs",
    "configFile": "lakefile.lean"},
   {"url": "https://github.com/leanprover-community/plausible",
    "type": "git",

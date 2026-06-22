@@ -4,15 +4,15 @@ on:
   push:
     branches: [main]
     paths:
-      - 'quant-core/python/**'
-      - 'mortgage-proofs/src/**'
-      - 'mortgage-proofs/tests/**'
-      - 'mortgage-proofs/lean/**'
-      - 'mortgage-proofs/pyproject.toml'
-      - 'portfolio-proofs/lean_pgd.py'
-      - 'portfolio-proofs/lean_pgd_direct.py'
-      - 'portfolio-proofs/tests/**'
-      - 'portfolio-proofs/pyproject.toml'
+      - 'foundations/quant-core/python/**'
+      - 'extensions/mortgage-proofs/src/**'
+      - 'extensions/mortgage-proofs/tests/**'
+      - 'extensions/mortgage-proofs/lean/**'
+      - 'extensions/mortgage-proofs/pyproject.toml'
+      - 'foundations/portfolio-proofs/lean_pgd.py'
+      - 'foundations/portfolio-proofs/lean_pgd_direct.py'
+      - 'foundations/portfolio-proofs/tests/**'
+      - 'foundations/portfolio-proofs/pyproject.toml'
   pull_request:
     branches: [main]
 
@@ -34,26 +34,26 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        working-directory: quant-core/python
+        working-directory: foundations/quant-core/python
         run: uv sync --extra dev
 
       - name: Test
-        working-directory: quant-core/python
+        working-directory: foundations/quant-core/python
         run: uv run pytest -q --cov=src --cov-report=xml
 
       - name: Upload coverage
         uses: codecov/codecov-action@v6
         with:
-          files: quant-core/python/coverage.xml
+          files: foundations/quant-core/python/coverage.xml
           flags: quant-core
         continue-on-error: true
 
       - name: Type check
-        working-directory: quant-core/python
+        working-directory: foundations/quant-core/python
         run: uv run mypy src/ --strict
 
       - name: Lint
-        working-directory: quant-core/python
+        working-directory: foundations/quant-core/python
         run: uv run ruff check src/ tests/
 
   mortgage-python:
@@ -72,12 +72,12 @@ jobs:
       - name: Cache Lake packages
         uses: actions/cache@v5
         with:
-          path: mortgage-proofs/lean/.lake
-          key: lean-mortgage-${{ runner.os }}-${{ hashFiles('mortgage-proofs/lean/lean-toolchain') }}
+          path: extensions/mortgage-proofs/lean/.lake
+          key: lean-mortgage-${{ runner.os }}-${{ hashFiles('extensions/mortgage-proofs/lean/lean-toolchain') }}
           restore-keys: lean-mortgage-${{ runner.os }}-
 
       - name: Build Lean verifier
-        working-directory: mortgage-proofs/lean
+        working-directory: extensions/mortgage-proofs/lean
         run: lake build
 
       - name: Set up uv
@@ -86,26 +86,26 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        working-directory: mortgage-proofs
+        working-directory: extensions/mortgage-proofs
         run: uv sync --all-extras
 
       - name: Test
-        working-directory: mortgage-proofs
+        working-directory: extensions/mortgage-proofs
         run: uv run pytest -m "not integration" -q --cov=src --cov-report=xml
 
       - name: Upload coverage
         uses: codecov/codecov-action@v6
         with:
-          files: mortgage-proofs/coverage.xml
+          files: extensions/mortgage-proofs/coverage.xml
           flags: mortgage-proofs
         continue-on-error: true
 
       - name: Type check
-        working-directory: mortgage-proofs
+        working-directory: extensions/mortgage-proofs
         run: uv run mypy src/ --strict
 
       - name: Lint
-        working-directory: mortgage-proofs
+        working-directory: extensions/mortgage-proofs
         run: uv run ruff check src/ tests/
 
   portfolio-python:
@@ -121,26 +121,26 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        working-directory: portfolio-proofs
+        working-directory: foundations/portfolio-proofs
         run: uv sync --extra dev
 
       - name: Type check
-        working-directory: portfolio-proofs
+        working-directory: foundations/portfolio-proofs
         run: uv run mypy lean_pgd.py lean_pgd_direct.py tests/ --strict
 
       - name: Lint
-        working-directory: portfolio-proofs
+        working-directory: foundations/portfolio-proofs
         run: uv run ruff check lean_pgd.py lean_pgd_direct.py tests/
 
       - name: Docstring coverage
-        working-directory: portfolio-proofs
+        working-directory: foundations/portfolio-proofs
         run: uv run interrogate lean_pgd.py lean_pgd_direct.py
 
       - name: Theorem cross-reference check
-        run: python3 .github/scripts/check_theorem_refs.py portfolio-proofs/lean_pgd.py
+        run: python3 .github/scripts/check_theorem_refs.py foundations/portfolio-proofs/lean_pgd.py
 
       - name: Test (unit only — integration tests require pgd_solve binary)
-        working-directory: portfolio-proofs
+        working-directory: foundations/portfolio-proofs
         # Integration tests are skipped automatically via @requires_binary
         # when the binary is absent; --cov collects what runs in CI.
         run: uv run pytest tests/ -q --cov=. --cov-report=xml
@@ -148,6 +148,6 @@ jobs:
       - name: Upload coverage
         uses: codecov/codecov-action@v6
         with:
-          files: portfolio-proofs/coverage.xml
+          files: foundations/portfolio-proofs/coverage.xml
           flags: portfolio-proofs
         continue-on-error: true

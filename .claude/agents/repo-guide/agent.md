@@ -38,11 +38,11 @@ rather than summarizing. The lead will follow up if they need more.
 
 | Subdir | Lean namespace | Python package | Purpose |
 |--------|---------------|----------------|---------|
-| `quant-core/` | `QuantCore` | `quant_core` | Shared primitives: OptionKind, payoffs, BS, GBM |
+| `foundations/quant-core/` | `QuantCore` | `quant_core` | Shared primitives: OptionKind, payoffs, BS, GBM |
 | `backtest-proofs/` | `BacktestProofs` | `backtest_proofs` | Delta-hedging kernel + Cython FFI + backtester |
-| `ftap-proofs/` | `FtapProofs` | — | Discrete FTAP (Harrison-Pliska 1981) |
-| `options-proofs/` | `OptionsProofs` | — | Put-call parity via CRR binomial model |
-| `mortgage-proofs/` | `MortgageProofs` | `mortgage_proofs` | LangGraph mortgage agent + Lean invariants |
+| `foundations/ftap-proofs/` | `FtapProofs` | — | Discrete FTAP (Harrison-Pliska 1981) |
+| `foundations/options-proofs/` | `OptionsProofs` | — | Put-call parity via CRR binomial model |
+| `extensions/mortgage-proofs/` | `MortgageProofs` | `mortgage_proofs` | LangGraph mortgage agent + Lean invariants |
 | `reports/` | — | — | Quarto research papers |
 
 ## Dependency graph
@@ -62,7 +62,7 @@ A change to `BacktestProofs.Accounting` requires Cython FFI rebuild.
 
 - General financial math proofs → closest proof project by topic
 - Python backtest orchestration → `backtest-proofs/python/`
-- Mortgage routing decisions → `mortgage-proofs/`
+- Mortgage routing decisions → `extensions/mortgage-proofs/`
 - Cross-cutting Python utilities → flag the need to the lead; do not silently create shared code
 - Research paper content → `reports/backtest-proofs.qmd` (literate document)
 

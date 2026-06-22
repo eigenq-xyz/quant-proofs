@@ -48,7 +48,7 @@ Run these checks where possible:
 - `cd <subdir>/python && uv run ruff check src/`
 - `cd <subdir>/python && uv run pytest -q`
 
-For mortgage-proofs: `cd mortgage-proofs && mypy src/ --strict` and `pytest`
+For mortgage-proofs: `cd extensions/mortgage-proofs && mypy src/ --strict` and `pytest`
 
 ## Severity levels
 

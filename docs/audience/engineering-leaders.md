@@ -49,11 +49,11 @@ actually computes, not to an approximation of it. Details are at
 The optimization pillar ([pillar-optimization.md](../pillar-optimization.md)) is
 the best illustration of the pipeline architecture:
 
-1. `optimization-proofs/` proves abstract properties of projected gradient descent
+1. `foundations/optimization-proofs/` proves abstract properties of projected gradient descent
    in Lean 4: projection correctness, the descent lemma, convergence under the
    step-size condition, and shrinkage PSD preservation. (The dual-bisection
    projection is O(N log N), an implementation property rather than a theorem.)
-2. `portfolio-proofs/` instantiates the abstract solver for the portfolio problem
+2. `foundations/portfolio-proofs/` instantiates the abstract solver for the portfolio problem
    (simplex constraint, long-only constraint) and connects the Lean proofs to a
    Cython implementation via the integer FFI contract.
 3. Seven empirical stress scenarios run the Cython solver against SciPy SLSQP,
@@ -70,7 +70,7 @@ is documented precisely.
 ## The AI decision pipeline: verifiable audit trails
 
 The AI systems pillar ([pillar-ai-systems.md](../pillar-ai-systems.md)) covers
-`mortgage-proofs/`, a LangGraph multi-agent pipeline where every routing decision
+`extensions/mortgage-proofs/`, a LangGraph multi-agent pipeline where every routing decision
 is recorded as a `DecisionRecord` JSON object and checked against Lean 4 invariants
 via a command-line verifier (`lake exe verify-trace`).
 

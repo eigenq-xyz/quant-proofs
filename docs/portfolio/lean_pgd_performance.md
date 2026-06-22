@@ -162,7 +162,7 @@ correctness is machine-checked; there is no separate “reference
 implementation” and “verified implementation.” Build the binary with:
 
 ``` bash
-cd optimization-proofs && lake build pgd_solve
+cd foundations/optimization-proofs && lake build pgd_solve
 ```
 
 ## 3. Experimental Design

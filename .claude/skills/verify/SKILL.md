@@ -25,14 +25,14 @@ Verification pyramid: each level must pass before the next runs.
 
 ```bash
 # Level 1 — Lean
-for dir in backtest-proofs/lean ftap-proofs options-proofs mortgage-proofs/lean; do
+for dir in backtest-proofs/lean ftap-proofs options-proofs extensions/mortgage-proofs/lean; do
   (cd "$dir" && lake build) || exit 1
 done
-grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake {backtest-proofs/lean,ftap-proofs,options-proofs,mortgage-proofs/lean}/
+grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake {backtest-proofs/lean,ftap-proofs,options-proofs,extensions/mortgage-proofs/lean}/
 
 # Level 2 — Python
 (cd backtest-proofs/python && uv run pytest -q && uv run mypy src/ --strict && uv run ruff check src/ tests/)
-(cd mortgage-proofs && uv run pytest -m "not integration" -q && uv run mypy src/ --strict)
+(cd extensions/mortgage-proofs && uv run pytest -m "not integration" -q && uv run mypy src/ --strict)
 
 # Levels 3–5 (when infrastructure exists)
 uv run pytest tests/property/ tests/empirical/ tests/regime/ -v

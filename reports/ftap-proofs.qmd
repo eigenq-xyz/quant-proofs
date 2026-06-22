@@ -167,16 +167,16 @@ artifacts live.
 ## Lean 4 artifacts {#sec-artifacts}
 
 The formal development lives in
-[`ftap-proofs/`](https://github.com/eigenq-xyz/quant-proofs/tree/main/ftap-proofs).
+[`foundations/ftap-proofs/`](https://github.com/eigenq-xyz/quant-proofs/tree/main/ftap-proofs).
 The following table maps the paper-level statements to their Lean 4 names.
 
 | Paper statement            | Lean 4 name                          | File                                  |
 |----------------------------|--------------------------------------|---------------------------------------|
-| @thm-headline (full)       | `FtapProofs.ftap`                    | `ftap-proofs/FtapProofs/Theorem.lean` |
-| Reverse direction (EMM ⇒ NA) | `FtapProofs.emm_implies_no_arbitrage` | `ftap-proofs/FtapProofs/Theorem.lean` |
-| Forward direction (NA ⇒ EMM) | `FtapProofs.no_arbitrage_implies_emm` | `ftap-proofs/FtapProofs/Theorem.lean` |
-| Value process is a martingale under any EMM | `FtapProofs.discountedValue_martingale_of_emm` | `ftap-proofs/FtapProofs/MartingaleMeasure.lean` |
-| Risk-neutral pricing identity | `FtapProofs.risk_neutral_pricing`  | `ftap-proofs/FtapProofs/MartingaleMeasure.lean` |
+| @thm-headline (full)       | `FtapProofs.ftap`                    | `foundations/ftap-proofs/FtapProofs/Theorem.lean` |
+| Reverse direction (EMM ⇒ NA) | `FtapProofs.emm_implies_no_arbitrage` | `foundations/ftap-proofs/FtapProofs/Theorem.lean` |
+| Forward direction (NA ⇒ EMM) | `FtapProofs.no_arbitrage_implies_emm` | `foundations/ftap-proofs/FtapProofs/Theorem.lean` |
+| Value process is a martingale under any EMM | `FtapProofs.discountedValue_martingale_of_emm` | `foundations/ftap-proofs/FtapProofs/MartingaleMeasure.lean` |
+| Risk-neutral pricing identity | `FtapProofs.risk_neutral_pricing`  | `foundations/ftap-proofs/FtapProofs/MartingaleMeasure.lean` |
 
 ::: {.callout-note title="Formalization claim"}
 At the head of the `main` branch, `lake build` succeeds for `ftap-proofs` and a
@@ -223,8 +223,8 @@ snapshot by replacing the generator with a loader.
 | Trials               | 20,000 per cell, single seeded generator                     |
 
 The generating script and its committed output are
-`ftap-proofs/results/parity_consistency_study.py` and
-`ftap-proofs/results/metrics/parity_consistency.json`.
+`foundations/ftap-proofs/results/parity_consistency_study.py` and
+`foundations/ftap-proofs/results/metrics/parity_consistency.json`.
 
 # Results {#sec-empirical}
 
@@ -246,7 +246,7 @@ absolute parity gap.
 
 : Mean put-call parity deviation in basis points of spot, by volatility regime
 and quote-friction level. Source:
-`ftap-proofs/results/metrics/parity_consistency.json`, 20,000 trials per cell.
+`foundations/ftap-proofs/results/metrics/parity_consistency.json`, 20,000 trials per cell.
 {#tbl-parity}
 
 The tail behaves the same way. At the 95th percentile across strikes and trials,
@@ -311,9 +311,9 @@ broken out by regime.
 
 The full proofs are machine-checked; rather than reproduce them, we point to the
 source. The forward direction's separation argument is in
-`ftap-proofs/FtapProofs/Theorem.lean`, building on the attainable-payoff and
-no-arbitrage definitions in `ftap-proofs/FtapProofs/Arbitrage.lean`. The
-martingale machinery is in `ftap-proofs/FtapProofs/MartingaleMeasure.lean`.
+`foundations/ftap-proofs/FtapProofs/Theorem.lean`, building on the attainable-payoff and
+no-arbitrage definitions in `foundations/ftap-proofs/FtapProofs/Arbitrage.lean`. The
+martingale machinery is in `foundations/ftap-proofs/FtapProofs/MartingaleMeasure.lean`.
 
 ## B. Replication
 

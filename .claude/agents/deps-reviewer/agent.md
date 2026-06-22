@@ -28,9 +28,9 @@ WARN or NOTE.
 ## Python subdirs to audit
 
 Always audit all active Python subdirs:
-- `quant-core/python/` — `pyproject.toml`
-- `mortgage-proofs/` — `pyproject.toml`
-- `portfolio-proofs/` — `pyproject.toml`
+- `foundations/quant-core/python/` — `pyproject.toml`
+- `extensions/mortgage-proofs/` — `pyproject.toml`
+- `foundations/portfolio-proofs/` — `pyproject.toml`
 
 ---
 
@@ -38,7 +38,7 @@ Always audit all active Python subdirs:
 
 ```bash
 # For each subdir with a pyproject.toml:
-cd quant-core/python && uv pip list --outdated 2>/dev/null || pip list --outdated
+cd foundations/quant-core/python && uv pip list --outdated 2>/dev/null || pip list --outdated
 cd ../../mortgage-proofs && uv pip list --outdated 2>/dev/null || pip list --outdated
 cd ../portfolio-proofs && uv pip list --outdated 2>/dev/null || pip list --outdated
 ```
@@ -71,10 +71,10 @@ deps = data.get('project', {}).get('dependencies', [])
 # Strip version specifiers — keep package name only
 names = [re.split(r'[>=<!;\[]', d)[0].strip().lower().replace('-','_') for d in deps]
 print('\n'.join(names))
-" quant-core/python
+" foundations/quant-core/python
 
 # Find all import statements in src/
-grep -rh '^import \|^from ' quant-core/python/src/ --include="*.py" | \
+grep -rh '^import \|^from ' foundations/quant-core/python/src/ --include="*.py" | \
   sed 's/^import //;s/^from //;s/ .*//' | \
   tr '.' '\n' | sort -u
 ```
@@ -101,8 +101,8 @@ Look for packages that provide the same functionality:
 - Both `numpy` and `cupy` (unlikely, but flag if present)
 
 ```bash
-grep -h 'dependencies' quant-core/python/pyproject.toml mortgage-proofs/pyproject.toml \
-  portfolio-proofs/pyproject.toml 2>/dev/null
+grep -h 'dependencies' foundations/quant-core/python/pyproject.toml extensions/mortgage-proofs/pyproject.toml \
+  foundations/portfolio-proofs/pyproject.toml 2>/dev/null
 ```
 
 ---
@@ -116,7 +116,7 @@ whose license is incompatible or requires attribution beyond what the repo provi
 # Install pip-licenses if not present
 uv tool install pip-licenses 2>/dev/null || pip install pip-licenses -q
 
-cd quant-core/python && pip-licenses --format=csv --output-file=/tmp/licenses-quant-core.csv 2>/dev/null
+cd foundations/quant-core/python && pip-licenses --format=csv --output-file=/tmp/licenses-quant-core.csv 2>/dev/null
 cd ../../mortgage-proofs && pip-licenses --format=csv --output-file=/tmp/licenses-mortgage.csv 2>/dev/null
 cd ../portfolio-proofs && pip-licenses --format=csv --output-file=/tmp/licenses-portfolio.csv 2>/dev/null
 
@@ -149,7 +149,7 @@ suspicious = {
     'tensor_flow', 'torch_', 'fastapii', 'pydanticv2',
 }
 
-for subdir in ['quant-core/python', 'mortgage-proofs', 'portfolio-proofs']:
+for subdir in ['foundations/quant-core/python', 'mortgage-proofs', 'portfolio-proofs']:
     p = pathlib.Path(subdir, 'pyproject.toml')
     if not p.exists():
         continue

@@ -583,7 +583,7 @@ trust-constr and Gurobi on synthetic ill-conditioned problems (same
 structural parameters as the August 2007 reconstruction: $T = N/5$,
 $\alpha = 0.10$ shrinkage). The Python PGD is used **for benchmarking
 only** — it carries no formal correctness guarantee. The Lean 4
-implementation in `optimization-proofs/` is what provides the verified
+implementation in `foundations/optimization-proofs/` is what provides the verified
 guarantees.
 
 ``` python
@@ -747,7 +747,7 @@ wall-clock advantage over trust-constr and a 15-fold advantage over
 Gurobi.
 
 **Lean 4 native implementation.** The Lean 4 PGD in
-`optimization-proofs/` (compiled to native code via LLVM, no interpreter
+`foundations/optimization-proofs/` (compiled to native code via LLVM, no interpreter
 boundary at any point) solves the August 2007 $N = 10$ problem in
 **13.834 ns** per solve (1,000-run average on Apple M-series, measured
 by `lake exe pgd_bench`), converging in 6 iterations to the

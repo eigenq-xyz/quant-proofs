@@ -17,7 +17,7 @@ areas of direct interest to asset-pricing researchers.
 
 ## The discrete FTAP: a machine-checked proof
 
-`ftap-proofs/` is a Lean 4 formalization of the discrete Fundamental Theorem
+`foundations/ftap-proofs/` is a Lean 4 formalization of the discrete Fundamental Theorem
 of Asset Pricing as stated by Harrison and Pliska (1981). The central theorem:
 a finite securities market admits no arbitrage if and only if there exists a
 probability measure equivalent to the physical measure under which all
@@ -36,13 +36,13 @@ a mathlib contribution.
 
 ## Put-call parity via the binomial model
 
-`options-proofs/` proves European put-call parity in the Cox-Ross-Rubinstein
+`foundations/options-proofs/` proves European put-call parity in the Cox-Ross-Rubinstein
 binomial model:
 
 $$C - P = S_0 - K \cdot (1+r)^{-T}$$
 
 The proof proceeds by constructing an explicit replicating portfolio for the
-call-minus-put position and invoking the FTAP from `ftap-proofs/` to conclude
+call-minus-put position and invoking the FTAP from `foundations/ftap-proofs/` to conclude
 that two portfolios with identical payoffs must have identical prices in any
 arbitrage-free market. The formal statement makes precise which version of the
 binomial model is assumed (one risky asset, one bond, no dividends, frictionless
@@ -50,7 +50,7 @@ trading) and how the risk-neutral measure is constructed.
 
 ## A formal counterexample in perpetual futures pricing
 
-`perpetual-proofs/` addresses a result in the literature on perpetual futures,
+`extensions/perpetual-proofs/` addresses a result in the literature on perpetual futures,
 a class of derivatives that has no fixed expiry and charges a periodic funding
 payment to keep the futures price close to the spot price.
 
@@ -84,7 +84,7 @@ The optimization pillar ([pillar-optimization.md](../pillar-optimization.md))
 covers convex optimization results (projected gradient descent, projection onto
 the probability simplex) that underpin mean-variance portfolio construction. These
 are standard results, formalized here to support the portfolio solver in
-`portfolio-proofs/`.
+`foundations/portfolio-proofs/`.
 
 ## Entry points
 

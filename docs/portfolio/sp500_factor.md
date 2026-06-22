@@ -266,7 +266,7 @@ each Newton step. At $N = 500$ the Gurobi solve is substantially slower
 than 100 PGD iterations, and this gap widens at $N = 1000+$.
 
 The Python reference PGD is used for benchmarking only — it carries no
-formal correctness guarantee. The Lean 4 PGD in `optimization-proofs/`
+formal correctness guarantee. The Lean 4 PGD in `foundations/optimization-proofs/`
 provides the verified guarantees.[^3]
 
 ## Scaling plot
@@ -405,7 +405,7 @@ numpy call (gradient computation: 4 ops) costs more in dispatch than the
 actual floating-point work. The algorithmic scaling advantage is best
 read from the Gurobi-to-PGD timing ratio in the benchmark table above,
 where the $O(N^3)$ vs. $O(N)$ difference dominates at $N \geq 100$. The
-Lean 4 implementation in `optimization-proofs/` solves the $N = 10$
+Lean 4 implementation in `foundations/optimization-proofs/` solves the $N = 10$
 problem in 14.8 ns per solve (1,000-run average on Apple M-series),
 demonstrating the algorithm’s performance when the interpreter overhead
 is removed.[^4]

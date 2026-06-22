@@ -29,9 +29,9 @@ is found.
 ## Python subdirs to scan
 
 Always scan all active Python subdirs:
-- `quant-core/python/src/`
-- `mortgage-proofs/src/`
-- `portfolio-proofs/` (top-level `.py` files)
+- `foundations/quant-core/python/src/`
+- `extensions/mortgage-proofs/src/`
+- `foundations/portfolio-proofs/` (top-level `.py` files)
 
 ---
 
@@ -44,9 +44,9 @@ Run bandit on each subdir. Install if absent.
 uv tool install bandit 2>/dev/null || pip install bandit -q
 
 # Scan each subdir
-bandit -r quant-core/python/src/ -f text -ll  # -ll = medium severity and above
-bandit -r mortgage-proofs/src/ -f text -ll
-bandit -r portfolio-proofs/ -f text -ll --exclude portfolio-proofs/.venv,portfolio-proofs/.lake
+bandit -r foundations/quant-core/python/src/ -f text -ll  # -ll = medium severity and above
+bandit -r extensions/mortgage-proofs/src/ -f text -ll
+bandit -r foundations/portfolio-proofs/ -f text -ll --exclude foundations/portfolio-proofs/.venv,foundations/portfolio-proofs/.lake
 ```
 
 Flag any B-severity issue. High-priority bandit codes for this repo:
@@ -71,7 +71,7 @@ Flag any B-severity issue. High-priority bandit codes for this repo:
 uv tool install pip-audit 2>/dev/null || pip install pip-audit -q
 
 # Audit each lockfile / installed environment
-cd quant-core/python && pip-audit -r requirements.txt 2>/dev/null || \
+cd foundations/quant-core/python && pip-audit -r requirements.txt 2>/dev/null || \
   pip-audit --requirement <(uv export --no-hashes 2>/dev/null) 2>/dev/null || \
   pip-audit  # fallback: audit current env
 

@@ -38,7 +38,7 @@ Details are in [how-we-verify.md](../how-we-verify.md).
 The optimization pillar ([pillar-optimization.md](../pillar-optimization.md))
 covers two subprojects:
 
-**`optimization-proofs/`** proves ten theorems about the projected gradient
+**`foundations/optimization-proofs/`** proves ten theorems about the projected gradient
 descent (PGD) algorithm at the abstract level:
 
 - The projection onto the probability simplex is correct (the result is always
@@ -51,7 +51,7 @@ descent (PGD) algorithm at the abstract level:
 - The shrinkage operator preserves positive semidefiniteness of a covariance
   matrix.
 
-**`portfolio-proofs/`** connects those abstract guarantees to a PGD portfolio
+**`foundations/portfolio-proofs/`** connects those abstract guarantees to a PGD portfolio
 solver and runs seven empirical stress scenarios, comparing results against
 SciPy SLSQP, SciPy trust-constr, and Gurobi. The Lean proofs cover the solver's
 structural properties; the scenarios demonstrate behavior on realistic market
@@ -68,11 +68,11 @@ to produce infeasible results.
 The pricing pillar ([pillar-pricing.md](../pillar-pricing.md)) formalizes results
 that underpin routine derivatives pricing:
 
-- The discrete FTAP (`ftap-proofs/`) gives a machine-checked proof that no
+- The discrete FTAP (`foundations/ftap-proofs/`) gives a machine-checked proof that no
   arbitrage is equivalent to the existence of an equivalent martingale measure.
   Every hypothesis is stated explicitly in the Lean type signature, so there is
   no ambiguity about what market conditions the result requires.
-- Put-call parity (`options-proofs/`) is proved for the CRR binomial model via
+- Put-call parity (`foundations/options-proofs/`) is proved for the CRR binomial model via
   the FTAP: C - P = S0 - K/(1+r)^T. The proof is constructive: it exhibits the
   replicating portfolio.
 - The perpetual-proofs subproject includes a formal counterexample showing that
