@@ -10,7 +10,7 @@ driven by a command-line tool (`rp`), and the load-bearing stages carry verifica
 build `sorry`-free. A real, honest study is run and reported in
 [`studies/REPORT.md`](studies/REPORT.md); the measure-theoretic `𝓕ₜ`-measurability upgrade is proved.
 Remaining work (default verified-solver routing, the dollar-neutral verified projection) is tracked
-in [`ROADMAP.md`](ROADMAP.md).
+in the open GitHub issues under the **research-pipeline completion sprint** milestone.
 
 **Headline study** — 12-1 momentum on the 49 Ken French industry portfolios, daily, 1926–2026,
 reproducible from free data (`python -m scripts.run_study`): IC t-stat (Newey-West) **14.3**, strict
@@ -84,4 +84,4 @@ pytest -q                                         # unit + property contracts
 3. **Verified solver** — `verified_pgd_weights` now refuses a silent fallback. Remaining: route it through `pgd_solve` by default in the study and extend the verified projection to the dollar-neutral simplex (`sum w = 0`).
 4. ✅ **Measure-theoretic proof** — `Measurability.lean` proves signal `𝓕ₜ`-measurability against the natural filtration, citing `ftap-proofs`.
 
-See [`ROADMAP.md`](ROADMAP.md).
+Active work is tracked in the open GitHub issues under the **research-pipeline completion sprint** milestone.

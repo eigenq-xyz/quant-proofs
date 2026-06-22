@@ -48,7 +48,7 @@ def conditional_scale(
     """Conditional twist: damp the signal in high-volatility regimes.
 
     The regime indicator uses only past returns (``≤ t``), so the result stays
-    non-anticipating. ROADMAP: replace ``1/(1+vol)`` with a real regime/state model.
+    non-anticipating. Future work: replace ``1/(1+vol)`` with a real regime/state model.
     """
     realized_vol = panel.simple_returns().rolling(vol_window).std()
     scale = 1.0 / (1.0 + realized_vol)

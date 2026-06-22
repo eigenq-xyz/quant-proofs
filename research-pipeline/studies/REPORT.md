@@ -159,8 +159,8 @@ of a near-century sample. It survives multiple-testing deflation (deflated Sharp
 
 What would change the conclusion: rebalancing on the signal's natural horizon rather than daily
 (the IC decay says the information is strongest at 21 to 63 days), a volatility-managed overlay
-to tame the crash risk, and richer transaction-cost and capacity modeling. Those are tracked in
-the ROADMAP. The cross-asset generalization study (does the same effect appear in bonds,
+to tame the crash risk, and richer transaction-cost and capacity modeling. Those remain future
+work. The cross-asset generalization study (does the same effect appear in bonds,
 currencies, and commodities) is reported separately in **§7** as breadth evidence.
 
 ## 7. Cross-asset generalization

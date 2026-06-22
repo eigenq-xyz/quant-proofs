@@ -1,4 +1,4 @@
-"""ROADMAP item 5 — bounded cross-asset generalisation study on FREE published AQR data.
+"""Bounded cross-asset generalisation study on FREE published AQR data.
 
 The same momentum effect should appear across asset classes if it is structural, not a
 single-market artifact. AQR's free data library publishes *already-built* long/short factor

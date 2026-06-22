@@ -54,7 +54,7 @@ def make_synthetic_panel(
 
     Per-asset drift follows an AR(1), so past returns predict near-future returns and the
     demo shows a positive IC. Deterministic given ``seed``. Clearly synthetic — real
-    point-in-time loaders are a ROADMAP item.
+    point-in-time loaders are available in ``data_sources.py``.
     """
     rng = np.random.default_rng(seed)
     drift = np.zeros(n_assets)

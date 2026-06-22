@@ -30,7 +30,7 @@ The headline results:
   and `price (t - lookback)` (both indices `≤ t`), over `ℕ`-indexed time.
 * `momentumSignal_adapted` — `Adapted 𝓕 (momentumSignal …)`: the momentum signal
   process is adapted to the natural filtration of prices. This is the genuine
-  `𝓕ₜ`-measurability upgrade requested by the ROADMAP.
+  `𝓕ₜ`-measurability upgrade.
 
 ## Relation to `ftap-proofs`
 

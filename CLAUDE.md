@@ -19,7 +19,7 @@ Monorepo for formally verified quantitative finance. Lean 4 proofs + Python/Cyth
 
 **Tiers** (the README groups by these): **flagship** = `research-pipeline`; **verified foundations** = `ftap-proofs`, `options-proofs`, `quant-core`, `optimization-proofs`, `portfolio-proofs`; **extensions** = `perpetual-proofs`, `stopped-time-proofs`, `mortgage-proofs`; **archive**.
 
-`research-pipeline/` runs the full desk workflow end to end. Proved `sorry`-free: backtest non-anticipation, OOS no-leakage, and signal $\mathcal{F}_t$-measurability (`Measurability.lean`, cites `ftap-proofs`). The real Ken French momentum study is run and reported in `studies/REPORT.md`; cross-asset breadth uses free AQR data. The statistical layer is rigorous but unverified. Remaining: route portfolio construction through `pgd_solve` by default and extend the verified projection to the dollar-neutral simplex — see `research-pipeline/ROADMAP.md`.
+`research-pipeline/` runs the full desk workflow end to end. Proved `sorry`-free: backtest non-anticipation, OOS no-leakage, and signal $\mathcal{F}_t$-measurability (`Measurability.lean`, cites `ftap-proofs`). The real Ken French momentum study is run and reported in `studies/REPORT.md`; cross-asset breadth uses free AQR data. The statistical layer is rigorous but unverified. Remaining: route portfolio construction through `pgd_solve` by default and extend the verified projection to the dollar-neutral simplex — tracked in the open GitHub issues under the **research-pipeline completion sprint** milestone.
 
 Each active subdir has its own CLAUDE.md with architecture details. Read that before working in a subdir.
 
