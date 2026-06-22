@@ -10,8 +10,13 @@ import datetime
 
 import numpy as np
 import pandas as pd
+import pytest
 
-from research_pipeline import analyze_return_streams
+from research_pipeline import (
+    analyze_return_streams,
+    reproduction_table,
+    verification_status_line,
+)
 from research_pipeline.data_sources import parse_aqr_sheet
 
 
@@ -57,6 +62,75 @@ def test_analyze_return_streams_deflation_uses_n_trials() -> None:
         {"a": base, "b": base, "c": base, "d": base}, periods_per_year=12
     )
     assert four.loc["a", "deflated_sharpe"] <= one.loc["a", "deflated_sharpe"] + 1e-9
+
+
+def test_reproduction_table_flags_sign_and_magnitude() -> None:
+    realized = pd.DataFrame(
+        {"sharpe": [0.60, 0.55, -0.10, 0.30]},
+        index=["match", "low_magnitude", "wrong_sign", "extra_realized"],
+    )
+    published = {
+        "match": 0.50,  # ratio 1.2 -> sign + magnitude -> reproduced
+        "low_magnitude": 0.20,  # ratio 2.75 > tol 2.0 -> sign ok, magnitude fails
+        "wrong_sign": 0.40,  # realized is negative -> sign fails
+        "absent": 0.50,  # not in realized -> dropped from the table
+    }
+    table = reproduction_table(realized, published, tol_ratio=2.0)
+    # Only sleeves present in BOTH realized and published appear; 'extra_realized' has no
+    # published anchor and 'absent' was never realized.
+    assert set(table.index) == {"match", "low_magnitude", "wrong_sign"}
+    assert bool(table.loc["match", "reproduced"]) is True
+    assert bool(table.loc["low_magnitude", "sign_match"]) is True
+    assert bool(table.loc["low_magnitude", "magnitude_match"]) is False
+    assert bool(table.loc["low_magnitude", "reproduced"]) is False
+    assert bool(table.loc["wrong_sign", "sign_match"]) is False
+    assert bool(table.loc["wrong_sign", "reproduced"]) is False
+    assert int(table["reproduced"].sum()) == 1
+
+
+def test_reproduction_table_tol_ratio_widens_band() -> None:
+    realized = pd.DataFrame({"sharpe": [0.55]}, index=["x"])
+    published = {"x": 0.20}  # ratio 2.75
+    assert (
+        bool(reproduction_table(realized, published, tol_ratio=2.0).loc["x", "reproduced"]) is False
+    )
+    assert (
+        bool(reproduction_table(realized, published, tol_ratio=3.0).loc["x", "reproduced"]) is True
+    )
+
+
+def test_reproduction_table_consumes_analyze_summary() -> None:
+    # The analyze_return_streams summary feeds straight into reproduction_table. Using the
+    # realized Sharpes themselves as the published anchor => every sleeve reproduces (ratio 1).
+    streams = _synthetic_streams()
+    summary, _ = analyze_return_streams(streams, periods_per_year=12)
+    published = {k: float(summary.loc[k, "sharpe"]) for k in streams}
+    table = reproduction_table(summary, published)
+    assert set(table.index) == set(streams)
+    assert int(table["reproduced"].sum()) == len(streams)
+    assert np.allclose(table["ratio"].to_numpy(dtype=float), 1.0)
+
+
+def test_reproduction_table_validation() -> None:
+    realized = pd.DataFrame({"sharpe": [0.5]}, index=["x"])
+    with pytest.raises(ValueError):
+        reproduction_table(realized, {"x": 0.5}, tol_ratio=0.5)  # tol < 1
+    with pytest.raises(ValueError):
+        reproduction_table(
+            pd.DataFrame({"ann_return": [0.1]}, index=["x"]), {"x": 0.5}
+        )  # no sharpe
+    with pytest.raises(ValueError):
+        reproduction_table(realized, {"y": 0.5})  # no overlap
+
+
+def test_verification_status_line() -> None:
+    line = verification_status_line()
+    assert isinstance(line, str)
+    assert "Lean build green" in line
+    assert "look-ahead" in line
+    assert "leakage" in line
+    assert "Scope:" in line
+    assert "Scope:" not in verification_status_line(include_scope=False)
 
 
 def _aqr_fixture_rows() -> list[tuple[object, ...]]:

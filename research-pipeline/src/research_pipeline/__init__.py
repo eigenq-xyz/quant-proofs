@@ -43,7 +43,12 @@ from .evaluation import (
     turnover,
     factor_attribution,
 )
-from .crossasset import run_cross_asset, analyze_return_streams
+from .crossasset import (
+    run_cross_asset,
+    analyze_return_streams,
+    reproduction_table,
+    verification_status_line,
+)
 from .strategy import (
     Strategy,
     SignalStrategy,
@@ -98,6 +103,8 @@ __all__ = [
     "factor_attribution",
     "run_cross_asset",
     "analyze_return_streams",
+    "reproduction_table",
+    "verification_status_line",
     "Strategy",
     "SignalStrategy",
     "register",

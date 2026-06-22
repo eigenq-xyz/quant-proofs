@@ -187,8 +187,53 @@ positive, multiple-testing-significant Sharpe in every asset class with weakly c
 streams, the common-factor signature one expects from a structural effect rather than a
 single-market artifact (Moskowitz, Ooi, Pedersen 2012; Asness, Moskowitz, Pedersen 2013).
 
-The Value-and-Momentum-Everywhere path (`--dataset vme`, 8 markets, 1972 onward) is more mixed:
-momentum is strong in most markets but weak and insignificant in Japanese equities (deflated
-Sharpe 0.28) and in fixed-income momentum (0.26). That heterogeneity is reported as is, not
-cherry-picked, and is itself the honest finding: the effect generalizes broadly but not
-uniformly.
+### 7.1 Validation by reproduction
+
+A breadth study is only as trustworthy as its agreement with the published record. The check here
+places each sleeve's realized Sharpe (computed from the free AQR factor streams) beside the figure
+reported in the source paper. The bar is sign and rough magnitude, not exact decimals: the free data
+extend each paper's sample by a decade or more, and construction details (rebalance lag, volatility
+scaling, universe) differ. A sleeve counts as reproduced when its realized Sharpe shares the
+published sign and lands within a factor of two of the published value. Reproduce with
+`python -m scripts.run_cross_asset --dataset vme --json studies/results_crossasset_vme.json`.
+
+Value and Momentum Everywhere, per-market momentum factor, realized over January 1972 to March 2026,
+against the figures in Asness, Moskowitz, Pedersen (2013), Table I (gross, each market over its own
+sample to 2011):
+
+| Market | Realized Sharpe | Published Sharpe | Reproduced |
+|---|---|---|---|
+| US equities | 0.44 | 0.45 | yes |
+| UK equities | 0.51 | 0.88 | yes |
+| Europe equities | 0.64 | 1.07 | yes |
+| Japan equities | 0.12 | 0.37 | no |
+| Equity indices | 0.46 | 1.00 | no |
+| Currencies | 0.22 | 1.28 | no |
+| Fixed income | 0.13 | 0.20 | yes |
+| Commodities | 0.38 | 0.62 | yes |
+
+Momentum is positive in all eight markets, the sign agreement one expects from a structural effect,
+and five of eight land within a factor of two of the published Sharpe. The three that fall short are
+informative rather than embarrassing. Japanese-equity and fixed-income momentum are the two markets
+the paper itself reports as statistically insignificant (its own t-statistics near zero), so a weak
+realized Sharpe agrees with the paper rather than contradicting it. Currency and equity-index
+momentum decayed in the fifteen years of data after the paper's 2011 cutoff: the realized window here
+runs to 2026, and the well-documented post-2011 drawdown in currency momentum pulls its full-sample
+Sharpe far below the 1979 to 2011 figure. The realized numbers are reported as they come out,
+including where they undershoot.
+
+For time-series momentum the source paper (Moskowitz, Ooi, Pedersen 2012) does not tabulate
+per-sleeve Sharpe ratios; it reports only the diversified all-asset composite, in prose, as greater
+than 1.0 (gross, 1985 to 2009). The realized diversified TSMOM composite over 1985 to 2025 is 0.98,
+essentially reproducing that figure (the small shortfall is the post-2009 decay common to the
+literature). The four per-sleeve TSMOM Sharpes in the table at the top of this section are therefore
+computed from the AQR data, not quoted from the paper.
+
+### 7.2 Verification status
+
+When the Lean proofs build green, the load-bearing invariants of the pipeline are machine-checked: no
+look-ahead in the backtester, no train/test leakage (the out-of-sample embargo is at least the
+holding horizon), the signal is measurable against the information set available at each date (adapted
+to the natural price filtration, citing the FTAP development), and the verified portfolio solver's
+projection and convergence. That guarantee is scoped to the daily equity backtester; the cross-asset
+streams in this section are pre-built factor returns presented as breadth evidence, not verified runs.

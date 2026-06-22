@@ -1,0 +1,260 @@
+{
+  "name": "momentum (VME) across asset classes / AQR (free)",
+  "dataset": "vme",
+  "verification": "Pre-built AQR factor return streams, NOT routed through the verified daily backtester. Breadth/generalisation evidence only; the no-look-ahead guarantee is scoped to the daily equity backtest.",
+  "n_asset_classes": 8,
+  "periods_per_year": 12,
+  "date_start": "1972-01-31",
+  "date_end": "2026-03-31",
+  "per_class_summary": {
+    "equities_us": {
+      "sharpe": 0.4377324978609107,
+      "ann_return": 0.05673740659998128,
+      "ann_vol": 0.15331963182086109,
+      "max_drawdown": -0.5297074996704441,
+      "calmar": 0.10711082368152289,
+      "hit_rate": 0.5984615384615385,
+      "skew": -0.14956537882932286,
+      "kurtosis": 7.38398968572535,
+      "n": 650.0,
+      "deflated_sharpe": 0.9566237096751309
+    },
+    "equities_uk": {
+      "sharpe": 0.5077165502263835,
+      "ann_return": 0.06520687751910059,
+      "ann_vol": 0.14592447468053435,
+      "max_drawdown": -0.579245221057516,
+      "calmar": 0.11257214586950541,
+      "hit_rate": 0.5883256528417818,
+      "skew": -0.5259283411593321,
+      "kurtosis": 4.8175430246757385,
+      "n": 651.0,
+      "deflated_sharpe": 0.9845632604874109
+    },
+    "equities_europe": {
+      "sharpe": 0.6417730174713934,
+      "ann_return": 0.07498013245172164,
+      "ann_vol": 0.12535586868269374,
+      "max_drawdown": -0.450536160407189,
+      "calmar": 0.1664242274892109,
+      "hit_rate": 0.6373801916932907,
+      "skew": -0.778598717263428,
+      "kurtosis": 5.261612279027631,
+      "n": 626.0,
+      "deflated_sharpe": 0.9980690305543405
+    },
+    "equities_japan": {
+      "sharpe": 0.11880720129205263,
+      "ann_return": 0.006276378275686723,
+      "ann_vol": 0.1532489056541336,
+      "max_drawdown": -0.5169945282358344,
+      "calmar": 0.012140125152008695,
+      "hit_rate": 0.5447284345047924,
+      "skew": -0.4934486277598441,
+      "kurtosis": 3.092398025789312,
+      "n": 626.0,
+      "deflated_sharpe": 0.2755388074223474
+    },
+    "equity_indices": {
+      "sharpe": 0.464868210407591,
+      "ann_return": 0.04521547808623838,
+      "ann_vol": 0.10776033834863337,
+      "max_drawdown": -0.19530137363525246,
+      "calmar": 0.23151643659549181,
+      "hit_rate": 0.5652173913043478,
+      "skew": -0.33043876042059295,
+      "kurtosis": 1.6551306495916513,
+      "n": 575.0,
+      "deflated_sharpe": 0.9559220174793954
+    },
+    "currencies": {
+      "sharpe": 0.22068470491810138,
+      "ann_return": 0.014765271391911972,
+      "ann_vol": 0.08154470078434856,
+      "max_drawdown": -0.30363038025330036,
+      "calmar": 0.048629097587646546,
+      "hit_rate": 0.5732368896925859,
+      "skew": -0.43402071065982273,
+      "kurtosis": 1.1200050601386868,
+      "n": 553.0,
+      "deflated_sharpe": 0.5148275549012467
+    },
+    "fixed_income": {
+      "sharpe": 0.12795971500911363,
+      "ann_return": 0.0047258009780448695,
+      "ann_vol": 0.04455857241217025,
+      "max_drawdown": -0.17802743512526964,
+      "calmar": 0.026545352263933605,
+      "hit_rate": 0.5247524752475248,
+      "skew": 0.11908208137452334,
+      "kurtosis": 3.7946102753131727,
+      "n": 505.0,
+      "deflated_sharpe": 0.2641819317103483
+    },
+    "commodities": {
+      "sharpe": 0.3758727487436426,
+      "ann_return": 0.05912747074466518,
+      "ann_vol": 0.21377618733414266,
+      "max_drawdown": -0.7003786420662987,
+      "calmar": 0.08442214995337921,
+      "hit_rate": 0.5557299843014128,
+      "skew": 0.07845325522721369,
+      "kurtosis": 2.364524441910639,
+      "n": 637.0,
+      "deflated_sharpe": 0.8987854312825465
+    }
+  },
+  "correlation": {
+    "equities_us": {
+      "equities_us": 1.0,
+      "equities_uk": 0.619598631139115,
+      "equities_europe": 0.5969127892754956,
+      "equities_japan": 0.3345820018894816,
+      "equity_indices": 0.34570694877986613,
+      "currencies": 0.14875905328570227,
+      "fixed_income": 0.10030351540642342,
+      "commodities": 0.19940655915532113
+    },
+    "equities_uk": {
+      "equities_us": 0.619598631139115,
+      "equities_uk": 1.0,
+      "equities_europe": 0.6653232866220822,
+      "equities_japan": 0.3206589138238026,
+      "equity_indices": 0.4074700605437218,
+      "currencies": 0.19687072829160787,
+      "fixed_income": 0.09757985760594515,
+      "commodities": 0.1704224880174685
+    },
+    "equities_europe": {
+      "equities_us": 0.5969127892754956,
+      "equities_uk": 0.6653232866220822,
+      "equities_europe": 1.0,
+      "equities_japan": 0.3418209302756497,
+      "equity_indices": 0.5609081270248928,
+      "currencies": 0.26803666172401486,
+      "fixed_income": 0.146771613773184,
+      "commodities": 0.1853334629565675
+    },
+    "equities_japan": {
+      "equities_us": 0.3345820018894816,
+      "equities_uk": 0.3206589138238026,
+      "equities_europe": 0.3418209302756497,
+      "equities_japan": 1.0,
+      "equity_indices": 0.21934625835192834,
+      "currencies": 0.19299459219970722,
+      "fixed_income": 0.02433059916544433,
+      "commodities": 0.0467643321302775
+    },
+    "equity_indices": {
+      "equities_us": 0.34570694877986613,
+      "equities_uk": 0.4074700605437218,
+      "equities_europe": 0.5609081270248928,
+      "equities_japan": 0.21934625835192834,
+      "equity_indices": 1.0,
+      "currencies": 0.20778310938053393,
+      "fixed_income": 0.12240811139109613,
+      "commodities": 0.2538824213538187
+    },
+    "currencies": {
+      "equities_us": 0.14875905328570227,
+      "equities_uk": 0.19687072829160787,
+      "equities_europe": 0.26803666172401486,
+      "equities_japan": 0.19299459219970722,
+      "equity_indices": 0.20778310938053393,
+      "currencies": 1.0,
+      "fixed_income": 0.10319369744883822,
+      "commodities": 0.085302471365868
+    },
+    "fixed_income": {
+      "equities_us": 0.10030351540642342,
+      "equities_uk": 0.09757985760594515,
+      "equities_europe": 0.146771613773184,
+      "equities_japan": 0.02433059916544433,
+      "equity_indices": 0.12240811139109613,
+      "currencies": 0.10319369744883822,
+      "fixed_income": 1.0,
+      "commodities": 0.09034632654256214
+    },
+    "commodities": {
+      "equities_us": 0.19940655915532113,
+      "equities_uk": 0.1704224880174685,
+      "equities_europe": 0.1853334629565675,
+      "equities_japan": 0.0467643321302775,
+      "equity_indices": 0.2538824213538187,
+      "currencies": 0.085302471365868,
+      "fixed_income": 0.09034632654256214,
+      "commodities": 1.0
+    }
+  },
+  "reproduction": {
+    "equities_us": {
+      "realized_sharpe": 0.4377324978609107,
+      "published_sharpe": 0.45,
+      "ratio": 0.972738884135357,
+      "sign_match": true,
+      "magnitude_match": true,
+      "reproduced": true
+    },
+    "equities_uk": {
+      "realized_sharpe": 0.5077165502263835,
+      "published_sharpe": 0.88,
+      "ratio": 0.5769506252572539,
+      "sign_match": true,
+      "magnitude_match": true,
+      "reproduced": true
+    },
+    "equities_europe": {
+      "realized_sharpe": 0.6417730174713934,
+      "published_sharpe": 1.07,
+      "ratio": 0.5997878667956947,
+      "sign_match": true,
+      "magnitude_match": true,
+      "reproduced": true
+    },
+    "equities_japan": {
+      "realized_sharpe": 0.11880720129205263,
+      "published_sharpe": 0.37,
+      "ratio": 0.3211005440325747,
+      "sign_match": true,
+      "magnitude_match": false,
+      "reproduced": false
+    },
+    "equity_indices": {
+      "realized_sharpe": 0.464868210407591,
+      "published_sharpe": 1.0,
+      "ratio": 0.464868210407591,
+      "sign_match": true,
+      "magnitude_match": false,
+      "reproduced": false
+    },
+    "currencies": {
+      "realized_sharpe": 0.22068470491810138,
+      "published_sharpe": 1.28,
+      "ratio": 0.1724099257172667,
+      "sign_match": true,
+      "magnitude_match": false,
+      "reproduced": false
+    },
+    "fixed_income": {
+      "realized_sharpe": 0.12795971500911363,
+      "published_sharpe": 0.2,
+      "ratio": 0.6397985750455681,
+      "sign_match": true,
+      "magnitude_match": true,
+      "reproduced": true
+    },
+    "commodities": {
+      "realized_sharpe": 0.3758727487436426,
+      "published_sharpe": 0.62,
+      "ratio": 0.6062463689413591,
+      "sign_match": true,
+      "magnitude_match": true,
+      "reproduced": true
+    }
+  },
+  "n_reproduced": 5,
+  "n_compared": 8,
+  "reproduction_note": "Per-market momentum Factor Sharpe vs Asness-Moskowitz-Pedersen (2013), Table I.",
+  "published_source": "Asness, Moskowitz, Pedersen (2013), 'Value and Momentum Everywhere', Journal of Finance 68(3), Table I; momentum Factor, gross, each market's own sample.",
+  "verification_status": "Verification: Lean build green => no look-ahead, no train/test leakage (out-of-sample embargo at least the holding horizon), signal measurable against the information set at each date (adapted to the natural price filtration, citing the FTAP development), and verified portfolio-solver projection and convergence are machine-checked. Scope: the no-look-ahead guarantee covers the daily equity backtester; the cross-asset streams are breadth evidence, not verified runs."
+}
