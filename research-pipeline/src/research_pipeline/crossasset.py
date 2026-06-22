@@ -25,11 +25,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+import numpy as np
 import pandas as pd
 
 from .backtest import SignalFn, run_backtest
 from .data import PricePanel
 from .evaluation import performance_summary
+from .portfolio import _ledoit_wolf_shrink, verified_pgd_weights
 from .stats import deflated_sharpe_ratio
 
 
@@ -148,16 +150,84 @@ def reproduction_table(
     return pd.DataFrame.from_dict(rows, orient="index")[cols]
 
 
+def combine_sleeves_walkforward(
+    streams: Mapping[str, pd.Series],
+    method: str = "verified_mv",
+    lookback: int = 60,
+    min_obs: int = 36,
+    leverage_cap: float = 1.5,
+    shrink: float = 0.1,
+    periods_per_year: int = 12,
+    risk_aversion: float = 1.0,
+    cost_bps: float = 10.0,
+) -> pd.Series:
+    """Walk-forward NET return stream of a portfolio *of sleeves*: verified MV vs equal weight.
+
+    This is the diversifying-sleeve home of the verified solver, the complement to the noisy
+    single-name 49-industry contrast (where the same optimiser loses to 1/N). The sleeves here
+    are the AQR factor return streams: few, weakly correlated, with decades of monthly data, so
+    the covariance is estimable and mean-variance is supposed to help.
+
+    The sleeves are aligned to a balanced panel (months where every sleeve is present). At each
+    month ``t`` with at least ``min_obs`` trailing observations, the weights are formed from data
+    up to and including ``t`` and realised on ``t+1`` (no look-ahead):
+
+    - ``method="verified_mv"`` solves the **verified** budget-simplex MV problem through
+      :func:`verified_pgd_weights` with ``mu`` = annualised trailing mean and ``Sigma`` =
+      annualised Ledoit-Wolf-shrunk covariance (the proven-PSD target). ``mu`` and ``Sigma`` are
+      put on the same annual horizon so the risk term is not ~``periods_per_year`` times too
+      small; ``risk_aversion`` further scales the risk term.
+    - ``method="equal_weight"`` is the 1/N-across-sleeves benchmark (also ``sum w = 1``), the
+      apples-to-apples budget book.
+
+    Returns the net (of ``cost_bps`` per unit one-way turnover) monthly return stream. Raises if
+    the verified solver is unavailable (no silent fallback). NOT routed through the verified
+    daily backtester: this is portfolio construction across pre-built breadth streams.
+    """
+    if method not in ("verified_mv", "equal_weight"):
+        raise ValueError("method must be 'verified_mv' or 'equal_weight'")
+    panel = pd.DataFrame(streams).dropna()
+    if panel.shape[1] < 2:
+        raise ValueError("need at least 2 sleeves to combine")
+    if panel.shape[0] <= min_obs + 1:
+        raise ValueError(f"need more than min_obs+1={min_obs + 1} aligned observations")
+    sleeves = list(panel.columns)
+    idx = panel.index
+    prev_w = pd.Series(0.0, index=sleeves)
+    net: dict[pd.Timestamp, float] = {}
+    for i in range(min_obs, len(idx) - 1):
+        t_next = idx[i + 1]
+        window = panel.iloc[: i + 1].iloc[-lookback:]  # returns up to and including idx[i]
+        if method == "equal_weight":
+            w = pd.Series(1.0 / len(sleeves), index=sleeves)
+        else:
+            mu = window.mean() * periods_per_year
+            sample = np.cov(window.to_numpy(dtype=float), rowvar=False) * (
+                risk_aversion * periods_per_year
+            )
+            cov_df = pd.DataFrame(
+                _ledoit_wolf_shrink(sample, shrink), index=sleeves, columns=sleeves
+            )
+            w = verified_pgd_weights(mu, cov_df, leverage_cap=leverage_cap)
+        gross_ret = float((w * panel.loc[t_next]).sum())
+        turnover = float((w - prev_w).abs().sum())
+        net[t_next] = gross_ret - cost_bps / 1e4 * turnover
+        prev_w = w
+    return pd.Series(net, dtype=float).sort_index()
+
+
 def verification_status_line(include_scope: bool = True) -> str:
     """One-line machine-checked-invariants status the study can print.
 
-    States the load-bearing guarantees that hold when the Lean proofs build green: no
-    look-ahead in the backtester, no train/test leakage (the out-of-sample embargo is at least
-    the holding horizon), the signal is measurable with respect to the information available at
-    each date (adapted to the natural price filtration, citing the FTAP development), and the
-    verified portfolio solver's projection and convergence. The arrow framing is deliberate: the
-    invariants are *proven* in the repo's Lean sources; a green build is what certifies the
-    proofs are still intact.
+    Two levels, kept distinct in the emitted text. Machine-checked (proved sorry-free AND
+    exercised by the backtester): no look-ahead, no train/test leakage (the out-of-sample
+    embargo is at least the holding horizon), and signal measurability against the information
+    available at each date (adapted to the natural price filtration, citing the FTAP
+    development). Proved-in-Lean but one step removed: the projection and convergence of the PGD
+    portfolio solver are sorry-free in ``optimization-proofs``, but the running solver is a
+    Python implementation of that proven algorithm and the proofs are not yet wired into the CI
+    matrix, so the line says "proven sorry-free in Lean" rather than "machine-checked" for it.
+    The arrow framing is deliberate: a green build is what certifies the proofs are still intact.
     """
     line = (
         "Verification: Lean build green => no look-ahead, no train/test leakage "
