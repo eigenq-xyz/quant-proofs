@@ -32,7 +32,7 @@ uv run ruff check src/ tests/
 ### mortgage-proofs
 
 ```bash
-cd mortgage-proofs
+cd extensions/mortgage-proofs
 uv sync --all-extras
 uv run pytest -m "not integration" -q --cov=src --cov-report=term-missing
 uv run mypy src/ --strict

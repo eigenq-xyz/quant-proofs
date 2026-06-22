@@ -16,7 +16,7 @@ package «research-pipeline» where
 -- cites `ftap-proofs`. The mathlib rev below is pinned to ftap's resolved rev
 -- (d49d66…) so the shared mathlib build stays consistent; do NOT run
 -- `lake update` (it would bump mathlib to master and break the pin).
-require «ftap-proofs» from "../../ftap-proofs"
+require «ftap-proofs» from "../../foundations/ftap-proofs"
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git" @ "d49d6649f50b54b813042b80d5837fd62561b48f"
 

@@ -41,9 +41,9 @@ allowed-tools: Bash(lake build *) Bash(lake exe *) Read Grep Glob
 
 New theorems go in the correct namespace:
 - `backtest-proofs/lean/` → `namespace BacktestProofs`
-- `ftap-proofs/` → `namespace FtapProofs`
-- `options-proofs/` → `namespace OptionsProofs`
-- `mortgage-proofs/lean/` → `namespace MortgageProofs`
+- `foundations/ftap-proofs/` → `namespace FtapProofs`
+- `foundations/options-proofs/` → `namespace OptionsProofs`
+- `extensions/mortgage-proofs/lean/` → `namespace MortgageProofs`
 
 ## For mathlib candidates (ftap-proofs, options-proofs)
 

@@ -717,7 +717,7 @@ so the total cost scales as $O(N^2)$ while trust-constr scales as
 $O(N^3)$.
 
 **Lean 4 native implementation.** The Lean 4 PGD in
-`optimization-proofs/` (compiled to native code via LLVM, no interpreter
+`foundations/optimization-proofs/` (compiled to native code via LLVM, no interpreter
 boundary at any point) solves the February 2018 $N = 10$ problem in
 native speed. The algorithmic advantage of PGD over interior-point
 methods is best read from the scaling table at $N \geq 100$, where the

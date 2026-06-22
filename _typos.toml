@@ -27,6 +27,7 @@ Durbl = "Durbl"  # "Durables" industry short label
 # Quant-finance domain terms (research-pipeline and beyond).
 Pn = "Pn"        # the "Pn" camel-token typos splits out of "PnL" (profit and loss)
 strat = "strat"  # common abbreviation for "strategy"
+arange = "arange"  # numpy np.arange, not a misspelling of "arrange"
 
 # Quarto cross-reference prefixes used in reports/*.qmd (theorem environments
 # from _quarto.yml crossref config). These are label prefixes, not prose.

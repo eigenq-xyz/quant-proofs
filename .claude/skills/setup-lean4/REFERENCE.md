@@ -142,8 +142,8 @@ lake update && lake exe cache get && lake build
 | Subdir | `lakefile.toml` location | Default `lake build` target |
 |--------|--------------------------|-----------------------------|
 | `backtest-proofs/` | `backtest-proofs/lean/lakefile.toml` | `BacktestProofs` |
-| `ftap-proofs/` | `ftap-proofs/lakefile.toml` | `FtapProofs` |
-| `options-proofs/` | `options-proofs/lakefile.toml` | `OptionsProofs` |
-| `mortgage-proofs/` | `mortgage-proofs/lakefile.toml` | `MortgageProofs` |
+| `foundations/ftap-proofs/` | `foundations/ftap-proofs/lakefile.toml` | `FtapProofs` |
+| `foundations/options-proofs/` | `foundations/options-proofs/lakefile.toml` | `OptionsProofs` |
+| `extensions/mortgage-proofs/` | `extensions/mortgage-proofs/lakefile.toml` | `MortgageProofs` |
 
 Always `cd` to the directory containing `lakefile.toml` before running `lake` commands.

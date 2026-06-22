@@ -16,7 +16,7 @@ updates:
 
   # ── Python: quant-core ─────────────────────────────────────────────────────
   - package-ecosystem: pip
-    directory: /quant-core/python
+    directory: /foundations/quant-core/python
     schedule:
       interval: weekly
       day: monday
@@ -39,7 +39,7 @@ updates:
 
   # ── Python: mortgage-proofs ────────────────────────────────────────────────
   - package-ecosystem: pip
-    directory: /mortgage-proofs
+    directory: /extensions/mortgage-proofs
     schedule:
       interval: weekly
       day: monday
@@ -60,7 +60,7 @@ updates:
 
   # ── Python: portfolio-proofs ───────────────────────────────────────────────
   - package-ecosystem: pip
-    directory: /portfolio-proofs
+    directory: /foundations/portfolio-proofs
     schedule:
       interval: weekly
       day: monday

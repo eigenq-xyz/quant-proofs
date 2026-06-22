@@ -4,10 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'quant-core/lean/**'
-      - 'ftap-proofs/**'
-      - 'options-proofs/**'
-      - 'mortgage-proofs/lean/**'
+      - 'foundations/quant-core/lean/**'
+      - 'foundations/ftap-proofs/**'
+      - 'foundations/options-proofs/**'
+      - 'extensions/mortgage-proofs/lean/**'
   pull_request:
     branches: [main]
 
@@ -25,14 +25,14 @@ jobs:
       matrix:
         include:
           - subdir: quant-core
-            lean-dir: quant-core/lean
+            lean-dir: foundations/quant-core/lean
           - subdir: ftap-proofs
-            lean-dir: ftap-proofs
+            lean-dir: foundations/ftap-proofs
           - subdir: options-proofs
-            lean-dir: options-proofs
-            dep-lake: quant-core/lean/.lake
+            lean-dir: foundations/options-proofs
+            dep-lake: foundations/quant-core/lean/.lake
           - subdir: mortgage-proofs
-            lean-dir: mortgage-proofs/lean
+            lean-dir: extensions/mortgage-proofs/lean
 
     steps:
       - uses: actions/checkout@v6

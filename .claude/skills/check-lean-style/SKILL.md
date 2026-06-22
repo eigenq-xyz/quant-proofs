@@ -48,11 +48,11 @@ This skill reads and reports. The author fixes the issues.
 ## Report format
 
 ```
-[BLOCK] File: ftap-proofs/FtapProofs.lean, Line: 14
+[BLOCK] File: foundations/ftap-proofs/FtapProofs.lean, Line: 14
 Issue: `import Mathlib` — wildcard import not accepted upstream
 Fix: Replace with specific imports from the mathlib4 docs
 
-[STYLE] File: ftap-proofs/FtapProofs.lean, Line: 22
+[STYLE] File: foundations/ftap-proofs/FtapProofs.lean, Line: 22
 Issue: theorem name `noArbitrageEMM` should be snake_case for mathlib
 Fix: Rename to `no_arbitrage_emm`
 

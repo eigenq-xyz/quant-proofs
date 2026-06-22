@@ -42,16 +42,16 @@ jobs:
       matrix:
         include:
           - subdir: quant-core
-            lean-dir: quant-core/lean
+            lean-dir: foundations/quant-core/lean
           - subdir: ftap-proofs
-            lean-dir: ftap-proofs
+            lean-dir: foundations/ftap-proofs
           - subdir: options-proofs
-            lean-dir: options-proofs
-            dep-lake: quant-core/lean/.lake
+            lean-dir: foundations/options-proofs
+            dep-lake: foundations/quant-core/lean/.lake
           - subdir: mortgage-proofs
-            lean-dir: mortgage-proofs/lean
+            lean-dir: extensions/mortgage-proofs/lean
           - subdir: optimization-proofs
-            lean-dir: optimization-proofs
+            lean-dir: foundations/optimization-proofs
 
     steps:
       - uses: actions/checkout@v6
@@ -109,19 +109,19 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        working-directory: quant-core/python
+        working-directory: foundations/quant-core/python
         run: uv sync --extra dev
 
       - name: Test
-        working-directory: quant-core/python
+        working-directory: foundations/quant-core/python
         run: uv run pytest -q --cov=src --cov-report=xml
 
       - name: Type check
-        working-directory: quant-core/python
+        working-directory: foundations/quant-core/python
         run: uv run mypy src/ --strict
 
       - name: Lint
-        working-directory: quant-core/python
+        working-directory: foundations/quant-core/python
         run: uv run ruff check src/ tests/
 
   # ── Level 2b: mortgage-proofs Python ───────────────────────────────────────
@@ -142,14 +142,14 @@ jobs:
       - name: Cache Lake packages
         uses: actions/cache@v5
         with:
-          path: mortgage-proofs/lean/.lake
+          path: extensions/mortgage-proofs/lean/.lake
           key: >-
             lean-sched-mortgage-${{ runner.os }}-
-            ${{ hashFiles('mortgage-proofs/lean/lean-toolchain') }}
+            ${{ hashFiles('extensions/mortgage-proofs/lean/lean-toolchain') }}
           restore-keys: lean-sched-mortgage-${{ runner.os }}-
 
       - name: Build Lean verifier
-        working-directory: mortgage-proofs/lean
+        working-directory: extensions/mortgage-proofs/lean
         run: lake build
 
       - name: Set up uv
@@ -158,19 +158,19 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        working-directory: mortgage-proofs
+        working-directory: extensions/mortgage-proofs
         run: uv sync --all-extras
 
       - name: Test
-        working-directory: mortgage-proofs
+        working-directory: extensions/mortgage-proofs
         run: uv run pytest -m "not integration" -q --cov=src --cov-report=xml
 
       - name: Type check
-        working-directory: mortgage-proofs
+        working-directory: extensions/mortgage-proofs
         run: uv run mypy src/ --strict
 
       - name: Lint
-        working-directory: mortgage-proofs
+        working-directory: extensions/mortgage-proofs
         run: uv run ruff check src/ tests/
 
   # ── Level 2c: portfolio-proofs Python ──────────────────────────────────────
@@ -188,26 +188,26 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        working-directory: portfolio-proofs
+        working-directory: foundations/portfolio-proofs
         run: uv sync --extra dev
 
       - name: Type check
-        working-directory: portfolio-proofs
+        working-directory: foundations/portfolio-proofs
         run: uv run mypy lean_pgd.py lean_pgd_direct.py tests/ --strict
 
       - name: Lint
-        working-directory: portfolio-proofs
+        working-directory: foundations/portfolio-proofs
         run: uv run ruff check lean_pgd.py lean_pgd_direct.py tests/
 
       - name: Docstring coverage
-        working-directory: portfolio-proofs
+        working-directory: foundations/portfolio-proofs
         run: uv run interrogate lean_pgd.py lean_pgd_direct.py
 
       - name: Theorem cross-reference check
-        run: python3 .github/scripts/check_theorem_refs.py portfolio-proofs/lean_pgd.py
+        run: python3 .github/scripts/check_theorem_refs.py foundations/portfolio-proofs/lean_pgd.py
 
       - name: Test
-        working-directory: portfolio-proofs
+        working-directory: foundations/portfolio-proofs
         run: uv run pytest tests/ -q --cov=. --cov-report=xml
 
   # ── Level 3 placeholder ────────────────────────────────────────────────────

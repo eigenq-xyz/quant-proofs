@@ -142,7 +142,7 @@ A high Sharpe ratio is necessary but not sufficient. Also check:
 
 ## Connecting results to proofs
 
-The formally verified proofs in `ftap-proofs/` and `options-proofs/` provide
+The formally verified proofs in `foundations/ftap-proofs/` and `foundations/options-proofs/` provide
 mathematical guarantees under specific model assumptions. Use them to interpret
 empirical results.
 

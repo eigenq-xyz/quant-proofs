@@ -4,7 +4,7 @@ not the alpha.
 ``signal_to_weights`` is the dollar-neutral cross-sectional baseline used by the demo.
 ``verified_pgd_weights`` delegates to the **formally verified** PGD solver in
 ``portfolio-proofs`` (convergence: ``pgd_convergence``; projection: ``projection_correctness``
-in ``optimization-proofs/OptimizationProofs``), so portfolio construction is a verified step too.
+in ``foundations/optimization-proofs/OptimizationProofs``), so portfolio construction is a verified step too.
 """
 
 from __future__ import annotations
@@ -121,7 +121,7 @@ def verified_pgd_weights(
         repo = (
             pathlib.Path(__file__).resolve().parents[3]
         )  # research_pipeline/src/research-pipeline -> quant-proofs
-        pp = repo / "portfolio-proofs"
+        pp = repo / "foundations" / "portfolio-proofs"
         if str(pp) not in sys.path:
             sys.path.insert(0, str(pp))
         from lean_pgd import solve as _lean_pgd_solve  # type: ignore[import-not-found]

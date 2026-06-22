@@ -40,25 +40,25 @@ the lead can act immediately. Never declare PASS overall when any check is FAIL.
 
 ### 1. Sorry check (all Lean subdirs)
 ```bash
-grep -rn sorry --include="*.lean" quant-core/ backtest-proofs/ ftap-proofs/ options-proofs/ mortgage-proofs/
+grep -rn sorry --include="*.lean" foundations/quant-core/ backtest-proofs/ foundations/ftap-proofs/ foundations/options-proofs/ extensions/mortgage-proofs/
 ```
 Any sorry is a BLOCKING failure on main.
 
 ### 2. Lean builds
-For each subdir with Lean code — `quant-core/`, `backtest-proofs/`, `ftap-proofs/`,
-`options-proofs/`, `mortgage-proofs/` — run `lake build` and confirm exit 0.
+For each subdir with Lean code — `foundations/quant-core/`, `backtest-proofs/`, `foundations/ftap-proofs/`,
+`foundations/options-proofs/`, `extensions/mortgage-proofs/` — run `lake build` and confirm exit 0.
 `quant-core` is the shared dependency; a silent failure there is the highest-risk gap.
 Report any build failures as BLOCKING.
 
 ### 3. Python tests
-- `cd quant-core/python && uv run pytest -q`
+- `cd foundations/quant-core/python && uv run pytest -q`
 - `cd backtest-proofs/python && uv run pytest -q`
-- `cd mortgage-proofs && pytest -q`
+- `cd extensions/mortgage-proofs && pytest -q`
 
 ### 4. Python type checks
-- `cd quant-core/python && uv run mypy src/ --strict`
+- `cd foundations/quant-core/python && uv run mypy src/ --strict`
 - `cd backtest-proofs/python && uv run mypy src/ --strict`
-- `cd mortgage-proofs && mypy src/ --strict`
+- `cd extensions/mortgage-proofs && mypy src/ --strict`
 
 ### 5. Doc cross-references
 - Verify build commands in CLAUDE.md files are runnable

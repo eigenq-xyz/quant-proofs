@@ -36,9 +36,9 @@ A `sorry` means the theorem is unproven. Zero tolerance on `main`.
 ```bash
 # For a specific subdir:
 grep -rn sorry --include="*.lean" backtest-proofs/lean/
-grep -rn sorry --include="*.lean" ftap-proofs/
-grep -rn sorry --include="*.lean" options-proofs/
-grep -rn sorry --include="*.lean" mortgage-proofs/lean/
+grep -rn sorry --include="*.lean" foundations/ftap-proofs/
+grep -rn sorry --include="*.lean" foundations/options-proofs/
+grep -rn sorry --include="*.lean" extensions/mortgage-proofs/lean/
 
 # Expected output: (empty — no output means zero sorry)
 ```
@@ -191,10 +191,9 @@ Before opening a PR or merging to `main`:
 - [ ] `lake build` exits 0 in every changed subdir
 - [ ] `lake build` exits 0 in `options-proofs` (if `ftap-proofs` changed)
 - [ ] `uv run pytest -q` passes (if `backtest-proofs/python/` changed)
-- [ ] `pytest` passes (if `mortgage-proofs/` Python changed)
+- [ ] `pytest` passes (if `extensions/mortgage-proofs/` Python changed)
 - [ ] `mypy src/ --strict` exits 0 (if any Python in `src/` changed)
-- [ ] `lake exe verify-trace` passes on all traces (if `mortgage-proofs/` Lean changed)
+- [ ] `lake exe verify-trace` passes on all traces (if `extensions/mortgage-proofs/` Lean changed)
 - [ ] Pre-commit hooks pass (`pre-commit run --all-files`)
 - [ ] No licensed data committed (check with `git diff --name-only HEAD`)
 - [ ] No private content in commit message or diff
-

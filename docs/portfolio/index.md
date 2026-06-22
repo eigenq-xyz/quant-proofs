@@ -26,13 +26,13 @@ speed table (wall-clock ms), and combined speed-accuracy scatter figure.
 
 ## Implementation
 
-The solver is implemented in Lean 4 (`optimization-proofs/`) and called from Python via
+The solver is implemented in Lean 4 (`foundations/optimization-proofs/`) and called from Python via
 a persistent subprocess (`lean_pgd.py`). The native binary runs at **14.8 ns per solve**
 at N=10; subprocess overhead is ~35 ms on first call. Build with:
 
 ```bash
-cd optimization-proofs && lake build pgd_solve
+cd foundations/optimization-proofs && lake build pgd_solve
 ```
 
 The Python wrapper handles concurrent callers (module-level lock) and auto-restarts on
-process failure. See `portfolio-proofs/lean_pgd.py` for the implementation.
+process failure. See `foundations/portfolio-proofs/lean_pgd.py` for the implementation.
