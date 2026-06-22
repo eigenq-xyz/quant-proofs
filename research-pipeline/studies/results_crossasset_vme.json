@@ -256,5 +256,5 @@
   "n_compared": 8,
   "reproduction_note": "Per-market momentum Factor Sharpe vs Asness-Moskowitz-Pedersen (2013), Table I.",
   "published_source": "Asness, Moskowitz, Pedersen (2013), 'Value and Momentum Everywhere', Journal of Finance 68(3), Table I; momentum Factor, gross, each market's own sample.",
-  "verification_status": "Verification: Lean build green => no look-ahead, no train/test leakage (out-of-sample embargo at least the holding horizon), signal measurable against the information set at each date (adapted to the natural price filtration, citing the FTAP development), and verified portfolio-solver projection and convergence are machine-checked. Scope: the no-look-ahead guarantee covers the daily equity backtester; the cross-asset streams are breadth evidence, not verified runs."
+  "verification_status": "Verification: Lean build green => no look-ahead, no train/test leakage (out-of-sample embargo at least the holding horizon), and signal measurable against the information set at each date (adapted to the natural price filtration, citing the FTAP development) are machine-checked; the projection and convergence of the PGD portfolio solver are proven sorry-free in Lean (optimization-proofs). Scope: the no-look-ahead guarantee covers the daily equity backtester; the cross-asset streams are breadth evidence, not verified runs."
 }

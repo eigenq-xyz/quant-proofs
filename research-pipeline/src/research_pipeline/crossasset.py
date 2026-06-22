@@ -161,10 +161,10 @@ def verification_status_line(include_scope: bool = True) -> str:
     """
     line = (
         "Verification: Lean build green => no look-ahead, no train/test leakage "
-        "(out-of-sample embargo at least the holding horizon), signal measurable against the "
+        "(out-of-sample embargo at least the holding horizon), and signal measurable against the "
         "information set at each date (adapted to the natural price filtration, citing the FTAP "
-        "development), and verified portfolio-solver projection and convergence are "
-        "machine-checked."
+        "development) are machine-checked; the projection and convergence of the PGD portfolio "
+        "solver are proven sorry-free in Lean (optimization-proofs)."
     )
     if include_scope:
         line += (

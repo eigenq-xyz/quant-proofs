@@ -213,8 +213,10 @@ sample to 2011):
 | Commodities | 0.38 | 0.62 | yes |
 
 Momentum is positive in all eight markets, the sign agreement one expects from a structural effect,
-and five of eight land within a factor of two of the published Sharpe. The three that fall short are
-informative rather than embarrassing. Japanese-equity and fixed-income momentum are the two markets
+and five of eight land within a factor of two of the published Sharpe. Two of those five, UK and
+Europe equities, reproduce at the lower end of the band (realized/published ratios near 0.58 and
+0.60), so they clear the bar without much room to spare. The three that fall short are informative
+rather than embarrassing. Japanese-equity and fixed-income momentum are the two markets
 the paper itself reports as statistically insignificant (its own t-statistics near zero), so a weak
 realized Sharpe agrees with the paper rather than contradicting it. Currency and equity-index
 momentum decayed in the fifteen years of data after the paper's 2011 cutoff: the realized window here
@@ -233,7 +235,10 @@ computed from the AQR data, not quoted from the paper.
 
 When the Lean proofs build green, the load-bearing invariants of the pipeline are machine-checked: no
 look-ahead in the backtester, no train/test leakage (the out-of-sample embargo is at least the
-holding horizon), the signal is measurable against the information set available at each date (adapted
-to the natural price filtration, citing the FTAP development), and the verified portfolio solver's
-projection and convergence. That guarantee is scoped to the daily equity backtester; the cross-asset
-streams in this section are pre-built factor returns presented as breadth evidence, not verified runs.
+holding horizon), and the signal is measurable against the information set available at each date
+(adapted to the natural price filtration, citing the FTAP development). Separately, the projection and
+convergence of the PGD portfolio solver are proven sorry-free in Lean (optimization-proofs); the
+running solver is a Python implementation of that proven algorithm, and these proofs are not yet wired
+into the continuous-integration matrix. The machine-checked no-look-ahead guarantee is scoped to the
+daily equity backtester; the cross-asset streams in this section are pre-built factor returns
+presented as breadth evidence, not verified runs.
