@@ -7,19 +7,22 @@ import ResearchPipeline.Measurability
 `NoLookahead` states no-look-ahead **pointwise** (outcomes that agree on the observed
 history up to `t` produce the same value at `t`); `Measurability` states it
 **measure-theoretically** (the signal process is `Adapted` to the natural price
-filtration, citing `ftap-proofs`). This module connects the two: the measure-theoretic
-notion is the stronger one, and it *implies* the pointwise notion.
+filtration, citing `ftap-proofs`). This module connects them in the forward direction.
 
-The forward direction proved here makes pointwise non-anticipation a corollary of
-adaptedness. Concretely: if a real process is `𝓕ₜ`-measurable against the natural
-filtration of the price observations, then it cannot tell apart two outcomes whose price
-history agrees up to `t`. The reverse direction (pointwise dependence implies
-measurability) needs a Doob-Dynkin factorization plus a measurable-dependence hypothesis
-and is deliberately left out of scope.
+What is proved: if a real process is `𝓕ₜ`-measurable against the natural filtration of the
+price observations, then it cannot tell apart two outcomes whose price history agrees up to
+`t`. This is a pointwise non-anticipation property at the level of outcomes `ω : Ω`: the same
+content as `NoLookahead.NonAnticipating` specialized to a single scalar observation per time,
+showing the measure-theoretic guarantee carries the elementary one. What is **not** proved
+here: a general encoding lemma instantiating `NoLookahead.NonAnticipating` itself, which is
+stated over the abstract multi-asset path space `Path Asset V → Time → Asset → W`; bridging
+that type (with its asset dimension) to a measure-theoretic process is left as follow-up. The
+reverse direction (pointwise dependence implies measurability) needs a Doob-Dynkin
+factorization plus a measurable-dependence hypothesis and is also out of scope.
 
-The key sublemma `agreeUpTo_indistinguishable` is a `generateFrom` induction: the family of
-events that cannot separate two history-agreeing outcomes contains every price-coordinate
-preimage and is closed under complement and countable union, hence contains all of `𝓕ₜ`.
+The key sublemma `agreeUpTo_indistinguishable` bounds the natural filtration above by
+`indistinguishableSpace ω ω'`, the σ-algebra of events that cannot separate two
+history-agreeing outcomes, reduced over the `⨆` to each price coordinate `s ≤ t`.
 -/
 
 open MeasureTheory MeasurableSpace
@@ -29,8 +32,9 @@ namespace ResearchPipeline
 variable {Ω : Type*} [MeasurableSpace Ω]
 
 /-- Two outcomes agree on the price history through time `t`: every observation `price s`
-with `s ≤ t` takes the same value on both. This is the `Ω`-level form of
-`ResearchPipeline.AgreeUpTo` (which is stated on explicit paths). -/
+with `s ≤ t` takes the same value on both. This is the outcome-level rendering of
+`ResearchPipeline.AgreeUpTo`, specialized to a single scalar observation per time (the path's
+asset dimension is dropped; the momentum signal is single-asset). -/
 def AgreeUpToΩ (price : ℕ → Ω → ℝ) (ω ω' : Ω) (t : ℕ) : Prop :=
   ∀ s ≤ t, price s ω = price s ω'
 
