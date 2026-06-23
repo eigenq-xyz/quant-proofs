@@ -30,7 +30,8 @@ The headline results:
   and `price (t - lookback)` (both indices `≤ t`), over `ℕ`-indexed time.
 * `momentumSignal_adapted` — `Adapted 𝓕 (momentumSignal …)`: the momentum signal
   process is adapted to the natural filtration of prices. This is the genuine
-  `𝓕ₜ`-measurability upgrade.
+  `𝓕ₜ`-measurability upgrade. `Bridge.lean` derives a pointwise (outcome-level)
+  non-anticipation property from this adaptedness, paralleling `NoLookahead`.
 
 ## Relation to `ftap-proofs`
 
