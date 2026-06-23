@@ -8,6 +8,7 @@ on:
       - 'foundations/ftap-proofs/**'
       - 'foundations/options-proofs/**'
       - 'extensions/mortgage-proofs/lean/**'
+      - 'research-pipeline/lean/**'
   pull_request:
     branches: [main]
 
@@ -33,6 +34,9 @@ jobs:
             dep-lake: foundations/quant-core/lean/.lake
           - subdir: mortgage-proofs
             lean-dir: extensions/mortgage-proofs/lean
+          - subdir: research-pipeline
+            lean-dir: research-pipeline/lean
+            dep-lake: foundations/ftap-proofs/.lake
 
     steps:
       - uses: actions/checkout@v7

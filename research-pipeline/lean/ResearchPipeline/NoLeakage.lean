@@ -10,7 +10,7 @@ This module proves the discrete condition under which that cannot happen: if the
 at least the label horizon, the forward window of the *last* training observation ends
 strictly before the *first* test index, so no training label can bleed across the split.
 This is the formal contract behind `oos.walk_forward_splits` and the runtime `leakage_gap`
-witness. Dependency-free and `sorry`-free.
+witness. Dependency-free and fully proved (no proof gaps).
 -/
 
 namespace ResearchPipeline
