@@ -242,3 +242,53 @@ running solver is a Python implementation of that proven algorithm, and these pr
 into the continuous-integration matrix. The machine-checked no-look-ahead guarantee is scoped to the
 daily equity backtester; the cross-asset streams in this section are pre-built factor returns
 presented as breadth evidence, not verified runs.
+
+## 8. Verified total-portfolio combine vs 1/N
+
+The verified mean-variance solver has two candidate homes. One is the noisy single-name cross-section
+(§5.5 and the contrast below), where the estimation problem is hard. The other, examined here, is the
+combination of a few weakly correlated factor sleeves with decades of monthly data, the regime where
+mean-variance is conventionally supposed to help: the covariance is estimable and the sleeves
+genuinely diversify. We feed the reproduced AQR sleeves through the verified budget-simplex solver
+(weights sum to one, gross exposure capped at 1.5), with expected return set to the annualized
+trailing mean and risk set by an annualized Ledoit-Wolf-shrunk covariance, rebalanced monthly with a
+one-month hold and 10 basis points of cost, and compare against 1/N across the same sleeves. To rule
+out a single-setting artifact, the mean-variance book is swept over a grid of risk-aversion values;
+a higher value trusts the noisy mean less and pulls the book toward minimum variance. Reproduce with
+`python -m scripts.compare_combine --dataset tsmom` and `--dataset vme`.
+
+Time-series-momentum sleeves (4 asset classes, 1985 to 2025), net Sharpe:
+
+| Book | Net Sharpe | Annualized vol |
+|---|---|---|
+| Verified MV, risk aversion 1 | 0.40 | 0.32 |
+| Verified MV, risk aversion 5 | 0.51 | 0.19 |
+| Verified MV, risk aversion 10 | 0.71 | 0.15 |
+| Verified MV, risk aversion 25 | 0.85 | 0.13 |
+| **1/N across sleeves** | **0.91** | **0.14** |
+
+Value-and-momentum sleeves (8 markets, 1972 to 2026), net Sharpe:
+
+| Book | Net Sharpe | Annualized vol |
+|---|---|---|
+| Verified MV, risk aversion 1 | 0.31 | 0.20 |
+| Verified MV, risk aversion 5 | 0.27 | 0.15 |
+| Verified MV, risk aversion 10 | 0.33 | 0.12 |
+| Verified MV, risk aversion 25 | 0.39 | 0.08 |
+| **1/N across sleeves** | **0.51** | **0.08** |
+
+**1/N wins in both, across every risk-aversion setting.** The mechanism is the one DeMiguel, Garlappi,
+and Uppal (2009) document: the sample mean is a poor expected-return estimate, so the more weight the
+optimizer places on it (low risk aversion), the worse it does. At risk aversion 1 the time-series book
+runs more than twice the volatility of 1/N as it concentrates on whichever sleeve had the highest
+recent mean. Turning risk aversion up walks the book toward minimum variance and recovers most of the
+gap (0.85 against 0.91 for the time-series sleeves), but it never overtakes equal weight, and for the
+eight-market value-and-momentum set, where the covariance is harder to estimate, it stays well behind
+(best 0.39 against 0.51). The same verdict held on the single-name industry cross-section, where the
+verified mean-variance book returned a net Sharpe of 0.60 against 0.70 for 1/N (and a deeper drawdown).
+
+The honest reading is that the value of routing portfolio construction through the verified solver is
+the correctness and auditability of the optimization step, not outperformance: the solve is proven to
+land on the constrained optimum, but a mean-variance objective fed sample-mean inputs does not beat
+naive diversification even in the regime built to favor it. A book that beats 1/N here would need a
+better expected-return signal, not a better optimizer.

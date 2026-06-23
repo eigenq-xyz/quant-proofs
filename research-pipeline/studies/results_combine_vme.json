@@ -1,0 +1,59 @@
+{
+  "name": "VME momentum sleeves / AQR (free)",
+  "dataset": "vme",
+  "n_sleeves": 8,
+  "leverage_cap": 1.5,
+  "cost_bps": 10.0,
+  "date_start": "1972-01-31",
+  "date_end": "2026-03-31",
+  "equal_weight_1N": {
+    "sharpe": 0.5089716449312711,
+    "ann_return": 0.039721279374490326,
+    "ann_vol": 0.08343387164910217,
+    "max_drawdown": -0.2517179222877144,
+    "psr": 0.9988629458691151,
+    "deflated_sharpe": 0.9716476922037526,
+    "n": 468.0
+  },
+  "verified_mv_by_risk_aversion": {
+    "verified_mv (risk_aversion=1)": {
+      "sharpe": 0.3145743182433236,
+      "ann_return": 0.04379951038605556,
+      "ann_vol": 0.20369236388380382,
+      "max_drawdown": -0.6834804652983326,
+      "psr": 0.9723245648573292,
+      "deflated_sharpe": 0.7738715211625801,
+      "n": 468.0
+    },
+    "verified_mv (risk_aversion=5)": {
+      "sharpe": 0.2748533107189401,
+      "ann_return": 0.030557528967819936,
+      "ann_vol": 0.1527157556508794,
+      "max_drawdown": -0.5247871864967255,
+      "psr": 0.9529493027161782,
+      "deflated_sharpe": 0.694871513100427,
+      "n": 468.0
+    },
+    "verified_mv (risk_aversion=10)": {
+      "sharpe": 0.3258012704585478,
+      "ann_return": 0.03177598179286556,
+      "ann_vol": 0.11708937372078518,
+      "max_drawdown": -0.37003677838951565,
+      "psr": 0.9779947432146868,
+      "deflated_sharpe": 0.7973604697433603,
+      "n": 468.0
+    },
+    "verified_mv (risk_aversion=25)": {
+      "sharpe": 0.39458827622221765,
+      "ann_return": 0.027476538048049726,
+      "ann_vol": 0.07601596473841558,
+      "max_drawdown": -0.22344575554232904,
+      "psr": 0.9922938380064232,
+      "deflated_sharpe": 0.8941411627852822,
+      "n": 468.0
+    }
+  },
+  "best_verified_mv_sharpe": 0.39458827622221765,
+  "one_over_n_sharpe": 0.5089716449312711,
+  "verification_status": "Verification: Lean build green => no look-ahead, no train/test leakage (out-of-sample embargo at least the holding horizon), and signal measurable against the information set at each date (adapted to the natural price filtration, citing the FTAP development) are machine-checked; the projection and convergence of the PGD portfolio solver are proven sorry-free in Lean (optimization-proofs). Scope: the no-look-ahead guarantee covers the daily equity backtester; the cross-asset streams are breadth evidence, not verified runs."
+}

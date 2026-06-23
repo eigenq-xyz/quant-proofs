@@ -14,10 +14,12 @@ import pytest
 
 from research_pipeline import (
     analyze_return_streams,
+    combine_sleeves_walkforward,
     reproduction_table,
     verification_status_line,
 )
 from research_pipeline.data_sources import parse_aqr_sheet
+from research_pipeline.portfolio import VerifiedSolverUnavailable
 
 
 def _synthetic_streams() -> dict[str, pd.Series]:
@@ -131,6 +133,48 @@ def test_verification_status_line() -> None:
     assert "leakage" in line
     assert "Scope:" in line
     assert "Scope:" not in verification_status_line(include_scope=False)
+
+
+def _diversifying_streams(n: int = 3, periods: int = 120, seed: int = 2) -> dict[str, pd.Series]:
+    idx = pd.date_range("2000-01-31", periods=periods, freq="ME")
+    rng = np.random.default_rng(seed)
+    return {f"s{k}": pd.Series(0.005 + rng.normal(0.0, 0.03, periods), index=idx) for k in range(n)}
+
+
+def test_combine_sleeves_equal_weight_mechanics() -> None:
+    streams = _diversifying_streams()
+    eq = combine_sleeves_walkforward(
+        streams, method="equal_weight", min_obs=24, lookback=36, cost_bps=0.0
+    )
+    panel = pd.DataFrame(streams)
+    # One net observation per realised month after the first min_obs months.
+    assert len(eq) == len(panel.index) - 24 - 1
+    # Equal weight, zero cost => the combined return is just the cross-sleeve mean each month.
+    t = eq.index[10]
+    assert abs(float(eq.loc[t]) - float(panel.loc[t].mean())) < 1e-12
+
+
+def test_combine_sleeves_verified_mv_matches_equal_length() -> None:
+    streams = _diversifying_streams()
+    try:
+        mv = combine_sleeves_walkforward(streams, method="verified_mv", min_obs=24, lookback=36)
+    except VerifiedSolverUnavailable:
+        pytest.skip("verified PGD solver not built in this environment")
+    eq = combine_sleeves_walkforward(streams, method="equal_weight", min_obs=24, lookback=36)
+    # Both walk the same dates, so the comparison is on a common index.
+    assert mv.index.equals(eq.index)
+    assert mv.notna().all()
+
+
+def test_combine_sleeves_validation() -> None:
+    idx = pd.date_range("2000-01-31", periods=60, freq="ME")
+    with pytest.raises(ValueError):
+        combine_sleeves_walkforward({"a": pd.Series(0.01, index=idx)})  # < 2 sleeves
+    with pytest.raises(ValueError):
+        combine_sleeves_walkforward(_diversifying_streams(), method="bogus")  # bad method
+    short = {"a": pd.Series(0.01, index=idx[:5]), "b": pd.Series(0.02, index=idx[:5])}
+    with pytest.raises(ValueError):
+        combine_sleeves_walkforward(short, min_obs=36)  # too few aligned observations
 
 
 def _aqr_fixture_rows() -> list[tuple[object, ...]]:

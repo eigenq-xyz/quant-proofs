@@ -48,6 +48,7 @@ from .crossasset import (
     analyze_return_streams,
     reproduction_table,
     verification_status_line,
+    combine_sleeves_walkforward,
 )
 from .strategy import (
     Strategy,
@@ -105,6 +106,7 @@ __all__ = [
     "analyze_return_streams",
     "reproduction_table",
     "verification_status_line",
+    "combine_sleeves_walkforward",
     "Strategy",
     "SignalStrategy",
     "register",
