@@ -1,24 +1,51 @@
 # EigenQ Research Series
 
-The central question in quantitative research is not "what does the model say?" It is "should we trust it?" Standard testing tells you the code ran. Formal verification tells you the code is correct, as a machine-checked mathematical theorem.
+The central question in quantitative research is not "what does the model say?" It is "should we
+trust it?" Standard testing tells you the code ran. Formal verification tells you the code is
+correct, as a machine-checked mathematical theorem.
 
-Every project in the EigenQ Research Series takes a named result from financial theory, or a deployed decision system, and makes it formally verifiable. The theorem statement is the specification. The Lean 4 proof is the test. Zero `sorry` on main means no gaps.
+Every project in the EigenQ Research Series takes a named result from financial theory, a
+load-bearing step of quant research, or a deployed decision system, and makes it formally
+verifiable. The theorem statement is the specification. The Lean 4 proof is the test. Zero `sorry`
+on main means no gaps.
 
 ## What this means in practice
 
-A proof in Lean 4 is checked by a small, independently audited kernel. When a theorem carries zero `sorry`, every inference step has been verified, not sampled and not spot-checked. The result either compiles or it does not.
+A proof in Lean 4 is checked by a small, independently audited kernel. When a theorem carries zero
+`sorry`, every inference step has been verified, not sampled and not spot-checked. The result either
+compiles or it does not.
 
-This is different from unit tests, which check behavior on selected inputs. It is different from type checking, which rules out a class of runtime errors. Formal verification rules out all counterexamples to the stated theorem, within the model as defined.
+This is different from unit tests, which check behavior on selected inputs. It is different from type
+checking, which rules out a class of runtime errors. Formal verification rules out all
+counterexamples to the stated theorem, within the model as defined.
 
-The honest caveat: a proof guarantees the theorem as stated, not that the model faithfully represents reality. Whether the model captures the right phenomenon is a separate question, answered by economic reasoning and empirical evidence, not by Lean. The proofs here are explicit about what they assume and what they conclude. See [How we verify](how-we-verify.md) for the method and its limits.
+The honest caveat: a proof guarantees the theorem as stated, not that the model faithfully represents
+reality. Whether the model captures the right phenomenon is a separate question, answered by economic
+reasoning and empirical evidence, not by Lean. The proofs here are explicit about what they assume
+and what they conclude. See [How we verify](how-we-verify.md) for the method and its limits.
 
-## Three pillars
+## The flagship
 
-**[No-Arbitrage Pricing](pillar-pricing.md).** The arc from the Fundamental Theorem of Asset Pricing through derivative pricing to perpetual futures. The discrete Harrison-Pliska theorem (complete, zero sorry) underlies put-call parity via the Cox-Ross-Rubinstein model (complete, zero sorry) and perpetual futures no-arbitrage pricing (complete, zero sorry).
+**[Research Integrity](pillar-research-integrity.md).** A full research-desk workflow whose
+trust-critical steps are machine-checked: no look-ahead, no out-of-sample leakage, and signals that
+provably use only what was knowable at decision time. Paired with honest empirical studies, a
+century-long momentum study and a map of where point-in-time data discipline actually matters, that
+report their limitations intact. The proofs are the rigor backbone; the research is the point.
 
-**[Verified Optimization](pillar-optimization.md).** Formally verified projected gradient descent: convergence (under a Lipschitz step-size condition), projection correctness, and covariance shrinkage proofs (all complete, zero sorry), paired with seven stress scenarios where standard solvers fail and the verified solver holds.
+## Three theory pillars
 
-**[Verified AI Decision Systems](pillar-ai-systems.md).** A multi-agent mortgage pipeline whose routing decisions are recorded and checked against Lean 4 invariants. Formal auditability for deployed systems built on large language models.
+**[No-Arbitrage Pricing](pillar-pricing.md).** The arc from the Fundamental Theorem of Asset Pricing
+through derivative pricing to perpetual futures and the variance risk premium. The discrete
+Harrison-Pliska theorem underlies put-call parity via the Cox-Ross-Rubinstein model, perpetual
+futures pricing, and the discrete variance-risk-premium identities, all complete and zero `sorry`.
+
+**[Verified Optimization](pillar-optimization.md).** Formally verified projected gradient descent:
+convergence, projection correctness, and covariance-shrinkage proofs, paired with stress scenarios
+where standard solvers fail and the verified solver holds.
+
+**[Verified AI Decision Systems](pillar-ai-systems.md).** A multi-agent mortgage pipeline whose
+routing decisions are recorded and checked against Lean 4 invariants: formal auditability for
+deployed systems built on large language models.
 
 ## Start here
 

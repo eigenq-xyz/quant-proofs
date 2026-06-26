@@ -55,6 +55,26 @@ Approach." *Journal of Financial Economics* 7, no. 3 (1979): 229-263.
 
 ---
 
+## `vrp-proofs`: The Variance Risk Premium on the Binomial Tree
+
+The variance risk premium is the gap by which the price of a claim under the risk-neutral measure
+exceeds its value under the physical measure. This project proves the discrete identities behind it
+on the Cox-Ross-Rubinstein tree, citing `options-proofs`. The replicating portfolio is proved to
+reproduce any terminal-price payoff at maturity on every path, and the premium is shown to decompose
+exactly as the discounted gap between the risk-neutral and physical expectations, positive precisely
+when the risk-neutral measure values the payoff above the physical one.
+
+Two tempting claims are deliberately not made, with the reasons recorded in the proof. A convexity
+shortcut that would sign the premium from the payoff's shape alone is false on a fixed tree, shown by
+a numerical counterexample. The gamma-weighted variance-gap profit identity is vacuous in a complete
+binomial market, where the hedge is perfect and the hedging-error profit is zero. The honest discrete
+result is the measure-gap criterion, not an incomplete-market hedging-error mechanism. The empirical
+companion to this proof is the [variance-risk-premium study](pillar-research-integrity.md).
+
+[Read the proof](https://github.com/eigenq-xyz/quant-proofs/tree/main/extensions/vrp-proofs)
+
+---
+
 ## `perpetual-proofs`: No-Arbitrage Pricing for Perpetual Futures
 
 Perpetual futures are the dominant derivative in cryptocurrency markets: contracts with no
@@ -107,6 +127,7 @@ Python side: a Black-Scholes pricer and a seeded geometric Brownian motion simul
 
 `quant-core` supplies types. `ftap-proofs` supplies the no-arbitrage theorem. `options-proofs`
 and `perpetual-proofs` each import `ftap-proofs` and use it to establish that their specific
-market is arbitrage-free, then derive prices. `stopped-time-proofs` supplies the summation
+market is arbitrage-free, then derive prices. `vrp-proofs` builds on `options-proofs` to prove the
+variance-risk-premium identities on the same CRR tree. `stopped-time-proofs` supplies the summation
 infrastructure `perpetual-proofs` needs. The dependency graph is a directed acyclic chain:
 no pricing result is proved in isolation.
