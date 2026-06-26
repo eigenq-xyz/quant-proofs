@@ -1,75 +1,78 @@
-# CLAUDE.md — perpetual-proofs
+# CLAUDE.md: perpetual-proofs
 
-Lean 4 formalization of the no-arbitrage pricing theorem for perpetual futures,
-building on `stopped-time-proofs` (geometric expectation infrastructure) and
-`ftap-proofs` (Harrison-Pliska market model).
+Lean 4 formalization of no-arbitrage pricing for perpetual futures (Ackerer,
+Hugonnier, and Jermann 2025). Builds on `stopped-time-proofs` (geometric expectation
+infrastructure) and `ftap-proofs` (Harrison-Pliska market model). Complete, 10
+theorems, zero `sorry`.
 
-## What this project is
+## Build and test
 
-Four sorry-free Lean 4 theorems:
-
-1. **`ackerer_cashflow_satisfies_costless_entry`** — the Ackerer-Hugonnier-Jermann cash
-   flow specification satisfies costless entry.
-2. **`he_manela_violates_costless_entry`** — explicit counterexample showing the original
-   He-Manela-Ross-von Wachter specification does not.
-3. **`perp_futures_no_arb_price`** — the unique no-arbitrage price is
-   `geometricExpectation (κ/(1+r)) (E^Q[S_·])`.
-4. **`inverse_perp_convexity_discount`** — the inverse perpetual price satisfies
-   `G₀ < F₀` by Jensen's inequality.
-
-Primary reference: Ackerer, D., J. Hugonnier, and U. Jermann. "Perpetual Futures
-Pricing." *Mathematical Finance*, 2025. DOI: 10.1111/mafi.70018.
+```bash
+# From extensions/perpetual-proofs/
+lake exe cache get          # first run only
+lake build
+grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake .
+```
 
 ## Architecture
 
 ```
 extensions/perpetual-proofs/
-  PerpetualProofs.lean             -- root module
+  PerpetualProofs.lean             root: re-exports all submodules
   PerpetualProofs/
-    Market.lean                    -- OnePeriodMarket, OnePeriodEMM (P2.1–P2.2)
-    CashFlow.lean                  -- CashFlowSpec, ackererCashFlow, heManelaCashFlow,
-                                   -- CostlessEntry, NoBuyAndHoldArbitrage (P2.3–P2.4)
-    FundingCompatibility.lean      -- Theorems 1a + 1b (F3.1–F3.4)
-    PerpFuturesNoArb.lean          -- Theorem 2 (PR4.1–PR4.3)
-    InversePerpCorrection.lean     -- Theorem 3 (I4.1–I4.3)
-  lakefile.lean                    -- requires mathlib + stopped-time-proofs + ftap-proofs
-  lean-toolchain                   -- pinned toolchain (same as ftap-proofs)
-  SPEC.md                          -- full project spec with roadmap and citations
+    Market.lean                    OnePeriodMarket, OnePeriodEMM
+    CashFlow.lean                  CashFlowSpec, ackererCashFlow, heManelaCashFlow,
+                                   CostlessEntry, NoBuyAndHoldArbitrage
+    FundingCompatibility.lean      Theorems 1a + 1b (F3.1-F3.4)
+    PerpFuturesNoArb.lean          Theorem 2 (PR4.1-PR4.3)
+    InversePerpCorrection.lean     Theorem 3 (I4.1-I4.3)
+  lakefile.lean                    requires mathlib + stopped-time-proofs + ftap-proofs
+  lean-toolchain                   pinned toolchain (same as ftap-proofs)
 ```
 
-## Theorem status
+## Theorem index
 
-| Theorem | File | Status |
-|---|---|---|
-| `ackerer_cashflow_satisfies_costless_entry` | `FundingCompatibility.lean` | **Proved** (F3.2, PR #130) |
-| `he_manela_violates_costless_entry` | `FundingCompatibility.lean` | **Proved** (F3.4, PR #130) |
-| `no_arb_uniqueness` | `PerpFuturesNoArb.lean` | **Proved** (PR4.1) |
-| `no_arb_existence` | `PerpFuturesNoArb.lean` | **Proved** (PR4.2) |
-| `perp_futures_no_arb_price` | `PerpFuturesNoArb.lean` | **Proved** (PR4.3) |
-| `inversePerp_noArb_price` | `InversePerpCorrection.lean` | **Proved** (I4.1) |
-| `geom_exp_inv_gt` | `InversePerpCorrection.lean` | **Proved** (I4.2) |
-| `inverse_perp_convexity_discount` | `InversePerpCorrection.lean` | **Proved** (I4.3) |
+| Theorem | File | Internal label |
+|---------|------|---------------|
+| `ackerer_cashflow_satisfies_costless_entry` | `FundingCompatibility.lean` | F3.2 |
+| `he_manela_violates_costless_entry` | `FundingCompatibility.lean` | F3.4 |
+| `no_arb_uniqueness` | `PerpFuturesNoArb.lean` | PR4.1 |
+| `no_arb_existence` | `PerpFuturesNoArb.lean` | PR4.2 |
+| `perp_futures_no_arb_price` | `PerpFuturesNoArb.lean` | PR4.3 |
+| `inversePerp_noArb_price` | `InversePerpCorrection.lean` | I4.1 |
+| `geom_exp_inv_gt` | `InversePerpCorrection.lean` | I4.2 |
+| `inverse_perp_convexity_discount` | `InversePerpCorrection.lean` | I4.3 |
 
-## Build & test commands
+`no_arb_existence` and `no_arb_uniqueness` are named lemmas; `perp_futures_no_arb_price`
+combines them into the headline theorem.
 
-```bash
-# Fetch mathlib cache (first run)
-lake exe cache get
+## Key definitions
 
-# Build all modules
-lake build
+- `OnePeriodMarket Ω`: fields `spot : N -> Omega -> R`, `k : R` (funding rate),
+  `r : R` (risk-free rate), with positivity hypotheses and `k < 1 + r`.
+- `OnePeriodEMM Ω market`: risk-neutral density with `density_pos`,
+  `density_sum_eq_one`, and `spot_expectation_const` (Q-expectation of spot is
+  constant in time, the stationarity hypothesis for Theorem 2).
+- `CostlessEntry`: the present value of the cash-flow stream under geometric weighting
+  equals zero. A `Prop` that each cash-flow specification must satisfy before any
+  pricing theorem can be stated.
+- `NoBuyAndHoldArbitrage market Q F₀`: the pair `(CostlessEntry, no-round-trip)`.
+- `geometricExpectation p f`: imported from `stopped-time-proofs`. The sum
+  `sum_k (1-p)^k * p * f k` for `0 < p < 1`.
 
-# Zero sorry check (tactic form only)
-grep -rn '^\s*sorry\b' --include="*.lean" --exclude-dir=.lake .
-```
+## Dependencies
+
+- `stopped-time-proofs`: `GeometricExpectation`, `geometricExpectation_const`,
+  `geometricExpectation_strict_mono`, Jensen lemmas. `InversePerpCorrection.lean`
+  uses `StrictConvexOn.map_sum_lt` via `jensen_geom_strict_convex`.
+- `ftap-proofs`: complete (zero `sorry`). `Market.lean` and `CashFlow.lean` import
+  `FtapProofs.Market` and `FtapProofs.Strategy`. `OnePeriodEMM` is a local struct;
+  it does not import `FtapProofs.MartingaleMeasure` (that module uses a different
+  EMM formulation).
 
 ## Hard rules
 
-- **Zero `sorry` as a tactic on main.** Commented-out `sorry` in TODO blocks is not
-  a proof-level use and is not flagged by the CI check.
-- **Do not import `FtapProofs.MartingaleMeasure`** until ftap-proofs Phase 4 (issue
-  #110) is proved. Use `OnePeriodEMM` in `Market.lean` instead.
-- **Resolve open questions in SPEC.md** (Q1: stationarity of F_k; Q2: Jensen in
-  Mathlib; Q3: OnePeriodEMM martingale condition) before Week 3 proof writing.
-- This is a **public repo**. Do not import private context from `~/ode/eigenq/`.
-- Apache 2.0 license matches mathlib's so this work can flow upstream.
+- Zero `sorry` on main. No exceptions.
+- Do not edit `.lean` files to resolve documentation issues; fix documentation only.
+- Do not import private context from outside this repository.
+- Apache 2.0 license; keep compatible with mathlib for upstream contribution.

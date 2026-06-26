@@ -46,5 +46,5 @@ geometric stopping time infrastructure from `stopped-time-proofs`.
 
 ## Status
 
-Work in progress. See `SPEC.md` for the proof roadmap.
+Complete, zero `sorry`; `#print axioms` reports only `[propext, Classical.choice, Quot.sound]`.
 -/

@@ -1,103 +1,119 @@
 # portfolio-proofs
 
-> Two distinct problems in quantitative finance, optimal **allocation** and optimal **hedging**, each reduce to the same convex quadratic program. This project solves that program with a projected-gradient solver whose convergence and constraint-feasibility are **proved in Lean 4** (see [`optimization-proofs`](../optimization-proofs/)), and demonstrates it on both.
+Mean-variance allocation with Ledoit-Wolf shrinkage, routed through the verified PGD solver from
+[`optimization-proofs`](../optimization-proofs/), with stressed-solver scenarios that document
+where standard solvers break and why.
 
 [![Lean CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/lean-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eigenq-xyz/quant-proofs/blob/main/notebooks/portfolio_solver_stress.ipynb)
 
-## Two finance problems, one optimization core
+## What this project is and is not
 
-### Optimal allocation
+This is an **applied / empirical** project. It does not contain new Lean 4 proofs. The convergence
+and projection-correctness guarantees reside in `optimization-proofs` (zero `sorry`); this project
+routes production allocation problems through that verified core and documents the solver's behavior
+on stressed inputs.
 
-An investor spreads capital across `N` assets with random returns, expected excess returns `μ`, and return covariance `Σ`. The Markowitz objective trades expected return against variance: for risk aversion `γ`,
-
-$$\max_w\ \mu^\top w - \tfrac{\gamma}{2}\, w^\top \Sigma w \quad\Longleftrightarrow\quad \min_w\ \tfrac{\gamma}{2}\, w^\top \Sigma w - \mu^\top w$$
-
-subject to a budget `Σwᵢ = 1` (fully invested) and a gross-leverage cap `Σ|wᵢ| ≤ L` (a long-short or regulatory limit). With a positive-definite `Σ`, this is a convex quadratic program in the weights `w`.
-
-### Optimal hedging
-
-A desk holds a liability with random payoff `H` at horizon `T`, for example an index option, and offsets it by trading `n` instruments whose price changes are `ΔS`. The residual after hedging is `H − ξᵀΔS`. Minimizing the mean-square hedging error,
-
-$$\min_\xi\ \mathbb{E}\big[(H - \xi^\top \Delta S)^2\big] \;=\; \min_\xi\ \tfrac{1}{2}\,\xi^\top C\,\xi - b^\top \xi \;+\; \text{const},$$
-
-where `C = E[ΔS·ΔSᵀ]` is the instruments' second-moment matrix and `b = E[H·ΔS]` is the claim's cross-moment with each instrument. Under a hedge-budget normalization `Σξⱼ = B` and a gross-leverage cap `Σ|ξⱼ| ≤ L`, this is again a convex quadratic program, now in the hedge positions `ξ`. This is the variance-optimal (quadratic) hedge of Schweizer (1995).
-
-### How the two are related, honestly
-
-They are distinct problems. Allocation prices an *appetite for return*: its linear term `μ` is a preference, scaled by risk aversion, and there is no liability to replicate. Hedging prices the *cost of tracking error against a fixed liability*: its linear term `b = E[H·ΔS]` is a projection coefficient forced by the claim's correlation with the instruments, not a return. Substituting one into the other yields nothing economically meaningful (`E[H·ΔS]` is not an expected return). The two touch only in the degenerate minimum-variance corner (allocation with `μ = 0` and a pinned position behaves like a hedge), which is a shared special case rather than a reduction. What they genuinely share is their reduced form: the convex quadratic program below.
-
-## The general convex QP
-
-$$\min_x\ \tfrac{1}{2}\, x^\top Q\, x - c^\top x \qquad \text{s.t.}\qquad \sum_i x_i = B,\quad \sum_i |x_i| \le L,$$
-
-with `Q` symmetric positive definite. The feasible set is the intersection of a budget hyperplane and a gross-exposure `L₁` ball: convex, compact, with a unique minimizer. Allocation is the instance `(Q, c) = (Σ, μ)`; hedging is the instance `(Q, c) = (C, b)`.
-
-## Why projected gradient descent
-
-The feasible set admits an exact analytical `O(N log N)` projection (dual-bisection onto the simplex ∩ `L₁` ball), so projected-gradient iterates stay *exactly* feasible with no slack variables and no constraint drift. The alternatives fail in characteristic ways on stressed inputs, documented with data in [`scenarios/`](scenarios/):
-
-- Active-set solvers (SciPy SLSQP) introduce `2N` slack variables for the `L₁` kink and cycle on the non-differentiable boundary until they hit the iteration limit.
-- Interior-point and commercial solvers (Gurobi) require a positive-definite `Q`, refuse a rank-deficient sample covariance outright, and stop early in flat penalty valleys.
-
-Projected gradient descent needs none of that, and its convergence rate is governed by a single explicit constant, the largest eigenvalue of `Q`. That is exactly what makes the method tractable to verify formally.
-
-## What is proven (in `optimization-proofs`, zero `sorry`)
+The verified guarantees (from `optimization-proofs`):
 
 | Guarantee | Theorem |
-| --------- | ------- |
-| The covariance is positive definite for any sample (Ledoit-Wolf shrinkage) | `shrinkage_psd` |
+|-----------|---------|
+| Ledoit-Wolf shrinkage produces a positive-definite covariance | `shrinkage_psd` |
 | The analytical projection is the exact Euclidean projection onto the feasible set | `projection_correctness` |
 | Every iterate satisfies the budget and leverage constraints exactly | `projection_feasibility` |
-| The iterates converge to the global optimum for `η < 2/λ_max(Q)` | `pgd_convergence` |
+| PGD iterates converge to the global optimum for step size `η < 2/λ_max(Q)` | `pgd_convergence` |
 
-Because both finance problems reduce to the same QP, these guarantees apply to both. The hedging second-moment matrix `C` is a Gram matrix and hence symmetric positive semidefinite, so `shrinkage_psd` applies to it directly.
+The statistical layer (covariance estimation, expected-return inputs) is rigorous but not formally
+verified, and the results say so.
 
-## Results
+## The solver
 
-### Allocation: stressed-solver scenarios
+`lean_pgd.py` is a persistent-subprocess bridge to the compiled `pgd_solve` binary from
+`optimization-proofs`. The Markowitz objective,
 
-Seven scenarios in [`scenarios/`](scenarios/) each target one solver failure mode (rank-deficient covariance, `L₁` boundary cycling, floating-point constraint drift, step-size divergence, interior-point phantom positions, volatility-regime change, and `N`-scaling). Each has a KKT-certified analytical optimum as ground truth. The verified PGD is the only solver that passes all seven. Run the stress demo: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eigenq-xyz/quant-proofs/blob/main/notebooks/portfolio_solver_stress.ipynb)
+    min_w  (γ/2) w'Σw − μ'w   subject to  Σwᵢ = 1,  Σ|wᵢ| ≤ L
 
-### Hedging: variance-optimal index-option hedge
+reduces to a convex QP on the simplex ∩ L₁ ball. The feasible set admits an exact O(N log N)
+analytical projection (dual-bisection), so iterates stay exactly feasible with no slack variables
+and no constraint drift.
 
-[`hedging/`](hedging/) builds `C` and `b` from Monte Carlo option scenarios under Black-Scholes (no licensed data), solves for the variance-optimal hedge with the verified solver, and benchmarks the out-of-sample hedging-error variance against the Black-Scholes delta hedge. Minimum-variance hedging is known to reduce hedged-PnL variance out of sample relative to the practitioner delta (Hull and White, 2017). The framing is deliberate: this is the verifiable convex counterpart to black-box deep hedging (Bühler et al., 2019), trading some empirical hedging performance for a machine-checked global-optimality and feasibility guarantee. Run it: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eigenq-xyz/quant-proofs/blob/main/notebooks/variance_optimal_hedge.ipynb)
+`lean_pgd_ffi.py` is a Cython FFI wrapper that dispatches to a flat or boxed call path based on
+the covariance condition number; it is approximately 1.5x faster than the subprocess bridge for
+ill-conditioned inputs (condition number ≥ 150).
 
-## Build and run
+## Stressed-solver scenarios
+
+Seven scenarios in [`scenarios/`](scenarios/) each isolate one solver failure mode, provide a
+KKT-certified analytical optimum as ground truth, and compare the verified PGD against SLSQP,
+CVXPY/OSQP, and Gurobi.
+
+| Scenario | What it tests |
+|----------|---------------|
+| [`cholesky_crash/`](scenarios/cholesky_crash/) | Rank-deficient sample covariance; Gurobi refuses, SLSQP crashes; Ledoit-Wolf shrinkage + PGD recovers |
+| [`precision_bleed/`](scenarios/precision_bleed/) | SLSQP constraint drift at `acc=1e-8` accumulates across solves |
+| [`boundary_trap/`](scenarios/boundary_trap/) | L₁-kink cycling in SLSQP on a corner-constrained portfolio |
+| [`step_divergence/`](scenarios/step_divergence/) | Lipschitz constant violation in unverified GD after a volatility regime shift |
+| [`phantom_positions/`](scenarios/phantom_positions/) | Interior-point phantom near-zero weights from barrier relaxation |
+| [`vix_shock/`](scenarios/vix_shock/) | Volatility regime change breaks uncertified gradient descent |
+| [`sp500_factor/`](scenarios/sp500_factor/) | N-scaling benchmark across asset universes |
+
+## Build and test
 
 ```bash
-# Build the verified solver binary (from the repo root)
-cd foundations/optimization-proofs && lake exe cache get && lake build pgd_solve
+# Install Python dependencies (from foundations/portfolio-proofs/)
+cd foundations/portfolio-proofs
+uv sync --extra dev
 
-# Install Python deps and run the test suite (from foundations/portfolio-proofs/)
-cd ../portfolio-proofs && uv sync --extra dev
+# Unit tests (no binary required; runs in CI)
 uv run pytest tests/test_lean_pgd.py -v -k "not integration"
 
-# Reproduce a stress scenario (allocation)
-python3 scenarios/cholesky_crash/scipy_slsqp.py
+# Full test suite including property tests (requires pgd_solve binary)
+uv run pytest tests/ -v
 
-# Run the variance-optimal hedge (hedging)
-uv run python hedging/variance_optimal_hedge.py
+# Type check
+uv run mypy lean_pgd.py lean_pgd_direct.py lean_pgd_ffi.py tests/ --strict
+
+# Lint
+uv run ruff check lean_pgd.py lean_pgd_direct.py lean_pgd_ffi.py tests/
+
+# Build the Cython FFI extension (from foundations/optimization-proofs/)
+cd ../optimization-proofs && python ffi/setup_ffi.py build_ext --inplace
+
+# Reproduce a stress scenario
+python3 foundations/portfolio-proofs/scenarios/cholesky_crash/scipy_slsqp.py
 ```
 
-## Architecture
+The `pgd_solve` binary is built in `optimization-proofs`:
 
-```text
+```bash
+cd foundations/optimization-proofs && lake exe cache get && lake build pgd_solve
+```
+
+## Project structure
+
+```
 foundations/portfolio-proofs/
-  lean_pgd.py            persistent-subprocess bridge to the verified pgd_solve binary
-  hedging/               variance-optimal hedge: Monte Carlo -> C, b -> verified solve, vs BS delta
-  scenarios/             seven allocation stress scenarios (Quarto + solver modules)
-  tests/                 deterministic unit tests + Hypothesis property tests
-  data/                  DVC-managed French 10-industry daily returns
+  lean_pgd.py              persistent-subprocess bridge to pgd_solve (primary)
+  lean_pgd_direct.py       single-shot subprocess fallback (reference)
+  lean_pgd_ffi.py          Cython FFI wrapper; dispatches flat/boxed by condition number
+  hedging/
+    variance_optimal_hedge.py  variance-optimal hedge via the same QP (Monte Carlo, no licensed data)
+  scenarios/               seven stressed-solver scenarios (Quarto source + solver modules)
+  tests/
+    test_lean_pgd.py           deterministic unit + integration tests
+    test_lean_pgd_properties.py  Hypothesis property-based tests
+    test_hedge.py              hedging tests
+  data/                    DVC-managed Ken French 10-industry daily returns (free data)
+  reports/                 Quarto performance report (do not edit by hand)
+  results/                 committed benchmark JSON outputs
 ```
 
 ## References
 
 - Markowitz, H. (1952). "Portfolio Selection." *Journal of Finance* 7(1): 77-91.
-- Schweizer, M. (1995). "Variance-Optimal Hedging in Discrete Time." *Mathematics of Operations Research* 20(1): 1-32.
-- Ledoit, O., and M. Wolf (2004). "A Well-Conditioned Estimator for Large-Dimensional Covariance Matrices." *Journal of Multivariate Analysis* 88(2): 365-411.
-- Hull, J., and A. White (2017). "Optimal Delta Hedging for Options." *Journal of Banking and Finance* 82: 180-190.
-- Bühler, H., L. Gonon, J. Teichmann, and B. Wood (2019). "Deep Hedging." *Quantitative Finance* 19(8): 1271-1291.
+- Ledoit, O., and M. Wolf (2004). "A Well-Conditioned Estimator for Large-Dimensional Covariance
+  Matrices." *Journal of Multivariate Analysis* 88(2): 365-411.
+- Schweizer, M. (1995). "Variance-Optimal Hedging in Discrete Time." *Mathematics of Operations
+  Research* 20(1): 1-32.
 
 ## License
 

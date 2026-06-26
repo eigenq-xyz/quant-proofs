@@ -36,6 +36,5 @@ and downstream modules can import from Mathlib directly.
 ## Status
 
 Complete, zero `sorry`. `geometricExpectation_strict_mono` (`Jensen.lean`) is
-load-bearing for `perpetual-proofs` Theorem 3 (the inverse-perp convexity
-correction). See `SPEC.md` in `perpetual-proofs/` for the proof roadmap.
+load-bearing for `perpetual-proofs` Theorem 3 (the inverse-perp convexity correction).
 -/

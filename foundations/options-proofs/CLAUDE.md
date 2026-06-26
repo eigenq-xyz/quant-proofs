@@ -1,34 +1,35 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Lean 4 proof of put-call parity via the Cox-Ross-Rubinstein binomial model. Builds the CRR market, establishes the equivalent martingale measure, and derives parity as a theorem. Complete, 31 theorems, zero `sorry`.
 
-## Project Overview
+## Build and test
 
-Lean 4 proof of put-call parity via the Cox-Ross-Rubinstein (CRR) binomial model. The CRR
-model is a finite-state, discrete-time market where the FTAP from `ftap-proofs` applies,
-giving an explicit risk-neutral measure. Put-call parity is a corollary.
-
-## Build & Test Commands
-
-- `lake exe cache get` — fetch mathlib build cache (run after `lake update`)
-- `lake build` — build the library
-- `lake update` — refresh dependencies (mathlib; later `ftap-proofs`)
-- `lake build --watch` — rebuild on file changes
+```bash
+cd foundations/options-proofs
+lake exe cache get          # fetch prebuilt mathlib (first run only, or after lake update)
+lake build                  # compile and verify all proofs
+grep -rn '\bsorry\b' --include="*.lean" OptionsProofs/    # must be empty
+```
 
 ## Architecture
 
-Single Lean library `OptionsProofs`. Submodules to be added under `OptionsProofs/` as the
-formalization develops (e.g., `OptionsProofs.Tree`, `OptionsProofs.RiskNeutral`,
-`OptionsProofs.PutCallParity`).
+Single library `OptionsProofs`. Three modules in dependency order:
+
+| File | Contents |
+| ---- | -------- |
+| `OptionsProofs/Tree.lean` | CRR state space `Ω := Fin T → Bool`, up-count `ups`, risky-asset price `crrPrice`, numeraire `crrNumeraire`, natural filtration `crrFiltration`, adaptedness `crrPrice_adapted`. Imports `FtapProofs.Market`. |
+| `OptionsProofs/RiskNeutral.lean` | Risk-neutral probability `riskNeutralProb q`, density `crrRNDensity`, sum-to-one (binomial theorem), measure equivalence `crrRNMeasure_equiv`. Imports `OptionsProofs.Tree`, `FtapProofs.MartingaleMeasure`, `FtapProofs.Theorem`. |
+| `OptionsProofs/PutCallParity.lean` | Real-valued payoffs `callPayoffReal`/`putPayoffReal`, payoff identity `payoff_parity`, risk-neutral pricing operator `rnPrice`, discounted martingale identity `discounted_terminal_expectation`, headline theorem `put_call_parity`. Imports `OptionsProofs.RiskNeutral`, `QuantCore.Option`. |
 
 ## Dependencies
 
-- `quant-core` — shared option primitives (`OptionKind`, `EuropeanOption`, payoff theorems).
-- `mathlib` — measure theory, expectation, finite probability.
-- `ftap-proofs` (planned) — once it exposes a stable interface for EMMs and no-arbitrage.
+- `ftap-proofs` (complete, zero `sorry`): no-arbitrage and EMM machinery. Imported as `FtapProofs.Market`, `FtapProofs.MartingaleMeasure`, `FtapProofs.Theorem`.
+- `quant-core`: shared option primitives (`QuantCore.Option`).
+- `mathlib`: finite probability, conditional expectation, big operators.
 
-## Constraints
+## Hard rules
 
-- This is a **public repo.** Don't import private context from `~/ode/eigenq/` (transcript,
-  internship strategy, etc.) into commits, READMEs, or PRs.
-- Apache 2.0 license matches mathlib's so the FTAP work can flow upstream.
+- Zero `sorry` on main. No exceptions.
+- Do not suppress linter warnings with `set_option linter.X false`. Fix the root cause.
+- Apache 2.0 license: compatible with mathlib for upstream contribution.
+- No private content in commits, docstrings, or PRs (no grades, application context, or firm names in strategy framing).
