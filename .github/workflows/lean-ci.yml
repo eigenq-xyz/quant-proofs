@@ -8,6 +8,8 @@ on:
       - 'foundations/ftap-proofs/**'
       - 'foundations/options-proofs/**'
       - 'extensions/mortgage-proofs/lean/**'
+      - 'extensions/hedge-proofs/**'
+      - 'extensions/vrp-proofs/**'
       - 'research-pipeline/lean/**'
   pull_request:
     branches: [main]
@@ -34,6 +36,12 @@ jobs:
             dep-lake: foundations/quant-core/lean/.lake
           - subdir: mortgage-proofs
             lean-dir: extensions/mortgage-proofs/lean
+          - subdir: hedge-proofs
+            lean-dir: extensions/hedge-proofs
+            dep-lake: foundations/quant-core/lean/.lake
+          - subdir: vrp-proofs
+            lean-dir: extensions/vrp-proofs
+            dep-lake: foundations/options-proofs/.lake
           - subdir: research-pipeline
             lean-dir: research-pipeline/lean
             dep-lake: foundations/ftap-proofs/.lake
