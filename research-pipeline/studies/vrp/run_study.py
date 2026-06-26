@@ -1,4 +1,4 @@
-"""Variance Risk Premium (VRP) delta-hedged short-volatility study (Stage 1).
+"""Variance Risk Premium (VRP) delta-hedged short-volatility study.
 
 A literature-grounded short-volatility / variance-risk-premium study on the S&P 500
 index, built entirely on free data (FRED VIX, Yahoo SPX, FRED 3-month T-bill).
@@ -11,8 +11,8 @@ seller of index volatility who delta-hedges the directional exposure harvests
 this premium, at the cost of severe negative skew (Coval-Shumway 2001): the
 short-vol payoff is short the tail, and tails arrive in crises.
 
-Strategy (Stage 1, simulated)
------------------------------
+Strategy (simulated)
+--------------------
 Each month, sell a 30-day at-the-money straddle on the index, priced with
 Black-Scholes using VIX as the implied volatility input, and delta-hedge on a
 configurable schedule. An ATM straddle has delta ~ 0 at inception, so the
@@ -22,12 +22,11 @@ short vega. The delta-hedged short-straddle P&L over the holding period equals
 scaled by the dollar-gamma of the straddle. We implement the standard discrete
 delta-hedging P&L for rigor rather than relying on the closed-form approximation.
 
-Realistic frictions (this revision)
-------------------------------------
-The original Stage-1 engine charged transaction cost only on the option premium
-(0.5% round-trip) and left the ~21 daily stock rebalances frictionless, which
-inflated the net Sharpe to ~2.9 (literature VRP Sharpes are ~0.5 to 1.0). This
-revision adds three realistic frictions, each configurable in ``HedgeConfig``:
+Realistic frictions
+-------------------
+Three friction sources are modeled, each configurable in ``HedgeConfig``. Frictionless
+implementations overstate the net Sharpe (literature VRP Sharpes are ~0.5 to 1.0);
+all three friction sources must be included for defensible results:
 
 1. **Per-rebalance hedge cost.** Every change in the stock hedge (the initial
    hedge, each intermediate rebalance, and the final liquidation) is charged a

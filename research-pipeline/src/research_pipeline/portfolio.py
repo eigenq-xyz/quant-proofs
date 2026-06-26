@@ -113,9 +113,9 @@ def verified_pgd_weights(
     dollar-neutral baseline instead, in which case a :class:`UserWarning` is emitted and the
     fallback is loud, never silent.
 
-    NOTE: the verified projection currently targets the budget simplex (``sum w = 1``).
-    Extending it to the dollar-neutral simplex (``sum w = 0``) for cross-sectional L/S
-    books is tracked as a GitHub issue (a new ``optimization-proofs`` theorem).
+    The verified projection targets the budget simplex (``sum w = 1``); the dollar-neutral
+    simplex (``sum w = 0``) for cross-sectional L/S books is a separate constraint and
+    is not covered by the current ``optimization-proofs`` theorems.
     """
     try:
         repo = (
@@ -183,9 +183,9 @@ def make_verified_pgd_weight_fn(
     covariance window at ``t`` are dropped; fewer than three survivors yields a flat book.
 
     This is the **budget** book (``sum w = 1``) — the constraint the projection is *proven* for. It
-    is a different book from the dollar-neutral baseline; the dollar-neutral (``sum w = 0``) verified
-    projection is tracked as an ``optimization-proofs`` theorem (a GitHub issue). ``gross`` is ignored: the
-    verified solver normalises to ``sum w = 1``.
+    is a different book from the dollar-neutral baseline; the ``optimization-proofs`` theorems cover
+    the budget simplex only, not the dollar-neutral (``sum w = 0``) constraint. ``gross`` is ignored:
+    the verified solver normalises to ``sum w = 1``.
     """
     rets = panel.prices.astype(float).pct_change()
 

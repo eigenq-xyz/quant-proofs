@@ -15,8 +15,8 @@ step size `η` satisfies the Lipschitz stability bound `η < 2 / lMax(Σ)`.
 
 ## Main theorems
 
-- **V4.1** `pgd_descent_lemma` — one PGD step strictly decreases the objective (TODO: prove)
-- **V4.2** `pgd_convergence` — the iterate sequence converges to the optimal portfolio (TODO: prove)
+- **V4.1** `pgd_descent_lemma` — one PGD step strictly decreases the objective
+- **V4.2** `pgd_convergence` — the iterate sequence converges to the optimal portfolio
 
 ## Mathematical background
 
@@ -33,7 +33,7 @@ For **strongly convex** objectives (Σ is PD), the convergence is geometric:
 
 under `η ≤ 1/lMax`, where `λ_min = λ_min(Σ) > 0` by `shrinkage_psd`.
 
-## Proof strategy (for future completion)
+## Proof strategy
 
 **Step V4.1 (descent lemma)**:
 Starting from the Lipschitz smoothness condition:
@@ -53,10 +53,9 @@ Sum the descent inequality from `k = 0` to `K`:
 Since all terms are non-negative and `f(wₖ) − f(w*)` is the minimum in the
 partial sum, we get the O(1/K) bound.
 
-**Status**: Both theorems fully proved, 0 sorry.  `pgd_descent_lemma` uses
-bespoke quadratic lemmas from `QuadraticLemmas.lean` and the projection
-inequality from `Projection.projection_correctness`.  `pgd_convergence`
-telescopes the descent inequality over K steps.
+`pgd_descent_lemma` uses bespoke quadratic lemmas from `QuadraticLemmas.lean`
+and the projection inequality from `Projection.projection_correctness`.
+`pgd_convergence` telescopes the descent inequality over K steps.
 -/
 
 open scoped BigOperators Matrix
@@ -81,9 +80,9 @@ variable {N : ℕ} [NeZero N]
 
     where `w₊ = Π(w − η ∇f(w))` is the PGD update.
 
-    **Status**: Complete, 0 sorry.  Proof chain: quadratic_identity (A),
-    quadratic_convexity (B), Lipschitz bound (C), projection inequality (D),
-    polarization_identity (E); closed by `nlinarith`. -/
+    Proof chain: quadratic_identity (A), quadratic_convexity (B), Lipschitz
+    bound (C), projection inequality (D), polarization_identity (E); closed
+    by `nlinarith`. -/
 theorem pgd_descent_lemma
     (Cov : Matrix (Fin N) (Fin N) ℝ) (ret : Fin N → ℝ)
     (hCov : Cov.PosDef)
@@ -184,8 +183,8 @@ theorem pgd_descent_lemma
     In particular, for any `ε > 0` there exists `K` such that for all `k ≥ K`,
     `|f(wₖ) − f(w*)| < ε`.
 
-    **Status**: Complete, 0 sorry.  Telescopes `pgd_descent_lemma` over K steps;
-    K·E(K) ≤ D₀/(2η) by sum lower bound; K₀ = ⌈D₀/(2ηε)⌉ + 1 witnesses ε. -/
+    Telescopes `pgd_descent_lemma` over K steps; K·E(K) ≤ D₀/(2η) by sum
+    lower bound; K₀ = ⌈D₀/(2ηε)⌉ + 1 witnesses ε. -/
 theorem pgd_convergence
     (Cov : Matrix (Fin N) (Fin N) ℝ) (ret : Fin N → ℝ)
     (hCov : Cov.PosDef)

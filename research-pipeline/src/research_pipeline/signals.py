@@ -1,4 +1,4 @@
-"""Stage 2 — signals. Alpha construction, non-anticipating by construction.
+"""Signals — alpha construction, non-anticipating by construction.
 
 Every signal's value at date ``t`` is a function of prices at dates ``≤ t`` only; this is
 the runtime instance of the Lean ``ResearchPipeline.NonAnticipating`` predicate, checked
@@ -48,7 +48,8 @@ def conditional_scale(
     """Conditional twist: damp the signal in high-volatility regimes.
 
     The regime indicator uses only past returns (``≤ t``), so the result stays
-    non-anticipating. Future work: replace ``1/(1+vol)`` with a real regime/state model.
+    non-anticipating. The scale factor ``1/(1+vol)`` is a simple inverse-vol damper;
+    any non-anticipating regime indicator can be substituted in the same pattern.
     """
     realized_vol = panel.simple_returns().rolling(vol_window).std()
     scale = 1.0 / (1.0 + realized_vol)

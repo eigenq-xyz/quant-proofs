@@ -7,7 +7,7 @@ v1 Graph flow (build_graph):
                         └── both converge → [router]
                                 └─ underwriter → assemble_record → END
 
-v2 Design graph flow (build_design_graph):
+Design graph flow (build_design_graph):
   START → feasibility_gate
       ├─ blocking (HARD_BLOCK / DOCUMENTS_REQUIRED) → assemble_block → END
       └─ PROCEED → package_designer → package_reviewer → lean_verify
@@ -132,7 +132,7 @@ def compile_graph() -> Any:
 
 
 # ---------------------------------------------------------------------------
-# Phase 4 design graph
+# Design graph
 # ---------------------------------------------------------------------------
 
 
@@ -140,8 +140,8 @@ def _feasibility_gate(state: DesignGraphState) -> dict:  # type: ignore[type-arg
     """Stage 1: deterministic Python checks — no LLM involved.
 
     Blocks on:
-    - Missing critical documents (if provided_documents tracking is added
-      in a future phase — currently a stub that always proceeds).
+    - Missing critical documents (document completeness tracking is not
+      implemented; this check always proceeds).
     - Mathematical impossibility: DTI of existing debt alone already exceeds
       the strictest cap (0.41, VA) for all loan types.
     """
@@ -342,7 +342,7 @@ def _assemble_escalated(state: DesignGraphState) -> dict:  # type: ignore[type-a
 
 
 def build_design_graph() -> Any:
-    """Construct the Phase 4 generative design graph (not yet compiled)."""
+    """Construct the generative design graph (not yet compiled)."""
     graph = StateGraph(DesignGraphState)
 
     graph.add_node("feasibility_gate", _feasibility_gate)

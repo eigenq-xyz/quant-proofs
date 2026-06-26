@@ -45,7 +45,7 @@ class GraphState(TypedDict):
 
 
 class DesignGraphState(TypedDict):
-    """State for the Phase 4 generative design-loop orchestrator.
+    """State for the generative design-loop orchestrator.
 
     Stage 1: feasibility_gate sets stage_1_outcome to short-circuit the loop.
     Stage 2: package_designer → package_reviewer → lean_verify loop.

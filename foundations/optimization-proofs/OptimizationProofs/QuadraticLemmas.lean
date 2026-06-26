@@ -17,7 +17,7 @@ available in mathlib for the `Matrix.dotProduct` / `Matrix.mulVec` API:
 - **Q3** `polarization_identity` — dot-product polarization:
       `2 * (a ⬝ᵥ b) = (a ⬝ᵥ a) + (b ⬝ᵥ b) − ((a−b) ⬝ᵥ (a−b))`
 
-All proofs are closed (0 sorry).  Mathlib provides the building blocks:
+Mathlib provides the building blocks:
 `Matrix.conjTranspose_eq_transpose_of_trivial`, `Matrix.dotProduct_transpose_mulVec`,
 `Matrix.sub_dotProduct`, `Matrix.dotProduct_sub`, `Matrix.mulVec_sub`.
 -/

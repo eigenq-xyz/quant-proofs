@@ -1,4 +1,4 @@
-"""Synthesize a v1 DecisionRecord from a Phase 4 package proposal.
+"""Synthesize a v1 DecisionRecord from a package proposal.
 
 The Lean binary hard-checks ``EXPECTED_SCHEMA_VERSION = "1.0.0"`` and never
 sees a ``DesignSessionRecord``.  To verify a proposal against the existing

@@ -1,4 +1,4 @@
-"""Unit tests for Phase 4 domain models and DesignSessionRecord."""
+"""Unit tests for domain models and DesignSessionRecord."""
 
 from __future__ import annotations
 
@@ -111,7 +111,7 @@ def test_applicant_situation_to_applicant(situation: ApplicantSituation) -> None
 def test_applicant_situation_to_applicant_no_extra_fields(
     situation: ApplicantSituation,
 ) -> None:
-    """to_applicant() must not carry phase-4-only fields into the v1 model."""
+    """to_applicant() must not carry design-loop-only fields into the v1 model."""
     applicant = situation.to_applicant()
     assert not hasattr(applicant, "assets_liquid_usd")
     assert not hasattr(applicant, "employment_months_current")

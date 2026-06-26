@@ -15,7 +15,7 @@ Formally verifies that the analytical dual-bisection projection operator
 ## Contents
 
 - **P3.1** `primalFromDual` — coordinate-wise KKT primal from dual `(θ, μ)`
-- **P3.2** `projection_feasibility` — existence of `(θ, μ)` with feasible output (TODO)
+- **P3.2** `projection_feasibility` — existence of `(θ, μ)` with feasible output
 - **P3.3** `projection_correctness` — KKT conditions imply optimality (proved)
 
 ## `projection_correctness` proof sketch
@@ -115,8 +115,6 @@ private theorem primalFromDual_all_zero (y : Fin N → ℝ) (θ μ : ℝ)
 /-- **P3.2** For any `y : Fin N → ℝ` and feasible `(B, L)` with `|B| ≤ L`,
     there exist dual variables `θ*, μ* ≥ 0` such that `primalFromDual y θ* μ*`
     lies in the constraint set `𝒞(B, L)`.
-
-    **Proof** (Complete, 0 sorry — all three cases):
 
     **Case 1** — μ = 0 suffices: Set `θ₀ = (∑ y − B) / N`. Then
     `primalFromDual y θ₀ 0 i = y i − θ₀` and `∑(y i − θ₀) = B`. If
@@ -311,7 +309,6 @@ theorem projection_feasibility [NeZero N] (B L : ℝ) (hL : 1 ≤ L) (hBL : |B| 
     projection problem `min_{x ∈ 𝒞} ½‖x − y‖²`, then `p` minimizes the Euclidean
     distance to `y` over `𝒞`.
 
-    **Proof** (complete, 0 sorry):
     The projection inequality `⟨p − y, x − p⟩ ≥ 0` for all feasible `x` is proved
     by expanding the KKT stationarity condition in each of the three cases
     (`p i = 0`, `p i > 0`, `p i < 0`), applying the subgradient inequality for `|·|`,
