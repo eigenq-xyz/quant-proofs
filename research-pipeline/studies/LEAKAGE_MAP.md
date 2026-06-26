@@ -25,6 +25,12 @@ difference. Every cell runs on identical code with only the data-timing rule cha
 
 ## What the map says
 
+The four cells do two different jobs. Cells 1 and 2 (COT and EIA) rule out a tax on their own
+channels: release timing on a standardized commodity signal, and revision on a barely-revised
+series. They are orthogonal controls. Cells 3 and 4 are the decisive pair: the *same* maximally
+revised payrolls data run through two signal forms, which is the controlled test that isolates
+functional form as the binding variable.
+
 The first three cells all come back null, and the third is the decisive one. Nonfarm payrolls
 is about the most heavily revised major macro series there is: it is revised in essentially
 every month, and the typical revision is close to half the size of the monthly change the signal
@@ -41,9 +47,12 @@ arms in 21% of months, and on full sample the gap favors the naive (revised-data
 399 bps/yr. So the mechanism is real and reproducible.
 
 The honest caveat is that even the exposed case is modest and not robust on full sample. The
-cutoff k=250k was selected from a small sweep for its high flip rate; the full-sample t-stat is
-1.75, below the conventional 2.0; the effect is negative in the pre-2008 subperiod and is
-significant only in the recent 2016-2026 window (t=2.96). The defensible claim is qualitative,
+cutoff k=250k was not chosen blind: it was selected from a small sweep for the highest decision
+flip rate among the thresholds whose point-in-time arm cleared a flat-book null (so that the
+reported tax reflects an edge-bearing signal rather than a degenerate one). That selection is a
+researcher degree of freedom and inflates the apparent effect. The full-sample t-stat is 1.75,
+below the conventional 2.0; the effect is negative in the pre-2008 subperiod and is significant
+only in the recent 2016-2026 window (t=2.96). The defensible claim is qualitative,
 not a measured alpha: **a standardized-and-clipped signal is structurally immune to revision
 look-ahead, a level or threshold signal on the same data is exposed, and point-in-time discipline
 is cheap insurance whose payoff depends on the signal's functional form, not on how heavily the
