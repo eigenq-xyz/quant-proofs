@@ -13,12 +13,12 @@ package «research-pipeline» where
 --
 -- The measure-theoretic upgrade (Measurability.lean) states signal
 -- 𝓕ₜ-measurability against the natural filtration of the price process and
--- cites `ftap-proofs`. The mathlib rev below is pinned to ftap's resolved rev
--- (d49d66…) so the shared mathlib build stays consistent; do NOT run
--- `lake update` (it would bump mathlib to master and break the pin).
+-- cites `ftap-proofs`. The mathlib rev below is pinned to the monorepo-wide
+-- canonical rev (5719ef2, toolchain v4.30.0) so the shared mathlib build stays
+-- consistent; do NOT run `lake update` (it would bump mathlib to master and break the pin).
 require «ftap-proofs» from "../../foundations/ftap-proofs"
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git" @ "d49d6649f50b54b813042b80d5837fd62561b48f"
+  "https://github.com/leanprover-community/mathlib4.git" @ "5719ef278ac6921b1a68b558d9282377f93d0b80"
 
 @[default_target]
 lean_lib ResearchPipeline
