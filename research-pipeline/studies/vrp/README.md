@@ -26,15 +26,18 @@ where `VIX(t)` is annualized implied volatility (squared to get implied variance
 21 trading days. The signal uses only information observed up to and including time `t`, so
 it is `F_t`-measurable (no look-ahead).
 
-The general primitive behind this is formalized, sorry-free, in
-`research-pipeline/lean/ResearchPipeline/Measurability.lean`: `price_measurable_natural` proves
-that any value read from prices observed up to `t` is `𝓕ₜ`-measurable, and that primitive is
-used there to prove a concrete signal (`momentumSignal_adapted`) adapted to the natural
-filtration. The VRP signal here is built the same trailing-only way, so the identical argument
-applies to it. To be precise about scope: the Lean theorem that exists is for the momentum
-signal, not for this rolling-variance / VIX signal, so the VRP signal's non-anticipation is
-argued informally by construction and is not itself machine-checked in this study. The
-statistical and P&L layers below are likewise empirical and unverified.
+This non-anticipation property is machine-checked, sorry-free, in
+`research-pipeline/lean/ResearchPipeline/Measurability.lean`. The theorem `vrpSignal_adapted`
+proves that the VRP signal process is **adapted**: its value at `t` is measurable with respect
+to the information available at `t`. Because the signal reads two observable processes, the
+price process (through the trailing realized variance) and an implied-variance process (the
+squared VIX), the honest scope is that it is adapted to any filtration carrying **both**, the
+joint market-information filtration, rather than the price-only natural filtration that suffices
+for a pure price signal like `momentumSignal_adapted`. The proof reads each windowed price
+`price (t - i)` (every index `≤ t`) and the contemporaneous `impliedVar t` through their
+adaptedness and combines them through the measurable signal rule. The statistical and P&L layers
+below are empirical and unverified; the non-anticipation of the signal is the part that is
+formally proved.
 
 ## Strategy
 
@@ -150,6 +153,22 @@ modest.
 so it is more punitive than the headline's fixed 0.5% closing leg; this isolates the
 option-spread sensitivity.)
 
+### Combined friction (higher hedge cost AND wide option spread, daily)
+
+The bps and half-spread sweeps above each hold the other friction light. The realistic case
+charges both at once. These rows compute that directly (the round-trip option spread is twice
+the entry half-spread).
+
+| Config | IS Sharpe | OOS Sharpe | IS ann. | OOS ann. |
+|--------|----------:|-----------:|--------:|---------:|
+| 5 bps/reb, 3% half-spread | 1.29 | 0.73 | 5.3% | 3.3% |
+| 10 bps/reb, 5% half-spread | -0.01 | -0.37 | -0.1% | -1.7% |
+
+The 5 bps + 3% combination lands the OOS Sharpe at 0.73, inside the literature's 0.7 to 1.0 band
+and the number that should be cited as a realistic estimate. At 10 bps + 5% the premium is fully
+consumed and the strategy turns negative, so the result is genuinely contingent on the option
+execution an investor can achieve.
+
 ### Worst hedged months (net P&L per dollar of exposure, headline)
 
 | Entry | Hedged P&L | Index return |
@@ -175,10 +194,10 @@ even 10 bps per rebalance only knocks the OOS Sharpe from 2.0 to 1.1. The fricti
 in practice is the **bid-ask on the option itself**: index-option round-trip spreads are wide
 (commonly several percent of the option mid), far above the 0.5% modeled at the headline. The
 half-spread sweep makes this explicit: at a 3% entry half-spread (6% round-trip) the OOS Sharpe
-falls to **0.99**, squarely inside the literature range, and that is with hedge cost held at the
-light 2 bps. Layering a realistic per-rebalance cost on top of a wide option spread would push it
-lower still. (The bps and half-spread sweeps are run separately, so this combined point is not a
-single table row; the two sweeps bracket it.)
+falls to **0.99** with hedge cost held at the light 2 bps. Charging both frictions together (the
+combined-friction table below) is the realistic case: 5 bps per rebalance plus a 3% half-spread
+lands the OOS Sharpe at **0.73**, squarely inside the literature range, and a punitive 10 bps
+plus a 5% half-spread fully consumes the premium (OOS Sharpe **-0.37**).
 
 **The honest bottom line:** the variance risk premium clears realistic *hedging* frictions
 comfortably; whether it clears realistic *option-execution* frictions depends on the spread an

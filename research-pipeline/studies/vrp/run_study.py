@@ -52,9 +52,12 @@ file; the quant-core module is the verified reference.
 Signal F_t-measurability
 ------------------------
 The VRP signal at month t is a function of VIX and realized returns observed up to
-and including t, so it is F_t-measurable (no look-ahead). That property is already
-formalized, sorry-free, in ``research-pipeline/lean/ResearchPipeline/Measurability.lean``;
-the signal layer here needs no new proof.
+and including t, so it is F_t-measurable (no look-ahead). This is machine-checked,
+sorry-free, by ``vrpSignal_adapted`` in
+``research-pipeline/lean/ResearchPipeline/Measurability.lean``: because the signal reads
+two observable processes (prices, via the trailing realized variance, and the squared
+VIX), it is adapted to any filtration carrying both, the joint market-information
+filtration. The statistical and P&L layers below are empirical and unverified.
 
 Methodology
 -----------
@@ -614,6 +617,24 @@ def half_spread_sweep(panel: pd.DataFrame) -> list[SweepRow]:
     return rows
 
 
+def combined_sweep(panel: pd.DataFrame) -> list[SweepRow]:
+    """Joint friction scenarios: higher per-rebalance cost AND a wide option spread,
+    charged together. The bps and half-spread sweeps each hold the other friction light,
+    so they only bracket a realistic combination; these rows compute it directly. The
+    round-trip option spread is twice the entry half-spread (a symmetric close)."""
+    rows: list[SweepRow] = []
+    for bps, hs in ((5.0, 0.03), (10.0, 0.05)):
+        cfg = HedgeConfig(
+            tc_hedge_bps=bps,
+            entry_half_spread=hs,
+            tc_option_roundtrip=2.0 * hs,
+            rebalance_every=1,
+            label=f"{bps:.0f}bps/reb, {hs:.0%} half-spread, daily",
+        )
+        rows.append(sweep_one(panel, cfg))
+    return rows
+
+
 # --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
@@ -637,9 +658,11 @@ def main() -> None:
     cost_rows = cost_sweep(panel)
     freq_rows = frequency_sweep(panel)
     hs_rows = half_spread_sweep(panel)
+    combined_rows = combined_sweep(panel)
     results["cost_sweep"] = [asdict(r) for r in cost_rows]
     results["frequency_sweep"] = [asdict(r) for r in freq_rows]
     results["half_spread_sweep"] = [asdict(r) for r in hs_rows]
+    results["combined_sweep"] = [asdict(r) for r in combined_rows]
 
     results["generated_utc"] = datetime.now(UTC).isoformat()
     results["headline_config"] = asdict(HEADLINE)
@@ -657,7 +680,7 @@ def main() -> None:
     pd.DataFrame([asdict(t) for t in trades]).to_csv(RESULTS_DIR / "vrp_trades.csv", index=False)
 
     print(f"\nWrote {out_path}\n")
-    _print_report(results, cost_rows, freq_rows, hs_rows)
+    _print_report(results, cost_rows, freq_rows, hs_rows, combined_rows)
 
 
 def _fmt(d: dict[str, float], key: str) -> str:
@@ -670,6 +693,7 @@ def _print_report(
     cost_rows: list[SweepRow],
     freq_rows: list[SweepRow],
     hs_rows: list[SweepRow],
+    combined_rows: list[SweepRow],
 ) -> None:
     print("=" * 78)
     print("VRP DELTA-HEDGED SHORT-VOLATILITY STUDY: SUMMARY (realistic frictions)")
@@ -738,6 +762,14 @@ def _print_report(
     for r in hs_rows:
         print(
             f"  {r.entry_half_spread:>12.0%} {r.is_sharpe:>10.2f} {r.oos_sharpe:>11.2f} "
+            f"{r.is_ann_return:>8.1%} {r.oos_ann_return:>8.1%}"
+        )
+
+    print("\nCOMBINED FRICTION (higher hedge cost AND wide option spread, daily):")
+    print(f"  {'config':>26} {'IS Sharpe':>10} {'OOS Sharpe':>11} {'IS ann':>8} {'OOS ann':>8}")
+    for r in combined_rows:
+        print(
+            f"  {r.label:>26} {r.is_sharpe:>10.2f} {r.oos_sharpe:>11.2f} "
             f"{r.is_ann_return:>8.1%} {r.oos_ann_return:>8.1%}"
         )
 
