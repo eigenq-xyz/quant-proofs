@@ -88,6 +88,9 @@ spreads are charged, not the 2 to 3 seen under frictionless option execution. Th
 the tail: negative skew and fat left tails, with the worst months falling on the known volatility
 events. The in-sample and out-of-sample windows are declared in advance.
 
+Reference: Bollerslev, T., G. Tauchen, and H. Zhou. "Expected Stock Returns and Variance Risk
+Premia." *Review of Financial Studies* 22, no. 11 (2009): 4463-4492.
+
 [Read the study](https://github.com/eigenq-xyz/quant-proofs/tree/main/research-pipeline/studies/vrp)
 
 ---
