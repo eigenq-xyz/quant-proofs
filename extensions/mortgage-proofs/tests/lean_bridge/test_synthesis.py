@@ -120,7 +120,7 @@ def test_synthesized_applicant_has_no_phase4_fields(
     situation: ApplicantSituation,
     goal: MortgageGoal,
 ) -> None:
-    """Phase-4-only fields (assets, employment_months) must not leak into v1."""
+    """design-loop-only fields (assets, employment_months) must not leak into v1."""
     record = synthesize_record_from_proposal(proposal, situation, goal)
     applicant = record.application.applicant
     assert not hasattr(applicant, "assets_liquid_usd")

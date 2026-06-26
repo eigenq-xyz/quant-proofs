@@ -76,7 +76,7 @@ class DecisionRecord(BaseModel):
 
 
 class DesignSessionRecord(BaseModel):
-    """Complete record of a Phase 4 generative design session.
+    """Complete record of a generative design session.
 
     Schema v2.0.0 — Python-only; the Lean binary never processes this type.
     Every positive outcome is PENDING_REVIEW (requires human loan officer

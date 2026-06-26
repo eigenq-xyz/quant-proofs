@@ -18,14 +18,15 @@ perpetual futures pricing theorems. All definitions specialize the
 
 ## Dependency note
 
-`OnePeriodEMM` is defined here as a self-contained structure rather than importing
-`FtapProofs.MartingaleMeasure`, which is not yet proved (ftap-proofs Phase 4,
-tracked in issue #110). Once Phase 4 is complete, replace `OnePeriodEMM` with
-`FtapProofs.MartingaleMeasure.EquivalentMartingaleMeasure` — theorem statements
-in `FundingCompatibility.lean`, `PerpFuturesNoArb.lean`, and
-`InversePerpCorrection.lean` should not need to change.
+`OnePeriodEMM` is a self-contained local structure for the one-period perpetual
+futures model. It does not import `FtapProofs.MartingaleMeasure`; that module uses
+a different EMM formulation oriented toward the full Harrison-Pliska framework.
+`OnePeriodEMM` captures exactly the fields needed here: a strictly positive risk-neutral
+density, the normalization condition, and the time-homogeneous martingale condition
+(`spot_expectation_const`). Theorem statements in `FundingCompatibility.lean`,
+`PerpFuturesNoArb.lean`, and `InversePerpCorrection.lean` depend on this structure directly.
 
-## Open question (resolve before Week 3 proofs)
+## Convention: stationarity and the cash flow at date k
 
 The Ackerer et al. cash flow at date k involves F_k — the perpetual futures price
 at date k. In the time-homogeneous (stationary) model, F_k = F₀ for all k.
@@ -49,8 +50,7 @@ representing the spot price at each funding interval. The market is characterize
 
 All spot prices are strictly positive (`spot_pos`), which is required for the
 inverse perpetual convexity adjustment (Theorem 3). `spot_bounded` ensures the
-cash-flow tsum converges — see `geometricExpectation_summable` in `stopped-time-proofs`.
-Resolves issues #124 and #125. -/
+cash-flow tsum converges — see `geometricExpectation_summable` in `stopped-time-proofs`. -/
 structure OnePeriodMarket where
   /-- Spot price process: `spot k ω` is the spot price at funding date `k` in state `ω` -/
   spot : ℕ → Ω → ℝ
@@ -71,7 +71,7 @@ structure OnePeriodMarket where
   tsum `∑' k, geomPMF p k * (F₀ - spot k ω)` is summable only when `spot k ω ≤ C`
   for all `k` and `ω`. Without this, Lean's `tsum` convention (returns 0 for
   non-summable series) makes `CostlessEntry` vacuously satisfiable for unbounded
-  spot processes. Resolves issue #124. -/
+  spot processes. -/
   spot_bounded : ∃ C : ℝ, ∀ k : ℕ, ∀ ω : Ω, spot k ω ≤ C
 
 /-! ### P2.2 — Equivalent martingale measure -/
@@ -85,8 +85,8 @@ encodes the martingale condition: Q-expected spot prices are constant across all
 funding dates. This is the time-homogeneous analogue of the full martingale condition
 and is sufficient for all theorems in `perpetual-proofs`.
 
-**TODO:** Replace with `FtapProofs.MartingaleMeasure.EquivalentMartingaleMeasure`
-once ftap-proofs Phase 4 (issue #110) is complete. Resolves issue #125. -/
+See the `## Dependency note` in this module for the relationship to
+`FtapProofs.MartingaleMeasure`. -/
 structure OnePeriodEMM (market : OnePeriodMarket Ω) where
   /-- Risk-neutral density: Q({ω}) = density ω -/
   density : Ω → ℝ

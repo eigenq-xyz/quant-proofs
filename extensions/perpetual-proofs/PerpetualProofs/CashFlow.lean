@@ -31,7 +31,7 @@ The Ackerer et al. cash flow at date k is F_k − S_k, where F_k is the current
 perpetual futures price. In the time-homogeneous model assumed here, F_k = F₀ for all k
 (stationarity), following Ackerer et al. §2; see the same convention noted in `Market.lean`.
 
-## Note on heManelaCashFlow (issue #127)
+## Note on heManelaCashFlow
 
 This encoding takes `S₀` as the arithmetic mean of spot prices at date 0 over `Ω`,
 implicitly assuming the reference measure P is uniform. For the F3.4 counterexample,
@@ -76,7 +76,7 @@ spot-futures spread, independent of the current date k and current state ω.
 This is the specification documented by Ackerer et al. as incompatible with costless
 entry. See `he_manela_violates_costless_entry` for the counterexample.
 
-**Encoding note (issue #127):** `S₀` is taken as the arithmetic mean of `market.spot 0`
+**Encoding note:** `S₀` is taken as the arithmetic mean of `market.spot 0`
 over `Ω`, which equals `E^P[S₀]` when P is the uniform measure. The F3.4 counterexample
 uses a symmetric two-state market where P is uniform, so this encoding is exact for
 that construction. -/
@@ -97,8 +97,9 @@ rate `p = κ/(1+r)`, equals zero at initiation.
 This is a proof obligation, not an assumption: any pricing theorem must first
 discharge `CostlessEntry` for the chosen specification.
 
-The tsum converges (is not vacuously 0) because `OnePeriodMarket.spot_bounded`
-ensures the cash-flow sequence is uniformly bounded. -/
+The tsum converges because `OnePeriodMarket.spot_bounded` ensures the cash-flow
+sequence is uniformly bounded (preventing Lean's `tsum` convention from returning 0
+for a non-summable series). -/
 def CostlessEntry (spec : CashFlowSpec Ω) (market : OnePeriodMarket Ω)
     (Q : OnePeriodEMM Ω market) (F₀ : ℝ) : Prop :=
   geometricExpectation (p := market.κ / (1 + market.r))
@@ -121,8 +122,8 @@ by `geometricExpectation_const` the condition reduces to `F₀' − F₀ ≠ 0`,
 is exactly the hypothesis `F₀' ≠ F₀`. This means uniqueness follows directly:
 the only price satisfying `CostlessEntry` is the geometric-expectation price.
 
-Resolves issue #126 (replaces the previous per-state absolute-value formulation
-which was tautological for the same reason). -/
+The per-state absolute-value formulation that was considered earlier was tautological
+for the same reason; this round-trip formulation is not. -/
 def NoBuyAndHoldArbitrage (market : OnePeriodMarket Ω) (Q : OnePeriodEMM Ω market)
     (F₀ : ℝ) : Prop :=
   -- Costless entry at F₀ is necessary for no-arbitrage

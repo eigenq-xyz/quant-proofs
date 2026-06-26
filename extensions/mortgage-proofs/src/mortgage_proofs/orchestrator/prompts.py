@@ -133,7 +133,7 @@ If escalating, you MUST provide an escalation_reason explaining why.
 """
 
 # ---------------------------------------------------------------------------
-# Phase 4 design-loop prompts
+# design-loop prompts
 # ---------------------------------------------------------------------------
 
 PACKAGE_DESIGNER_SYSTEM = """\

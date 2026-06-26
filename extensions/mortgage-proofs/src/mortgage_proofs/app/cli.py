@@ -4,7 +4,7 @@ Commands:
   vma process <application.json>       — run the full v1 pipeline end-to-end
   vma verify  <record.json>            — run the Lean verifier on an existing record
   vma schema  dump                     — print the DecisionRecord JSON Schema
-  vma design  <situation.json>         — run the Phase 4 generative design loop
+  vma design  <situation.json>         — run the generative design loop
 """
 
 from __future__ import annotations
@@ -132,7 +132,7 @@ def design(
         3, "--max-iter", help="Maximum design iterations (default: 3)."
     ),
 ) -> None:
-    """Run the Phase 4 generative mortgage package design loop."""
+    """Run the generative mortgage package design loop."""
     from dotenv import load_dotenv
 
     from mortgage_proofs.domain.models import ApplicantSituation, MortgageGoal

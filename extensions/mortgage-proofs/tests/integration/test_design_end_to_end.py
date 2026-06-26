@@ -1,4 +1,4 @@
-"""End-to-end integration tests for the Phase 4 generative design loop.
+"""End-to-end integration tests for the generative design loop.
 
 Tests the full graph with mocked LLMs and mocked Lean binary so the suite
 runs without any external dependencies.

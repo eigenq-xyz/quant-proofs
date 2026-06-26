@@ -2,7 +2,7 @@
 
 Endpoints:
   POST /applications/process   — run the full v1 pipeline
-  POST /applications/design    — run the Phase 4 generative design loop
+  POST /applications/design    — run the generative design loop
   POST /records/verify         — run the Lean verifier on an existing record
   GET  /schema                 — return the DecisionRecord JSON schema
   GET  /health                 — liveness check
@@ -95,7 +95,7 @@ class DesignResponse(BaseModel):
 
 @app.post("/applications/design", response_model=DesignResponse)
 async def design_application(request: DesignRequest) -> DesignResponse:
-    """Run the Phase 4 generative design loop and return a DesignSessionRecord."""
+    """Run the generative design loop and return a DesignSessionRecord."""
     from mortgage_proofs.orchestrator.runner import run_design_async
 
     record = await run_design_async(

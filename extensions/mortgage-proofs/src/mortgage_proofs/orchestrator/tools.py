@@ -30,7 +30,7 @@ class AgentResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Phase 4 design-loop structured outputs
+# design-loop structured outputs
 # ---------------------------------------------------------------------------
 
 
