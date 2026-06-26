@@ -170,7 +170,12 @@ theorem vrp_pos_of_lt (T : ℕ) {S₀ u d r p : ℝ} {G : ℝ → ℝ} (hr : -1 
 
 /-- **CLAIM 2 (sign, sharp).** The variance risk premium is positive **iff** `Q` values the
 payoff strictly above `P`. The expectation gap is therefore the complete, sharp criterion for a
-positive VRP. -/
+positive VRP.
+
+This is a purely algebraic consequence of `vrp_decomposition` and `(1+r)^T > 0`: it holds for
+any `r > -1` and needs no no-arbitrage hypotheses (no `0 < q < 1`, no `d < 1+r < u`). Those
+conditions matter for whether `q` is a genuine risk-neutral probability, not for the sign
+equivalence itself. -/
 theorem vrp_pos_iff (T : ℕ) {S₀ u d r p : ℝ} {G : ℝ → ℝ} (hr : -1 < r) :
     0 < vrp T S₀ u d r p G ↔
       binomExp T S₀ u d p G < binomExp T S₀ u d (riskNeutralProb u d r) G := by
