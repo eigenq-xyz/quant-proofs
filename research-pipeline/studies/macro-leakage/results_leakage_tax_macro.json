@@ -1,0 +1,132 @@
+{
+  "series_id": "PAYEMS",
+  "n_months_first_release": 852,
+  "n_months_revised": 1049,
+  "n_months_actually_revised": 851,
+  "max_abs_level_revision_k": 2083.0,
+  "mean_abs_level_revision_k": 585.5446009389672,
+  "pct_months_revised": 0.9988262910798122,
+  "mean_abs_change_revision_k": 123.35957696827262,
+  "max_abs_change_revision_k": 1377.0,
+  "median_abs_first_release_change_k": 197.0,
+  "median_change_revision_pct_of_change": 0.4467005076142132,
+  "first_release_first": "1955-04-01",
+  "first_release_last": "2026-05-01",
+  "spy_first": "1993-01-29",
+  "spy_last": "2026-06-26",
+  "n_trade_months_common": 399,
+  "periods": {
+    "full": {
+      "naive": {
+        "label": "naive_full",
+        "n": 399.0,
+        "ann_return": -0.002328584003253546,
+        "sharpe": 0.12603548227431774,
+        "ann_vol": 0.2428694437098574,
+        "hit_rate": 0.5513784461152882,
+        "ic": 0.05779457502204054,
+        "max_drawdown": -0.8654227185810714
+      },
+      "pit": {
+        "label": "pit_full",
+        "n": 399.0,
+        "ann_return": 0.011030312746971086,
+        "sharpe": 0.15918664346710718,
+        "ann_vol": 0.21140482574292474,
+        "hit_rate": 0.5112781954887218,
+        "ic": 0.0212566833302173,
+        "max_drawdown": -0.5895957473868478
+      },
+      "tax_sharpe": -0.033151161192789436,
+      "tax_bps_per_year": -133.58896750224633,
+      "diff_mean_monthly": -0.0002538730992245962,
+      "diff_nw_tstat": -0.08651963896208308,
+      "diff_nw_lag": 5,
+      "pit_clears_null": true
+    },
+    "pre_2008": {
+      "naive": {
+        "label": "naive_pre_2008",
+        "n": 180.0,
+        "ann_return": 0.05732912031037238,
+        "sharpe": 0.44601554973233337,
+        "ann_vol": 0.14915064495930713,
+        "hit_rate": 0.5222222222222223,
+        "ic": 0.07610111423192073,
+        "max_drawdown": -0.295499860164501
+      },
+      "pit": {
+        "label": "pit_pre_2008",
+        "n": 180.0,
+        "ann_return": 0.05533855272805076,
+        "sharpe": 0.49865171997165303,
+        "ann_vol": 0.12252808494359431,
+        "hit_rate": 0.5388888888888889,
+        "ic": 0.07436870349656884,
+        "max_drawdown": -0.27229614196639773
+      },
+      "tax_sharpe": -0.05263617023931966,
+      "tax_bps_per_year": 19.9056758232162,
+      "diff_mean_monthly": 0.0004533165165356987,
+      "diff_nw_tstat": 0.15227542075515801,
+      "diff_nw_lag": 4,
+      "pit_clears_null": true
+    },
+    "2008_2016": {
+      "naive": {
+        "label": "naive_2008_2016",
+        "n": 96.0,
+        "ann_return": -0.16540887616895883,
+        "sharpe": -0.2774312584853164,
+        "ann_vol": 0.3576768721631331,
+        "hit_rate": 0.5625,
+        "ic": -0.06308350204696492,
+        "max_drawdown": -0.8654227185810714
+      },
+      "pit": {
+        "label": "pit_2008_2016",
+        "n": 96.0,
+        "ann_return": -0.03852555595556593,
+        "sharpe": 0.00706781630129017,
+        "ann_vol": 0.27461981552343384,
+        "hit_rate": 0.46875,
+        "ic": 0.0008952794357026586,
+        "max_drawdown": -0.5558957960321598
+      },
+      "tax_sharpe": -0.2844990747866066,
+      "tax_bps_per_year": -1268.833202133929,
+      "diff_mean_monthly": -0.008475232992522628,
+      "diff_nw_tstat": -0.9801476015695129,
+      "diff_nw_lag": 3,
+      "pit_clears_null": true
+    },
+    "2016_2026": {
+      "naive": {
+        "label": "naive_2016_2026",
+        "n": 123.0,
+        "ann_return": 0.05335525142214467,
+        "sharpe": 0.3308981752446809,
+        "ann_vol": 0.23973696833116534,
+        "hit_rate": 0.5853658536585366,
+        "ic": 0.13497547747254351,
+        "max_drawdown": -0.5365512486326376
+      },
+      "pit": {
+        "label": "pit_2016_2026",
+        "n": 123.0,
+        "ann_return": -0.01249455549816982,
+        "sharpe": 0.07134611129246203,
+        "ann_vol": 0.2529155335321485,
+        "hit_rate": 0.5040650406504065,
+        "ic": -0.01638725779671843,
+        "max_drawdown": -0.4373289839026293
+      },
+      "tax_sharpe": 0.25955206395221886,
+      "tax_bps_per_year": 658.4980692031448,
+      "diff_mean_monthly": 0.005127886404188071,
+      "diff_nw_tstat": 1.2597617531421663,
+      "diff_nw_lag": 4,
+      "pit_clears_null": true
+    }
+  }
+}
