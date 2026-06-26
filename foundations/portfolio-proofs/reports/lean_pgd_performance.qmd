@@ -948,7 +948,7 @@ the current scope.
 ## 7. Conclusion
 
 Across seven stress scenarios targeting distinct solver failure modes, Lean PGD
-is the only solver to converge correctly in all six: exact constraint satisfaction,
+is the only solver to converge correctly in all seven: exact constraint satisfaction,
 no phantom positions, correct behavior under rank-deficient covariance, and
 certified convergence after a volatility shock. Three of the competing solver
 failures are silent, reporting convergence flags while returning incorrect or

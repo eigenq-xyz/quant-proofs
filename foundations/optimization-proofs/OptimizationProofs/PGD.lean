@@ -3,7 +3,7 @@
 
 Main loop — no theorems yet, pure computation. No proof obligations.
 
-Minimises f(w) = ½ wᵀΣw − μᵀw subject to ∑wᵢ = 1, ∑|wᵢ| ≤ L using
+Minimizes f(w) = ½ wᵀΣw − μᵀw subject to ∑wᵢ = 1, ∑|wᵢ| ≤ L using
 projected gradient descent with the Duchi et al. (2008) O(N log N)
 dual-bisection projection.
 -/

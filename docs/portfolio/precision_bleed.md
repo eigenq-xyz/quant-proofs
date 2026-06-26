@@ -536,7 +536,7 @@ strongest guarantee:
     float64 rounding ($\sim 10^{-12}$–$10^{-15}$), with convergence
     guaranteed by theorem `pgd_convergence`.
 4.  **Integer PGD**: exact integer arithmetic; constraint errors
-    identically zero; weights quantised to 1 basis point.
+    identically zero; weights quantized to 1 basis point.
 
 ## Float32 accumulation at high frequency
 

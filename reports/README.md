@@ -5,7 +5,7 @@ One Quarto document per project, rendered to PDF for archival and HTML for the
 web.
 
 Authoring guidance — section structure, formatting conventions, hard rules —
-lives in the [`writing-research-reports`](../.claude/skills/writing-research-reports/SKILL.md)
+lives in the [`writing-research-reports`](../.claude/skills/write-research-reports/SKILL.md)
 skill. Run `/write-research-reports` before drafting or reviewing.
 
 ## Files

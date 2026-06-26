@@ -51,7 +51,7 @@ The verification infrastructure here uses the same Lean 4 toolchain as the prici
 proof libraries. This is deliberate: the EigenQ Research Series uses a single formal
 verification layer across both mathematical proofs and runtime system auditing.
 
-[Read the pipeline and invariants](https://github.com/eigenq-xyz/quant-proofs/tree/main/mortgage-proofs)
+[Read the pipeline and invariants](https://github.com/eigenq-xyz/quant-proofs/tree/main/extensions/mortgage-proofs)
 
 ---
 

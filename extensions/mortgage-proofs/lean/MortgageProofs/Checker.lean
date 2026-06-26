@@ -74,7 +74,7 @@ def check (dr : DecisionRecord) : CheckResult :=
   }
 
 -- ---------------------------------------------------------------------------
--- JSON serialisation of CheckResult
+-- JSON serialization of CheckResult
 -- ---------------------------------------------------------------------------
 
 private def escapeJson (s : String) : String :=

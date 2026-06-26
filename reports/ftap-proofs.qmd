@@ -167,7 +167,7 @@ artifacts live.
 ## Lean 4 artifacts {#sec-artifacts}
 
 The formal development lives in
-[`foundations/ftap-proofs/`](https://github.com/eigenq-xyz/quant-proofs/tree/main/ftap-proofs).
+[`foundations/ftap-proofs/`](https://github.com/eigenq-xyz/quant-proofs/tree/main/foundations/ftap-proofs).
 The following table maps the paper-level statements to their Lean 4 names.
 
 | Paper statement            | Lean 4 name                          | File                                  |
@@ -319,7 +319,7 @@ martingale machinery is in `foundations/ftap-proofs/FtapProofs/MartingaleMeasure
 
 ```bash
 git clone https://github.com/eigenq-xyz/quant-proofs
-cd quant-proofs/ftap-proofs
+cd quant-proofs/foundations/ftap-proofs
 lake build              # machine-checks the proof; zero sorry on main
 
 # Reproduce the controlled parity study (Section 7) with a numpy/scipy environment:

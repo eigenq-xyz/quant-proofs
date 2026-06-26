@@ -19,7 +19,7 @@ GitHub issues under the **research-pipeline completion sprint** milestone.
 | 1 Data | `src/research_pipeline/data.py` | point-in-time `PricePanel`; `as_of(t)` witnesses the info set |
 | 2 Signals + strategy | `signals.py`, `strategy.py` | non-anticipating alphas; `Strategy` protocol + name-keyed registry (alpha-agnostic) |
 | 3 Stats | `stats.py` | IC + HAC (Newey-West) t-stat, decay, bootstrap, PSR/DSR |
-| 4 Combination | `combination.py` | signal overlap + orthogonalised incremental IC ("disguised beta?") |
+| 4 Combination | `combination.py` | signal overlap + orthogonalized incremental IC ("disguised beta?") |
 | 5 Portfolio | `portfolio.py` | pluggable constructors (registry) + bridge to the verified PGD solver; `verified_pgd_weights` raises rather than silently falling back to an unverified baseline |
 | 6 Backtest | `backtest.py` | `𝓕ₜ`-aligned, net-of-cost event loop; configurable horizon |
 | 7 Evaluation | `evaluation.py` | performance, drawdowns, OLS factor attribution |

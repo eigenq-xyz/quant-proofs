@@ -25,7 +25,7 @@ NOTE on Lean v4.30.0-rc2 API:
 
 open OptimizationProofs
 
--- ── Helpers that re-materialise Slices as Strings ────────────────────────────
+-- ── Helpers that re-materialize Slices as Strings ────────────────────────────
 
 /-- Drop the leading char if present, returning String (not Slice). -/
 private def dropLeading (s : String) : String := (s.drop 1).toString

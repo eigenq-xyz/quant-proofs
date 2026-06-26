@@ -16,7 +16,7 @@ beyond the scope of this module.
 
 - **C1.1** `IsInConstraintSet` — budget hyperplane and L₁ leverage ball
 - **C1.2** `quadObj` / `gradObj` — Markowitz quadratic objective and its gradient
-- **C1.3** `ledoitWolfShrinkage` — Ledoit-Wolf covariance regularisation
+- **C1.3** `ledoitWolfShrinkage` — Ledoit-Wolf covariance regularization
 -/
 
 open scoped Matrix BigOperators
@@ -47,7 +47,7 @@ def IsInConstraintSet (B L : ℝ) (w : Fin N → ℝ) : Prop :=
     where `Cov : Matrix (Fin N) (Fin N) ℝ` is the covariance matrix and
     `ret : Fin N → ℝ` is the vector of expected returns.
 
-    Minimising `f` over `𝒞(B, L)` is the Markowitz mean-variance problem. -/
+    Minimizing `f` over `𝒞(B, L)` is the Markowitz mean-variance problem. -/
 noncomputable def quadObj
     (Cov : Matrix (Fin N) (Fin N) ℝ) (ret w : Fin N → ℝ) : ℝ :=
   (1 / 2) * (w ⬝ᵥ Cov *ᵥ w) - (ret ⬝ᵥ w)

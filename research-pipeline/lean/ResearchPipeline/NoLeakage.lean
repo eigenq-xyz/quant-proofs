@@ -3,7 +3,7 @@
 
 The out-of-sample evaluation uses an expanding walk-forward with an **embargo** (purge) gap
 between the end of the training window and the start of the test window. A label looks
-`horizon` steps into the future (the realised forward return), so leakage would occur if the
+`horizon` steps into the future (the realized forward return), so leakage would occur if the
 forward-return window of a training observation extended into the test window.
 
 This module proves the discrete condition under which that cannot happen: if the embargo is

@@ -34,7 +34,7 @@ $$\text{subject to}\quad \begin{cases}
 
 In a long-short strategy the gross leverage cap already bounds total
 exposure; individual per-asset position limits are a separate mandate
-requirement not modelled here. With $T$ observations on $N$ assets, the
+requirement not modeled here. With $T$ observations on $N$ assets, the
 sample covariance matrix $S$ has rank at most $\min(T, N) - 1$. When
 $T < N$, the matrix is rank-deficient, and any solver that requires a
 Cholesky decomposition of $S$ as a precondition cannot proceed.

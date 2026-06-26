@@ -1,4 +1,4 @@
-# Research Study — Cross-Sectional Momentum on the US Industry Cross-Section
+# Research Study: Cross-Sectional Momentum on the US Industry Cross-Section
 
 > Reproduce with `python -m scripts.run_study` (free Ken French data, no credentials).
 > Numbers below are read directly from `studies/results_ken_french_49ind.json`. This report
@@ -70,7 +70,7 @@ Before any number below is trusted, the pipeline was validated against synthetic
 The IC is small per day but extremely stable, which is what a real cross-sectional effect over
 a long daily sample looks like.
 
-### 5.2 Decile-spread monotonicity
+### 5.2 Quintile-spread monotonicity
 
 Sorting the cross-section into quintiles by signal each day and averaging the forward return of
 each bucket gives a **strictly monotone** low-to-high pattern:

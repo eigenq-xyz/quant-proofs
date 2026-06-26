@@ -54,7 +54,7 @@ trading) and how the risk-neutral measure is constructed.
 a class of derivatives that has no fixed expiry and charges a periodic funding
 payment to keep the futures price close to the spot price.
 
-The subproject contains eight theorems, including a formal counterexample. The
+The subproject contains ten theorems, including a formal counterexample. The
 He-Manela specification of the no-arbitrage funding rate for perpetual futures
 is shown to admit arbitrage under the hypotheses stated in that paper. The
 corrected specification follows Ackerer, Hugonnier, and Jermann (2025). The
