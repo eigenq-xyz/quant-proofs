@@ -1,77 +1,97 @@
 # mortgage-proofs
 
-> An LLM multi-agent pipeline for mortgage application processing where **every routing decision is checked against formal invariants in Lean 4**. The agents propose; the verifier disposes. Decisions that violate the debt-to-income bound or predatory-lending rules are caught by a machine-checked checker, not by hoping the prompt held. Zero `sorry` on the Lean side, provider-agnostic on the LLM side.
+A LangGraph multi-agent mortgage pipeline whose routing decisions are recorded as
+structured JSON and validated against machine-checked Lean 4 invariants via
+`lake exe verify-trace`: auditable AI for high-stakes decisions.
 
 [![Python CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/python-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
 
-## What it is and why
+## What it does
 
-A LangGraph multi-agent system routes a mortgage application through four specialized roles (intake, risk, compliance, underwriter). Each agent records its routing decision as a structured `DecisionRecord`, and the resulting trace is validated against formal invariants written in Lean 4 via `lake exe verify-trace`.
-
-The point is auditability. When an LLM makes a consequential, regulated decision, "the model usually gets it right" is not a control. Here the agents' reasoning is reduced to a decision trace, and a verifier with a machine-checked specification confirms the trace satisfies the rules (DTI bound, predatory-lending constraints) or reports exactly which obligation failed. The LLM is the proposer; the Lean checker is the gate.
-
-## How it works
+A LangGraph orchestrator routes a mortgage application through four specialized
+agents (intake, risk assessment, compliance, underwriter). Each agent records its
+routing decision as a `DecisionRecord` JSON object. After the pipeline completes,
+`lake exe verify-trace` feeds the full trace to a Lean 4 checker that confirms
+every decision satisfies the formal invariants or reports exactly which obligation
+failed.
 
 ```text
 MortgageApplication (JSON)
     |
     v
 LangGraph Orchestrator
-    |-- IntakeAgent          document completeness
-    |-- RiskAssessmentAgent  DTI, LTV, credit score   (parallel)
-    |-- ComplianceAgent      regulatory rules          (parallel)
-    +-- UnderwriterAgent     final decision
+    |-- IntakeAgent           document completeness
+    |-- RiskAssessmentAgent   DTI, LTV, credit score   (parallel)
+    |-- ComplianceAgent       regulatory rules          (parallel)
+    +-- UnderwriterAgent      final decision
     |
     v
-DecisionRecord (JSON)  --->  Lean 4 checker (lake exe verify-trace)
+DecisionRecord (JSON)  -->  lake exe verify-trace
                                   |
                                   v
                        VerificationResult { passed, violations }
 ```
 
-The `DecisionRecord` JSON schema (`schemas/decision_record.json`) is the single source of truth for the Python/Lean interface. The LLM provider is abstracted: set `LLM_MODEL=anthropic/claude-sonnet-4-6`, `openai/gpt-4o`, or a per-agent override via environment variables.
+The key claim: when an LLM makes a consequential, regulated decision, "the model
+usually gets it right" is not a control. Here the Lean checker holds the
+specification; a trace that violates the DTI bound or predatory-lending invariants
+is rejected with a precise violation report, not a probabilistic hope.
 
-## Setup
+The Lean invariants are proved complete, zero `sorry`. The statistical and
+reasoning layers are LLM-generated and not formally verified.
 
-1. Install [elan](https://github.com/leanprover/elan) (Lean toolchain manager) and [uv](https://docs.astral.sh/uv/).
-2. Copy `.env.example` to `.env` and fill in your API key(s).
+## Build
 
-```bash
-make install      # install Python dependencies
-make lean-build   # build the Lean verifier
-```
-
-## Usage
+Requires [elan](https://github.com/leanprover/elan) and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-# Process an application end to end
-vma process path/to/application.json
+# From extensions/mortgage-proofs/
+uv sync --all-extras            # Python dependencies
 
-# Run only the Lean verifier on an existing decision record
-vma verify path/to/record.json
-
-# Print the DecisionRecord JSON schema
-vma schema dump
+cd lean && lake exe cache get   # fetch mathlib cache
+cd lean && lake build           # compile the Lean verifier
 ```
 
-Or run the HTTP API:
+## Test
 
 ```bash
-uvicorn mortgage_proofs.app.api:app --reload
-# POST /process   full pipeline
-# POST /verify    Lean verification only
-# GET  /health    checks Lean binary availability
+# Unit tests (no LLM key or Lean binary required)
+cd extensions/mortgage-proofs
+uv run pytest -m "not integration" -q
+
+# Type check and lint
+uv run mypy src/ --strict
+uv run ruff check src/ tests/
+
+# Zero-sorry check on the Lean invariants
+grep -rn 'sorry' --include="*.lean" lean/
+# (empty output means zero sorry)
+
+# Run the Lean verifier on a sample trace
+cd lean && lake exe verify-trace ../tests/fixtures/sample_record_valid.json
 ```
 
-## Development
+## Project layout
 
-```bash
-make lint       # ruff + mypy --strict
-make test       # unit tests (mocked LLM + Lean)
-make test-all   # includes integration tests (requires live credentials)
-make schema     # regenerate schemas/decision_record.json
-```
+| Path | What it is |
+|------|------------|
+| `lean/MortgageProofs/Invariants.lean` | Formal invariant definitions (DTI bound, predatory-lending rules) |
+| `lean/MortgageProofs/Theorems.lean` | Proof obligations: 13 theorems, zero `sorry` |
+| `lean/MortgageProofs/Checker.lean` | Trace checker: validates a `DecisionRecord` sequence |
+| `lean/MortgageProofs/Types.lean` | Lean types mirroring the Python domain models |
+| `lean/Main.lean` | `lake exe verify-trace` entry point |
+| `src/mortgage_proofs/orchestrator/` | LangGraph agent graph (intake, risk, compliance, underwriter) |
+| `src/mortgage_proofs/lean_bridge/` | Python-to-Lean trace serialization and runner |
+| `src/mortgage_proofs/record/` | `DecisionRecord` dataclass |
+| `schemas/decision_record.json` | JSON schema: the single source of truth for the Python/Lean interface |
+| `tests/` | Unit tests (mocked LLM and Lean) plus integration tests |
+
+## LLM provider
+
+The LLM provider is fully abstracted. Set `LLM_MODEL` in `.env` (see
+`.env.example`) to `anthropic/claude-sonnet-4-6`, `openai/gpt-4o`, or any
+per-agent override. No provider is hardcoded in `src/`.
 
 ## License
 
-Apache License 2.0.
+Apache 2.0, compatible with mathlib for upstream contribution.

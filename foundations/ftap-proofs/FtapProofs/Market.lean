@@ -36,7 +36,7 @@ namespace FtapProofs
 /-- A discrete-time financial market on a **finite** probability space `(Ω, m, P)`.
 
 A `FinancialMarket Ω` bundles together all the data of a Harrison-Pliska market:
-- A **finite** state space `Ω` (required for the Farkas/separation argument in Phase 5)
+- A **finite** state space `Ω` (required for the Farkas/separation argument in `Theorem.lean`)
 - A finite time horizon `T` (trading occurs at times `0, 1, …, T`)
 - `n` risky assets with adapted price processes `S`
 - A deterministic, strictly positive numeraire `B` (the risk-free bond) with `B 0 = 1`
@@ -48,7 +48,7 @@ Asset prices are adapted: `S i t` is `ℱ_t`-measurable for all assets `i` and t
 
 The measurable-singletons assumption `[MeasurableSingletonClass Ω]` ensures that events
 of the form `{ω}` are in the sigma-algebra, which is needed for the equivalence condition
-`Q {ω} > 0 ↔ P {ω} > 0` in Phase 4 (`MartingaleMeasure.lean`).
+`Q {ω} > 0 ↔ P {ω} > 0` in `MartingaleMeasure.lean`.
 
 **M1.1, M1.2**
 -/

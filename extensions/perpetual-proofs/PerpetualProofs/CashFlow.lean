@@ -29,8 +29,7 @@ explicit counterexample.
 
 The Ackerer et al. cash flow at date k is F_k − S_k, where F_k is the current
 perpetual futures price. In the time-homogeneous model assumed here, F_k = F₀ for all k
-(stationarity). This must be confirmed against Ackerer et al. §2 before Week 3 proof
-writing. See SPEC.md Q1 and the open question in `Market.lean`.
+(stationarity), following Ackerer et al. §2; see the same convention noted in `Market.lean`.
 
 ## Note on heManelaCashFlow (issue #127)
 

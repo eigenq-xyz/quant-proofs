@@ -29,8 +29,8 @@ in `FundingCompatibility.lean`, `PerpFuturesNoArb.lean`, and
 
 The Ackerer et al. cash flow at date k involves F_k — the perpetual futures price
 at date k. In the time-homogeneous (stationary) model, F_k = F₀ for all k.
-Confirm this reading against Ackerer et al. §2 before committing `ackererCashFlow`
-in `CashFlow.lean`. See SPEC.md Q1.
+This reading follows Ackerer et al. §2 and is the convention used by `ackererCashFlow`
+in `CashFlow.lean`.
 -/
 
 namespace PerpetualProofs

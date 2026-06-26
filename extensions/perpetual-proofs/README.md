@@ -1,63 +1,78 @@
 # perpetual-proofs
 
-> A Lean 4 formalization of no-arbitrage pricing for **perpetual futures**, the dominant crypto derivative, following Ackerer, Hugonnier, and Jermann (2025). It proves the pricing formula, derives the inverse-perpetual convexity correction, and ships a machine-checked counterexample to a cash-flow specification from an earlier published draft. Zero `sorry`, axioms verified.
+Lean 4 formalization of no-arbitrage pricing for perpetual futures, following Ackerer,
+Hugonnier, and Jermann (2025), with a machine-checked counterexample to a cash-flow
+specification from an earlier draft by He, Manela, Ross, and von Wachter. Zero `sorry`,
+axioms verified.
 
-[![Lean CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/lean-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
+## What it proves
 
-## The result
+A perpetual future has no fixed expiration; a periodic funding rate pins its price to
+the underlying spot. Ackerer, Hugonnier, and Jermann (2025) show that in a finite-state,
+discrete-time market with funding rate `k` and risk-free rate `r`, the unique
+no-arbitrage price is:
 
-A perpetual future never expires; instead a periodic funding payment ties its price to the underlying. Ackerer, Hugonnier, and Jermann (2025) show that this funding mechanism pins down a unique no-arbitrage price. In a finite-state, discrete-time market with funding rate `κ` and risk-free rate `r`:
-
-$$F_0 = \mathbb{E}^{Q}[S_\tau], \qquad \tau \sim \mathrm{Geometric}\!\left(\tfrac{\kappa}{1+r}\right).$$
-
-The price is the risk-neutral expectation of the underlying sampled at a geometric stopping time whose hazard rate is set by the funding mechanism. This repository states and proves that result, derives the convexity correction for inverse (coin-margined) perpetuals, and verifies where an earlier specification fails.
-
-## Why prove it formally
-
-Perpetual futures are young and the literature is still settling. The initial draft of He, Manela, Ross, and von Wachter (2022) used a cash-flow specification that Ackerer et al. document as incompatible with costless entry. This is exactly the situation where machine checking earns its place: the theorem `he_manela_violates_costless_entry` is a concrete two-state counterexample whose costless-entry obligation reduces to `−1 ≠ 0`, closed by `norm_num`. The proof does not argue that the specification is probably wrong; it exhibits a market in which it provably fails. The correct specification is then proved to satisfy costless entry, and the pricing and convexity theorems are built on top.
-
-`#print axioms` on the headline theorems reports only `[propext, Classical.choice, Quot.sound]`. No `sorry`.
-
-## Verify it yourself
-
-```bash
-cd extensions/perpetual-proofs
-lake exe cache get     # fetch prebuilt mathlib (first run only)
-lake build             # compile and machine-check every proof
-grep -rn '^[[:space:]]*sorry\b' --include="*.lean" --exclude-dir=.lake .   # empty = clean
+```
+F₀ = geometricExpectation (k/(1+r)) (E^Q[S_·])
 ```
 
-## What's inside
+The price is the risk-neutral expectation of spot, weighted by a geometric distribution
+whose parameter is set by the funding mechanism. This module states and proves that
+result, derives the convexity correction for inverse (coin-margined) perpetuals, and
+provides a concrete counterexample showing where an earlier cash-flow specification
+fails.
 
-| Module | Role |
-| ------ | ---- |
-| `Market.lean` | One-period market and equivalent martingale measure |
-| `CashFlow.lean` | Cash-flow specifications, costless entry, no buy-and-hold arbitrage |
-| `FundingCompatibility.lean` | The Ackerer specification satisfies costless entry; the earlier one does not |
-| `PerpFuturesNoArb.lean` | Existence, uniqueness, and the no-arbitrage price |
-| `InversePerpCorrection.lean` | Inverse-perpetual convexity correction via Jensen |
+| Theorem | Statement |
+|---------|-----------|
+| `ackerer_cashflow_satisfies_costless_entry` | The Ackerer-Hugonnier-Jermann cash-flow specification satisfies costless entry |
+| `he_manela_violates_costless_entry` | An earlier specification provably fails costless entry: an explicit two-state counterexample reduces the obligation to `-1 != 0`, closed by `norm_num` |
+| `perp_futures_no_arb_price` | The geometric-expectation price is the unique no-arbitrage price (existence and uniqueness) |
+| `inverse_perp_convexity_discount` | The inverse perpetual price `G₀` satisfies `G₀ < F₀` by Jensen's inequality applied to `1/x` on `R_{>0}` |
 
-Headline theorems (all proved, zero `sorry`):
-
-| Theorem | What it states |
-| ------- | -------------- |
-| `perp_futures_no_arb_price` | The unique no-arbitrage price is the geometric-stopping-time expectation above |
-| `ackerer_cashflow_satisfies_costless_entry` | The Ackerer cash-flow specification admits costless entry |
-| `he_manela_violates_costless_entry` | An earlier specification provably fails costless entry (explicit counterexample) |
-| `inverse_perp_convexity_discount` | The inverse-perpetual price satisfies `G₀ < F₀` by Jensen's inequality |
-
-10 theorems total.
+10 theorems total. `#print axioms` on the headline theorems reports only
+`[propext, Classical.choice, Quot.sound]`.
 
 ## Dependencies
 
-- [`stopped-time-proofs`](../stopped-time-proofs/): the geometric stopping-time expectation operator and its strict monotonicity.
-- [`ftap-proofs`](../ftap-proofs/): the finite-market model and self-financing strategy machinery.
-- `mathlib`: measure theory, probability, analysis.
+- [`extensions/stopped-time-proofs/`](../stopped-time-proofs/): the
+  `GeometricExpectation` operator, its convergence lemmas, and the strict Jensen
+  inequality (`geom_exp_inv_gt` uses `geometricExpectation_strict_mono` from there).
+- [`foundations/ftap-proofs/`](../../foundations/ftap-proofs/): the Harrison-Pliska
+  finite market model and self-financing strategy machinery. `ftap-proofs` is complete,
+  zero `sorry`.
+- `mathlib`: measure theory, convex analysis (`strictConvexOn_zpow` for `1/x`),
+  `tsum_geometric_of_lt_one`.
+
+## Build and test
+
+```bash
+cd extensions/perpetual-proofs
+lake exe cache get          # fetch prebuilt mathlib (first run only)
+lake build
+grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake .   # empty = clean
+```
+
+## Project structure
+
+```
+extensions/perpetual-proofs/
+  PerpetualProofs.lean             root module, re-exports submodules
+  PerpetualProofs/
+    Market.lean                    OnePeriodMarket, OnePeriodEMM
+    CashFlow.lean                  CashFlowSpec, ackererCashFlow, heManelaCashFlow,
+                                   CostlessEntry, NoBuyAndHoldArbitrage
+    FundingCompatibility.lean      Theorems 1a and 1b (costless entry proof + counterexample)
+    PerpFuturesNoArb.lean          Theorem 2 (existence and uniqueness of no-arb price)
+    InversePerpCorrection.lean     Theorem 3 (convexity discount G₀ < F₀)
+  lakefile.lean                    requires mathlib + stopped-time-proofs + ftap-proofs
+  lean-toolchain                   pinned toolchain (same as ftap-proofs)
+```
 
 ## Reference
 
-Ackerer, D., J. Hugonnier, and U. Jermann. "Perpetual Futures Pricing." *Mathematical Finance*, 2025. DOI: 10.1111/mafi.70018.
+Ackerer, D., J. Hugonnier, and U. Jermann. "Perpetual Futures Pricing." *Mathematical
+Finance*, 2025. DOI: 10.1111/mafi.70018.
 
 ## License
 
-Apache License 2.0, matching mathlib so the work can flow upstream.
+Apache 2.0, compatible with mathlib for upstream contribution.

@@ -1,72 +1,73 @@
 # optimization-proofs
 
-> A convex quadratic-program solver whose convergence and constraint-feasibility are **proved in Lean 4**, not just tested. Where SLSQP and Gurobi can silently return an infeasible or suboptimal answer under stress, this solver carries a machine-checked guarantee that it cannot. General-purpose, zero finance dependencies, 10 theorems, zero `sorry`.
+Projected gradient descent for convex quadratic programs, with machine-checked convergence and projection correctness. General-purpose, zero finance dependencies. 10 theorems, zero `sorry`.
 
 [![Lean CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/lean-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
 
-## The result
+## What it proves
 
-The engine solves convex quadratic programs
+The module solves convex quadratic programs of the form
 
-$$\min_{x \in \mathcal{C}} \tfrac{1}{2} x^T Q x + c^T x, \qquad \mathcal{C} = \Big\{ x : \sum_i x_i = B,\ \sum_i |x_i| \le L \Big\}$$
+$$\min_{x \in \mathcal{C}} \tfrac{1}{2} x^T Q x + c^T x, \qquad \mathcal{C} = \Big\{ x \in \mathbb{R}^N : \textstyle\sum_i x_i = B,\ \sum_i |x_i| \le L \Big\}$$
 
-with $Q$ symmetric positive definite, over the intersection of a budget hyperplane and a gross-exposure $L_1$ ball. It uses Projected Gradient Descent: alternate an unconstrained gradient step with a Euclidean projection back onto $\mathcal{C}$.
+with Q symmetric positive definite, via Projected Gradient Descent: alternate an unconstrained gradient step with an analytical Euclidean projection back onto the constraint set. Two properties of that loop are proved correct in Lean 4:
 
-Two things about that loop are proved correct in Lean, rather than assumed:
+**Convergence** (`pgd_convergence`). For any step size satisfying `η * lMax(Q) ≤ 1`, the PGD iterates satisfy the O(1/k) bound
 
-- **Convergence.** For any step size satisfying $\eta < 2/\lambda_{\max}(Q)$, the iterates converge to the unique global minimum. The Lipschitz bound is the largest eigenvalue of $Q$, so the admissible step size is known at compile time.
-- **Projection correctness.** The analytical $O(N \log N)$ dual-bisection projection returns the exact Euclidean projection onto $\mathcal{C}$, so every iterate satisfies the budget and leverage constraints exactly.
+$$f(w_k) - f(w^*) \le \frac{\|w_0 - w^*\|^2}{2\eta k}$$
 
-## Why prove it formally
+and converge to the unique global minimum.
 
-General-purpose QP solvers handle the non-differentiable $L_1$ constraint by introducing $2N$ slack variables and $2N$ inequalities. Under ill-conditioned inputs that machinery fails in characteristic ways: active-set solvers (SLSQP) cycle on the non-smooth boundary and hit their iteration limit, interior-point solvers terminate early in flat penalty valleys, and a non-PSD covariance makes Gurobi refuse the problem outright. The failures are documented, with data, in [`foundations/portfolio-proofs/scenarios/`](../portfolio-proofs/).
+**Projection correctness** (`projection_correctness`). The analytical O(N log N) dual-bisection projection returns the exact Euclidean projection onto the constraint set: for any feasible point x and the projected point p, the projection inequality `sum_i (p_i - y_i)(x_i - p_i) >= 0` holds. Combined with `projection_feasibility`, every iterate satisfies the budget and leverage constraints exactly.
 
-This solver sidesteps all of it by projecting analytically (no slack variables) and proving the two properties that matter. A solver that *reports* optimality is not the same as a solver that is *proved* to reach it. This one is the latter, which is the whole point: the answer can be trusted without re-checking it.
+**Shrinkage positive definiteness** (`shrinkage_psd`). The Ledoit-Wolf shrinkage estimator is positive definite for any input covariance, so the step-size bound is always finite.
 
-## Run the benchmark
+## Why it matters
+
+General-purpose QP solvers handle the non-differentiable L1 constraint by introducing 2N slack variables and 2N inequalities. Under ill-conditioned inputs, that machinery fails in characteristic ways: active-set solvers cycle on the non-smooth boundary, interior-point solvers terminate early in flat penalty valleys, and a non-PSD covariance matrix causes some solvers to refuse the problem. The failures are documented with data in [`foundations/portfolio-proofs/scenarios/`](../portfolio-proofs/).
+
+This module sidesteps those issues by projecting analytically and carrying a machine-checked proof that every iterate is feasible and that the sequence converges. [`foundations/portfolio-proofs/`](../portfolio-proofs/) uses this solver for mean-variance allocation and variance-optimal hedging.
+
+## Build
 
 ```bash
 cd foundations/optimization-proofs
-lake exe cache get          # fetch prebuilt mathlib (first run only)
-lake build                  # build both binaries and machine-check every proof
-lake exe pgd_bench          # time 1000 solves at N = 10
-grep -rn '^[[:space:]]*sorry\b' --include="*.lean" --exclude-dir=.lake .   # empty = clean
+lake exe cache get    # fetch prebuilt mathlib (first run only)
+lake build
 ```
 
-`lake build` produces two binaries: `pgd_solve` (a stdin/stdout server that Python drives as a persistent subprocess) and `pgd_bench` (the embedded benchmark). The wire protocol is documented in `CLI.lean`. For the applied side, see the [portfolio stress-test notebook](https://colab.research.google.com/github/eigenq-xyz/quant-proofs/blob/main/notebooks/portfolio_solver_stress.ipynb).
+`lake build` produces two binaries: `pgd_solve` (a stdin/stdout server that Python drives as a persistent subprocess) and `pgd_bench` (an embedded benchmark timing 1000 solves at N=10).
 
-## What's inside
+## Test
 
-| Module | Role |
-| ------ | ---- |
-| `PGDFlat.lean` | Production PGD loop and projection (unboxed `FloatArray`); drives the CLI |
-| `PGD.lean` | Reference PGD loop and projection (`Array Float`) |
-| `Projection.lean` | Dual-bisection projection: feasibility and optimality proofs |
-| `Convergence.lean` | Descent lemma and the convergence theorem |
-| `Shrinkage.lean` | Ledoit-Wolf shrinkage: symmetry and positive-definiteness proofs |
-| `QuadraticLemmas.lean` | Supporting algebra (convexity, polarization identity) |
-| `CLI.lean` / `Main.lean` | `pgd_solve` server and `pgd_bench` entry points |
-| `FFI.lean` | `@[export]` bindings for the Cython path (latency hedge; subprocess is default) |
+```bash
+# Confirm zero sorry (empty output = clean)
+grep -rn '^\s*sorry\b' --include="*.lean" --exclude-dir=.lake .
 
-Headline theorems (all complete, zero `sorry`):
+# Run the benchmark
+lake exe pgd_bench
+```
 
-| Theorem | What it states |
-| ------- | -------------- |
-| `pgd_convergence` | PGD iterates converge to the global minimum for $\eta < 2/\lambda_{\max}(Q)$ |
-| `projection_correctness` | The analytical projection is the exact Euclidean projection onto $\mathcal{C}$ |
-| `projection_feasibility` | Every projected point satisfies the budget and leverage constraints |
-| `shrinkage_psd` | The Ledoit-Wolf shrinkage estimator is positive definite for any input |
+## Project structure
 
-10 theorems total.
-
-## Dependencies
-
-- `mathlib` (linear algebra, analysis, spectral bounds)
-
-## Used by
-
-This engine is finance-agnostic by design. Two distinct finance problems reduce to its QP and are demonstrated in [`portfolio-proofs`](../portfolio-proofs/): mean-variance **allocation** (instance `(Q, c) = (Σ, μ)`) and variance-optimal **hedging** (instance `(Q, c) = (C, b)`). Neither reduces to the other; the QP is their shared form.
+```
+foundations/optimization-proofs/
+  OptimizationProofs/
+    ProblemDefs.lean       abstract problem types: IsInConstraintSet, quadObj, gradObj
+    QuadraticLemmas.lean   supporting algebra: convexity, polarization identity (4 thms)
+    Shrinkage.lean         Ledoit-Wolf shrinkage: symmetry and PD (2 thms)
+    Projection.lean        dual-bisection projection: feasibility and correctness (2 thms)
+    Convergence.lean       descent lemma and O(1/k) convergence theorem (2 thms)
+    PGD.lean               reference PGD loop and projection (Array Float)
+    PGDFlat.lean           production PGD loop and projection (FloatArray); drives the CLI
+    FFI.lean               @[export] bindings for the Cython path (latency hedge)
+  CLI.lean                 pgd_solve stdin/stdout server
+  Main.lean                pgd_bench entry point
+  ffi/
+    pgd_ffi.pyx            Cython bindings (not the default integration path)
+    setup_ffi.py           setuptools build for the Cython extension
+```
 
 ## License
 
-Apache License 2.0, matching mathlib so the work can flow upstream.
+Apache 2.0, compatible with mathlib for upstream contribution.

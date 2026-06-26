@@ -1,120 +1,90 @@
-# CLAUDE.md — optimization-proofs
+# CLAUDE.md: optimization-proofs
 
-Lean 4 implementation of the PGD portfolio solver core: computational
-execution modules plus formally verified proof modules for convergence,
-projection correctness, and covariance shrinkage.
+Lean 4 PGD solver for convex QPs on the budget-leverage constraint set. Exposes two compiled binaries (`pgd_solve`, `pgd_bench`) and an optional Cython FFI layer. 10 theorems, zero `sorry`.
 
-## What this project is
+## Build and test
 
-A high-performance Lean 4 quadratic program solver using Projected Gradient
-Descent with an analytical O(N log N) dual-bisection projection onto
-`{sum(w)=1, sum|w|≤L}`.  Exposes two compiled binaries:
+```bash
+# From foundations/optimization-proofs/
 
-- **`pgd_solve`** — stdin/stdout server; Python's primary integration point.
-- **`pgd_bench`** — benchmark binary with embedded test data (N=10, 1000 runs).
+# Fetch prebuilt mathlib cache (first run per worktree)
+lake exe cache get
 
-Also contains a Cython FFI layer (`ffi/`) that was the previous integration
-path; it is preserved as a latency hedge but the subprocess path is the
-default.
+# Build both binaries and machine-check all proofs
+lake build
+
+# Build only the CLI server
+lake build pgd_solve
+
+# Run the embedded benchmark (1000 solves at N=10)
+lake exe pgd_bench
+
+# Zero-sorry check (empty output = clean)
+grep -rn '^\s*sorry\b' --include="*.lean" --exclude-dir=.lake .
+
+# Build the Cython FFI extension (only needed for the FFI path, not the default)
+uv run python ffi/setup_ffi.py build_ext --inplace
+```
 
 ## Architecture
 
 ```
 foundations/optimization-proofs/
-  lakefile.lean               — package config; two lean_exe targets
-  lean-toolchain              — Lean version lock
   OptimizationProofs/
-    PGD.lean                  — boxed Array Float variant (reference impl)
-    PGDFlat.lean              — unboxed FloatArray variant (production; used by CLI)
-    FFI.lean                  — @[export] bindings for Cython path (unused by default)
-    ProblemDefs.lean          — abstract types: IsInConstraintSet, quadObj, gradObj
-    QuadraticLemmas.lean      — supporting lemmas (0 sorry): symmetric_bilin_form,
-                                quadratic_identity, quadratic_convexity, polarization_identity
-    Shrinkage.lean            — Ledoit-Wolf shrinkage theorems (0 sorry):
-                                shrinkage_isSymmetric, shrinkage_psd
-    Projection.lean           — dual-bisection projection proofs (0 sorry):
-                                projection_feasibility, projection_correctness
-    Convergence.lean          — PGD convergence proofs (0 sorry):
-                                pgd_descent_lemma, pgd_convergence
-  CLI.lean                    — stdin/stdout server loop (pgd_solve entry point)
-  Main.lean                   — benchmark (pgd_bench entry point)
+    ProblemDefs.lean       abstract problem types: IsInConstraintSet, quadObj, gradObj
+    QuadraticLemmas.lean   supporting algebra for the convergence proof (4 thms)
+    Shrinkage.lean         Ledoit-Wolf shrinkage: symmetry and PD (2 thms)
+    Projection.lean        dual-bisection projection: feasibility and correctness (2 thms)
+    Convergence.lean       descent lemma and O(1/k) convergence (2 thms)
+    PGD.lean               reference PGD implementation (Array Float)
+    PGDFlat.lean           production PGD implementation (FloatArray); used by CLI
+    FFI.lean               @[export] bindings for the Cython path
+  CLI.lean                 pgd_solve: stdin/stdout server loop
+  Main.lean                pgd_bench: benchmark entry point
   ffi/
-    pgd_ffi.pyx               — Cython bindings (not the default path)
-    setup_ffi.py              — setuptools build for the Cython extension
+    pgd_ffi.pyx            Cython bindings (latency hedge; subprocess is default)
+    setup_ffi.py           setuptools build
 ```
 
 ## Theorem status
 
 | Theorem | File | Status |
 |---------|------|--------|
-| `shrinkage_isSymmetric` | `Shrinkage.lean` | Complete, 0 sorry |
-| `shrinkage_psd` | `Shrinkage.lean` | Complete, 0 sorry |
 | `symmetric_bilin_form` | `QuadraticLemmas.lean` | Complete, 0 sorry |
 | `quadratic_identity` | `QuadraticLemmas.lean` | Complete, 0 sorry |
 | `quadratic_convexity` | `QuadraticLemmas.lean` | Complete, 0 sorry |
 | `polarization_identity` | `QuadraticLemmas.lean` | Complete, 0 sorry |
+| `shrinkage_isSymmetric` | `Shrinkage.lean` | Complete, 0 sorry |
+| `shrinkage_psd` | `Shrinkage.lean` | Complete, 0 sorry |
 | `projection_feasibility` | `Projection.lean` | Complete, 0 sorry |
 | `projection_correctness` | `Projection.lean` | Complete, 0 sorry |
 | `pgd_descent_lemma` | `Convergence.lean` | Complete, 0 sorry |
 | `pgd_convergence` | `Convergence.lean` | Complete, 0 sorry |
 
-## Build & test commands
+## Key module details
 
-```bash
-# Build both binaries (from foundations/optimization-proofs/)
-lake build
+**`ProblemDefs.lean`** defines `IsInConstraintSet B L w` (budget sum = B, L1 norm <= L), `quadObj Cov ret w` (mean-variance objective), and `gradObj Cov ret w` (its gradient).
 
-# Build only the CLI server
-lake build pgd_solve
+**`Projection.lean`** implements `primalFromDual y θ μ` (soft-thresholding shifted by θ), then proves `projection_feasibility` (existence of valid dual variables for any feasible (B, L) with |B| <= L, via IVT on the budget-maintaining leverage curve) and `projection_correctness` (KKT conditions imply optimality, proved by budget-cancellation, pointwise KKT subgradient bound, and complementary slackness).
 
-# Run the benchmark (prints timing for 1000 solves at N=10)
-lake exe pgd_bench
+**`Convergence.lean`** proves `pgd_descent_lemma` (one PGD step reduces objective by at least (1/2η)(D_k - D_{k+1}), closed by `nlinarith` combining `quadratic_identity`, `quadratic_convexity`, Lipschitz bound, projection inequality, and `polarization_identity`) and `pgd_convergence` (telescopes the descent lemma to the O(1/k) bound; witness K_0 = ceil(D_0 / (2η ε)) + 1).
 
-# Check zero sorry (tactic form only).  Matches lines where sorry is the first
-# non-whitespace token.  Doc-comment lines ("0 sorry") and -- comments are not
-# matched.  Known gap: `· sorry` (bullet tactic form) starts with · not sorry.
-grep -rn '^\s*sorry\b' --include="*.lean" --exclude-dir=.lake .
+**`PGDFlat.lean`** is the production implementation used by `CLI.lean`. It uses `FloatArray` (unboxed) rather than `Array Float` (boxed). Both variants implement the same dual-bisection projection algorithm.
 
-# Build the Cython FFI extension (only if needed for the FFI path)
-uv run python ffi/setup_ffi.py build_ext --inplace
-```
+## Wire protocol (CLI.lean / pgd_solve)
 
-## Wire protocol (CLI.lean)
-
-`serveLoop` in `CLI.lean` reads one line per problem until an empty line:
+`serveLoop` reads one line per problem until an empty line or EOF:
 
 ```
-N  sigma_00 sigma_01 … sigma_{N-1,N-1}  mu_0 … mu_{N-1}  lambda_max  leverage_cap
+N  sigma_00 sigma_01 ... sigma_{N-1,N-1}  mu_0 ... mu_{N-1}  lambda_max  leverage_cap
 ```
 
-Writes one line of N space-separated float64 weights.  Terminates on an
-empty line or EOF.  Float tokens are Python `repr()` strings; the custom
-`parseFloat` function in `CLI.lean` handles both decimal and scientific
-notation.
-
-## Lean module map
-
-| File | What it does | Key names |
-|------|-------------|-----------|
-| `PGDFlat.lean` | PGD loop + projection (FloatArray, production) | `pgdFlat`, `projectL1F`, `pgdStepF`, `matVecFlat` |
-| `PGD.lean` | PGD loop + projection (Array Float, reference) | `pgd`, `projectL1`, `pgdStep`, `matVecMul` |
-| `ProblemDefs.lean` | Abstract problem spec types | `IsInConstraintSet`, `quadObj`, `gradObj` |
-| `QuadraticLemmas.lean` | Supporting lemmas for convergence proof | `quadratic_identity`, `quadratic_convexity`, `polarization_identity` |
-| `Shrinkage.lean` | Ledoit-Wolf shrinkage correctness | `shrinkage_isSymmetric`, `shrinkage_psd` |
-| `Projection.lean` | Projection feasibility + optimality | `projection_feasibility`, `projection_correctness` |
-| `Convergence.lean` | PGD descent + convergence | `pgd_descent_lemma`, `pgd_convergence` |
-| `FFI.lean` | `@[export]` wrappers for Cython | `pgdSolve`, `pgdSolveFlat`, `faEmpty` |
-| `CLI.lean` | stdin/stdout server | `serveLoop`, `solveTokens`, `parseFloat` |
-| `Main.lean` | Benchmark | `main` |
+Writes one line of N space-separated float64 weights. Float tokens are Python `repr()` strings; `parseFloat` handles decimal and scientific notation.
 
 ## Hard rules
 
-- **Zero `sorry` as a tactic** on main.  Doc-comment strings containing the
-  word "sorry" (describing proof status) are not proof-level sorry uses and
-  are not flagged by the CI check.
-- **Do not change the `CLI.lean` wire protocol** without updating
-  `foundations/portfolio-proofs/lean_pgd.py` and its test suite simultaneously.
-- Theorem names cited in Python docstrings as guarantees must appear in
-  Lean sources.  Use the theorem cross-reference check:
-  `python3 .github/scripts/check_theorem_refs.py foundations/portfolio-proofs/lean_pgd.py`
+- Zero `sorry` as a tactic on main. Doc-comment strings containing "sorry" (describing proof status) are not proof-level sorry and are not flagged by CI.
+- Do not change the `CLI.lean` wire protocol without updating `foundations/portfolio-proofs/lean_pgd.py` and its test suite simultaneously.
+- Theorem names cited in Python docstrings as guarantees must appear in Lean sources. Verify with: `python3 .github/scripts/check_theorem_refs.py foundations/portfolio-proofs/lean_pgd.py`
 - `lake build pgd_solve` must always succeed on main.
+- Do not edit `.lean` files to fix doc issues without running `lake build` to confirm the proof still compiles.

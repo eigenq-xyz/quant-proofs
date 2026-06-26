@@ -1,79 +1,69 @@
 # ftap-proofs
 
-> A machine-checked proof that a finite market admits no arbitrage **if and only if** a consistent risk-neutral pricing measure exists. Both directions, in Lean 4, with zero `sorry` and axioms confined to Lean's standard logical core.
+A Lean 4 machine-checked proof of the discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981), targeting a mathlib PR.
 
 [![Lean CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/lean-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
 
-## The result
+## What it proves
 
-The discrete Fundamental Theorem of Asset Pricing (Harrison and Pliska, 1981) is the load-bearing theorem of modern derivative pricing. Stated plainly:
+In a finite-state, discrete-time market with full support, there is no arbitrage (no strategy that turns nothing into a guaranteed profit) if and only if there exists an equivalent martingale measure: a reassignment of probabilities, agreeing with the real world on which outcomes are possible, under which every discounted asset price is a fair game.
 
-> In a finite-state, discrete-time market, there is no arbitrage (no strategy that turns nothing into a guaranteed something) **if and only if** there exists an equivalent martingale measure: a reassignment of probabilities, agreeing with the real world on which outcomes are possible, under which every discounted asset price is a fair game.
+The formal Lean statement:
 
-Once that measure exists, every attainable payoff has one and only one arbitrage-free price, equal to its discounted expectation under the measure. That single fact is what licenses the rest of the field to price options at all. This repository states the theorem in Lean 4 and proves it, both directions, with no gaps.
+```lean
+theorem ftap (m : FinancialMarket Ω) (hP_full : ∀ ω : Ω, 0 < m.P {ω}) :
+    NoArbitrage m ↔ ∃ Q : MeasureTheory.Measure Ω, EquivalentMartingaleMeasure m Q
+```
 
-## Why prove it formally
+Both directions are proved with no gaps. The forward direction (no arbitrage implies an EMM exists) goes through a geometric Hahn-Banach separation of the attainable-payoff subspace from the standard simplex in `EuclideanSpace ℝ Ω`, constructing the state-price vector explicitly via `InnerProductSpace.toDual`. The reverse direction is a short contradiction from risk-neutral pricing: a zero-cost strategy with non-negative terminal value has zero expected value under any EMM, ruling out any strictly positive profit.
 
-The forward direction (a martingale measure rules out arbitrage) is a short calculation. The reverse direction is the hard half, and it is where informal proofs lean on a confident "clearly such a measure exists." It does not just exist by assertion: the proof has to construct it. Here it is built explicitly from a strict separating hyperplane between the cone of arbitrage payoffs and the nonnegative orthant, then verified to be both equivalent to the original measure and a genuine martingale measure.
-
-A textbook proof is trusted because a careful human read it. This proof is trusted because the Lean kernel checked every step, and `#print axioms` confirms it rests only on `propext`, `Classical.choice`, and `Quot.sound`, the standard logical core shared with all of mathlib. No `sorry`, no `native_decide`, no unproven shortcuts.
-
-## Verify it yourself
+## Build and test
 
 ```bash
 cd foundations/ftap-proofs
-lake exe cache get     # fetch prebuilt mathlib (first run only; a few minutes)
-lake build             # compile and machine-check every proof
+lake exe cache get    # fetch prebuilt mathlib (first run; a few minutes)
+lake build            # compile and machine-check every proof
 ```
 
-Confirm there are no gaps (empty output means clean):
+Confirm zero gaps (empty output means clean):
 
 ```bash
-grep -rn "sorry" --include="*.lean" FtapProofs
+grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake .
 ```
 
-Confirm the main theorem rests only on the standard axioms. Add the line `#print axioms FtapProofs.ftap` to any module under `FtapProofs/`, rebuild, and check the report is a subset of `[propext, Classical.choice, Quot.sound]` (no `sorryAx`, no `Lean.ofReduceBool`).
+Confirm the main theorem rests only on the standard axioms by adding `#print axioms FtapProofs.ftap` to any file under `FtapProofs/`, rebuilding, and verifying the report is a subset of `[propext, Classical.choice, Quot.sound]`.
 
-## What's inside
+## Structure
 
-The proof is a pipeline of modules under `FtapProofs/`:
+| File | Role |
+|------|------|
+| `FtapProofs/Market.lean` | `FinancialMarket` structure: finite state space, numeraire, adapted price processes, discounting |
+| `FtapProofs/Strategy.lean` | Trading strategies, self-financing condition, discounted value and gains processes |
+| `FtapProofs/Arbitrage.lean` | `ArbitrageOpportunity`, `NoArbitrage`, attainable payoffs as a linear subspace |
+| `FtapProofs/Density.lean` | Measure-change densities and discounted-price expectations |
+| `FtapProofs/MartingaleMeasure.lean` | `EquivalentMartingaleMeasure`, risk-neutral pricing |
+| `FtapProofs/Theorem.lean` | Both implications and the final `ftap` biconditional (16 theorems, zero `sorry`) |
 
-| Module | Role |
-| ------ | ---- |
-| `Market.lean` | Finite probability space, numeraire, asset-price processes, discounting |
-| `Strategy.lean` | Trading strategies, self-financing condition, value and gains processes |
-| `Arbitrage.lean` | Attainable payoffs as a linear subspace; the no-arbitrage characterization |
-| `Density.lean` | Measure-change densities and discounted-price expectations |
-| `MartingaleMeasure.lean` | Equivalent martingale measures and risk-neutral pricing |
-| `Theorem.lean` | The two implications and the final `ftap` equivalence |
+## Headline theorems
 
-Headline theorems:
-
-| Theorem | What it states |
-| ------- | -------------- |
-| `ftap` | No arbitrage ⟺ an equivalent martingale measure exists (full-support market) |
-| `emm_implies_no_arbitrage` | A martingale measure rules out arbitrage |
-| `no_arbitrage_implies_emm` | No arbitrage forces a martingale measure to exist (separating hyperplane) |
+| Theorem | Statement |
+|---------|-----------|
+| `ftap` | `NoArbitrage m ↔ ∃ Q, EquivalentMartingaleMeasure m Q` (full biconditional) |
+| `emm_implies_no_arbitrage` | An equivalent martingale measure rules out arbitrage |
+| `no_arbitrage_implies_emm` | Absence of arbitrage forces an equivalent martingale measure to exist |
 | `risk_neutral_pricing` | Attainable payoffs price as discounted expectations under the measure |
 
-16 theorems total, zero `sorry`.
+16 theorems total, zero `sorry`, axioms confined to `[propext, Classical.choice, Quot.sound]`.
 
-## See it applied
+## Used by
 
-[`options-proofs`](../options-proofs/) builds a Cox-Ross-Rubinstein binomial market, invokes this theorem to obtain its risk-neutral measure, and derives put-call parity as a corollary. For a runnable feel of what "discounted expectation under the risk-neutral measure" means numerically, open the binomial-pricing notebook linked from that project.
+- [`foundations/options-proofs/`](../options-proofs/): invokes `ftap` to obtain the risk-neutral measure for the Cox-Ross-Rubinstein binomial market, then derives put-call parity.
+- [`extensions/perpetual-proofs/`](../../extensions/perpetual-proofs/): cites the no-arbitrage pricing results.
+- [`research-pipeline/`](../../research-pipeline/): the flagship pipeline cites this module for signal measurability proofs.
 
 ## Dependencies
 
 - `mathlib` (measure theory, finite probability, linear algebra, geometric Hahn-Banach separation)
-
-## Used by
-
-- [`options-proofs`](../options-proofs/): consumes the risk-neutral measure and no-arbitrage characterization.
-- [`perpetual-proofs`](../perpetual-proofs/): cites the no-arbitrage pricing results.
-
-## Status
-
-Complete. The intended endpoint is a mathlib pull request, so the code follows mathlib naming and style conventions throughout.
 
 ## Reference
 
@@ -81,4 +71,4 @@ Harrison, J.M., and S.R. Pliska. "Martingales and Stochastic Integrals in the Th
 
 ## License
 
-Apache License 2.0, matching mathlib so the work can flow upstream.
+Apache 2.0, compatible with mathlib for upstream contribution.

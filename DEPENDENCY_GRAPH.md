@@ -7,12 +7,11 @@ module import graph, not the prose docs.
 
 Status as of this audit: **zero `sorry`** anywhere in the live tree, and **zero custom
 `axiom` declarations**. Every proof closes against Lean core plus mathlib, so every
-headline theorem's axiom set is the standard `[propext, Classical.choice, Quot.sound]`
-(confirmed for the deliverables in `INCONSISTENCIES.md`).
+headline theorem's axiom set is the standard `[propext, Classical.choice, Quot.sound]`.
 
 ## 1. Project topology (inter-project edges)
 
-Eight Lean projects. An arrow `A -> B` means a file in A has `import B.…`. Edges are
+Ten Lean projects. An arrow `A -> B` means a file in A has `import B.…`. Edges are
 tagged **(load-bearing)** when a proof or type signature in A actually references a named
 declaration from B, or **(import-only)** when the `import` line exists but no B declaration
 is used (a vestigial edge that fakes a dependency).
@@ -23,10 +22,14 @@ is used (a vestigial edge that fakes a dependency).
         (load-bearing)  /      |         \  (import-only, vestigial)
                        v       v          v
             options-proofs  research-      perpetual-proofs
-                  |         pipeline             |
-   (import-only)  |                              | (load-bearing)
-                  v                              v
-            quant-core                    stopped-time-proofs
+                  |    |    pipeline             |
+   (import-only)  |    | (load-bearing)          | (load-bearing)
+                  v    v                          v
+            quant-core  vrp-proofs         stopped-time-proofs
+                  |
+   (load-bearing) |
+                  v
+            hedge-proofs
 
    mortgage-proofs : fully self-contained (Lean core JSON only, no sibling imports)
 ```
@@ -35,6 +38,8 @@ is used (a vestigial edge that fakes a dependency).
 |------|------|----------|
 | options-proofs -> ftap-proofs | **load-bearing** | `crrMarket` instantiates `FtapProofs.FinancialMarket`; `crr_no_arbitrage` cites `FtapProofs.emm_implies_no_arbitrage`; martingale proof cites `discountedPrice_adapted`, `IsMartingaleMeasure`, `EquivalentMartingaleMeasure`. |
 | research-pipeline -> ftap-proofs | **load-bearing (single point)** | `market_price_natural_le_filtration` (`Measurability.lean:104`) feeds `m.S_adapted` from `FtapProofs.FinancialMarket` into `naturalFiltration_le_of_adapted`. This is the only cross-project citation in the flagship. |
+| vrp-proofs -> options-proofs | **load-bearing** | `Replication.lean` imports `OptionsProofs.PutCallParity` and opens namespace `OptionsProofs`; uses `CRRState`, `crrPrice`, `crrPrice_succ`, `terminalSpot`, `riskNeutralProb`, `riskNeutralProb_drift`. `VarianceRiskPremium.lean` imports `VrpProofs.Replication` and additionally uses `crrRNMeasure`, `crrRNMeasure_integral_eq_sum`, `crrRNDensity`. All are load-bearing in signatures and proofs. |
+| hedge-proofs -> quant-core | **load-bearing** | `Basic.lean` imports `QuantCore.Option` and aliases `QuantCore.AssetId`; `Settlement.lean` imports `QuantCore.Option` and calls `optionPayoff`; `SettlementInvariants.lean` imports `QuantCore.OptionInvariants` and calls `optionPayoff_nonneg`. All are referenced in signatures and proofs. |
 | perpetual-proofs -> stopped-time-proofs | **load-bearing (heavy)** | `geometricExpectation` and its lemma suite appear in nearly every perp definition and theorem; `geometricExpectation_strict_mono` (from `Jensen.lean`) is the sole engine behind Theorem 3 (`inverse_perp_convexity_discount`). |
 | perpetual-proofs -> ftap-proofs | **import-only (vestigial)** | `PerpetualProofs/Market.lean:1` has `import FtapProofs.Market`, but no `FtapProofs.*` name is referenced in any signature or proof. `OnePeriodEMM`/`OnePeriodMarket` are deliberately self-contained. Removing the import breaks nothing. |
 | options-proofs -> quant-core | **import-only (vestigial)** | `OptionsProofs.lean` and `PutCallParity.lean` import `QuantCore.Option`/`OptionInvariants`, but options-proofs defines its own real-valued `callPayoffReal`/`putPayoffReal` and never references a `QuantCore.*` declaration. |
@@ -197,8 +202,11 @@ Measurability.lean (mathlib + FtapProofs.Market):
   price_measurable_natural (line 76) <- naturalFiltration
   naturalFiltration_le_of_adapted (line 91) <- naturalFiltration
   market_price_natural_le_filtration (line 104) <- naturalFiltration_le_of_adapted, FtapProofs.FinancialMarket.S_adapted   ★ the ftap link
-  momentumSignal_adapted (line 141) <- price_measurable_natural                    ★ Ft-measurability
+  momentumSignal_adapted (line 141) <- price_measurable_natural                    ★ Ft-measurability (price-only natural filtration)
   momentumSignal_adapted_of_le (line 164) <- momentumSignal_adapted
+  realizedVar (line 192)
+  vrpSignal (line 204) <- realizedVar
+  vrpSignal_adapted (line 222) <- vrpSignal, realizedVar   ★ Ft-measurability (joint price+implied-vol filtration)
 
 Bridge.lean (imports NoLookahead + Measurability):
   indistinguishableSpace, coordSpace (reducible sigma-algebras)
@@ -212,6 +220,14 @@ Bridge.lean (imports NoLookahead + Measurability):
 (measure-theoretic adaptedness => the literal `NonAnticipating` predicate). Nothing imports
 Bridge; its theorems are end-product deliverables surfaced via the `ResearchPipeline` aggregator.
 The reverse direction (pointwise => measurable) is explicitly out of scope (needs Doob-Dynkin).
+
+`vrpSignal_adapted` is adapted to any filtration `𝒻` carrying both the price process and the
+implied-variance process (the joint market-information filtration), not to the price-only natural
+filtration. This is a genuinely broader hypothesis than `momentumSignal_adapted`, which needs
+only the price process. The realized-variance leg reads windowed prices at indices `t - i ≤ t`
+via `Nat.sub_le`; the implied-variance leg reads `impliedVar t` directly; both are measured
+against `𝒻 t` via `Adapted 𝒻`. The proof assembles the window into a `Fin (window+1) → ℝ`
+vector with `measurable_pi_lambda`, applies `hrv`, then combines with `hiv t`.
 
 The single ftap citation is real and exercised: `market_price_natural_le_filtration` feeds
 `m.S_adapted` (the `FinancialMarket` adaptedness field) into the generic engine.
@@ -237,7 +253,120 @@ Heavy load-bearing dependence on stopped-time-proofs (`geometricExpectation`,
 `geomPMF`, `geomPMF_tsum_eq_one`). The ftap-proofs import is vestigial (aspirational: a TODO to
 swap in `MartingaleMeasure` once available, not yet done).
 
-## 8. stopped-time-proofs and mortgage-proofs
+## 8. vrp-proofs (variance risk premium on the CRR tree)
+
+12 theorems/lemmas, zero `sorry`. Namespace `VrpProofs`. Depends on options-proofs.
+
+Two files: `Replication.lean` (CLAIM 1) and `VarianceRiskPremium.lean` (CLAIM 2), with the
+second importing the first.
+
+```text
+--- Replication.lean (imports OptionsProofs.PutCallParity) ---
+
+nodeVal (price-level backward-induction value, recursive)
+nodeDelta <- nodeVal
+nodeBond <- nodeVal
+nodeVal_succ (simp lemma) <- nodeVal              [@[simp]]
+
+node_one_step_replication <- nodeDelta, nodeBond, nodeVal_succ, riskNeutralProb   (key algebraic crux)
+
+pathVal <- nodeVal, crrPrice          (path-level value)
+pathDelta <- nodeDelta, crrPrice      (path-level hedge ratio)
+bondHold <- nodeBond, crrPrice        (path-level money-market holding)
+replPortfolio <- pathVal, pathDelta, bondHold, crrPrice   (self-financing portfolio)
+
+crrPrice_ne_zero <- crrPrice          (positivity lemma)
+replStep_eq_pathVal <- pathDelta, bondHold, pathVal, node_one_step_replication, crrPrice_succ
+replPortfolio_eq_pathVal <- replStep_eq_pathVal   (by induction)
+replicates <- replPortfolio_eq_pathVal            ★ CLAIM 1 (perfect path-by-path replication)
+
+--- VarianceRiskPremium.lean (imports VrpProofs.Replication) ---
+
+binomDensity <- ups         (path weight under up-prob p; generalises crrRNDensity)
+binomDensity_eq_prod <- binomDensity, ups_eq_card_true
+binomDensity_sum_eq_one <- binomDensity_eq_prod   ★ weights normalise to 1
+
+binomExp <- binomDensity, terminalSpot            (expectation under p)
+rnExp_eq_binomExp <- crrRNMeasure_integral_eq_sum ★ risk-neutral measure matches binomExp at q
+
+claimPrice <- binomExp, riskNeutralProb
+physicalPV <- binomExp
+vrp <- claimPrice, physicalPV
+
+vrp_decomposition <- vrp, claimPrice, physicalPV  ★ CLAIM 2a: vrp = (E^Q[G]-E^P[G])/(1+r)^T
+vrp_nonneg_of_le <- vrp_decomposition
+vrp_pos_of_lt <- vrp_decomposition
+vrp_pos_iff <- vrp_decomposition                  ★ CLAIM 2b: 0 < vrp ↔ E^P[G] < E^Q[G]
+```
+
+Cross-project citations from options-proofs: `CRRState`, `crrPrice`, `crrPrice_succ`,
+`terminalSpot`, `riskNeutralProb`, `riskNeutralProb_drift`, `ups`, `ups_eq_card_true`,
+`crrRNMeasure`, `crrRNMeasure_integral_eq_sum`, `crrRNDensity`. All are load-bearing.
+
+Two claims deliberately not made: (a) the "convex payoff" bridge `q ≤ p ∧ G convex =>
+E^P ≤ E^Q` is false for a single fixed tree (a lower risk-neutral `q` shifts the terminal-price
+law to lower prices, which lowers, not raises, the expectation of an increasing convex payoff);
+(b) the gamma-variance-gap P&L identity is vacuous in a complete market. These non-claims are
+documented at the end of `VarianceRiskPremium.lean`.
+
+## 8a. hedge-proofs (delta-hedge accounting engine)
+
+19 theorems/lemmas, zero `sorry`. Namespace `BacktestProofs`. Depends on quant-core.
+
+Module spine: `Basic -> {Accounting, Settlement} -> {Invariants, SettlementInvariants}`.
+
+```text
+--- Basic.lean (imports QuantCore.Option) ---
+
+Position (struct; markPrice_pos : markPrice > 0 by construction)
+Position.value <- Position
+Portfolio (struct; value_valid : portfolioValue = cash + sumPositionValues by construction)
+Trade (struct; executionPrice_pos, fee_nonneg by construction)
+sumPositionValues <- Position.value
+applyTrade <- Portfolio, Trade, sumPositionValues
+
+--- Settlement.lean (imports Basic, QuantCore.Option) ---
+
+Trade.settlementITM <- Trade, optionPayoff    (closing trade for ITM expiry)
+Portfolio.abandonPosition <- Portfolio        (erases worthless OTM position)
+settleEuropeanOption <- optionPayoff, Trade.settlementITM   (dispatch ITM vs OTM)
+applySettlement <- applyTrade, Portfolio.abandonPosition    (unified settlement application)
+
+--- Invariants.lean (imports Basic, Accounting) ---
+
+valueIdentity <- Portfolio.value_valid                         ★ PV = cash + sum(pos values)
+mk'_value, empty_value                                         ★ smart-constructor corollaries
+pricesPositive <- Position.markPrice_pos                       ★ domain constraint
+feeNonNegative <- Trade.fee_nonneg                             ★ domain constraint
+cashUpdateCorrect <- applyTrade                                ★ cash debit formula
+quantityConservation <- applyTrade                             ★ shares conserved
+  [private helpers: foldl_val_shift, sumPositionValues_of_toList_perm]
+  [protected: sumPositionValues_insert, sumPositionValues_erase_of_mem]
+valueUpdateFormula <- valueIdentity, cashUpdateCorrect, sumPositionValues_insert  ★ ΔPV = qty×(exec-mark)−fee
+selfFinancing <- valueUpdateFormula                            ★ at-mark trade changes PV by -fee only
+selfFinancingWithCost <- selfFinancing                         ★ named-fee variant
+empty_wellFormed, applyTrade_wellFormed <- applyTrade          ★ well-formedness preservation
+
+--- SettlementInvariants.lean (imports Settlement, Invariants, QuantCore.OptionInvariants) ---
+
+abandonPosition_portfolioValue <- sumPositionValues_erase_of_mem, valueIdentity   ★ OTM: PV drops by pos.value
+abandonPosition_cash_unchanged                                                      ★ cash unchanged on OTM
+abandonPosition_wellFormed <- applyTrade_wellFormed
+settlement_cash_itm <- cashUpdateCorrect                                            ★ ITM cash credit = qty×payoff
+settlement_position_closed <- quantityConservation                                  ★ position zero after ITM
+settlement_value_formula <- valueUpdateFormula, abandonPosition_portfolioValue,     ★ CROWN JEWEL
+                             optionPayoff_nonneg
+```
+
+The crown jewel is `settlement_value_formula`: it unifies ITM and OTM branches into the single
+equation `ΔPV = qty × (payoff - mark)`, proved for every portfolio state and every contract.
+`optionPayoff_nonneg` (from `QuantCore.OptionInvariants`) is the only quant-core declaration
+consumed in the settlement-invariants proof; it closes the OTM branch by establishing that
+`optionPayoff = 0` when `payoff ≤ 0`.
+
+`Accounting.lean` adds only `@[export hedge_*]` FFI wrappers with no new theorems.
+
+## 9. stopped-time-proofs and mortgage-proofs
 
 **stopped-time-proofs** (8 lemmas, zero `sorry`, no finance content, mathlib-PR candidate):
 
@@ -265,7 +394,7 @@ on any live path, with a showcase proposal for each.
 
 | Item | Where | Current status | Proposal |
 |------|-------|----------------|----------|
-| `quant-core` (whole project) | `foundations/quant-core/` | imported by options-proofs but never referenced; 8 invariant theorems are terminal API with no live consumer | Make the dependency real: have options-proofs derive `callPayoffReal`/`putPayoffReal` from `QuantCore.callPayoff`/`putPayoff` via a `Int -> Real` cast, so put-call parity actually rests on the shared primitives. Alternatively, promote quant-core to a documented standalone "verified option-payoff invariants" exhibit. |
+| `quant-core` (options-proofs import) | `foundations/quant-core/` | imported by options-proofs but never referenced there; options-proofs rolls its own real-valued payoffs. However, `QuantCore.AssetId`, `QuantCore.optionPayoff`, and `QuantCore.optionPayoff_nonneg` are now genuinely consumed by hedge-proofs, so the project is no longer without live consumers. The residual gap is the options-proofs vestigial edge. | Complete the options-proofs link: derive `callPayoffReal`/`putPayoffReal` from `QuantCore.callPayoff`/`putPayoff` via an `Int -> Real` cast so put-call parity rests on the shared primitives. |
 | `PGD.lean` boxed chain + `pgdSolve`/`faEmpty` + `lean_pgd_ffi.py` | `optimization-proofs`, `portfolio-proofs` | off every live execution path (production is CLI -> `PGDFlat`); FFI consumer imported by nothing | Either retire the boxed FFI path entirely (one clean deletion), or showcase it as a differential-test oracle: a property test asserting `pgd` and `pgdFlat` agree to tolerance on random inputs, turning the dead variant into a cross-check of the production solver. |
 | `shrinkage_psd` / `shrinkage_isSymmetric` | `optimization-proofs/Shrinkage.lean` | terminal; proves the PD hypothesis `pgd_convergence` assumes, but never composed with it | Compose them: state a corollary `shrunk_problem_pgd_converges` that feeds `shrinkage_psd` as the positive-definiteness witness into `pgd_convergence`, giving an end-to-end "Ledoit-Wolf input => PGD converges" guarantee. This is the single highest-value wiring in the repo. |
 | `geometricExpectation_mono`, `geometricExpectation_unroll` | `stopped-time-proofs` | orphan library lemmas | Keep, but bundle explicitly into the mathlib-PR surface (the project's stated goal). Document them as part of the proposed `GeometricExpectation` API rather than leaving them looking accidental. |
@@ -273,17 +402,31 @@ on any live path, with a showcase proposal for each.
 | ftap import in `perpetual/Market.lean` | `perpetual-proofs` | vestigial `import` | Either delete the import, or complete the aspirational link by replacing `OnePeriodEMM` with `FtapProofs.EquivalentMartingaleMeasure` so the claimed ftap dependency becomes real. |
 | `market_price_natural_le_filtration` | `research-pipeline/Measurability.lean:104` | terminal; the sole ftap citation, but nothing downstream consumes it | Feature it: it is the formal seam between the flagship and the FTAP spine. Surface it in the docs as the unification theorem and, ideally, derive a corollary that the momentum signal is adapted to the FTAP market filtration specifically. |
 
-## 10. English summary
+## 11. English summary
 
 The repository is a shallow, mostly-tree-shaped dependency graph with one true spine and one
 true flagship. **ftap-proofs is the spine**: its discrete FTAP (`ftap`) is built bottom-up from a
 `FinancialMarket` structure, through trading strategies and self-financing, to two opposing
 arguments (a martingale/conditional-expectation argument for the easy direction, a
-separating-hyperplane argument for the hard direction). Two projects genuinely rest on it.
+separating-hyperplane argument for the hard direction). Three projects genuinely rest on it.
 options-proofs instantiates the FTAP market as the Cox-Ross-Rubinstein binomial tree and reuses
 the FTAP no-arbitrage result to prove put-call parity. research-pipeline, the flagship, touches
-ftap-proofs at exactly one point, feeding the FTAP market's adaptedness field into its proof that
-the momentum signal is measurable with respect to the natural price filtration.
+ftap-proofs at exactly one point, feeding the FTAP market's adaptedness field into its proofs that
+the momentum signal and the VRP signal are measurable with respect to their respective filtrations.
+
+**vrp-proofs** extends options-proofs further: it imports the CRR tree machinery directly and adds
+two layers of result. First, the replication theorem (`replicates`) proves that the self-financing
+delta-hedge portfolio reproduces any terminal payoff exactly on every path of the binomial tree.
+Second, the variance-risk-premium decomposition (`vrp_decomposition`, `vrp_pos_iff`) derives the
+sign of the VRP from the discounted gap between risk-neutral and physical expectations. The
+dependency chain is therefore ftap-proofs <- options-proofs <- vrp-proofs.
+
+**hedge-proofs** provides a delta-hedge accounting engine (namespace `BacktestProofs`). It depends
+on quant-core for `EuropeanOption`, `optionPayoff`, and `optionPayoff_nonneg`, making quant-core
+a genuinely consumed library for the first time outside options-proofs. The crown jewel,
+`settlement_value_formula`, proves that settling a European option changes portfolio value by
+`qty * (payoff - mark)` regardless of moneyness, unifying ITM and OTM branches in a single
+machine-checked equation.
 
 A second, independent spine sits in the extensions tier: **stopped-time-proofs** provides a
 `geometricExpectation` operator and its lemma suite, on which **perpetual-proofs** leans heavily to
@@ -298,7 +441,8 @@ The most important structural observation is that **several declared dependencie
 Three `import` lines create the appearance of edges that the proofs never use: perpetual-proofs
 imports ftap-proofs but cites nothing from it, options-proofs imports quant-core but rolls its own
 payoffs, and inside optimization-proofs both `PGDFlat -> PGD` and `Convergence -> Shrinkage` are
-unused. quant-core is the least-connected project in the live tree. The single highest-value piece
-of latent wiring is the uncomposed pair in optimization-proofs: `shrinkage_psd` proves precisely the
-hypothesis `pgd_convergence` requires, and joining them would yield an end-to-end portfolio-solver
-guarantee that the repository currently states only in prose.
+unused. The residual gap in quant-core connectivity is now only the options-proofs vestigial edge:
+hedge-proofs is a genuine consumer. The single highest-value piece of latent wiring remains the
+uncomposed pair in optimization-proofs: `shrinkage_psd` proves precisely the hypothesis
+`pgd_convergence` requires, and joining them would yield an end-to-end portfolio-solver guarantee
+that the repository currently states only in prose.

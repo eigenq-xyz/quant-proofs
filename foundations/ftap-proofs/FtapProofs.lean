@@ -30,5 +30,6 @@ NoArbitrage m ↔ ∃ Q, EquivalentMartingaleMeasure m Q
 
 ## Status
 
-Work in progress. See `ROADMAP.md` for the task breakdown.
+Complete and gap-free; `#print axioms FtapProofs.ftap` reports only
+`[propext, Classical.choice, Quot.sound]`.
 -/

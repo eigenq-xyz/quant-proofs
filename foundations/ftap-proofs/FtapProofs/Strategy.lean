@@ -179,9 +179,9 @@ explained by price movements alone — no cash enters or leaves. In particular,
 it shows that the discounted value process of any self-financing strategy
 is entirely determined by its initial value and the accumulated gains.
 
-This characterization is used in the FTAP proof (Phase 3) to show that
-the discounted value process of a self-financing strategy is a martingale
-under any equivalent martingale measure.
+This characterization is used in the FTAP proof to show that the discounted
+value process of a self-financing strategy is a martingale under any
+equivalent martingale measure.
 
 **Proof sketch.**
 The forward direction (→) follows by induction on `t`: at each step, the self-financing
