@@ -37,7 +37,7 @@ $$\text{subject to}\quad \begin{cases}
 
 In a long-short strategy the gross leverage cap already bounds total
 exposure; individual per-asset position limits are a separate mandate
-requirement not modelled here. The gross leverage constraint
+requirement not modeled here. The gross leverage constraint
 $\sum |w_i| \leq L$ is non-differentiable at $w_i = 0$, which causes
 active-set solvers to cycle without converging. Interior-point methods
 handle it via a $2N$-variable reformulation that doubles problem
@@ -783,7 +783,7 @@ read from the scaling table above at $N \geq 100$, where the $O(N^2)$
 vs. $O(N^3)$ difference dominates over language-level constant factors.
 At large $N$ the Lean native binary gains a further speedup over the
 Python reference from the absence of interpreter overhead and from LLVM
-vectorisation of the inner loop.
+vectorization of the inner loop.
 
 **Cython FFI round trip.** Calling the Lean 4 PGD from Python via
 `pgd_solve_flat` in `pgd_ffi.pyx` (the fast `FloatArray` path) takes

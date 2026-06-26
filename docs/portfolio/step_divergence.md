@@ -754,14 +754,14 @@ factors.
     Post-mortem analysis of the February 5, 2018 VIX spike (VIX closed
     at 37.32, up from 14.80 on January 31) and the XIV ETN collapse;
     documents the cross-asset correlation spike mechanism that drives
-    $\lambda_{\max}$ increases of the type analysed in this scenario.
+    $\lambda_{\max}$ increases of the type analyzed in this scenario.
 
 [^5]: Whaley, R. E. (2009). “Understanding the VIX.” *Journal of
     Portfolio Management* 35(3): 98–105. DOI:
     [10.3905/JPM.2009.35.3.098](https://doi.org/10.3905/JPM.2009.35.3.098).
     Documents how VIX-linked strategies calibrated in low-volatility
     regimes face catastrophic parameter invalidation during VIX spikes;
-    the Lipschitz-bound violation analysed here is the mathematically
+    the Lipschitz-bound violation analyzed here is the mathematically
     precise version of that invalidation.
 
 [^6]: Billio, M., Getmansky, M., Lo, A. W., and Pelizzon, L. (2012).

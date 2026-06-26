@@ -23,7 +23,9 @@ probability-weighted average of `f`.
 - `StoppedTimeProofs.GeomPMF` — `geomPMF`, non-negativity, PMF sum-to-1
 - `StoppedTimeProofs.GeomExpectation` — `geometricExpectation`, convergence,
   one-step unrolling, constant lemma, monotonicity
-- `StoppedTimeProofs.Jensen` — Jensen's inequality for geometric weights
+- `StoppedTimeProofs.Jensen` — strict monotonicity of `geometricExpectation` under
+  pointwise strict domination (the targeted Jensen-style lemma consumed by
+  `perpetual-proofs`)
 
 ## Mathlib PR candidacy
 
@@ -33,5 +35,7 @@ and downstream modules can import from Mathlib directly.
 
 ## Status
 
-Work in progress. See `SPEC.md` in `perpetual-proofs/` for the proof roadmap.
+Complete, zero `sorry`. `geometricExpectation_strict_mono` (`Jensen.lean`) is
+load-bearing for `perpetual-proofs` Theorem 3 (the inverse-perp convexity
+correction). See `SPEC.md` in `perpetual-proofs/` for the proof roadmap.
 -/

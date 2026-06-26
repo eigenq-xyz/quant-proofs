@@ -34,7 +34,7 @@ constraint). Ten theorems are proved in Lean 4, all zero sorry. Three are repres
 These are not implementation tests. They are proofs about the mathematical structure of the
 algorithm, independent of floating-point arithmetic.
 
-[Read the proof](https://github.com/eigenq-xyz/quant-proofs/tree/main/optimization-proofs)
+[Read the proof](https://github.com/eigenq-xyz/quant-proofs/tree/main/foundations/optimization-proofs)
 
 ---
 
@@ -81,7 +81,7 @@ by construction.
 
 Each scenario is documented on its own page under the `portfolio/` section of this site.
 
-[Read the solver and scenarios](https://github.com/eigenq-xyz/quant-proofs/tree/main/portfolio-proofs)
+[Read the solver and scenarios](https://github.com/eigenq-xyz/quant-proofs/tree/main/foundations/portfolio-proofs)
 
 ---
 

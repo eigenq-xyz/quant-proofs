@@ -308,7 +308,7 @@ theorem projection_feasibility [NeZero N] (B L : ℝ) (hL : 1 ≤ L) (hBL : |B| 
 /-! ### P3.3 — Projection correctness from KKT conditions -/
 
 /-- **P3.3** If `p = primalFromDual y θ μ` satisfies the KKT conditions for the
-    projection problem `min_{x ∈ 𝒞} ½‖x − y‖²`, then `p` minimises the Euclidean
+    projection problem `min_{x ∈ 𝒞} ½‖x − y‖²`, then `p` minimizes the Euclidean
     distance to `y` over `𝒞`.
 
     **Proof** (complete, 0 sorry):

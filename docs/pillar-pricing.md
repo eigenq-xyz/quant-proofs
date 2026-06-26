@@ -27,7 +27,7 @@ Reference: Harrison, J.M., and S.R. Pliska. "Martingales and Stochastic Integral
 Theory of Continuous Trading." *Stochastic Processes and Their Applications* 11, no. 3
 (1981): 215-260.
 
-[Read the proof](https://github.com/eigenq-xyz/quant-proofs/tree/main/ftap-proofs)
+[Read the proof](https://github.com/eigenq-xyz/quant-proofs/tree/main/foundations/ftap-proofs)
 
 ---
 
@@ -51,7 +51,7 @@ chain from foundational theorem to derivative price machine-verifiable.
 Reference: Cox, J.C., S.A. Ross, and M. Rubinstein. "Option Pricing: A Simplified
 Approach." *Journal of Financial Economics* 7, no. 3 (1979): 229-263.
 
-[Read the proof](https://github.com/eigenq-xyz/quant-proofs/tree/main/options-proofs)
+[Read the proof](https://github.com/eigenq-xyz/quant-proofs/tree/main/foundations/options-proofs)
 
 ---
 
@@ -76,7 +76,7 @@ and `stopped-time-proofs`.
 Reference: Ackerer, D., J. Hugonnier, and R. Jermann. "Perpetual Futures Pricing."
 *Mathematical Finance* (2025).
 
-[Read the proof](https://github.com/eigenq-xyz/quant-proofs/tree/main/perpetual-proofs)
+[Read the proof](https://github.com/eigenq-xyz/quant-proofs/tree/main/extensions/perpetual-proofs)
 
 ---
 
@@ -88,7 +88,7 @@ the infrastructure `perpetual-proofs` needs to sum cash flows over the geometric
 time that models contract termination. Zero sorry. The separation keeps the mathematical
 infrastructure reusable and the mathlib contribution clean.
 
-[Read the proof](https://github.com/eigenq-xyz/quant-proofs/tree/main/stopped-time-proofs)
+[Read the proof](https://github.com/eigenq-xyz/quant-proofs/tree/main/extensions/stopped-time-proofs)
 
 ---
 
@@ -99,7 +99,7 @@ and put, European options with positive strike) and eight payoff theorems proved
 including nonnegativity of option payoffs and the call-minus-put payoff identity. On the
 Python side: a Black-Scholes pricer and a seeded geometric Brownian motion simulator.
 
-[Read the source](https://github.com/eigenq-xyz/quant-proofs/tree/main/quant-core)
+[Read the source](https://github.com/eigenq-xyz/quant-proofs/tree/main/foundations/quant-core)
 
 ---
 

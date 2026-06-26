@@ -54,7 +54,7 @@ ceiling.  Validated for N × leverageCap ≤ ~1000 (i.e., N ≤ 667 at leverageC
 Previously 80; reduction eliminates 37.5% of bisection work while preserving full
 float64 accuracy.
 
-## Further optimisation opportunities
+## Further optimization opportunities
 
 1. **Separate outer/inner iters**: outer only needs ~43 steps; inner only ~33. Splitting
    them (e.g., `outerIters=50, innerIters=40`) would save another 25% of bisection work.

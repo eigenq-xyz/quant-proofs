@@ -122,7 +122,7 @@ Optimal weights: [ 1.00e+00  2.50e-01  1.77e-08 -1.55e-01 -9.50e-02
 
 The output weights do not satisfy the budget constraint ($w_1 = 1.0$ alone
 accounts for the full unit budget) and do not correspond to any local
-minimiser of $f$.
+minimizer of $f$.
 
 ### `gurobi_non_psd.py`
 

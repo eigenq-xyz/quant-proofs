@@ -6,7 +6,7 @@ building on `stopped-time-proofs` (geometric expectation infrastructure) and
 
 ## What this project is
 
-Three sorry-free Lean 4 theorems:
+Four sorry-free Lean 4 theorems:
 
 1. **`ackerer_cashflow_satisfies_costless_entry`** — the Ackerer-Hugonnier-Jermann cash
    flow specification satisfies costless entry.
