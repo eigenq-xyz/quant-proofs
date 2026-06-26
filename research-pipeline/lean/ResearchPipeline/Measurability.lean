@@ -32,6 +32,12 @@ The headline results:
   process is adapted to the natural filtration of prices. This is the genuine
   `𝓕ₜ`-measurability upgrade. `Bridge.lean` derives the `NoLookahead.NonAnticipating`
   predicate from this adaptedness (forward direction), unifying the two formulations.
+* `vrpSignal` / `vrpSignal_adapted` — the variance-risk-premium signal of `studies/vrp`,
+  built from a trailing realized variance of the price process and a contemporaneous
+  implied-variance (squared VIX) observation. Because it reads two observable processes,
+  it is adapted to any filtration carrying both (`Adapted 𝒻 price` and
+  `Adapted 𝒻 impliedVar`), the joint market-information filtration, rather than the
+  price-only natural filtration.
 
 ## Relation to `ftap-proofs`
 
@@ -168,5 +174,67 @@ theorem momentumSignal_adapted_of_le
     Adapted 𝒻 (momentumSignal price skip lookback g) := fun t =>
   (momentumSignal_adapted price hp skip lookback hg t).mono
     (naturalFiltration_le_of_adapted price hp 𝒻 hadapted t) le_rfl
+
+/-! ### The variance-risk-premium signal and its adaptedness (over `ℕ`-indexed time)
+
+The momentum signal above reads only the price process. The VRP signal of
+`studies/vrp` reads two observable processes: the price process (through a trailing
+realized variance) and an implied-variance process (the squared VIX). It is therefore
+adapted not to the price-only natural filtration but to any filtration to which **both**
+processes are adapted, i.e. the joint market-information filtration available at time
+`t`. That is the honest scope of the non-anticipation guarantee for this signal. -/
+
+/-- A trailing realized-variance functional. At time `t` it applies a measurable
+aggregator `rv` to the window of the `window + 1` most recent prices
+`price t, price (t-1), …, price (t-window)` (every index `≤ t` by truncated
+subtraction). The VRP instance takes `rv` to be the sum of squared log returns over the
+window; any measurable `rv` is covered. -/
+noncomputable def realizedVar (price : ℕ → Ω → ℝ) (window : ℕ)
+    (rv : (Fin (window + 1) → ℝ) → ℝ) : ℕ → Ω → ℝ :=
+  fun t ω => rv (fun i => price (t - (i : ℕ)) ω)
+
+/-- The variance-risk-premium signal process over discrete time `ℕ`. At time `t` it
+combines the implied-variance observation `impliedVar t` (the squared VIX) with the
+trailing `realizedVar` of the price process via a measurable rule `combine`. The VRP
+instance is `combine iv r = c * iv - r` with `c = 30/365` and `iv = VIX²`, i.e.
+implied minus realized variance.
+
+Both arguments read only information available at `t`: `impliedVar t` is the
+contemporaneous observation, and `realizedVar` reads prices at indices `t - i ≤ t`. -/
+noncomputable def vrpSignal (price impliedVar : ℕ → Ω → ℝ) (window : ℕ)
+    (rv : (Fin (window + 1) → ℝ) → ℝ) (combine : ℝ → ℝ → ℝ) : ℕ → Ω → ℝ :=
+  fun t ω => combine (impliedVar t ω) (realizedVar price window rv t ω)
+
+/-- **𝓕ₜ-measurability of the VRP signal.** If the price process and the
+implied-variance process are both adapted to a filtration `𝒻`, the aggregator `rv` is
+measurable, and the combiner `combine` is measurable, then the VRP signal process is
+**adapted** to `𝒻`: its value at `t` is `𝒻 t`-measurable, reading only information
+available at `t`.
+
+This is the genuine measure-theoretic non-anticipation statement for the VRP signal,
+the analogue of `momentumSignal_adapted` for a two-process signal. The realized-variance
+leg reads each windowed price `price (t - i)` through `Adapted` plus `t - i ≤ t`
+(`Nat.sub_le`), assembles them into a `Fin (window+1) → ℝ` vector (`measurable_pi_iff`),
+and applies `rv`; the implied-variance leg is `hiv t`; the two are combined through
+`combine`. Unlike the momentum signal, no price-only natural filtration suffices, since
+the implied-variance process is exogenous to prices: the correct information set is the
+joint filtration `𝒻` carrying both. -/
+theorem vrpSignal_adapted
+    (price impliedVar : ℕ → Ω → ℝ)
+    (𝒻 : Filtration ℕ ‹MeasurableSpace Ω›)
+    (hprice : Adapted 𝒻 price) (hiv : Adapted 𝒻 impliedVar)
+    (window : ℕ) {rv : (Fin (window + 1) → ℝ) → ℝ} (hrv : Measurable rv)
+    {combine : ℝ → ℝ → ℝ} (hcombine : Measurable combine.uncurry) :
+    Adapted 𝒻 (vrpSignal price impliedVar window rv combine) := by
+  intro t
+  have hrvleg : Measurable[𝒻 t] (realizedVar price window rv t) := by
+    -- `measurable_pi_lambda` synthesizes its domain `MeasurableSpace Ω` by instance
+    -- resolution, which would pick the ambient `m` rather than the sub-σ-algebra `𝒻 t`;
+    -- `letI` makes `𝒻 t` the resolved instance inside this leg so the window map is
+    -- measured against `𝒻 t`. The `have`'s explicit `[𝒻 t]` type keeps it usable outside.
+    letI : MeasurableSpace Ω := 𝒻 t
+    exact hrv.comp (measurable_pi_lambda _ fun i =>
+      (hprice (t - (i : ℕ))).mono (𝒻.mono (Nat.sub_le t (i : ℕ))) le_rfl)
+  exact hcombine.comp ((hiv t).prodMk hrvleg)
 
 end ResearchPipeline
