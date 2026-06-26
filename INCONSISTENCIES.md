@@ -16,13 +16,13 @@ Re-verified against the live source. Resolved since the original notes:
   `StoppedTimeProofs.lean` docstring have been corrected to "Complete".
 - **TODO 3 (stray nested duplicate dir) is RESOLVED.** `extensions/stopped-time-proofs/stopped-time-proofs/`
   no longer exists.
+- **TODO 1 (toolchain divergence) is RESOLVED.** PR #171 unified all 8 projects to
+  `leanprover/lean4:v4.30.0` and mathlib rev `5719ef278ac6921b1a68b558d9282377f93d0b80`. A fresh
+  clone now builds without `incompatible header` errors.
 
 Still open:
 
-- **TODO 1 (toolchain divergence) is STILL OPEN.** Current pins: `foundations/*` and
-  `research-pipeline` on `v4.30.0-rc2`; `perpetual-proofs` and `stopped-time-proofs` on `v4.30.0`;
-  `mortgage-proofs` on `v4.26.0`. Pick one canonical toolchain and rebuild.
-- **New, now-actionable:** `perpetual-proofs` imports `FtapProofs.Market` but cites no ftap
+- **`perpetual-proofs`** imports `FtapProofs.Market` but cites no ftap
   declaration (the import is vestigial). Its `CLAUDE.md`/`SPEC.md` defer the real link to "once
   ftap-proofs Phase 4 is proved" via a `-- TODO: unify with FtapProofs.MartingaleMeasure.EMM` note.
   ftap-proofs is now Complete (`ftap`, clean axioms), so that unification is unblocked: either
@@ -50,17 +50,12 @@ Still open:
 
 ## TODO (still need to do)
 
-1. **Align Lean toolchains.** They diverge across modules that depend on each other:
-   - `v4.30.0-rc2`: `ftap-proofs`, `options-proofs`, `foundations/quant-core/lean`, `optimization-proofs`
-   - `v4.30.0`: `stopped-time-proofs`, `perpetual-proofs`
-   - `v4.26.0`: `extensions/mortgage-proofs/lean`
-
-   `perpetual-proofs` `require`s `ftap-proofs` via local path, so the rc2-built ftap oleans gave
-   `incompatible header` under v4.30.0. I rebuilt locally to fix it, but the `lean-toolchain`
-   pins still disagree — a fresh clone / CI will hit this again. Pick one canonical toolchain
-   (recommend bumping the rc2 modules to the v4.30.0 release) and rebuild. Note: the local
-   rebuild recompiled ftap under v4.30.0, so ftap's on-disk oleans no longer match its pinned
-   `lean-toolchain` (rc2) — resolve when picking the canonical version.
+1. **Align Lean toolchains. DONE (PR #171).** The modules previously diverged across
+   `v4.30.0-rc2` (`ftap-proofs`, `options-proofs`, `quant-core`, `optimization-proofs`),
+   `v4.30.0` (`stopped-time-proofs`, `perpetual-proofs`), and `v4.26.0` (`mortgage-proofs`),
+   which caused `incompatible header` failures on a fresh clone because `perpetual-proofs`
+   `require`s `ftap-proofs` by local path. PR #171 pinned all 8 projects to the single canonical
+   `v4.30.0` + mathlib `5719ef27` and rebuilt, so a fresh clone / CI no longer hits this.
 
 2. **`stopped-time-proofs` Jensen G2.2.** `geometricExpectation_jensen` (`StoppedTimeProofs/Jensen.lean:~92`)
    is an open `sorry` — confirmed via `#print axioms` (`sorryAx`). It's a mathlib-candidate file
