@@ -1,0 +1,5 @@
+# Runtime data and caches; never committed.
+__pycache__/
+.mypy_cache/
+data_cache/
+results/*.csv
