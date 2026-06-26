@@ -13,11 +13,11 @@ require «quant-core» from "../quant-core/lean"
 
 require «ftap-proofs» from "../ftap-proofs"
 
--- Pinned to match ftap-proofs' frozen mathlib rev (d49d664); bump together with ftap-proofs.
--- Using @master here lets `lake update` pull mathlib@master (tested: bumped to v4.31.0-rc1,
--- which broke a lemma in the frozen, already-verified ftap-proofs/quant-core sources).
+-- Pinned to the monorepo-wide canonical mathlib rev (5719ef2, toolchain v4.30.0);
+-- this matches ftap-proofs, quant-core, and every other sibling project. Bump the whole
+-- monorepo together, never run `lake update` (it would pull mathlib@master and drift).
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git" @ "d49d6649f50b54b813042b80d5837fd62561b48f"
+  "https://github.com/leanprover-community/mathlib4.git" @ "5719ef278ac6921b1a68b558d9282377f93d0b80"
 
 
 @[default_target]
