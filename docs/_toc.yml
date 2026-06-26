@@ -4,6 +4,9 @@ parts:
   - caption: Method
     chapters:
       - file: how-we-verify
+  - caption: Research Integrity
+    chapters:
+      - file: pillar-research-integrity
   - caption: No-Arbitrage Pricing
     chapters:
       - file: pillar-pricing
