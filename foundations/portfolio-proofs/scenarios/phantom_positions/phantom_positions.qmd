@@ -323,7 +323,7 @@ threshold, not a limit.[^duchi2008]
 #| label: pgd-raw
 import subprocess, pathlib
 
-_BINARY = pathlib.Path("../../../../optimization-proofs/.lake/build/bin/pgd_solve")
+_BINARY = pathlib.Path("../../../optimization-proofs/.lake/build/bin/pgd_solve")
 lam_max = float(np.linalg.eigvalsh(p.Sigma)[-1])
 toks = ([str(p.N)]
         + [repr(float(x)) for x in p.Sigma.flatten()]

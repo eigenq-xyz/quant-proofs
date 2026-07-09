@@ -25,7 +25,7 @@ The guarantees this project relies on, each proved correct in Lean 4 in `optimiz
 | Ledoit-Wolf shrinkage produces a positive-definite covariance | `shrinkage_psd` |
 | The analytical projection is the exact Euclidean projection onto the feasible set | `projection_correctness` |
 | Every iterate satisfies the budget and leverage constraints exactly | `projection_feasibility` |
-| PGD iterates converge to the global optimum for step size `η < 2/λ_max(Q)` | `pgd_convergence` |
+| PGD iterates converge to the global optimum for step size `η · λ_max(Q) ≤ 1` | `pgd_convergence` |
 
 ## What it doesn't claim
 

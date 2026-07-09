@@ -354,7 +354,7 @@ hypothesis of the O(1/k) convergence bound; this step size satisfies it.
 ```{python}
 #| label: lean-pgd-raw
 import subprocess, pathlib
-_BINARY = pathlib.Path("../../../../optimization-proofs/.lake/build/bin/pgd_solve")
+_BINARY = pathlib.Path("../../../optimization-proofs/.lake/build/bin/pgd_solve")
 lam_max = float(np.linalg.eigvalsh(p_post.Sigma)[-1])
 toks = ([str(p_post.N)]
         + [repr(float(x)) for x in p_post.Sigma.flatten()]

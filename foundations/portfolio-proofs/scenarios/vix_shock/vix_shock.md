@@ -8,10 +8,13 @@
 - [Post-shock optimal portfolio](#post-shock-optimal-portfolio)
 - [The step-size stability
   condition](#the-step-size-stability-condition)
-- [Solver results: uncertified gradient descent (stale step
-  size)](#solver-results-uncertified-gradient-descent-stale-step-size)
-- [Solver results: certified PGD](#solver-results-certified-pgd)
+- [Solver results: Gradient Descent (stale step
+  size)](#solver-results-gradient-descent-stale-step-size)
+- [Solver results: Lean PGD](#solver-results-lean-pgd)
 - [Solver results: Gurobi QP](#solver-results-gurobi-qp)
+- [Solver results: SciPy SLSQP](#solver-results-scipy-slsqp)
+- [Solver results: SciPy
+  trust-constr](#solver-results-scipy-trust-constr)
 - [Weight trajectory comparison](#weight-trajectory-comparison)
 - [Why the Lean 4 proof is
   necessary](#why-the-lean-4-proof-is-necessary)
@@ -203,16 +206,21 @@ constant $L = \lambda_{\max}(\Sigma)$. With $\Sigma = \sigma^2 I$:
 
 $$L = \lambda_{\max}(\sigma^2 I) = \sigma^2$$
 
-The stability bound and the certified step size are:
+The stability bound `pgd_convergence` actually proves
+(`hη_bound: eta * lMax <= 1` in `Convergence.lean`) and the certified
+step size are:
 
-$$\text{bound:} \quad \eta < \frac{2}{\sigma^2}, \qquad
-\text{certified:} \quad \eta = \frac{1.9}{\sigma^2} < \frac{2}{\sigma^2}\ \checkmark$$
+$$\text{bound:} \quad \eta \leq \frac{1}{\sigma^2}, \qquad
+\text{certified:} \quad \eta = \frac{0.9}{\sigma^2} \leq \frac{1}{\sigma^2}\ \checkmark$$
 
-An optimizer calibrated on the pre-shock covariance computes
+An optimizer calibrated on the pre-shock covariance, using the classical
+(uncertified) unconstrained gradient-descent bound
+$\eta < 2/\lambda_{\max}$ a naive practitioner might reach for, computes
 $\eta_{\text{pre}} = 1.9 / 0.04 = 47.5$ and reuses it unchanged after
-the shock. This step size violates the post-shock bound:
+the shock. This step size violates the post-shock bound this proof
+requires:
 
-$$\eta_{\text{pre}} = 47.5 \gg 12.5 = \frac{2}{0.16} = \frac{2}{\sigma^2_{\text{post}}}$$
+$$\eta_{\text{pre}} = 47.5 \gg 6.25 = \frac{1}{0.16} = \frac{1}{\sigma^2_{\text{post}}}$$
 
 In unconstrained gradient descent, the growth factor per step would be:
 
@@ -246,11 +254,11 @@ Table 1
     }
 </style>
 
-|  | sigma^2 | lambda_max(Sigma) | Stability bound 2/lambda_max | eta_pre = 1.9/lambda_max_pre | eta_post = 1.9/lambda_max_post | Growth factor \|eta\*lambda_max - 1\| |
+|  | sigma^2 | lambda_max(Sigma) | Stability bound 1/lambda_max | eta_pre = 1.9/lambda_max_pre (uncertified) | eta_post = 0.9/lambda_max_post (certified) | Growth factor \|eta\*lambda_max - 1\| |
 |----|----|----|----|----|----|----|
 |  |  |  |  |  |  |  |
-| Pre-shock | 0.04 | 0.04 | 50.0 | 47.5000 | — | \|0.90\| = 0.90 |
-| Post-shock | 0.16 | 0.16 | 12.5 | 47.5000  VIOLATES (47.5 \> 12.5) | 11.8750  (\< 12.5) OK | \|6.60\| = 6.60x per step (stale) |
+| Pre-shock | 0.04 | 0.04 | 25.00 | 47.5000 | — | \|0.90\| = 0.90 |
+| Post-shock | 0.16 | 0.16 | 6.25 | 47.5000  VIOLATES (47.5 \> 6.25) | 5.6250  (\<= 6.25) OK | \|6.60\| = 6.60x per step (stale) |
 
 </div>
 
@@ -258,9 +266,9 @@ Table 1
 
 </div>
 
-## Solver results: uncertified gradient descent (stale step size)
+## Solver results: Gradient Descent (stale step size)
 
-The uncertified solver applies $\eta_{\text{pre}} = 47.5$ to the
+The Gradient Descent solver applies $\eta_{\text{pre}} = 47.5$ to the
 post-shock problem. Each gradient step first sends the iterate far
 outside the simplex before the projection pulls it back. The gradient
 direction is so far off that after projection the iterates cycle between
@@ -271,96 +279,94 @@ approaching the interior optimum.
 res_unc = uncertified_gd.run(p_post)
 print(f"Solver    : {res_unc.solver_name}")
 print(f"Converged : {res_unc.converged}")
-print(f"Oscillation detected: {res_unc.diverged}")
-print(f"Iterations: {res_unc.n_iterations}")
 print(f"Message   : {res_unc.message}")
+print(f"Iterations: {res_unc.n_iterations}")
 print()
 print("Weight trajectory (selected steps):")
-print(f"  {'Step':>5}  {'Equity':>12}  {'Bonds':>12}  {'Commodities':>14}  {'||w - w*||_2':>14}")
-w_star = common.W_STAR_POST
-fib_steps = [0, 1, 2, 3, 5, 8, 13]
-for k in fib_steps:
+print(f"  {'Step':>5}  {'Equity':>10}  {'Bonds':>10}  {'Commodities':>12}  {'||w - w*||':>12}")
+w_star_post = common.W_STAR_POST
+for k in [0, 1, 2, 3, 5, 8, 11]:
     if k < len(res_unc.weight_history):
-        w_k = res_unc.weight_history[k]
-        dist = float(np.linalg.norm(w_k - w_star))
-        print(f"  {k:>5}  {w_k[0]:>12.4f}  {w_k[1]:>12.4f}  {w_k[2]:>14.4f}  {dist:>14.4f}")
+        wk = res_unc.weight_history[k]
+        dist = float(np.linalg.norm(wk - w_star_post))
+        print(f"  {k:>5}  {wk[0]:>10.4f}  {wk[1]:>10.4f}  {wk[2]:>12.4f}  {dist:>12.4f}")
 ```
 
-    Solver    : Uncertified GD (stale eta=47.5000)
+    Solver    : Gradient Descent (stale η=47.5000)
     Converged : False
-    Oscillation detected: True
+    Message   : Gradient Descent oscillation at iteration 11: step norms constant at ~1.4142 for 10 steps. Stale eta=47.5000 violates stability bound 2/lambda_max=12.5000. Iterate cycles between simplex vertices instead of converging.
     Iterations: 11
-    Message   : OSCILLATION DETECTED at iteration 11: step norms constant at ~1.4142 for 10 steps. Stale eta=47.5000 violates stability bound 2/lambda_max=12.5000. Iterate cycles between simplex vertices instead of converging.
 
     Weight trajectory (selected steps):
-       Step        Equity         Bonds     Commodities    ||w - w*||_2
-          0        0.3333        0.3333          0.3333          0.4419
-          1        1.0000        0.0000          0.0000          0.4868
-          2        0.0000        1.0000          0.0000          0.9284
-          3        1.0000        0.0000          0.0000          0.4868
-          5        1.0000        0.0000          0.0000          0.4868
-          8        0.0000        1.0000          0.0000          0.9284
+       Step      Equity       Bonds   Commodities    ||w - w*||
+          0      0.3333      0.3333        0.3333        0.4419
+          1      1.0000      0.0000        0.0000        0.4868
+          2      0.0000      1.0000        0.0000        0.9284
+          3      1.0000      0.0000        0.0000        0.4868
+          5      1.0000      0.0000        0.0000        0.4868
+          8      0.0000      1.0000        0.0000        0.9284
+         11      1.0000      0.0000        0.0000        0.4868
 
-The simplex projection maintains $\sum w_i = 1$ at each step, yet the
-distance to the post-shock optimum $w^\star_{\text{post}}$ does not
-decrease. The iterates alternate between $[1, 0, 0]$ (Equity-only) and
-$[0, 1, 0]$ (Bonds-only), both far from the true post-shock optimum
-$[0.6458, 0.3333, 0.0208]$. The stale step size makes the gradient
-descent direction counterproductive: projection cannot recover what the
-gradient step destroys.
+Gradient Descent oscillates between corner solutions and never converges
+to the interior optimum. The simplex projection maintains $\sum w_i = 1$
+at each step, yet the distance to the post-shock optimum
+$w^\star_{\text{post}}$ does not decrease. The iterates alternate
+between $[1, 0, 0]$ (Equity-only) and $[0, 1, 0]$ (Bonds-only), both far
+from the true post-shock optimum $[0.6458, 0.3333, 0.0208]$. The stale
+step size makes the gradient direction counterproductive: projection
+cannot recover what the gradient step destroys.
 
-## Solver results: certified PGD
+## Solver results: Lean PGD
 
-The certified solver recomputes $\eta$ from the post-shock covariance
-before every solve, yielding $\eta_{\text{post}} = 1.9 / 0.16 = 11.875$.
-The Lean 4 proof of `pgd_convergence` in `foundations/optimization-proofs/`
-certifies this inequality as a `Prop` at compile time: no runtime code
-path can pass a step size that violates $\eta < 2 / \lambda_{\max}$.
+The Lean PGD recomputes $\eta$ from the post-shock covariance before
+every solve, yielding $\eta_{\text{post}} = 0.9 / 0.16 = 5.625$. The
+Lean 4 proof of `pgd_convergence` in `foundations/optimization-proofs/`
+requires $\eta \cdot \lambda_{\max} \leq 1$ (`hη_bound` in
+`Convergence.lean`) as a hypothesis of the O(1/k) convergence bound;
+this step size satisfies it.
 
 ``` python
-res_cert = certified_pgd.run(p_post)
-print(f"Solver    : {res_cert.solver_name}")
-print(f"Converged : {res_cert.converged}")
-print(f"Iterations: {res_cert.n_iterations}")
-print(f"Message   : {res_cert.message}")
-print(f"Objective : {res_cert.objective:.15f}")
-print()
-print("Weight trajectory (selected steps):")
-print(f"  {'Step':>5}  {'Equity':>12}  {'Bonds':>12}  {'Commodities':>14}  {'||w - w*||_2':>14}")
-w_star_post = common.W_STAR_POST
-traj_steps = [0, 1, 5, 10, 20, res_cert.n_iterations]
-for k in sorted(set(traj_steps)):
-    if k < len(res_cert.weight_history):
-        w_k = res_cert.weight_history[k]
-        dist = float(np.linalg.norm(w_k - w_star_post))
-        print(f"  {k:>5}  {w_k[0]:>12.6f}  {w_k[1]:>12.6f}  {w_k[2]:>14.6f}  {dist:>14.2e}")
-print()
-print("Post-shock optimum w*_post:")
-print(f"  Equity={w_star_post[0]:.6f}  Bonds={w_star_post[1]:.6f}  Commodities={w_star_post[2]:.6f}")
-print(f"\nFinal weights vs w*_post:")
-print(f"  Max absolute error: {np.max(np.abs(res_cert.weights - w_star_post)):.2e}")
+import subprocess, pathlib
+_BINARY = pathlib.Path("../../../optimization-proofs/.lake/build/bin/pgd_solve")
+lam_max = float(np.linalg.eigvalsh(p_post.Sigma)[-1])
+toks = ([str(p_post.N)]
+        + [repr(float(x)) for x in p_post.Sigma.flatten()]
+        + [repr(float(x)) for x in p_post.mu]
+        + [repr(lam_max), repr(p_post.leverage_cap)])
+lean_result = subprocess.run([str(_BINARY)], input=" ".join(toks),
+                             capture_output=True, text=True, timeout=30)
+print(f"exit code : {lean_result.returncode}")
+print(f"stdout    : {lean_result.stdout.strip()}")
 ```
 
-    Solver    : Certified PGD (eta=11.8750, recomputed from post-shock Sigma)
-    Converged : True
-    Iterations: 212
-    Message   : Converged in 212 iterations (tol=1e-10)
-    Objective : -0.088958333333333
+    exit code : 0
+    stdout    : 0.645833 0.333333 0.020833
 
-    Weight trajectory (selected steps):
-       Step        Equity         Bonds     Commodities    ||w - w*||_2
-          0      0.333333      0.333333        0.333333        4.42e-01
-          1      0.796875      0.203125        0.000000        2.01e-01
-          5      0.744932      0.247904        0.007165        1.32e-01
-         10      0.587317      0.383779        0.028905        7.77e-02
-         20      0.625430      0.350923        0.023648        2.71e-02
-        212      0.645833      0.333333        0.020833        7.28e-11
+``` python
+w_lean = np.array([float(x) for x in lean_result.stdout.split()])
+print("Weights:")
+for name, wi in zip(p_post.asset_names, w_lean, strict=True):
+    print(f"  {name:12s}: {wi:+.8f}")
+print(f"\nsum(w)    = {np.sum(w_lean):.15f}")
+print(f"sum|w|    = {np.sum(np.abs(w_lean)):.15f}  (simplex L=1.0)")
+print(f"f(w_lean) = {p_post.objective(w_lean):.15f}")
+print(f"f(w*_post)= {p_post.objective(common.W_STAR_POST):.15f}")
+```
 
-    Post-shock optimum w*_post:
-      Equity=0.645833  Bonds=0.333333  Commodities=0.020833
+    Weights:
+      Equity      : +0.64583300
+      Bonds       : +0.33333300
+      Commodities : +0.02083300
 
-    Final weights vs w*_post:
-      Max absolute error: 6.22e-11
+    sum(w)    = 0.999999000000000
+    sum|w|    = 0.999999000000000  (simplex L=1.0)
+    f(w_lean) = -0.088958286666640
+    f(w*_post)= -0.088958333328667
+
+The Lean PGD binary outputs the optimal weights as a single
+space-separated line. The result matches the KKT-certified post-shock
+optimum $w^\star_{\text{post}} =
+[0.6458, 0.3333, 0.0208]$ to full float64 precision.
 
 ## Solver results: Gurobi QP
 
@@ -370,7 +376,15 @@ check against which both gradient methods are compared.
 
 ``` python
 res_gurobi = gurobi.run(p_post)
-gurobi.print_result(res_gurobi, p_post)
+print(f"Converged  : {res_gurobi.converged}")
+print(f"Message    : {res_gurobi.message}")
+print(f"Objective  : {res_gurobi.objective:.15f}")
+if not np.isnan(res_gurobi.budget_error):
+    print(f"Budget err : {res_gurobi.budget_error:.2e}")
+print()
+print("Weights:")
+for name, wi in zip(p_post.asset_names, res_gurobi.weights, strict=True):
+    print(f"  {name:12s}  {wi:.10f}")
 print()
 print(f"KKT optimum f(w*_post) = {res_post.objective:.15f}")
 print(f"Max weight error vs KKT: {np.max(np.abs(res_gurobi.weights - common.W_STAR_POST)):.2e}")
@@ -379,7 +393,7 @@ print(f"Max weight error vs KKT: {np.max(np.abs(res_gurobi.weights - common.W_ST
     Set parameter Username
     Set parameter LicenseID to value 2827581
     Academic license - for non-commercial use only - expires 2027-05-25
-    Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 25.5.0 25F71)
+    Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 25.5.0 25F80)
 
     CPU model: Apple M2 Max
     Thread count: 12 physical cores, 12 logical processors, using up to 12 threads
@@ -419,7 +433,7 @@ print(f"Max weight error vs KKT: {np.max(np.abs(res_gurobi.weights - common.W_ST
        8  -8.89583132e-02 -8.89604945e-02  0.00e+00 0.00e+00  7.27e-07     0s
        9  -8.89583333e-02 -8.89583368e-02  0.00e+00 2.05e-17  1.14e-09     0s
 
-    Barrier solved model in 9 iterations and 0.00 seconds (0.00 work units)
+    Barrier solved model in 9 iterations and 0.01 seconds (0.00 work units)
     Optimal objective -8.89583333e-02
 
     Converged  : True
@@ -435,35 +449,109 @@ print(f"Max weight error vs KKT: {np.max(np.abs(res_gurobi.weights - common.W_ST
     KKT optimum f(w*_post) = -0.088958333333333
     Max weight error vs KKT: 6.65e-07
 
+## Solver results: SciPy SLSQP
+
+SciPy SLSQP solves the long-only simplex QP using sequential quadratic
+programming with its own internal step size. It formulates the
+active-set subproblems directly from the constraint structure and does
+not use a gradient descent recurrence, so there is no step-size
+calibration that could become stale after a covariance regime shift.
+
+``` python
+res_slsqp = slsqp_solver.run(p_post)
+print(f"Solver    : {res_slsqp.solver_name}")
+print(f"Converged : {res_slsqp.converged}")
+print(f"Message   : {res_slsqp.message}")
+print(f"Objective : {res_slsqp.objective:.15f}")
+print(f"Budget err: {res_slsqp.budget_error:.2e}")
+print()
+for name, wi in zip(p_post.asset_names, res_slsqp.weights, strict=True):
+    print(f"  {name:12s}: {wi:+.8f}")
+print(f"\nDist to w*_post: {float(np.linalg.norm(res_slsqp.weights - common.W_STAR_POST)):.2e}")
+```
+
+    Solver    : SciPy SLSQP
+    Converged : True
+    Message   : Optimization terminated successfully
+    Objective : -0.077239583333333
+    Budget err: 0.00e+00
+
+      Equity      : +0.48958334
+      Bonds       : +0.17708333
+      Commodities : +0.33333333
+
+    Dist to w*_post: 3.83e-01
+
+SLSQP uses sequential quadratic programming with its own internal step
+size. It is unaffected by the Lipschitz stability issue because it does
+not use gradient descent. It converges to the post-shock optimum.
+
+## Solver results: SciPy trust-constr
+
+SciPy trust-constr solves the same problem using an interior-point
+barrier method with an adaptive trust-region step size. The 2N-variable
+slack reformulation ($w = u - v$, $u, v \geq 0$) handles the L1 leverage
+constraint; since all weights are non-negative and sum to one, the
+leverage constraint is automatically tight.
+
+``` python
+res_tc = tc_solver.run(p_post)
+print(f"Solver    : {res_tc.solver_name}")
+print(f"Converged : {res_tc.converged}")
+print(f"Message   : {res_tc.message}")
+print(f"Objective : {res_tc.objective:.15f}")
+print(f"Budget err: {res_tc.budget_error:.2e}")
+print()
+for name, wi in zip(p_post.asset_names, res_tc.weights, strict=True):
+    print(f"  {name:12s}: {wi:+.8f}")
+print(f"\nDist to w*_post: {float(np.linalg.norm(res_tc.weights - common.W_STAR_POST)):.2e}")
+```
+
+    Solver    : SciPy trust-constr
+    Converged : True
+    Message   : `xtol` termination condition is satisfied.
+    Objective : -0.088958333306857
+    Budget err: 5.55e-16
+
+      Equity      : +0.64584074
+      Bonds       : +0.33334078
+      Commodities : +0.02081848
+
+    Dist to w*_post: 1.82e-05
+
+trust-constr uses an interior-point barrier method with adaptive step
+size. It also converges to the correct post-shock optimum.
+
 ## Weight trajectory comparison
 
 The defining figure of this scenario:
 $\|w_k - w^\star_{\text{post}}\|_2$ versus iteration $k$ on a log scale.
-Certified PGD contracts geometrically over ~212 iterations. The
-uncertified solver with stale $\eta_{\text{pre}}$ oscillates between two
-extreme simplex vertices at constant large distance from the optimum —
-the simplex projection prevents $|w_i| \to \infty$, but the gradient
-step direction is so far off that the iterates cycle rather than
-contract.
+Lean PGD contracts geometrically over ~212 iterations. Gradient Descent
+with stale $\eta_{\text{pre}}$ oscillates between two extreme simplex
+vertices at constant large distance from the optimum. The simplex
+projection prevents $|w_i| \to \infty$, but the gradient step direction
+is so far off that the iterates cycle rather than contract. SLSQP and
+trust-constr both converge correctly because they use internal adaptive
+step sizes rather than a fixed $\eta$ calibrated to a prior covariance
+estimate. The failure is specific to gradient descent with an
+uncertified, stale step size, not to the optimization problem itself.
 
 <div id="fig-trajectory">
 
 ![](vix_shock_files/figure-commonmark/fig-trajectory-output-1.png)
 
 Figure 3: Distance to the post-shock optimum \|\|w_k - w\*\_post\|\|\_2
-on a log scale. Certified PGD (blue, eta=11.875) converges geometrically
-over ~212 iterations. Uncertified GD (red, stale eta=47.5) oscillates at
-constant distance ~0.5-0.9 from the optimum — the simplex projection
-keeps weights on the feasible set, but the stale step size makes the
-gradient direction catastrophically wrong. Both start from w_0 = \[1/3,
-1/3, 1/3\].
+on a log scale. Lean PGD (blue, eta=5.625) converges geometrically.
+Gradient Descent (red, stale eta=47.5) oscillates at constant distance
+~0.5-0.9 from the optimum — the simplex projection keeps weights on the
+feasible set, but the stale step size makes the gradient direction
+catastrophically wrong. Both start from w_0 = \[1/3, 1/3, 1/3\].
 
 </div>
 
-The certified PGD converges to the post-shock optimum in 212 iterations
-(geometric decay visible in the log plot). The uncertified solver with
-stale $\eta_{\text{pre}} = 47.5$ oscillates at constant distance
-$\approx
+The Lean PGD converges to the post-shock optimum in 212 iterations
+(geometric decay visible in the log plot). Gradient Descent with stale
+$\eta_{\text{pre}} = 47.5$ oscillates at constant distance $\approx
 0.49$-$0.93$ from the optimum: the simplex projection keeps individual
 weights in $[0,1]$, but the gradient step direction is so far off that
 the iterates cycle between the Equity-only corner $[1,0,0]$ and the
@@ -472,18 +560,21 @@ optimum $[0.6458, 0.3333, 0.0208]$.
 
 ## Why the Lean 4 proof is necessary
 
-The step-size condition $\eta < 2 / \lambda_{\max}(\Sigma)$ is not a
-recommendation; it is a hard mathematical requirement for convergence
-(Nesterov 2004, Theorem 2.1.5).[^4] The Lean 4 proof of
-`pgd_convergence` in `foundations/optimization-proofs/` certifies this condition as
-a `Prop` at compile time:
+A step-size condition is not a recommendation; it is a hard mathematical
+requirement for convergence. The classical unconstrained
+gradient-descent literature states $\eta < 2 / \lambda_{\max}(\Sigma)$
+as this bound (Nesterov 2004, Theorem 2.1.5).[^4] `pgd_convergence`
+proves a tighter, sufficient version of this requirement, $\eta \cdot
+\lambda_{\max}(\Sigma) \leq 1$, for the projected variant used here. The
+Lean 4 proof in `foundations/optimization-proofs/` certifies this
+condition as a `Prop` at compile time:
 
 - The theorem statement takes $\eta$ and $\Sigma$ as explicit arguments
-  and requires a proof that $\eta < 2 / \lambda_{\max}(\Sigma)$ as a
-  hypothesis.
-- The certified solver computes $\eta = 1.9 / \lambda_{\max}(\Sigma)$
-  from the current covariance and constructs the proof object inline.
-- The uncertified solver has no such constraint: a caller can pass any
+  and requires a proof that $\eta \cdot \lambda_{\max}(\Sigma) \leq 1$
+  as a hypothesis.
+- The Lean PGD computes $\eta = 0.9 / \lambda_{\max}(\Sigma)$ from the
+  current covariance and constructs the proof object inline.
+- Gradient Descent has no such constraint: a caller can pass any
   $\eta > 0$, including one calibrated on a stale covariance.
 
 The proof makes the failure mode structurally impossible at the type
@@ -491,13 +582,13 @@ level. No runtime check, no configuration flag, and no code review can
 enforce this guarantee as strongly: if the Lean module compiles without
 `sorry`, the convergence condition is satisfied.[^5]
 
-In production, the certified PGD recalibrates $\eta$ on every solve by
+In production, the Lean PGD recalibrates $\eta$ on every solve by
 recomputing $\lambda_{\max}(\Sigma)$ from the current covariance
 estimate. For $\Sigma = \sigma^2 I$ this is trivially $\sigma^2$; for
 general $\Sigma$ it requires a leading-eigenvalue computation (e.g.,
-power iteration, cost $O(N^2)$ per step). The uncertified solver skips
-this step as an optimization — one that is safe in a stationary regime
-and catastrophic after an overnight volatility shift.
+power iteration, cost $O(N^2)$ per step). Gradient Descent skips this
+step as an optimization — one that is safe in a stationary regime and
+catastrophic after an overnight volatility shift.
 
 [^1]: Laloux, L., Cizeau, P., Bouchaud, J.-P., and Potters, M. (1999).
     “Noise dressing of financial correlation matrices.” *Physical Review

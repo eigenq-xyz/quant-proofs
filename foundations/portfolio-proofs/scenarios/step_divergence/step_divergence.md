@@ -15,6 +15,7 @@
 - [Solver results](#solver-results)
   - [Fixed-η gradient descent](#fixed-η-gradient-descent)
   - [Adaptive-η PGD](#adaptive-η-pgd)
+  - [SciPy SLSQP](#scipy-slsqp)
   - [SciPy trust-constr](#scipy-trust-constr)
   - [Gurobi barrier](#gurobi-barrier)
 - [The KKT-certified global minimum](#the-kkt-certified-global-minimum)
@@ -71,12 +72,15 @@ causing a self-reinforcing correlation spike across all equity sectors.
 We reconstruct the optimization problem faced by a systematic fund that
 calibrated its step size $\eta$ during the calm January 2018 period (21
 trading days, $\lambda_{\max}(\hat\Sigma) = 0.000356$,
-$\eta_{\text{cal}} = 5{,}334.47$) and then applied the same $\eta$ to
-the post-shock five-day window ending February 5. Under the post-shock
-covariance, $\lambda_{\max}(\hat\Sigma_{\text{shock}}) = 0.002378$, so
-the Lipschitz bound is $2 / 0.002378 = 840.90$. The calibrated
-$\eta = 5{,}334.47$ exceeds the bound by a factor of $6.3\times$,
-producing a divergence growth factor of
+$\eta_{\text{cal}} = 5{,}334.47$, the classical unconstrained
+gradient-descent heuristic $1.9/\lambda_{\max}$) and then applied the
+same $\eta$ to the post-shock five-day window ending February 5. Under
+the post-shock covariance,
+$\lambda_{\max}(\hat\Sigma_{\text{shock}}) = 0.002378$, so the stability
+bound `pgd_convergence` actually proves
+($\eta \cdot \lambda_{\max} \leq 1$) is $1 / 0.002378 = 420.45$. The
+calibrated $\eta = 5{,}334.47$ exceeds this bound by a factor of over
+$12\times$, producing a divergence growth factor of
 $|\eta \cdot \lambda_{\max}^{\text{shock}} - 1| = 11.69$ per step.
 
 Whaley (2009)[^5] documents how volatility-linked strategies calibrated
@@ -135,15 +139,15 @@ full rank, making sample-based step-size calibration valid.
     }
 </style>
 
-|                            | Value                     |
-|----------------------------|---------------------------|
-| Property                   |                           |
-| Window length T            | 21  (full rank: T \> N)   |
-| Assets N                   | 10                        |
-| Rank(S_cal)                | 10 of 10  (full rank)     |
-| λ_max(S_cal)               | 0.000356                  |
-| Stability bound 2/λ_max    | 5615.23                   |
-| Calibrated η (= 1.9/λ_max) | 5334.47  ✓ (inside bound) |
+|  | Value |
+|----|----|
+| Property |  |
+| Window length T | 21  (full rank: T \> N) |
+| Assets N | 10 |
+| Rank(S_cal) | 10 of 10  (full rank) |
+| λ_max(S_cal) | 0.000356 |
+| Stability bound 1/λ_max (pgd_convergence's proved bound) | 2807.61 |
+| Calibrated η (= 1.9/λ_max, classical uncertified heuristic) | 5334.47  ✗ already exceeds the proved bound, e... |
 
 </div>
 
@@ -169,7 +173,8 @@ value-weighted returns.
 
 Table 2: Post-shock covariance diagnostics. λ_max increases 6.68×
 relative to the January calibration. The calibrated η=5334.47 exceeds
-the post-shock Lipschitz bound by 6.3×.
+the post-shock stability bound (pgd_convergence’s proved η·λ_max \<= 1)
+by over 12×.
 
 <div class="cell-output cell-output-display" execution_count="6">
 
@@ -193,8 +198,8 @@ the post-shock Lipschitz bound by 6.3×.
 | Rank(S_shock) | 4 of 10 |
 | Min eigenvalue (shrunk Σ̂) | 2.986e-05 |
 | λ_max(Σ̂\_shock) | 0.002378 |
-| Lipschitz bound 2/λ_max | 840.90 |
-| Calibrated η from January | 5334.47  ✗ EXCEEDS bound by 6.3× |
+| Stability bound 1/λ_max (proved) | 420.45 |
+| Calibrated η from January | 5334.47  ✗ EXCEEDS bound by 12.7× |
 | λ_max ratio (shock / cal) | 6.68× |
 | Divergence growth factor per step | \|η × λ_max − 1\| = 11.687  (\>1 → diverges) |
 
@@ -218,8 +223,8 @@ res_gd = gd_fixed.run(p)
     === Fixed-eta Gradient Descent (unconstrained) ===
 
     Calibrated eta      : 5334.4681  (from January 2018)
-    Post-shock bound    : 840.90  (= 2 / 0.002378)
-    Stability violated  : eta = 5334.47  >>  bound = 840.90  (6.34x over)
+    Post-shock bound    : 420.45  (= 1 / 0.002378)
+    Stability violated  : eta = 5334.47  >>  bound = 420.45  (12.69x over)
     Growth factor / step: |eta * lambda_max - 1| = 11.687
     After 3 steps       : error amplification ~1596x
 
@@ -252,29 +257,74 @@ parameters simultaneously.
 res_pgd = pgd_adaptive.run(p)
 ```
 
-    === Lean 4 Adaptive-eta PGD (pgd_ffi) ===
+    === Lean 4 Adaptive-eta PGD (pgd_solve CLI) ===
 
-    Adaptive eta = 798.8596  < bound 840.90  (1.9 / 0.002378) ✓
+    Adaptive eta = 378.4072  <= bound 420.45  (0.9 / 0.002378) ✓
     Calibrated eta from January = 5334.47  (rejected — would diverge)
     Lean native timing at N=10  : 13.834 ns/solve
 
     Objective      : 0.004397215451
-    Budget error   : 2.66e-15
+    Budget error   : 0.00e+00
     Leverage viol. : 0.00e+00
     Nonzero weights:
       Enrgy   -0.250000
       Utils   +1.250000
 
 The Lean 4 PGD (dispatched via `pgd_solve_flat` in `pgd_ffi.pyx`)
-recomputes $\eta = 1.9 / \lambda_{\max}(\hat\Sigma_{\text{shock}})$ from
+recomputes $\eta = 0.9 / \lambda_{\max}(\hat\Sigma_{\text{shock}})$ from
 the post-shock covariance and enforces it internally. Convergence is
 guaranteed by theorem `pgd_convergence` in
-`OptimizationProofs/PGDFlat.lean`. Collapsing the growth factor from
-$11.69$ (fixed-$\eta$ GD) to $|1.9/2 - 1| = 0.05 < 1$ ensures strict
-descent at every step. The solver reaches the KKT-certified minimum
-(Utils +1.25, Enrgy $-0.25$) in 2 iterations. The native Lean binary
-achieves **13.834 ns/solve** (`lake exe pgd_bench`); the FFI path adds
-$\approx 11$ ms marshalling at $N = 10$.
+`OptimizationProofs/PGDFlat.lean`, whose hypothesis is
+$\eta \cdot \lambda_{\max} \leq 1$: with $\eta = 0.9/\lambda_{\max}$,
+$|\eta \cdot \lambda_{\max} - 1| = 0.1 < 1$, ensuring strict descent at
+every step (collapsing the growth factor from $11.69$ for the fixed,
+uncertified $\eta$). The solver reaches the KKT-certified minimum (Utils
++1.25, Enrgy $-0.25$). The native Lean binary achieves **13.834
+ns/solve** (`lake exe pgd_bench`); the FFI path adds $\approx 11$ ms
+marshalling at $N = 10$.
+
+### SciPy SLSQP
+
+``` python
+res_slsqp = slsqp.run(p)
+print(res_slsqp)
+```
+
+    SolverResult(solver_name='SciPy SLSQP', converged=False, message='Iteration limit reached', objective=0.004397305202208766, weights=array([-5.00862700e-06, -9.81085605e-06,  4.62609925e-06, -2.49947548e-01,
+           -5.04460061e-06,  6.26327170e-06, -1.87531694e-07, -4.05280386e-05,
+            1.24999875e+00, -1.50683115e-06]), n_iterations=100, budget_error=1.1102230246251565e-16, leverage_violation=1.9269452493642092e-05)
+
+``` python
+res_kkt_ref, _ = kkt_optimum.derive(p)
+print(f"SLSQP converged  : {res_slsqp.converged}")
+print(f"SLSQP message    : {res_slsqp.message}")
+print(f"SLSQP iterations : {res_slsqp.n_iterations}")
+print(f"SLSQP f(w)       : {res_slsqp.objective:.12f}")
+print(f"KKT certified f* : {res_kkt_ref.objective:.12f}")
+print(f"Gap              : {res_slsqp.objective - res_kkt_ref.objective:.6e}")
+```
+
+    SLSQP converged  : False
+    SLSQP message    : Iteration limit reached
+    SLSQP iterations : 100
+    SLSQP f(w)       : 0.004397305202
+    KKT certified f* : 0.004397215451
+    Gap              : 8.975158e-08
+
+SLSQP fails on the step-divergence problem for the same reason as
+boundary_trap: the L1 gross leverage constraint is non-differentiable at
+zero, causing active-set cycling. The solver exhausts its 100-iteration
+limit. Note that this is a different failure mode from the gradient
+descent divergence: SLSQP never diverges to NaN, but it does not
+converge either.
+
+The distinction matters for diagnosis. Fixed-$\eta$ gradient descent
+diverges geometrically because the step size violates the Lipschitz
+bound; the iterates escape to infinity. SLSQP fails because its
+active-set quadratic programming subproblem cannot resolve the kink at
+$w_i = 0$; the iterates cycle within the feasible set without reaching a
+KKT point. Both failures produce unusable output, but for entirely
+different algorithmic reasons.
 
 ### SciPy trust-constr
 
@@ -336,7 +386,7 @@ print(res_tc)
                 method: tr_interior_point
             optimality: 8.198685673104024e-13
       constr_violation: 1.176836406102666e-14
-        execution_time: 0.015522956848144531
+        execution_time: 0.020952701568603516
              tr_radius: 11068373.185131187
         constr_penalty: 1.0
      barrier_parameter: 5.120000000000003e-08
@@ -417,7 +467,7 @@ for ind, wi in zip(p.industries, w_g, strict=True):
     Set parameter Username
     Set parameter LicenseID to value 2827581
     Academic license - for non-commercial use only - expires 2027-05-25
-    Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 25.5.0 25F71)
+    Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 25.5.0 25F80)
 
     CPU model: Apple M2 Max
     Thread count: 12 physical cores, 12 logical processors, using up to 12 threads
@@ -601,7 +651,7 @@ def pgd_adaptive_bench(
 ) -> tuple[np.ndarray, int]:
     """Adaptive-eta PGD for benchmarking only (no formal guarantee)."""
     lam_max = float(np.linalg.eigvalsh(Sigma)[-1])
-    eta = 1.9 / lam_max
+    eta = 0.9 / lam_max
     w = np.ones(len(mu)) / len(mu)
     for k in range(max_iter):
         w_new = _proj_signed_l1_bm(w - eta * (Sigma @ w - mu), B=1.0, L=L)
@@ -704,7 +754,7 @@ O(N^2) gradient + O(N log N) dual-bisection projection. trust-constr and
 Gurobi use the 2N-variable interior-point reformulation with O((2N)^3)
 Newton steps.
 
-<div class="cell-output cell-output-display" execution_count="14">
+<div class="cell-output cell-output-display" execution_count="16">
 
 <div>
 <style scoped>
@@ -722,11 +772,11 @@ Newton steps.
 |  | Adaptive PGD (ms) | trust-constr (ms) | Gurobi (ms) | PGD iterations | Speedup vs trust-constr | Speedup vs Gurobi |
 |----|----|----|----|----|----|----|
 | N |  |  |  |  |  |  |
-| 10 | 31.7 | 13.5 | 0.3 | 2 | 0× | 0× |
-| 50 | 48.3 | 60.0 | 1.7 | 3 | 1× | 0× |
-| 100 | 49.4 | 155.8 | 6.5 | 3 | 3× | 0× |
-| 250 | 67.5 | 916.3 | 44.3 | 4 | 14× | 1× |
-| 500 | 1543.8 | 6235.1 | 157.0 | 74 | 4× | 0× |
+| 10 | 44.0 | 18.9 | 0.4 | 2 | 0× | 0× |
+| 50 | 109.8 | 77.5 | 2.4 | 5 | 1× | 0× |
+| 100 | 141.4 | 205.3 | 9.0 | 6 | 1× | 0× |
+| 250 | 154.7 | 1223.5 | 50.5 | 6 | 8× | 0× |
+| 500 | 4634.1 | 8998.9 | 193.7 | 154 | 2× | 0× |
 
 </div>
 
@@ -744,12 +794,12 @@ so the total cost scales as $O(N^2)$ while trust-constr scales as
 $O(N^3)$.
 
 **Lean 4 native implementation.** The Lean 4 PGD in
-`foundations/optimization-proofs/` (compiled to native code via LLVM, no interpreter
-boundary at any point) solves the February 2018 $N = 10$ problem in
-native speed. The algorithmic advantage of PGD over interior-point
-methods is best read from the scaling table at $N \geq 100$, where the
-$O(N^2)$ vs. $O(N^3)$ difference dominates over language-level constant
-factors.
+`foundations/optimization-proofs/` (compiled to native code via LLVM, no
+interpreter boundary at any point) solves the February 2018 $N = 10$
+problem in native speed. The algorithmic advantage of PGD over
+interior-point methods is best read from the scaling table at
+$N \geq 100$, where the $O(N^2)$ vs. $O(N^3)$ difference dominates over
+language-level constant factors.
 
 [^1]: Nesterov, Y. (2004). *Introductory Lectures on Convex
     Optimization*. Springer. DOI:

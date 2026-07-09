@@ -236,28 +236,28 @@ pgd_integer.print_results(pgd_results)
       Leverage cap  : sum(|w_bp|) <= 15000  (exactly, integer)
 
     Window 1: Mar 09 – Mar 13
-      Converged in 4 iterations (delta < 0.5 bp)
+      Converged in 8 iterations (delta < 0.5 bp)
       Objective    : 0.006735427210121
       Budget Err   : 0.00e+00  (|sum(w) - 1|)
       Leverage Err : 0.00e+00  (max(0, sum|w| - 1.5))
       STATUS       : PERFECT
 
     Window 2: Mar 10 – Mar 16
-      Converged in 3 iterations (delta < 0.5 bp)
+      Converged in 4 iterations (delta < 0.5 bp)
       Objective    : 0.010995512186795
       Budget Err   : 0.00e+00  (|sum(w) - 1|)
       Leverage Err : 0.00e+00  (max(0, sum|w| - 1.5))
       STATUS       : PERFECT
 
     Window 3: Mar 11 – Mar 17
-      Converged in 3 iterations (delta < 0.5 bp)
+      Converged in 5 iterations (delta < 0.5 bp)
       Objective    : 0.010766886272319
       Budget Err   : 0.00e+00  (|sum(w) - 1|)
       Leverage Err : 0.00e+00  (max(0, sum|w| - 1.5))
       STATUS       : PERFECT
 
     Window 4: Mar 12 – Mar 18
-      Converged in 4 iterations (delta < 0.5 bp)
+      Converged in 6 iterations (delta < 0.5 bp)
       Objective    : 0.018366318335072
       Budget Err   : 0.00e+00  (|sum(w) - 1|)
       Leverage Err : 0.00e+00  (max(0, sum|w| - 1.5))
@@ -442,39 +442,39 @@ lean_pgd.print_results(lean_results)
       Production halt threshold: 1e-09
 
     Window 1: Mar 09 – Mar 13
-      Converged    : True  (pgd_solve_flat via FFI  (eta = 1.9 / 7.5424e-03;  native: 13)
-      Objective    : 0.006404328531255
+      Converged    : True  (pgd_solve_flat via FFI  (eta = 0.9 / 7.5424e-03;  native: 13)
+      Objective    : 0.006404328531250
       Sum(w)       : 1.00000000000000000
-      Sum(|w|)     : 1.49999999999794031
+      Sum(|w|)     : 1.50000000000000000
       Budget Err   : 0.00e+00  (|sum(w) - 1|)
       Leverage Err : 0.00e+00  (max(0, sum|w| - 1.5))
       STATUS       : PERFECT
 
     Window 2: Mar 10 – Mar 16
-      Converged    : True  (pgd_solve_flat via FFI  (eta = 1.9 / 9.2950e-03;  native: 13)
-      Objective    : 0.010994379531268
+      Converged    : True  (pgd_solve_flat via FFI  (eta = 0.9 / 9.2950e-03;  native: 13)
+      Objective    : 0.010994379531250
       Sum(w)       : 1.00000000000000000
-      Sum(|w|)     : 1.49999999999683187
+      Sum(|w|)     : 1.50000000000000000
       Budget Err   : 0.00e+00  (|sum(w) - 1|)
       Leverage Err : 0.00e+00  (max(0, sum|w| - 1.5))
       STATUS       : PERFECT
 
     Window 3: Mar 11 – Mar 17
-      Converged    : True  (pgd_solve_flat via FFI  (eta = 1.9 / 9.7834e-03;  native: 13)
-      Objective    : 0.010765898968748
+      Converged    : True  (pgd_solve_flat via FFI  (eta = 0.9 / 9.7834e-03;  native: 13)
+      Objective    : 0.010765898968750
       Sum(w)       : 1.00000000000000000
-      Sum(|w|)     : 1.50000000000036460
+      Sum(|w|)     : 1.50000000000000000
       Budget Err   : 0.00e+00  (|sum(w) - 1|)
-      Leverage Err : 3.65e-13  (max(0, sum|w| - 1.5))
+      Leverage Err : 0.00e+00  (max(0, sum|w| - 1.5))
       STATUS       : PERFECT
 
     Window 4: Mar 12 – Mar 18
-      Converged    : True  (pgd_solve_flat via FFI  (eta = 1.9 / 1.0085e-02;  native: 13)
-      Objective    : 0.016240929468738
+      Converged    : True  (pgd_solve_flat via FFI  (eta = 0.9 / 1.0085e-02;  native: 13)
+      Objective    : 0.016240929468750
       Sum(w)       : 1.00000000000000000
-      Sum(|w|)     : 1.50000000000280043
+      Sum(|w|)     : 1.50000000000000000
       Budget Err   : 0.00e+00  (|sum(w) - 1|)
-      Leverage Err : 2.80e-12  (max(0, sum|w| - 1.5))
+      Leverage Err : 0.00e+00  (max(0, sum|w| - 1.5))
       STATUS       : PERFECT
 
     ==============================================================================
@@ -523,7 +523,7 @@ exceeds the threshold.
 | Gurobi barrier QP      | 1.6e-15    | 6.7e-16 | 1.1e-16 | 2.2e-16 |
 | OR-Tools GSCIP         | 0.0e+00    | 0.0e+00 | 0.0e+00 | 0.0e+00 |
 | Integer PGD (bp-exact) | 0.0e+00    | 0.0e+00 | 0.0e+00 | 0.0e+00 |
-| Lean 4 PGD (pgd_ffi)   | 0.0e+00    | 0.0e+00 | 3.6e-13 | 2.8e-12 |
+| Lean 4 PGD (pgd_ffi)   | 0.0e+00    | 0.0e+00 | 0.0e+00 | 0.0e+00 |
 
 </div>
 
@@ -644,17 +644,17 @@ print(f"Integer drift at {STEPS:,} steps  : {err_int:.2e}  (exact zero)")
     Float32   — 100,000 steps:
       Final sum(w) - 1   : 5.960464e-08
       Cumulative drift   : 5.96e-08
-      Time               : 386.0 ms
+      Time               : 565.1 ms
 
     Float64   — 100,000 steps:
       Final sum(w) - 1   : 2.220446e-16
       Cumulative drift   : 2.22e-16
-      Time               : 332.7 ms
+      Time               : 476.8 ms
 
     Integer bp — 100,000 steps:
       Final sum(w_bp)    : 10000  (integer, exact)
       Budget drift       : 0.00e+00  (= 0 exactly, by integer arithmetic)
-      Time               : 431.4 ms
+      Time               : 607.7 ms
 
     ========================================================================
     Float32 drift at 100,000 steps  : 5.96e-08

@@ -13,7 +13,7 @@ execute:
   echo: true
   warning: false
   message: false
-jupyter: python3
+jupyter: portfolio-proofs-venv
 ---
 
 ```{python}

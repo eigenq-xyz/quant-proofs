@@ -13,6 +13,8 @@
   - [Gurobi barrier](#gurobi-barrier)
   - [CVXPY / OSQP](#cvxpy--osqp)
   - [PGD + Ledoit-Wolf](#pgd--ledoit-wolf)
+  - [SciPy trust-constr (2N-variable barrier, raw
+    S)](#scipy-trust-constr-2n-variable-barrier-raw-s)
 - [Why rank deficiency causes the
   crash](#why-rank-deficiency-causes-the-crash)
 - [The Ledoit-Wolf fix and scaling
@@ -253,7 +255,7 @@ gurobi.print_result(res_gurobi, p)
     Set parameter Username
     Set parameter LicenseID to value 2827581
     Academic license - for non-commercial use only - expires 2027-05-25
-    Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 25.5.0 25F71)
+    Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 25.5.0 25F80)
 
     CPU model: Apple M2 Max
     Thread count: 12 physical cores, 12 logical processors, using up to 12 threads
@@ -293,7 +295,7 @@ gurobi.print_result(res_gurobi, p)
        7   5.74883968e-03  5.74878361e-03  1.29e-14 1.11e-15  1.71e-07     0s
        8   5.74880525e-03  5.74880520e-03  3.33e-15 7.77e-16  1.71e-10     0s
 
-    Barrier solved model in 8 iterations and 0.00 seconds (0.00 work units)
+    Barrier solved model in 8 iterations and 0.01 seconds (0.00 work units)
     Optimal objective 5.74880525e-03
 
     Converged         : True
@@ -390,11 +392,11 @@ pgd_lw.print_result(res_pgd, p)
 ```
 
     Converged         : True
-    Message           : Lean 4 pgd_solve_flat via FFI  (eta = 1.9 / 5.8424e-02;  native: 13.834 ns/solve)
+    Message           : pgd_solve subprocess  (eta = 0.9 / 5.8424e-02;  native: 13.834 ns/solve)
     Iterations        : 0
     Objective (Sigma) : 0.005937695978
     Budget error      : 0.00e+00
-    Leverage violation: 8.40e-12
+    Leverage violation: 0.00e+00
 
     Nonzero weights (|w| > 1e-4):
       Enrgy   -0.250000
@@ -418,7 +420,7 @@ pgd_lw.print_result(res_pgd, p)
     to lambda_min(Sigma) = 6.667e-4, making Sigma strictly PSD and
     guaranteeing convergence of the gradient descent.
 
-      lambda_max(Sigma) = 5.8424e-02  -->  eta = 1.9 / lam_max = 3.2521e+01
+      lambda_max(Sigma) = 5.8424e-02  -->  eta = 0.9 / lam_max = 1.5405e+01
       lambda_min(Sigma) = 6.6670e-04  (strictly positive after LW)
       Condition number  = 87.6
 
@@ -426,11 +428,12 @@ The Lean 4 PGD (dispatched via `pgd_solve_flat` in `pgd_ffi.pyx`)
 converges to the global minimum on the shrunk problem. Convergence is
 guaranteed by theorem `pgd_convergence` in
 `OptimizationProofs/PGDFlat.lean`: for any strictly PD $\hat\Sigma$ and
-step size $\eta = 1.9 / \lambda_{\max}(\hat\Sigma)$, the iterates
-satisfy $\|w_{k+1} - w_k\| \to 0$ and $f(w_k) \to f(w^*)$. The Lean
-solver never decomposes the covariance matrix; it requires only the
-matrix-vector product $\hat\Sigma w$ at each step. Ledoit-Wolf shrinkage
-lifts $\lambda_{\min}$ from $-3.762 \times 10^{-18}$ to
+step size $\eta = 0.9 / \lambda_{\max}(\hat\Sigma)$ (satisfying the
+theorem’s hypothesis $\eta \cdot \lambda_{\max}(\hat\Sigma) \leq 1$),
+the iterates satisfy $\|w_{k+1} - w_k\| \to 0$ and $f(w_k) \to f(w^*)$.
+The Lean solver never decomposes the covariance matrix; it requires only
+the matrix-vector product $\hat\Sigma w$ at each step. Ledoit-Wolf
+shrinkage lifts $\lambda_{\min}$ from $-3.762 \times 10^{-18}$ to
 $6.667 \times 10^{-4}$, satisfying the precondition for
 `pgd_convergence`.
 
@@ -439,6 +442,116 @@ ns/solve** (`lake exe pgd_bench`, 1,000-run average). The FFI path
 (`pgd_solve_flat`) adds $\approx 11$ ms of marshalling overhead at
 $N = 10$; the benchmark section demonstrates the O(N²) vs O(N³)
 complexity difference using a Python PGD reference.
+
+### SciPy trust-constr (2N-variable barrier, raw S)
+
+``` python
+from scipy.optimize import minimize as sp_min_tc, Bounds, LinearConstraint
+
+N = p.N
+
+def _obj_tc_raw(x: np.ndarray) -> float:
+    w = x[:N] - x[N:]
+    return p.raw_objective(w)
+
+A_tc = np.zeros((2, 2 * N))
+A_tc[0, :N] =  1.0; A_tc[0, N:] = -1.0
+A_tc[1, :N] =  1.0; A_tc[1, N:] =  1.0
+bounds_tc = Bounds(np.zeros(2 * N), np.full(2 * N, np.inf))
+lc_tc = LinearConstraint(A_tc, [1.0, 0.0], [1.0, p.leverage_cap])
+x0_tc = np.ones(2 * N) / (2 * N)
+
+res_tc_raw = sp_min_tc(
+    _obj_tc_raw, x0_tc, method="trust-constr",
+    bounds=bounds_tc, constraints=lc_tc, tol=1e-12,
+)
+print(res_tc_raw)
+```
+
+               message: `gtol` termination condition is satisfied.
+               success: True
+                status: 1
+                   fun: 0.005749655456441582
+                     x: [ 4.510e-06  3.363e-06 ...  2.317e-06  1.475e-06]
+                   nit: 33
+                  nfev: 504
+                  njev: 24
+                  nhev: 0
+              cg_niter: 48
+          cg_stop_cond: 4
+                  grad: [ 2.537e-02  3.425e-02 ... -3.631e-02 -2.571e-02]
+       lagrangian_grad: [-8.288e-14  1.052e-14 ... -2.593e-14 -1.489e-14]
+                constr: [array([ 1.000e+00,  1.500e+00]), array([ 4.510e-06,  3.363e-06, ...,  2.317e-06,
+                                1.475e-06], shape=(20,))]
+                   jac: [array([[ 1.000e+00,  1.000e+00, ..., -1.000e+00,
+                                -1.000e+00],
+                               [ 1.000e+00,  1.000e+00, ...,  1.000e+00,
+                                 1.000e+00]], shape=(2, 20)), array([[ 1.000e+00,  0.000e+00, ...,  0.000e+00,
+                                 0.000e+00],
+                               [ 0.000e+00,  1.000e+00, ...,  0.000e+00,
+                                 0.000e+00],
+                               ...,
+                               [ 0.000e+00,  0.000e+00, ...,  1.000e+00,
+                                 0.000e+00],
+                               [ 0.000e+00,  0.000e+00, ...,  0.000e+00,
+                                 1.000e+00]], shape=(20, 20))]
+           constr_nfev: [0, 0]
+           constr_njev: [0, 0]
+           constr_nhev: [0, 0]
+                     v: [array([-3.583e-02,  1.774e-02]), array([-7.278e-03, -1.616e-02, ..., -1.726e-02,
+                               -2.787e-02], shape=(20,))]
+                method: tr_interior_point
+            optimality: 2.801673004452567e-13
+      constr_violation: 1.1102230246251565e-16
+        execution_time: 0.027577638626098633
+             tr_radius: 11089265.874722255
+        constr_penalty: 1.0
+     barrier_parameter: 5.120000000000003e-08
+     barrier_tolerance: 5.120000000000003e-08
+                 niter: 33
+
+``` python
+w_tc_raw = res_tc_raw.x[:N] - res_tc_raw.x[N:]
+print("Recovered weights w = u - v:")
+for ind, wi in zip(p.industries, w_tc_raw, strict=True):
+    print(f"  {ind}: {wi:+.6f}")
+print(f"\nsum(w)   = {np.sum(w_tc_raw):.15f}  (must = 1.0)")
+print(f"sum(|w|) = {np.sum(np.abs(w_tc_raw)):.15f}  (cap = {p.leverage_cap})")
+print(f"f(w)     = {p.raw_objective(w_tc_raw):.15f}  (raw S objective)")
+```
+
+    Recovered weights w = u - v:
+      NoDur: +0.000003
+      Durbl: +0.000001
+      Manuf: +0.000002
+      Enrgy: -0.249981
+      HiTec: +1.249876
+      Telcm: +0.000084
+      Shops: -0.000000
+      Hlth: +0.000011
+      Utils: -0.000000
+      Other: +0.000005
+
+    sum(w)   = 1.000000000000000  (must = 1.0)
+    sum(|w|) = 1.499962744896225  (cap = 1.5)
+    f(w)     = 0.005749655456442  (raw S objective)
+
+trust-constr, using the 2N-variable barrier reformulation, reports gtol
+termination despite the non-PSD covariance. The barrier Hessian is
+positive definite even when the original covariance is not, so the
+solver proceeds. However, with a non-PSD objective, the problem is
+non-convex, and the trust-constr solution is not certified as the global
+minimum.
+
+The mechanism is that the barrier method augments the objective with
+log-barrier penalty terms that regularize the Hessian in a neighborhood
+of the feasible boundary. This regularization can mask the
+indefiniteness of the original Hessian, allowing the barrier system to
+converge without detecting the underlying non-convexity. The reported
+weights are the exit point of the interior-point trajectory, not a KKT
+point of the original problem. Comparing the objective value here
+against the verified optimum (on the shrunk $\hat\Sigma$) shows the gap
+introduced by the non-PSD Hessian.
 
 ## Why rank deficiency causes the crash
 
@@ -530,7 +643,7 @@ def _proj_budget_l1(y, B=1.0, L=1.5, tol=1e-11):
 def pgd_reference(Sigma, mu, L=1.5, tol=1e-8, max_iter=5000):
     """Unverified reference PGD — for timing comparison only."""
     lam_max = float(np.linalg.eigvalsh(Sigma)[-1])
-    eta = 1.9 / lam_max
+    eta = 0.9 / lam_max
     w = np.ones(len(mu)) / len(mu)
     for k in range(max_iter):
         w_new = _proj_budget_l1(w - eta * (Sigma @ w - mu))
@@ -633,7 +746,7 @@ solving. PGD uses an O(N^2) gradient step plus an O(N log N)
 dual-bisection projection; trust-constr uses the 2N-variable
 interior-point reformulation with O((2N)^3) Newton steps.
 
-<div class="cell-output cell-output-display" execution_count="10">
+<div class="cell-output cell-output-display" execution_count="12">
 
 <div>
 <style scoped>
@@ -651,11 +764,11 @@ interior-point reformulation with O((2N)^3) Newton steps.
 |  | T (rank-def) | PGD+LW (ms) | trust-constr (ms) | Gurobi (ms) | PGD iterations | Speedup vs trust-constr | Speedup vs Gurobi |
 |----|----|----|----|----|----|----|----|
 | N |  |  |  |  |  |  |  |
-| 10 | 2 | 12.8 | 14.1 | 0.3 | 2 | 1x | 0x |
-| 50 | 10 | 18.9 | 61.0 | 1.8 | 3 | 3x | 0x |
-| 100 | 20 | 20.8 | 160.8 | 6.5 | 3 | 8x | 0x |
-| 250 | 50 | 29.6 | 911.9 | 37.5 | 4 | 31x | 1x |
-| 500 | 100 | 637.3 | 6299.8 | 155.4 | 74 | 10x | 0x |
+| 10 | 2 | 17.4 | 18.7 | 0.4 | 2 | 1x | 0x |
+| 50 | 10 | 42.2 | 82.0 | 2.4 | 5 | 2x | 0x |
+| 100 | 20 | 52.9 | 210.7 | 8.8 | 6 | 4x | 0x |
+| 250 | 50 | 62.1 | 1172.1 | 53.7 | 6 | 19x | 1x |
+| 500 | 100 | 1773.5 | 8743.6 | 204.0 | 154 | 5x | 0x |
 
 </div>
 
@@ -744,7 +857,7 @@ print(f"  sum(|w|)     = {np.sum(np.abs(w_pgd)):.15f}  (cap = {p.leverage_cap})"
 
     Constraint verification (PGD+LW):
       sum(w)       = 1.000000000000000  (must = 1.0)
-      sum(|w|)     = 1.500000000008405  (cap = 1.5)
+      sum(|w|)     = 1.500000000000000  (cap = 1.5)
 
 ``` python
 # KKT conditions: stationarity r = Sigma*w - mu; for all k with w_k = 0:

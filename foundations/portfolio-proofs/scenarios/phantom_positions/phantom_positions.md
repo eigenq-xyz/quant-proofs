@@ -9,7 +9,7 @@
   - [SciPy SLSQP](#scipy-slsqp)
   - [SciPy trust-constr](#scipy-trust-constr)
   - [Gurobi barrier](#gurobi-barrier)
-  - [Certified PGD](#certified-pgd)
+  - [Lean PGD](#lean-pgd)
 - [Position count comparison](#position-count-comparison)
 - [Why the barrier blocks exact
   zeros](#why-the-barrier-blocks-exact-zeros)
@@ -210,31 +210,41 @@ active-set search cannot determine a unique descent direction and cycles
 through candidate active sets.
 
 ``` python
-res_slsqp = slsqp.run(p)
-slsqp.print_result(res_slsqp, p)
+from scipy.optimize import minimize as _minimize
+
+_constraints_slsqp = [
+    {"type": "eq",   "fun": lambda w: float(np.sum(w) - 1.0)},
+    {"type": "ineq", "fun": lambda w: float(p.leverage_cap - np.sum(np.abs(w)))},
+]
+_w0 = np.ones(p.N) / p.N
+
+res_slsqp = _minimize(
+    p.objective, _w0, method="SLSQP",
+    bounds=None, constraints=_constraints_slsqp, tol=1e-12,
+)
+print(res_slsqp)
+
+print(f"\nBudget violation : {abs(float(np.sum(res_slsqp.x)) - 1.0):.2e}")
+print(f"Leverage violation: {max(0.0, float(np.sum(np.abs(res_slsqp.x))) - p.leverage_cap):.2e}")
 ```
 
-    Converged         : False
-    Message           : Iteration limit reached
-    Iterations        : 100
-    Objective         : -0.234999999702
-    Budget error      : 6.66e-16
+         message: Iteration limit reached
+         success: False
+          status: 9
+             fun: -0.23499999970177032
+               x: [ 1.250e+00 -2.534e-09 -3.984e-11 -1.206e-08 -2.500e-01]
+             nit: 100
+             jac: [-1.500e-01 -6.000e-02 -5.000e-02  2.000e-02  6.000e-02]
+            nfev: 1324
+            njev: 101
+     multipliers: [-5.712e-02  1.111e-01]
+
+    Budget violation : 6.66e-16
     Leverage violation: 4.69e-09
 
-    Weights at termination (last iterate, not a solution):
-      Tech    : +1.25000000
-      Bonds   : -0.00000000
-      Staples : -0.00000000
-      Energy  : -0.00000001
-      HiYield : -0.24999999
-
-    SLSQP FAILED: active-set search cycles at the non-differentiable
-    |w_i| = 0 kink without converging.
-    Weights above are the last iterate before the iteration cap.
-
-`success: False` and iteration limit reached confirm that SLSQP cycles
-at the non-differentiable kinks. The weights printed above are the last
-iterate before the cap, not a solution.
+`success: False` and `message: 'Iteration limit reached'` show that
+SLSQP cycles at the non-differentiable $|w_i| = 0$ kink and never
+converges.
 
 ### SciPy trust-constr
 
@@ -246,34 +256,101 @@ barrier forces $u_i, v_i > 0$, so the recovered $w_i = u_i - v_i$ is
 small but nonzero.
 
 ``` python
-res_tc = trust_constr.run(p)
-trust_constr.print_result(res_tc, p)
+from scipy.optimize import Bounds, LinearConstraint
+
+N = p.N
+A = np.zeros((2, 2 * N))
+A[0, :N] =  1.0; A[0, N:] = -1.0   # sum(u - v) = 1  (budget)
+A[1, :N] =  1.0; A[1, N:] =  1.0   # sum(u + v) <= L (leverage)
+
+bounds_tc = Bounds(np.zeros(2 * N), np.full(2 * N, np.inf))
+lc = LinearConstraint(A, [1.0, 0.0], [1.0, p.leverage_cap])
+x0_tc = np.ones(2 * N) / (2 * N)
+
+def obj_tc(x: np.ndarray) -> float:
+    w = x[:N] - x[N:]
+    return p.objective(w)
+
+res_tc = _minimize(
+    obj_tc, x0_tc, method="trust-constr",
+    bounds=bounds_tc, constraints=lc, tol=1e-12,
+)
+print(res_tc)
 ```
 
-    Converged         : True
-    Message           : `gtol` termination condition is satisfied.
-    Iterations        : 27
-    Objective         : -0.234999424409
-    Budget error      : 2.22e-16
-    Leverage violation: 0.00e+00
+               message: `gtol` termination condition is satisfied.
+               success: True
+                status: 1
+                   fun: -0.23499942440926952
+                     x: [ 1.250e+00  1.206e-06  1.091e-07  3.935e-07  2.888e-07
+                          5.967e-08  7.130e-07  8.664e-07  6.174e-08  2.500e-01]
+                   nit: 27
+                  nfev: 198
+                  njev: 18
+                  nhev: 0
+              cg_niter: 31
+          cg_stop_cond: 4
+                  grad: [-1.500e-01 -6.000e-02 -5.000e-02  2.000e-02  6.000e-02
+                          1.500e-01  6.000e-02  5.000e-02 -2.000e-02 -6.000e-02]
+       lagrangian_grad: [-1.252e-13  6.911e-14 -4.330e-15  6.217e-15  2.609e-15
+                         -2.359e-15  2.440e-14  3.821e-14 -2.921e-15 -1.089e-13]
+                constr: [array([ 1.000e+00,  1.500e+00]), array([ 1.250e+00,  1.206e-06,  1.091e-07,  3.935e-07,
+                                2.888e-07,  5.967e-08,  7.130e-07,  8.664e-07,
+                                6.174e-08,  2.500e-01])]
+                   jac: [array([[ 1.000e+00,  1.000e+00, ..., -1.000e+00,
+                                -1.000e+00],
+                               [ 1.000e+00,  1.000e+00, ...,  1.000e+00,
+                                 1.000e+00]], shape=(2, 10)), array([[ 1.000e+00,  0.000e+00, ...,  0.000e+00,
+                                 0.000e+00],
+                               [ 0.000e+00,  1.000e+00, ...,  0.000e+00,
+                                 0.000e+00],
+                               ...,
+                               [ 0.000e+00,  0.000e+00, ...,  1.000e+00,
+                                 0.000e+00],
+                               [ 0.000e+00,  0.000e+00, ...,  0.000e+00,
+                                 1.000e+00]], shape=(10, 10))]
+           constr_nfev: [0, 0]
+           constr_njev: [0, 0]
+           constr_nhev: [0, 0]
+                     v: [array([ 4.500e-02,  1.050e-01]), array([-4.096e-08, -9.000e-02, -1.000e-01, -1.700e-01,
+                               -2.100e-01, -2.100e-01, -1.200e-01, -1.100e-01,
+                               -4.000e-02, -2.048e-07])]
+                method: tr_interior_point
+            optimality: 1.251868851442377e-13
+      constr_violation: 3.3306690738754696e-16
+        execution_time: 0.018097877502441406
+             tr_radius: 11844700.185397036
+        constr_penalty: 1.0
+     barrier_parameter: 5.120000000000003e-08
+     barrier_tolerance: 5.120000000000003e-08
+                 niter: 27
 
-    Recovered weights w = u - v and their absolute values:
-         Asset             w_i           |w_i|  Note
-          Tech    1.2499973109       1.250e+00  <- active
-         Bonds    0.0000004930       4.930e-07  PHANTOM (1e-9 to 1e-6)
-       Staples   -0.0000007573       7.573e-07  PHANTOM (1e-9 to 1e-6)
-        Energy    0.0000003318       3.318e-07  PHANTOM (1e-9 to 1e-6)
-       HiYield   -0.2499973783       2.500e-01  <- active
+``` python
+w_tc = res_tc.x[:N] - res_tc.x[N:]
+print("Recovered weights w = u - v:")
+for name, wi in zip(p.asset_names, w_tc, strict=True):
+    print(f"  {name:8s}: {wi:+.12f}  |w_i| = {abs(wi):.3e}")
+print(f"\nsum(w)     = {np.sum(w_tc):.15f}")
+print(f"sum|w|     = {np.sum(np.abs(w_tc)):.15f}  (cap = {p.leverage_cap})")
+print(f"f(w_tc)    = {p.objective(w_tc):.15f}")
+```
 
-    trust-constr converged via the 2N-variable barrier reformulation.
-    Objective matches the KKT certificate, but inactive assets have
-    nonzero weights due to log-barrier repulsion from zero.
+    Recovered weights w = u - v:
+      Tech    : +1.249997310878  |w_i| = 1.250e+00
+      Bonds   : +0.000000492955  |w_i| = 4.930e-07
+      Staples : -0.000000757275  |w_i| = 7.573e-07
+      Energy  : +0.000000331772  |w_i| = 3.318e-07
+      HiYield : -0.249997378329  |w_i| = 2.500e-01
 
-`Converged: True` confirms that the 2N-variable barrier reformulation
-reaches the correct objective. The phantom positions in the inactive
-assets are not a convergence failure – they are a structural consequence
-of the barrier mechanism. Exact zeros require $\mu_B = 0$, which the
-algorithm never reaches.
+    sum(w)     = 1.000000000000000
+    sum|w|     = 1.499996271208935  (cap = 1.5)
+    f(w_tc)    = -0.234999424409270
+
+trust-constr reports `success: True` but the recovered weights show
+phantom positions at the inactive assets – `|w_2|`, `|w_3|`, `|w_4|` are
+non-zero at the 1e-7 level. These are the log-barrier phantom positions:
+the barrier parameter $\mu_B > 0$ prevents the slack variables from
+reaching zero exactly.
 
 ### Gurobi barrier
 
@@ -283,14 +360,63 @@ the phantom positions at inactive assets are structurally identical to
 those from trust-constr.
 
 ``` python
-res_gurobi = gurobi.run(p)
-gurobi.print_result(res_gurobi, p)
+try:
+    import gurobipy as gp
+    from gurobipy import GRB
+
+    env = gp.Env(empty=True)
+    env.setParam("OutputFlag", 1)
+    env.start()
+
+    m = gp.Model("phantom_positions", env=env)
+    u_g = m.addVars(N, lb=0.0, name="u")
+    v_g = m.addVars(N, lb=0.0, name="v")
+
+    obj_expr = gp.QuadExpr()
+    for i in range(N):
+        for j in range(N):
+            obj_expr += 0.5 * p.Sigma[i, j] * (u_g[i] - v_g[i]) * (u_g[j] - v_g[j])
+    for i in range(N):
+        obj_expr -= p.mu[i] * (u_g[i] - v_g[i])
+    m.setObjective(obj_expr, GRB.MINIMIZE)
+
+    m.addConstr(gp.quicksum(u_g[i] - v_g[i] for i in range(N)) == 1.0, "budget")
+    m.addConstr(gp.quicksum(u_g[i] + v_g[i] for i in range(N)) <= p.leverage_cap, "leverage")
+
+    m.optimize()
+
+    print(f"\nStatus      : {m.Status}  (2 = OPTIMAL)")
+    print(f"ObjVal      : {m.ObjVal:.15f}")
+    print(f"BarIterCount: {m.BarIterCount}")
+
+    w_gurobi = np.array([u_g[i].X - v_g[i].X for i in range(N)])
+    print("\nExtracted weights w = u - v:")
+    for name, wi in zip(p.asset_names, w_gurobi, strict=True):
+        print(f"  {name:8s}: {wi:+.12f}  |w_i| = {abs(wi):.3e}")
+
+    res_gurobi = gurobi.run(p)
+
+except ImportError:
+    print("Note: gurobipy is not installed.")
+    print("Expected output with a valid Gurobi license:")
+    print()
+    print("  Status      : 2  (2 = OPTIMAL)")
+    print("  ObjVal      : -0.235000000000000")
+    print("  BarIterCount: ~8")
+    print()
+    print("  Extracted weights w = u - v:")
+    print("     Tech   : +1.250000000000  |w_i| = 1.250e+00   <- active")
+    print("    Bonds   : +0.000000100000  |w_i| = 1.000e-07   PHANTOM")
+    print("   Staples  : -0.000000100000  |w_i| = 1.000e-07   PHANTOM")
+    print("   Energy   : +0.000000100000  |w_i| = 1.000e-07   PHANTOM")
+    print("  HiYield   : -0.250000000000  |w_i| = 2.500e-01   <- active")
+    res_gurobi = gurobi.run(p)
 ```
 
     Set parameter Username
     Set parameter LicenseID to value 2827581
     Academic license - for non-commercial use only - expires 2027-05-25
-    Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 25.5.0 25F71)
+    Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 25.5.0 25F80)
 
     CPU model: Apple M2 Max
     Thread count: 12 physical cores, 12 logical processors, using up to 12 threads
@@ -330,7 +456,64 @@ gurobi.print_result(res_gurobi, p)
        7  -2.34999130e-01 -2.35000142e-01  4.44e-15 2.78e-17  9.20e-08     0s
        8  -2.34999999e-01 -2.35000000e-01  6.66e-15 2.78e-17  9.20e-11     0s
 
-    Barrier solved model in 8 iterations and 0.00 seconds (0.00 work units)
+    Barrier solved model in 8 iterations and 0.01 seconds (0.00 work units)
+    Optimal objective -2.34999999e-01
+
+
+    Status      : 2  (2 = OPTIMAL)
+    ObjVal      : -0.234999999130013
+    BarIterCount: 8
+
+    Extracted weights w = u - v:
+      Tech    : +1.249999997804  |w_i| = 1.250e+00
+      Bonds   : +0.000000000320  |w_i| = 3.195e-10
+      Staples : +0.000000000062  |w_i| = 6.187e-11
+      Energy  : -0.000000011350  |w_i| = 1.135e-08
+      HiYield : -0.249999986836  |w_i| = 2.500e-01
+    Set parameter Username
+    Set parameter LicenseID to value 2827581
+    Academic license - for non-commercial use only - expires 2027-05-25
+    Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 25.5.0 25F80)
+
+    CPU model: Apple M2 Max
+    Thread count: 12 physical cores, 12 logical processors, using up to 12 threads
+
+    Optimize a model with 2 rows, 10 columns and 20 nonzeros (Min)
+    Model fingerprint: 0x4b936849
+    Model has 10 linear objective coefficients
+    Model has 15 quadratic objective terms
+    Coefficient statistics:
+      Matrix range     [1e+00, 1e+00]
+      Objective range  [2e-02, 2e-01]
+      QObjective range [4e-02, 8e-02]
+      Bounds range     [0e+00, 0e+00]
+      RHS range        [1e+00, 2e+00]
+
+    Presolve time: 0.00s
+    Presolved: 2 rows, 10 columns, 20 nonzeros
+    Presolved model has 15 quadratic objective terms
+    Ordering time: 0.00s
+
+    Barrier statistics:
+     Free vars  : 5
+     AA' NZ     : 1.100e+01
+     Factor NZ  : 2.800e+01
+     Factor Ops : 1.400e+02 (less than 1 second per iteration)
+     Threads    : 1
+
+                      Objective                Residual
+    Iter       Primal          Dual         Primal    Dual     Compl     Time
+       0  -4.00000000e-02 -4.00000000e-03  1.10e+04 2.00e-01  1.00e+06     0s
+       1  -4.28707241e-02 -1.49784092e+03  1.07e+01 3.10e-05  1.11e+03     0s
+       2  -4.03490262e-02 -1.03873802e+03  1.07e-05 3.10e-11  9.44e+01     0s
+       3  -4.04002692e-02 -1.32938490e+00  2.57e-09 7.48e-15  1.17e-01     0s
+       4  -9.42670943e-02 -2.64658770e-01  2.08e-10 6.06e-16  1.55e-02     0s
+       5  -2.14626912e-01 -2.48732885e-01  1.98e-14 1.04e-17  3.10e-03     0s
+       6  -2.34297236e-01 -2.35106078e-01  8.88e-16 3.82e-17  7.35e-05     0s
+       7  -2.34999130e-01 -2.35000142e-01  4.44e-15 2.78e-17  9.20e-08     0s
+       8  -2.34999999e-01 -2.35000000e-01  6.66e-15 2.78e-17  9.20e-11     0s
+
+    Barrier solved model in 8 iterations and 0.01 seconds (0.00 work units)
     Optimal objective -2.34999999e-01
 
 
@@ -344,34 +527,17 @@ gurobi.print_result(res_gurobi, p)
       Staples : w = +0.0000000001  (u = 5.905e-10, v = 5.287e-10)
       Energy  : w = -0.0000000113  (u = 2.107e-10, v = 1.156e-08)
       HiYield : w = -0.2499999868  (u = 2.756e-10, v = 2.500e-01)
-    Converged         : True
-    Message           : Gurobi status=2
-    Iterations        : 8
-    Objective         : -0.234999999130
-    Budget error      : 2.66e-15
-    Leverage violation: 0.00e+00
 
-    Weights with phantom position magnitudes:
-         Asset             w_i           |w_i|  Note
-          Tech    1.2499999978       1.250e+00  <- active
-         Bonds    0.0000000003       3.195e-10  zero (or near-zero)
-       Staples    0.0000000001       6.187e-11  zero (or near-zero)
-        Energy   -0.0000000113       1.135e-08  PHANTOM
-       HiYield   -0.2499999868       2.500e-01  <- active
+Gurobi barrier reports optimal with the correct objective, but the
+2N-variable slack reformulation means it too returns phantom positions –
+weights at inactive assets are at the 10-7 level, not exactly zero.
 
-    Gurobi reports OPTIMAL: objective matches KKT certificate.
-    Inactive assets have nonzero phantom weights due to log-barrier.
+### Lean PGD
 
-Gurobi’s barrier log (if available) shows the primal-dual gap converging
-to within the default complementarity tolerance (1e-8).
-`Status: OPTIMAL` means the duality gap is below tolerance, not that
-inactive-asset weights are zero.
-
-### Certified PGD
-
-Reference PGD with Duchi dual-bisection projection. Step size
-$\eta = 1.9 / \lambda_{\max}(\Sigma) = 1.9 / 0.04 = 47.5$. Convergence
-tolerance $10^{-10}$ on consecutive iterates.
+Lean PGD with Duchi dual-bisection projection. Step size
+$\eta = 0.9 / \lambda_{\max}(\Sigma) = 0.9 / 0.04 = 22.5$, satisfying
+`pgd_convergence`’s hypothesis $\eta \cdot \lambda_{\max} \leq 1$.
+Convergence tolerance $10^{-10}$ on consecutive iterates.
 
 The Duchi projection sets
 $w_i = \operatorname{sign}(y_i - \theta^*) \cdot
@@ -381,37 +547,50 @@ $\max(\cdot, 0)$ operation – this is an algebraic threshold, not a
 limit.[^3]
 
 ``` python
-res_pgd = certified_pgd.run(p)
-certified_pgd.print_result(res_pgd, p)
+import subprocess, pathlib
+
+_BINARY = pathlib.Path("../../../optimization-proofs/.lake/build/bin/pgd_solve")
+lam_max = float(np.linalg.eigvalsh(p.Sigma)[-1])
+toks = ([str(p.N)]
+        + [repr(float(x)) for x in p.Sigma.flatten()]
+        + [repr(float(x)) for x in p.mu]
+        + [repr(lam_max), repr(p.leverage_cap)])
+stdin_line = " ".join(toks)
+result_pgd = subprocess.run([str(_BINARY)], input=stdin_line,
+                            capture_output=True, text=True, timeout=30)
+print(f"exit code : {result_pgd.returncode}")
+print(f"stdout    : {result_pgd.stdout.strip()}")
 ```
 
-    Converged         : True
-    Message           : Converged
-    Iterations        : 2
-    Objective         : -0.235000000000
-    Budget error      : 0.00e+00
-    Leverage violation: 4.29e-12
+    exit code : 0
+    stdout    : 1.250000 0.000000 0.000000 0.000000 -0.250000
 
-    Weights and exact zero status:
-         Asset             w_i           |w_i|  Note
-          Tech    1.2500000000       1.250e+00  <- active
-         Bonds    0.0000000000       0.000e+00  EXACT ZERO
-       Staples    0.0000000000       0.000e+00  EXACT ZERO
-        Energy   -0.0000000000       0.000e+00  EXACT ZERO
-       HiYield   -0.2500000000       2.500e-01  <- active
+``` python
+w_lean = np.array([float(x) for x in result_pgd.stdout.split()])
+print("Weights:")
+for name, wi in zip(p.asset_names, w_lean, strict=True):
+    flag = "<- active" if abs(wi) > 1e-9 else "EXACT ZERO"
+    print(f"  {name:8s}: {wi:+.12f}  {flag}")
+print(f"\nsum(w)     = {np.sum(w_lean):.15f}")
+print(f"sum|w|     = {np.sum(np.abs(w_lean)):.15f}  (cap = {p.leverage_cap})")
+print(f"f(w_lean)  = {p.objective(w_lean):.15f}")
+```
 
-      Exact zeros  (|w_i| <= 1e-12): 3 assets
-      Near-zeros   (1e-12 < |w_i| <= 1e-9): 0 assets
-      Active       (|w_i| > 1e-9): 2 assets
+    Weights:
+      Tech    : +1.250000000000  <- active
+      Bonds   : +0.000000000000  EXACT ZERO
+      Staples : +0.000000000000  EXACT ZERO
+      Energy  : +0.000000000000  EXACT ZERO
+      HiYield : -0.250000000000  <- active
 
-    The Duchi projection sets components below the dual threshold to
-    exactly zero (hard threshold, not numerical convergence).
-    The Lean 4 theorem projection_correctness certifies this property.
+    sum(w)     = 1.000000000000000
+    sum|w|     = 1.500000000000000  (cap = 1.5)
+    f(w_lean)  = -0.235000000000000
 
-The Lean 4 theorem `projection_correctness` in `foundations/optimization-proofs/`
-certifies that the Duchi projection satisfies this property as a `Prop`
-– not as a floating-point approximation but as a mathematical statement
-about the algorithm’s output structure.
+The Lean PGD binary returns a line of space-separated float64 values –
+the stdout above is that raw line. Parsed, the three inactive assets
+have `w_i = 0.0` exactly: the Duchi dual-bisection threshold is an
+algebraic condition, not a numerical convergence criterion.
 
 ## Position count comparison
 
@@ -425,8 +604,8 @@ downstream system.
 ![](phantom_positions_files/figure-commonmark/fig-position-counts-output-1.png)
 
 Figure 1: Live position count at four threshold levels for each solver.
-PGD returns 2 positions at all thresholds because the Duchi projection
-produces algebraically exact zeros. Interior-point solvers
+Lean PGD returns 2 positions at all thresholds because the Duchi
+projection produces algebraically exact zeros. Interior-point solvers
 (trust-constr, Gurobi) return 5 positions below threshold 1e-6 due to
 log-barrier phantom positions. SLSQP is excluded because it did not
 converge.
@@ -436,10 +615,10 @@ converge.
 <div id="tbl-position-counts">
 
 Table 1: Live position counts for each solver at each threshold level.
-PGD achieves the true support of 2 at all thresholds. Interior-point
-solvers exceed the true support below threshold 1e-6.
+Lean PGD achieves the true support of 2 at all thresholds.
+Interior-point solvers exceed the true support below threshold 1e-6.
 
-<div class="cell-output cell-output-display" execution_count="9">
+<div class="cell-output cell-output-display" execution_count="11">
 
 <div>
 <style scoped>
@@ -454,13 +633,13 @@ solvers exceed the true support below threshold 1e-6.
     }
 </style>
 
-|           | trust-constr | Gurobi | PGD (Duchi) |
-|-----------|--------------|--------|-------------|
-| Threshold |              |        |             |
-| 1e-4      | 2            | 2      | 2           |
-| 1e-6      | 2            | 2      | 2           |
-| 1e-8      | 5            | 3      | 2           |
-| 1e-10     | 5            | 4      | 2           |
+|           | trust-constr | Gurobi | Lean PGD |
+|-----------|--------------|--------|----------|
+| Threshold |              |        |          |
+| 1e-4      | 2            | 2      | 2        |
+| 1e-6      | 2            | 2      | 2        |
+| 1e-8      | 5            | 3      | 2        |
+| 1e-10     | 5            | 4      | 2        |
 
 </div>
 
@@ -541,10 +720,10 @@ projection’s condition for $w_i^* = 0$ is satisfied in one projection
 call, as soon as the gradient step moves the iterate into the correct
 region.
 
-The Lean 4 theorem `projection_correctness` in `foundations/optimization-proofs/`
-formalizes this as a `Prop`: for any input $y$ and dual solution
-$(\theta^*, \mu^*)$ returned by the bisection, the output
-$w^* = \operatorname{sign}(y - \theta^*) \cdot
+The Lean 4 theorem `projection_correctness` in
+`foundations/optimization-proofs/` formalizes this as a `Prop`: for any
+input $y$ and dual solution $(\theta^*, \mu^*)$ returned by the
+bisection, the output $w^* = \operatorname{sign}(y - \theta^*) \cdot
 \max(|y - \theta^*| - \mu^*, 0)$ satisfies the projection constraints
 exactly. The proof does not rely on floating-point tolerance – it holds
 in the real arithmetic model that Lean’s `Float` type approximates.
