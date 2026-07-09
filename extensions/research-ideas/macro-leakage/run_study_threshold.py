@@ -333,10 +333,10 @@ def run() -> dict[str, object]:
 
     out: dict[str, object] = {
         "_meta": {
-            "generated_by": "research-pipeline/studies/macro-leakage/run_study_threshold.py",
+            "generated_by": "extensions/research-ideas/macro-leakage/run_study_threshold.py",
             "generated_at": datetime.now(UTC).isoformat(),
             "reproduce": (
-                "cd research-pipeline/studies/macro-leakage && python3.12 run_study_threshold.py"
+                "cd extensions/research-ideas/macro-leakage && python3.12 run_study_threshold.py"
             ),
             "verified": False,
             "notes": "Data-revision leakage-tax cell, threshold signal (isolates signal functional form as the binding variable); empirical study, not routed through the verified backtester.",

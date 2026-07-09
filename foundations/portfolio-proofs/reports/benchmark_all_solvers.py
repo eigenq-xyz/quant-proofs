@@ -470,12 +470,12 @@ def bench_step_divergence(lean_solve: Callable[..., Any]) -> list[TimingRow]:
             "interior-point unaffected by step-size",
         ),
         ("Gurobi", gurobi, "run", ""),
-        ("GD fixed η", gd_fixed, "run", "diverges; η_cal=5334 > bound=841"),
+        ("GD fixed η", gd_fixed, "run", "diverges; η_cal=5334 > bound=420"),
         (
             "PGD adaptive",
             pgd_adaptive,
             "run",
-            "η = 1.9/λ_max(Σ_shock) = 799; certified",
+            "η = 0.9/λ_max(Σ_shock) = 378; certified",
         ),
     ]:
         try:
@@ -515,7 +515,7 @@ def bench_step_divergence(lean_solve: Callable[..., Any]) -> list[TimingRow]:
                 min_ms=round(mn, 2),
                 max_ms=round(mx, 2),
                 converged=True,
-                notes="certified η = 1.9/λ_max(Σ_shock); subprocess",
+                notes="certified η = 0.9/λ_max(Σ_shock); subprocess",
             )
         )
     except Exception as exc:
@@ -553,13 +553,13 @@ def bench_vix_shock(lean_solve: Callable[..., Any]) -> list[TimingRow]:
             "GD uncertified",
             uncertified_gd,
             "run",
-            "η=47.5 > bound=12.5; oscillates",
+            "η=47.5 > bound=6.25; oscillates",
         ),
         (
             "Lean PGD cert.",
             certified_pgd,
             "run",
-            "η=11.875 < 12.5; certified stable",
+            "η=5.625 <= 6.25; certified stable",
         ),
     ]:
         try:

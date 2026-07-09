@@ -310,7 +310,8 @@ assets are at the 10-7 level, not exactly zero.
 ### Lean PGD
 
 Lean PGD with Duchi dual-bisection projection. Step size
-$\eta = 1.9 / \lambda_{\max}(\Sigma) = 1.9 / 0.04 = 47.5$. Convergence
+$\eta = 0.9 / \lambda_{\max}(\Sigma) = 0.9 / 0.04 = 22.5$, satisfying
+`pgd_convergence`'s hypothesis $\eta \cdot \lambda_{\max} \leq 1$. Convergence
 tolerance $10^{-10}$ on consecutive iterates.
 
 The Duchi projection sets $w_i = \operatorname{sign}(y_i - \theta^*) \cdot

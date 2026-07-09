@@ -1,7 +1,7 @@
 {
   "_meta": {
     "generated_by": "foundations/portfolio-proofs/reports/regenerate_lean_pgd.py",
-    "generated_at": "2026-07-09T13:26:11.224912+00:00",
+    "generated_at": "2026-07-09T15:14:46.136700+00:00",
     "reproduce": "cd foundations/portfolio-proofs && python reports/regenerate_lean_pgd.py",
     "verified": false,
     "notes": "Warm-subprocess median solve latency for the verified Lean PGD solver alone (12 reps); the benchmark harness is not formally verified, the solve it times is."
@@ -67,7 +67,7 @@
       "Lean PGD": {
         "converged": true,
         "obj": null,
-        "note": "pgd_solve subprocess  (eta = 1.9 / 5.8424e-02;  native: 13.834 ns/solve)"
+        "note": "pgd_solve subprocess  (eta = 0.9 / 5.8424e-02;  native: 13.834 ns/solve)"
       }
     }
   },
@@ -98,7 +98,7 @@
         "converged": true,
         "leverage_violation": 0.0,
         "above_halt": false,
-        "note": "pgd_solve_flat via FFI  (eta = 1.9 / 7.5424e-03;  native: 13.834 ns/solve at N=10)"
+        "note": "pgd_solve_flat via FFI  (eta = 0.9 / 7.5424e-03;  native: 13.834 ns/solve at N=10)"
       }
     }
   },
@@ -115,7 +115,7 @@
       "Lean PGD": {
         "converged": true,
         "obj": 0.0044,
-        "note": "pgd_solve subprocess  (eta = 1.9 / 0.002378;  native: 13.834 ns/solve)"
+        "note": "pgd_solve subprocess  (eta = 0.9 / 0.002378;  native: 13.834 ns/solve)"
       }
     }
   },
@@ -161,7 +161,7 @@
         "gap_pct": 0.0,
         "pos_1e9": 2,
         "phantom_mag": 0.0,
-        "note": "Lean 4 pgdFlat via subprocess  (eta = 1.9 / 4.0000e-02 = 47.5000)"
+        "note": "Lean 4 pgdFlat via subprocess  (eta = 0.9 / 4.0000e-02 = 22.5000)"
       }
     }
   },
@@ -195,7 +195,7 @@
         "converged": true,
         "obj": -0.088958,
         "dist_to_wstar": 5.77e-07,
-        "note": "Lean 4 pgdFlat via subprocess  (eta = 1.9 / 0.1600 = 11.8750  < 2/lambda_max = 12.5000)"
+        "note": "Lean 4 pgdFlat via subprocess  (eta = 0.9 / 0.1600 = 5.6250  <= 1/lambda_max = 6.2500)"
       }
     }
   },

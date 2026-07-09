@@ -183,8 +183,8 @@ def run_window(w: WindowData) -> WindowResult:
     3. Subtract from w_bp, then project onto the integer feasible set.
     4. Convert back to float64 to check convergence.
 
-    The step size eta = 1.9 / lambda_max(Sigma) satisfies the descent
-    condition for the float64 quadratic objective.
+    The step size eta = 0.9 / lambda_max(Sigma) satisfies the descent
+    condition (eta * lambda_max <= 1) for the float64 quadratic objective.
 
     Parameters
     ----------
@@ -198,7 +198,7 @@ def run_window(w: WindowData) -> WindowResult:
         ``leverage_violation`` are both exactly 0.0 for all feasible problems.
     """
     lam_max = float(np.linalg.eigvalsh(w.Sigma)[-1])
-    eta = 1.9 / lam_max  # step size < 2 / lambda_max guarantees descent
+    eta = 0.9 / lam_max  # step size <= 1 / lambda_max guarantees descent
 
     # Initialise at equal-weight portfolio (integer bp).
     w_bp = np.array([BUDGET_BP // w.N] * w.N, dtype=int)

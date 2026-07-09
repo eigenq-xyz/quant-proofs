@@ -119,7 +119,7 @@ def run_pgd(
 ) -> tuple[np.ndarray, int]:
     """Run PGD to convergence (or max_iter) and return (weights, n_iterations)."""
     lam_max = float(np.linalg.eigvalsh(p.Sigma)[-1])
-    eta = 1.9 / lam_max
+    eta = 0.9 / lam_max
     w = np.ones(p.N) / p.N
     for k in range(max_iter):
         if use_factor_gradient:
@@ -147,7 +147,7 @@ def benchmark(p: ProblemData, reps: int = 5) -> BenchmarkResult:
     dependence of the total iteration count.
     """
     lam_max = float(np.linalg.eigvalsh(p.Sigma)[-1])
-    eta = 1.9 / lam_max
+    eta = 0.9 / lam_max
     times: list[float] = []
     w_final = np.zeros(p.N)
     for _ in range(reps):

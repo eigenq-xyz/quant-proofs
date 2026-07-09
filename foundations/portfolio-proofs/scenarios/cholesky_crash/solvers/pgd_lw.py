@@ -1,9 +1,9 @@
 """PGD + Ledoit-Wolf solver for the cholesky-crash scenario.
 
 Delegates to the formally verified Lean 4 PGD via the pgd_ffi Cython
-extension.  The Lean implementation enforces ``eta = 1.9 / lambda_max``
+extension.  The Lean implementation enforces ``eta = 0.9 / lambda_max``
 internally, so convergence is guaranteed by theorem ``pgd_convergence`` in
-``OptimizationProofs/PGDFlat.lean``.
+``OptimizationProofs/PGDFlat.lean`` (hypothesis: ``eta * lambda_max <= 1``).
 
 The solver uses ``p.Sigma`` (LW-shrunk, PSD) throughout.  The raw ``S`` is
 never passed to any solver.  Because the Lean PGD only requires matrix-vector
@@ -130,7 +130,7 @@ def run(p: ProblemData) -> SolverResult:
     """Run the Lean 4 PGD on the LW-shrunk Sigma via FFI.
 
     Delegates to ``lean_pgd.solve(p.Sigma, p.mu, p.leverage_cap)``.
-    The Lean solver uses ``eta = 1.9 / lambda_max(Sigma)`` internally;
+    The Lean solver uses ``eta = 0.9 / lambda_max(Sigma)`` internally;
     convergence is guaranteed by theorem ``pgd_convergence``.
 
     Parameters
@@ -143,7 +143,7 @@ def run(p: ProblemData) -> SolverResult:
     -------
     SolverResult
         ``converged=True``.  The Lean solver always converges when Sigma is
-        PD and ``eta < 2 / lambda_max``.
+        PD and ``eta * lambda_max <= 1``.
     """
     w, lam_max = _lean_pgd_solve(p.Sigma, p.mu, p.leverage_cap)
 
@@ -156,7 +156,7 @@ def run(p: ProblemData) -> SolverResult:
         converged=True,
         message=(
             f"pgd_solve subprocess  "
-            f"(eta = 1.9 / {lam_max:.4e};  "
+            f"(eta = 0.9 / {lam_max:.4e};  "
             f"native: {LEAN_NATIVE_NS:.3f} ns/solve)"
         ),
         objective=obj_val,
@@ -200,9 +200,9 @@ def print_result(result: SolverResult, p: ProblemData) -> None:
     print()
     lam_max = float(np.linalg.eigvalsh(p.Sigma)[-1])
     lam_min = float(np.linalg.eigvalsh(p.Sigma)[0])
-    eta = 1.9 / lam_max
+    eta = 0.9 / lam_max
     print(
-        f"  lambda_max(Sigma) = {lam_max:.4e}  -->  eta = 1.9 / lam_max = {eta:.4e}"
+        f"  lambda_max(Sigma) = {lam_max:.4e}  -->  eta = 0.9 / lam_max = {eta:.4e}"
     )
     print(f"  lambda_min(Sigma) = {lam_min:.4e}  (strictly positive after LW)")
     print(f"  Condition number  = {lam_max / lam_min:.1f}")

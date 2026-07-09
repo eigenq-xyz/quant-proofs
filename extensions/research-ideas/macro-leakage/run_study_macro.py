@@ -460,10 +460,10 @@ def run() -> dict[str, object]:
 
     out: dict[str, object] = {
         "_meta": {
-            "generated_by": "research-pipeline/studies/macro-leakage/run_study_macro.py",
+            "generated_by": "extensions/research-ideas/macro-leakage/run_study_macro.py",
             "generated_at": datetime.now(UTC).isoformat(),
             "reproduce": (
-                "cd research-pipeline/studies/macro-leakage && "
+                "cd extensions/research-ideas/macro-leakage && "
                 "source ~/.config/eigenq/fred.env && python3.12 run_study_macro.py"
             ),
             "verified": False,

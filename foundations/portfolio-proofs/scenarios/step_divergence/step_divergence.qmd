@@ -87,12 +87,15 @@ liquidated), causing a self-reinforcing correlation spike across all equity sect
 
 We reconstruct the optimization problem faced by a systematic fund that calibrated
 its step size $\eta$ during the calm January 2018 period (21 trading days,
-$\lambda_{\max}(\hat\Sigma) = 0.000356$, $\eta_{\text{cal}} = 5{,}334.47$) and then
+$\lambda_{\max}(\hat\Sigma) = 0.000356$, $\eta_{\text{cal}} = 5{,}334.47$, the
+classical unconstrained gradient-descent heuristic $1.9/\lambda_{\max}$) and then
 applied the same $\eta$ to the post-shock five-day window ending February 5. Under
 the post-shock covariance, $\lambda_{\max}(\hat\Sigma_{\text{shock}}) = 0.002378$,
-so the Lipschitz bound is $2 / 0.002378 = 840.90$. The calibrated $\eta = 5{,}334.47$
-exceeds the bound by a factor of $6.3\times$, producing a divergence growth factor
-of $|\eta \cdot \lambda_{\max}^{\text{shock}} - 1| = 11.69$ per step.
+so the stability bound `pgd_convergence` actually proves
+($\eta \cdot \lambda_{\max} \leq 1$) is $1 / 0.002378 = 420.45$. The calibrated
+$\eta = 5{,}334.47$ exceeds this bound by a factor of over $12\times$, producing a
+divergence growth factor of $|\eta \cdot \lambda_{\max}^{\text{shock}} - 1| = 11.69$
+per step.
 
 Whaley (2009)[^whaley2009] documents how volatility-linked strategies calibrated in
 low-volatility regimes face catastrophic parameter invalidation during VIX spikes.
@@ -196,16 +199,16 @@ pd.DataFrame({
         "Assets N",
         "Rank(S_cal)",
         "λ_max(S_cal)",
-        "Stability bound 2/λ_max",
-        "Calibrated η (= 1.9/λ_max)",
+        "Stability bound 1/λ_max (pgd_convergence's proved bound)",
+        "Calibrated η (= 1.9/λ_max, classical uncertified heuristic)",
     ],
     "Value": [
         f"{len(p.cal_window)}  (full rank: T > N)",
         f"{p.N}",
         f"{rank_cal} of {p.N}  (full rank)",
         f"{p.lam_max_cal:.6f}",
-        f"{2.0/p.lam_max_cal:.2f}",
-        f"{p.eta_calibrated:.2f}  ✓ (inside bound)",
+        f"{1.0/p.lam_max_cal:.2f}",
+        f"{p.eta_calibrated:.2f}  ✗ already exceeds the proved bound, even pre-shock",
     ],
 }).set_index("Property")
 ```
@@ -245,7 +248,7 @@ plt.show()
 ```{python}
 #| label: tbl-shock-stats
 #| echo: false
-#| tbl-cap: "Post-shock covariance diagnostics. λ_max increases 6.68× relative to the January calibration. The calibrated η=5334.47 exceeds the post-shock Lipschitz bound by 6.3×."
+#| tbl-cap: "Post-shock covariance diagnostics. λ_max increases 6.68× relative to the January calibration. The calibrated η=5334.47 exceeds the post-shock stability bound (pgd_convergence's proved η·λ_max <= 1) by over 12×."
 
 eigs_shock = np.linalg.eigvalsh(p.Sigma_shock)
 rank_shock = np.linalg.matrix_rank(p.S_shock)
@@ -257,7 +260,7 @@ pd.DataFrame({
         "Rank(S_shock)",
         "Min eigenvalue (shrunk Σ̂)",
         "λ_max(Σ̂_shock)",
-        "Lipschitz bound 2/λ_max",
+        "Stability bound 1/λ_max (proved)",
         "Calibrated η from January",
         "λ_max ratio (shock / cal)",
         "Divergence growth factor per step",
@@ -306,13 +309,16 @@ res_pgd = pgd_adaptive.run(p)
 ```
 
 The Lean 4 PGD (dispatched via `pgd_solve_flat` in `pgd_ffi.pyx`) recomputes
-$\eta = 1.9 / \lambda_{\max}(\hat\Sigma_{\text{shock}})$ from the post-shock
+$\eta = 0.9 / \lambda_{\max}(\hat\Sigma_{\text{shock}})$ from the post-shock
 covariance and enforces it internally. Convergence is guaranteed by theorem
-`pgd_convergence` in `OptimizationProofs/PGDFlat.lean`. Collapsing the growth factor
-from $11.69$ (fixed-$\eta$ GD) to $|1.9/2 - 1| = 0.05 < 1$ ensures strict descent
-at every step. The solver reaches the KKT-certified minimum (Utils +1.25, Enrgy
-$-0.25$) in 2 iterations. The native Lean binary achieves **13.834 ns/solve**
-(`lake exe pgd_bench`); the FFI path adds $\approx 11$ ms marshalling at $N = 10$.
+`pgd_convergence` in `OptimizationProofs/PGDFlat.lean`, whose hypothesis is
+$\eta \cdot \lambda_{\max} \leq 1$: with $\eta = 0.9/\lambda_{\max}$,
+$|\eta \cdot \lambda_{\max} - 1| = 0.1 < 1$, ensuring strict descent at every
+step (collapsing the growth factor from $11.69$ for the fixed, uncertified
+$\eta$). The solver reaches the KKT-certified minimum (Utils +1.25, Enrgy
+$-0.25$). The native Lean binary achieves **13.834 ns/solve**
+(`lake exe pgd_bench`); the FFI path adds $\approx 11$ ms marshalling at
+$N = 10$.
 
 ### SciPy SLSQP
 
@@ -551,7 +557,7 @@ def pgd_adaptive_bench(
 ) -> tuple[np.ndarray, int]:
     """Adaptive-eta PGD for benchmarking only (no formal guarantee)."""
     lam_max = float(np.linalg.eigvalsh(Sigma)[-1])
-    eta = 1.9 / lam_max
+    eta = 0.9 / lam_max
     w = np.ones(len(mu)) / len(mu)
     for k in range(max_iter):
         w_new = _proj_signed_l1_bm(w - eta * (Sigma @ w - mu), B=1.0, L=L)

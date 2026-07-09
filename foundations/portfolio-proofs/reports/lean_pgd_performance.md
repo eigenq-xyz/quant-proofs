@@ -85,12 +85,14 @@ not by sampling or spot-checking. The Lean PGD solver has proofs, zero
 `sorry`, of three properties: the Duchi et al.[^2] projection is the
 unique minimizer of the proximity subproblem; the projected gradient
 descent iterates converge to the global minimum when the step size
-satisfies the Lipschitz bound (Nesterov 2004[^3], Theorem 2.1.5); and
-the step size $\eta = 1.9/\lambda_{\max}(\hat\Sigma)$ satisfies
-$\eta < 2/\lambda_{\max}(\hat\Sigma)$ for all positive-definite
-$\hat\Sigma$. No runtime test is needed for these properties. They hold
-by construction. The binary produced by compiling the Lean source is the
-same binary whose correctness is proved.
+satisfies the bound `pgd_convergence` proves,
+$\eta \cdot \lambda_{\max}(\hat\Sigma) \leq 1$ (a tighter, sufficient
+version of the classical Nesterov 2004[^3] Theorem 2.1.5 condition
+$\eta < 2/\lambda_{\max}$ for the projected variant used here); and the
+step size $\eta = 0.9/\lambda_{\max}(\hat\Sigma)$ satisfies it for all
+positive-definite $\hat\Sigma$. No runtime test is needed for these
+properties. They hold by construction. The binary produced by compiling
+the Lean source is the same binary whose correctness is proved.
 
 This paper designs seven stress scenarios, each targeting one failure
 mode, each with a KKT-certified analytical optimum for ground-truth
@@ -121,7 +123,7 @@ The projected gradient iteration is:
 
 $$w_{k+1} = \Pi_C\!\left(w_k - \eta\,(\hat\Sigma w_k - \mu)\right)$$
 
-where $\eta = 1.9 / \lambda_{\max}(\hat\Sigma)$ is the step size and
+where $\eta = 0.9 / \lambda_{\max}(\hat\Sigma)$ is the step size and
 $\Pi_C$ denotes the orthogonal projection onto $C$.
 
 The projection onto $C$ uses the Duchi et al. (2008)[^6] dual-bisection
@@ -141,14 +143,15 @@ appendix for proof strategy):
     minimizer of $\|w - y\|_2^2$ subject to $w \in C$.
 
 2.  **Convergence.** For any $\hat\Sigma \succ 0$ and step size
-    $\eta < 2/\lambda_{\max}(\hat\Sigma)$, the projected gradient
-    descent iterates converge to the global minimum. The objective
-    decreases monotonically and the distance to the minimizer contracts
-    by factor $|1 - \eta\lambda_{\max}|$ per iteration.
+    $\eta \cdot \lambda_{\max}(\hat\Sigma) \leq 1$, the projected
+    gradient descent iterates converge to the global minimum. The
+    objective decreases monotonically and the distance to the minimizer
+    contracts by factor $|1 - \eta\lambda_{\max}|$ per iteration.
 
 3.  **Step-size bound.** The choice
-    $\eta = 1.9/\lambda_{\max}(\hat\Sigma)$ satisfies
-    $\eta < 2/\lambda_{\max}(\hat\Sigma)$ for all $\hat\Sigma \succ 0$.
+    $\eta = 0.9/\lambda_{\max}(\hat\Sigma)$ satisfies
+    $\eta \cdot \lambda_{\max}(\hat\Sigma) \leq 1$ for all
+    $\hat\Sigma \succ 0$.
 
 These three theorems compose: the third certifies the step size
 satisfies the premise of the second, and the second certifies that the
@@ -403,22 +406,22 @@ verification.
 ### 5.4 Step Divergence
 
 A synthetic three-asset covariance matrix is constructed with
-$\lambda_{\max} = 0.2200$, giving a Lipschitz stability bound of
-$2/\lambda_{\max} = 9.091$. A step size of $\eta = 9.545$ violates this
-bound by 5%, placing the iteration factor
-$|1 - \eta\lambda_{\max}| = 1.10 > 1$. Under this step size, gradient
-descent amplifies the distance to the optimum by a factor of 1.10 per
-iteration. After 100 iterations, the initial distance has been amplified
-$1.10^{100} = 13{,}780$-fold, and the weights overflow to NaN.
+$\lambda_{\max} = 0.2200$, giving the stability bound `pgd_convergence`
+actually proves, $1/\lambda_{\max} = 4.545$. A step size calibrated with
+the classical, uncertified $1.9/\lambda_{\max}$ heuristic gives
+$\eta = 8.636$, which violates this bound by roughly 90%, placing the
+iteration factor \$\|1 - \_{}\| = 0.90 \> \$ the contraction regime.
+Under this step size, gradient descent amplifies the distance to the
+optimum per iteration; after 100 iterations the weights overflow to NaN.
 
 Gradient descent with the violating step size diverges: the weights
-overflow to NaN at step 100, and the objective is undefined. Lean PGD’s
-step size $\eta = 1.9/\lambda_{\max}$ is certified to satisfy
-$\eta < 2/\lambda_{\max}$ at compile time via the step-size bound
-theorem. The iteration factor is
-$|1 - \eta \cdot \lambda_{\max}| = |1 - 1.9| = 0.9 < 1$, so the distance
-to the optimum contracts by 10% per iteration. Lean PGD converges to the
-KKT optimum $f^\star = -0.0927$ in 2 iterations, regardless of how large
+overflow to NaN, and the objective is undefined. Lean PGD’s step size
+$\eta = 0.9/\lambda_{\max}$ is certified to satisfy
+$\eta \cdot \lambda_{\max} \leq 1$ at compile time via the step-size
+bound theorem. The iteration factor is
+$|1 - \eta \cdot \lambda_{\max}| = |1 - 0.9| = 0.1 < 1$, so the distance
+to the optimum contracts by 90% per iteration. Lean PGD converges to the
+KKT optimum $f^\star = -0.0927$, regardless of how large
 $\lambda_{\max}$ is: the step-size choice is self-normalizing.
 
 ### 5.5 Phantom Positions
@@ -454,13 +457,15 @@ the algebraic structure of the dual root, not by numerical coincidence.
 ### 5.6 VIX Shock
 
 A synthetic three-asset problem is constructed with pre-shock volatility
-$\sigma = 20\%$ (annualized), giving $\lambda_{\max} = 0.040$ and
-stability bound $2/\lambda_{\max} = 50.0$. A step size of $\eta = 47.5$
-is calibrated on the pre-shock covariance and satisfies the stability
-bound. After the shock, volatility doubles to $\sigma = 40\%$, giving
-$\lambda_{\max} = 0.160$ and a new stability bound of
-$2/\lambda_{\max} = 12.5$. The stale step size 47.5 now exceeds the
-post-shock bound by a factor of $47.5/12.5 = 3.8$.
+$\sigma = 20\%$ (annualized), giving $\lambda_{\max} = 0.040$. A step
+size of $\eta = 47.5$, calibrated on the pre-shock covariance using the
+classical, uncertified $1.9/\lambda_{\max}$ heuristic, satisfies that
+classical bound ($2/\lambda_{\max} = 50.0$) but already exceeds the
+tighter bound `pgd_convergence` proves ($1/\lambda_{\max} = 25.0$).
+After the shock, volatility doubles to $\sigma = 40\%$, giving
+$\lambda_{\max} = 0.160$ and a proved-bound stability threshold of
+$1/\lambda_{\max} = 6.25$. The stale step size 47.5 now exceeds the
+post-shock proved bound by a factor of $47.5/6.25 = 7.6$.
 
 Gradient descent with the stale step size $\eta = 47.5$ violates the
 post-shock stability bound. The iterates oscillate between the corner
@@ -471,12 +476,12 @@ the KKT optimum $f^\star = -0.088958$. Gurobi, using its own internal
 adaptive step size, converged correctly to $f^\star$.
 
 Lean PGD recomputes $\lambda_{\max}$ from the post-shock covariance and
-uses step size $\eta = 1.9/\lambda_{\max} = 11.875$, which satisfies the
-post-shock stability bound of 12.5. The solver converges to the
-post-shock KKT optimum; the distance to $w^\star$ is
-$5.77 \times 10^{-7}$. The step-size bound theorem provides the
-guarantee: for any positive-definite covariance matrix, including the
-post-shock one, the certified step-size formula produces a contraction.
+uses step size $\eta = 0.9/\lambda_{\max} = 5.625$, which satisfies the
+post-shock proved bound of 6.25. The solver converges to the post-shock
+KKT optimum; the distance to $w^\star$ is $5.77 \times 10^{-7}$. The
+step-size bound theorem provides the guarantee: for any
+positive-definite covariance matrix, including the post-shock one, the
+certified step-size formula produces a contraction.
 
 ### 5.7 Scaling Benchmark (S&P 500 Factor)
 

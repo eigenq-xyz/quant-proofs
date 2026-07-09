@@ -54,7 +54,7 @@ def solve(
         Duchi projection constraints by Lean's certified projection).
     lambda_max:
         λ_max(Σ) used as the Lipschitz constant; determines step size
-        η = 1.9 / λ_max.  Returned so callers can log it.
+        η = 0.9 / λ_max.  Returned so callers can log it.
     """
     if not _BINARY.exists():
         raise FileNotFoundError(

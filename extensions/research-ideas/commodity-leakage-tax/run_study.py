@@ -387,10 +387,10 @@ def run(last_year: int = 2025) -> dict[str, object]:
 
     out: dict[str, object] = {
         "_meta": {
-            "generated_by": "research-pipeline/studies/commodity-leakage-tax/run_study.py",
+            "generated_by": "extensions/research-ideas/commodity-leakage-tax/run_study.py",
             "generated_at": datetime.now(UTC).isoformat(),
             "reproduce": (
-                "cd research-pipeline/studies/commodity-leakage-tax && python3.12 run_study.py"
+                "cd extensions/research-ideas/commodity-leakage-tax && python3.12 run_study.py"
             ),
             "verified": False,
             "notes": "Release-timing leakage-tax cell; empirical study, not routed through the verified backtester.",

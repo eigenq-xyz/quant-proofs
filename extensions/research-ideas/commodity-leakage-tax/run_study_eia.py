@@ -428,10 +428,10 @@ def run() -> dict[str, object]:
 
     out: dict[str, object] = {
         "_meta": {
-            "generated_by": "research-pipeline/studies/commodity-leakage-tax/run_study_eia.py",
+            "generated_by": "extensions/research-ideas/commodity-leakage-tax/run_study_eia.py",
             "generated_at": datetime.now(UTC).isoformat(),
             "reproduce": (
-                "cd research-pipeline/studies/commodity-leakage-tax && python3.12 run_study_eia.py"
+                "cd extensions/research-ideas/commodity-leakage-tax && python3.12 run_study_eia.py"
             ),
             "verified": False,
             "notes": "Data-revision leakage-tax cell (tiny revisions); empirical study, not routed through the verified backtester.",

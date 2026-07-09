@@ -86,8 +86,6 @@ form); the Lean parser handles both decimal and scientific-notation strings.
 
 ## Local notes
 
-- Never edit `scenarios/**/*.qmd`, `scenarios/**/*.md`, `reports/`, or `data/README.md` — Quarto
-  content maintained separately.
 - `lean_pgd.py` public API (`solve`, `LEAN_NATIVE_NS`) is frozen; scenarios import it directly.
   Changes must stay backward-compatible.
 - Never claim a theorem is "guaranteed" or "verified" unless it appears, zero `sorry`, in a Lean

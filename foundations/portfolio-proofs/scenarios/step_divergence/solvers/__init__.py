@@ -14,7 +14,7 @@ Citation notes for step_divergence.qmd
 Modules
 -------
 common        : ProblemData / SolverResult dataclasses; calibration + shock data loader.
-gd_fixed      : Fixed-eta gradient descent (unconstrained); diverges when eta_cal >> 2/lam_max_shock.
+gd_fixed      : Fixed-eta gradient descent (unconstrained); diverges when eta_cal >> 1/lam_max_shock.
 pgd_adaptive  : Adaptive-eta PGD; recomputes step size from post-shock covariance, converges.
 slsqp         : SciPy SLSQP — active-set SQP; hits 100-iteration limit due to L1 kink
                 (same failure mode as boundary_trap); returns converged=False.

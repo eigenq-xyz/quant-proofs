@@ -53,7 +53,7 @@ def run(p: ProblemData) -> SolverResult:
     print()
     print(f"Calibrated eta      : {eta:.4f}  (from January 2018)")
     print(
-        f"Post-shock bound    : {p.lipschitz_bound:.2f}  (= 2 / {p.lam_max_shock:.6f})"
+        f"Post-shock bound    : {p.lipschitz_bound:.2f}  (= 1 / {p.lam_max_shock:.6f})"
     )
     print(
         f"Stability violated  : eta = {eta:.2f}  >>  bound = {p.lipschitz_bound:.2f}"
@@ -144,9 +144,9 @@ def print_result(result: SolverResult, p: ProblemData) -> None:
         growth = abs(eta * p.lam_max_shock - 1.0)
         print()
         print(
-            f"Root cause: eta = {eta:.2f} > 2 / lambda_max = {p.lipschitz_bound:.2f}."
+            f"Root cause: eta = {eta:.2f} > 1 / lambda_max = {p.lipschitz_bound:.2f}."
         )
         print(
-            f"The descent lemma requires eta < 2/L. "
+            f"The descent lemma requires eta * lambda_max <= 1. "
             f"Each step amplifies error by {growth:.3f}x instead of reducing it."
         )
