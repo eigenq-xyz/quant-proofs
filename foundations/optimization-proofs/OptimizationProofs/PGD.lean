@@ -98,7 +98,7 @@ partial def pgd (sigma : Array (Array Float)) (mu : Array Float)
     (tol : Float := 1e-8)
     (maxIter : Nat := 5000) : Array Float × Nat :=
   let N := mu.size
-  let eta := 1.9 / lambdaMax
+  let eta := 0.9 / lambdaMax
   let w0 : Array Float := (List.replicate N (1.0 / N.toFloat)).toArray
   let rec loop (w : Array Float) (k : Nat) : Array Float × Nat :=
     if k = 0 then (w, maxIter)

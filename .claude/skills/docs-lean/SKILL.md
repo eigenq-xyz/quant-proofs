@@ -12,13 +12,15 @@ allowed-tools: Bash(lake *)
 
 # Docs Lean
 
+Builds the Lean API reference with doc-gen4, one page per exported theorem.
+
 ## Command
 
 ```bash
-cd backtest-proofs/lean && lake doc
+cd extensions/hedge-proofs && lake doc
 ```
 
-Output: `backtest-proofs/lean/.lake/build/doc/`
+Output: `extensions/hedge-proofs/.lake/build/doc/`
 
 ## Adding doc-gen4 to a lakefile
 
@@ -27,23 +29,22 @@ require doc-gen4 from git
   "https://github.com/leanprover/doc-gen4" @ "main"
 ```
 
-Then add a `lean_exe` target:
+Add a `lean_exe` target:
 ```lean
 lean_exe «doc-gen4» where
   root := `DocGen4
 ```
 
-Or simply run `lake doc` — Lake handles it if doc-gen4 is in the manifest.
+Or just run `lake doc` — Lake handles it once doc-gen4 is in the manifest.
 
 ## Docstring requirements
 
-doc-gen4 renders `/-- ... -/` docstrings as HTML. For the output to be useful
-to a non-Lean reader, every exported theorem must have:
+doc-gen4 renders `/-- ... -/` docstrings as HTML. Every exported theorem needs:
 
-1. **English statement** — what the theorem says in words
-2. **Mathematical context** — why it matters, what it enables
-3. **Citation** for non-trivial results (Harrison-Pliska 1981, CRR 1979)
-4. **No Lean syntax in prose** — the proof is shown separately; the docstring is for humans
+1. **English statement** — what the theorem says, in words.
+2. **Mathematical context** — why it matters, what it enables.
+3. **Citation** for non-trivial results (Harrison-Pliska 1981, CRR 1979).
+4. **No Lean syntax in prose** — the proof is shown separately; the docstring is for humans.
 
 Bad docstring:
 ```lean
@@ -59,4 +60,4 @@ by the accounting layer. Proved for arbitrary portfolios in BacktestProofs. -/
 
 ## Current status
 
-doc-gen4 is not yet in any lakefile in this repo. Add it to `backtest-proofs/lean/lakefile.lean` first, then `ftap-proofs` and `options-proofs` for mathlib PR preparation.
+doc-gen4 is not yet in any lakefile. Add it to `extensions/hedge-proofs/lakefile.lean` first, then `foundations/ftap-proofs` and `foundations/options-proofs` for mathlib PR prep.

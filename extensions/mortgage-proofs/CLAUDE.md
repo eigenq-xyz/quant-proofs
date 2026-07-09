@@ -1,8 +1,9 @@
 # CLAUDE.md: mortgage-proofs
 
-LangGraph multi-agent mortgage pipeline with Lean 4 invariant checking. Each
-routing decision is recorded as a `DecisionRecord` JSON and validated by
-`lake exe verify-trace`.
+LangGraph multi-agent mortgage pipeline where an independent Lean 4 layer, proved
+correct rather than only tested, checks every agent decision against codified
+underwriting rules. Each routing decision is recorded as a `DecisionRecord` JSON (a
+structured log of what was decided and why) and checked by `lake exe verify-trace`.
 
 ## Build
 
@@ -30,7 +31,7 @@ uv run mypy src/ --strict
 # Lint
 uv run ruff check src/ tests/
 
-# Zero-sorry check
+# Zero-sorry check (sorry is Lean's "not proved yet" placeholder; none should remain)
 grep -rn 'sorry' --include="*.lean" lean/
 
 # Run verifier on sample trace
@@ -38,6 +39,27 @@ cd lean && lake exe verify-trace ../tests/fixtures/sample_record_valid.json
 ```
 
 ## Architecture
+
+Data flow:
+
+```text
+MortgageApplication (JSON)
+    |
+    v
+LangGraph Orchestrator
+    |-- IntakeAgent           document completeness
+    |-- RiskAssessmentAgent   DTI, LTV, credit score   (parallel)
+    |-- ComplianceAgent       underwriting rule checks  (parallel)
+    +-- UnderwriterAgent      final decision
+    |
+    v
+DecisionRecord (JSON)  -->  lake exe verify-trace
+                                  |
+                                  v
+                       VerificationResult { passed, violations }
+```
+
+Module layout:
 
 ```
 extensions/mortgage-proofs/
@@ -50,7 +72,7 @@ extensions/mortgage-proofs/
   lean/
     MortgageProofs/
       Types.lean      Lean types mirroring Python domain models
-      Invariants.lean Formal invariant definitions (DTI bound, predatory-lending rules)
+      Invariants.lean Formal invariant definitions (DTI/LTV/credit-score underwriting caps)
       Theorems.lean   13 proof obligations, zero sorry
       Checker.lean    Validates a DecisionRecord sequence against invariants
       Parser.lean     JSON-to-Lean type parser
@@ -80,12 +102,9 @@ Python/Lean interface. When adding a new invariant:
 4. Update the `DecisionRecord` schema and domain models if new fields are needed.
 5. Add Python tests in `tests/lean_bridge/` for the new invariant path.
 
-## Hard rules
+## Local notes
 
-- Zero `sorry` in `lean/` on main. No exceptions.
-- `mypy --strict` must pass on `src/`.
 - Integration tests are marked `@pytest.mark.integration` and excluded from CI
-  (`-m "not integration"`); they require a live LLM API key and the Lean binary.
-- `schemas/decision_record.json` is canonical; never let the Python dataclass
-  diverge from the schema.
-- No private content: no real applicant data in fixtures, tests, or docs.
+  (`-m "not integration"`); they need a live LLM API key and the Lean binary.
+- `schemas/decision_record.json` is canonical. Never let the Python dataclass diverge from it.
+- No real applicant data in fixtures, tests, or docs.

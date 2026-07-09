@@ -128,7 +128,30 @@ The edge shows up in every subperiod across nearly a century, not just one lucky
 Per-fold out-of-sample net Sharpe: 0.63 (1941-1956), 0.95 (1956-1974), 0.30 (1974-1991),
 0.24 (1991-2008), 0.17 (2008-2026).
 
-### 5.6 Factor attribution (net returns on FF5 + momentum)
+### 5.6 Verified portfolio construction vs. naive baselines
+
+The backtest above uses a fixed, naive weighting scheme. This asks whether routing the same
+signal through the correct-by-construction mean-variance solver (`optimization-proofs`) does
+better, on this same 49-industry cross-section, monthly rebalance, gross leverage capped at 1.5.
+Reproduce with `python -m scripts.compare_pgd` (default `--rebalance monthly`; results in
+`studies/results_pgd_comparison_monthly.json`).
+
+| Book | Net Sharpe | Max drawdown |
+|---|---|---|
+| Verified PGD mean-variance | 0.60 | −94.6% |
+| Long-only momentum | 0.80 | −76.8% |
+| **Equal weight (1/N)** | **0.70** | −78.5% |
+| Dollar-neutral baseline | 0.48 | −45.0% |
+
+Equal weight beats the verified mean-variance book here, and the mean-variance book's drawdown is
+the worst of the four: the sample-mean-driven optimizer concentrates on whichever industries look
+best in-sample, the same failure mode DeMiguel, Garlappi, and Uppal (2009) document for
+mean-variance on noisy single-name universes. The honest reading is that routing through the
+correct-by-construction solver buys correctness and auditability of the optimization step, not
+outperformance: the solve is proved to land on the constrained optimum, but a mean-variance
+objective fed noisy sample-mean inputs does not beat naive diversification on this cross-section.
+
+### 5.7 Factor attribution (net returns on FF5 + momentum)
 
 | Term | Value |
 |---|---|
@@ -160,135 +183,22 @@ of a near-century sample. It survives multiple-testing deflation (deflated Sharp
 What would change the conclusion: rebalancing on the signal's natural horizon rather than daily
 (the IC decay says the information is strongest at 21 to 63 days), a volatility-managed overlay
 to tame the crash risk, and richer transaction-cost and capacity modeling. Those remain future
-work. The cross-asset generalization study (does the same effect appear in bonds,
-currencies, and commodities) is reported separately in **§7** as breadth evidence.
+work.
 
-## 7. Cross-asset generalization
+Two further analyses that used to appear here (cross-asset generalization on AQR's pre-built
+factor-return sleeves, and a verified-solver-vs-1/N combine test on those same sleeves) moved to
+[`extensions/research-ideas/`](../../extensions/research-ideas/README.md). Neither routes through
+the backtester this report's no-look-ahead guarantee covers, and neither has had enough independent
+studies run to support a load-bearing claim yet. They are preserved there as exploratory work, not
+results this report stands behind.
 
-> Breadth / generalization evidence using free AQR factor data (`load_aqr_tsmom`). These are
-> AQR's published time-series-momentum return streams and are **not** routed through the
-> verified daily backtester, so the formal no-look-ahead guarantee is scoped to the equity
-> study in sections 1 to 6. The cross-asset results below are presented as evidence that the
-> effect is structural rather than market-specific. Reproduce with
-> `python -m scripts.run_cross_asset --dataset tsmom` (writes `studies/results_crossasset.json`).
+## 7. Verification status
 
-Time-series momentum, monthly, January 1985 to January 2025 (481 months), deflated against
-`n_trials = 4` asset classes:
-
-| Asset class | Sharpe | Annualized return | Deflated Sharpe |
-|---|---|---|---|
-| Equities | 0.54 | 11.5% | 0.989 |
-| Fixed income | 0.62 | 15.2% | 0.998 |
-| Currencies | 0.57 | 9.1% | 0.995 |
-| Commodities | 0.64 | 8.7% | 0.999 |
-
-Cross-asset correlations of the return streams are low (0.12 to 0.25). Momentum earns a
-positive, multiple-testing-significant Sharpe in every asset class with weakly correlated
-streams, the common-factor signature one expects from a structural effect rather than a
-single-market artifact (Moskowitz, Ooi, Pedersen 2012; Asness, Moskowitz, Pedersen 2013).
-
-### 7.1 Validation by reproduction
-
-A breadth study is only as trustworthy as its agreement with the published record. The check here
-places each sleeve's realized Sharpe (computed from the free AQR factor streams) beside the figure
-reported in the source paper. The bar is sign and rough magnitude, not exact decimals: the free data
-extend each paper's sample by a decade or more, and construction details (rebalance lag, volatility
-scaling, universe) differ. A sleeve counts as reproduced when its realized Sharpe shares the
-published sign and lands within a factor of two of the published value. Reproduce with
-`python -m scripts.run_cross_asset --dataset vme --json studies/results_crossasset_vme.json`.
-
-Value and Momentum Everywhere, per-market momentum factor, realized over January 1972 to March 2026,
-against the figures in Asness, Moskowitz, Pedersen (2013), Table I (gross, each market over its own
-sample to 2011):
-
-| Market | Realized Sharpe | Published Sharpe | Reproduced |
-|---|---|---|---|
-| US equities | 0.44 | 0.45 | yes |
-| UK equities | 0.51 | 0.88 | yes |
-| Europe equities | 0.64 | 1.07 | yes |
-| Japan equities | 0.12 | 0.37 | no |
-| Equity indices | 0.46 | 1.00 | no |
-| Currencies | 0.22 | 1.28 | no |
-| Fixed income | 0.13 | 0.20 | yes |
-| Commodities | 0.38 | 0.62 | yes |
-
-Momentum is positive in all eight markets, the sign agreement one expects from a structural effect,
-and five of eight land within a factor of two of the published Sharpe. Two of those five, UK and
-Europe equities, reproduce at the lower end of the band (realized/published ratios near 0.58 and
-0.60), so they clear the bar without much room to spare. The three that fall short are informative
-rather than embarrassing. Japanese-equity and fixed-income momentum are the two markets
-the paper itself reports as statistically insignificant (its own t-statistics near zero), so a weak
-realized Sharpe agrees with the paper rather than contradicting it. Currency and equity-index
-momentum decayed in the fifteen years of data after the paper's 2011 cutoff: the realized window here
-runs to 2026, and the well-documented post-2011 drawdown in currency momentum pulls its full-sample
-Sharpe far below the 1979 to 2011 figure. The realized numbers are reported as they come out,
-including where they undershoot.
-
-For time-series momentum the source paper (Moskowitz, Ooi, Pedersen 2012) does not tabulate
-per-sleeve Sharpe ratios; it reports only the diversified all-asset composite, in prose, as greater
-than 1.0 (gross, 1985 to 2009). The realized diversified TSMOM composite over 1985 to 2025 is 0.98,
-essentially reproducing that figure (the small shortfall is the post-2009 decay common to the
-literature). The four per-sleeve TSMOM Sharpes in the table at the top of this section are therefore
-computed from the AQR data, not quoted from the paper.
-
-### 7.2 Verification status
-
-When the Lean proofs build green, the load-bearing invariants of the pipeline are machine-checked: no
-look-ahead in the backtester, no train/test leakage (the out-of-sample embargo is at least the
+When the Lean proofs build green, the load-bearing invariants of the pipeline are proved correct:
+no look-ahead in the backtester, no train/test leakage (the out-of-sample embargo is at least the
 holding horizon), and the signal is measurable against the information set available at each date
-(adapted to the natural price filtration, citing the FTAP development). Separately, the projection and
-convergence of the PGD portfolio solver are proven sorry-free in Lean (optimization-proofs); the
-running solver is a Python implementation of that proven algorithm, and these proofs are not yet wired
-into the continuous-integration matrix. The machine-checked no-look-ahead guarantee is scoped to the
-daily equity backtester; the cross-asset streams in this section are pre-built factor returns
-presented as breadth evidence, not verified runs.
-
-## 8. Verified total-portfolio combine vs 1/N
-
-The verified mean-variance solver has two candidate homes. One is the noisy single-name cross-section
-(§5.5 and the contrast below), where the estimation problem is hard. The other, examined here, is the
-combination of a few weakly correlated factor sleeves with decades of monthly data, the regime where
-mean-variance is conventionally supposed to help: the covariance is estimable and the sleeves
-genuinely diversify. We feed the reproduced AQR sleeves through the verified budget-simplex solver
-(weights sum to one, gross exposure capped at 1.5), with expected return set to the annualized
-trailing mean and risk set by an annualized Ledoit-Wolf-shrunk covariance, rebalanced monthly with a
-one-month hold and 10 basis points of cost, and compare against 1/N across the same sleeves. To rule
-out a single-setting artifact, the mean-variance book is swept over a grid of risk-aversion values;
-a higher value trusts the noisy mean less and pulls the book toward minimum variance. Reproduce with
-`python -m scripts.compare_combine --dataset tsmom` and `--dataset vme`.
-
-Time-series-momentum sleeves (4 asset classes, 1985 to 2025), net Sharpe:
-
-| Book | Net Sharpe | Annualized vol |
-|---|---|---|
-| Verified MV, risk aversion 1 | 0.40 | 0.32 |
-| Verified MV, risk aversion 5 | 0.51 | 0.19 |
-| Verified MV, risk aversion 10 | 0.71 | 0.15 |
-| Verified MV, risk aversion 25 | 0.85 | 0.13 |
-| **1/N across sleeves** | **0.91** | **0.14** |
-
-Value-and-momentum sleeves (8 markets, 1972 to 2026), net Sharpe:
-
-| Book | Net Sharpe | Annualized vol |
-|---|---|---|
-| Verified MV, risk aversion 1 | 0.31 | 0.20 |
-| Verified MV, risk aversion 5 | 0.27 | 0.15 |
-| Verified MV, risk aversion 10 | 0.33 | 0.12 |
-| Verified MV, risk aversion 25 | 0.39 | 0.08 |
-| **1/N across sleeves** | **0.51** | **0.08** |
-
-**1/N wins in both, across every risk-aversion setting.** The mechanism is the one DeMiguel, Garlappi,
-and Uppal (2009) document: the sample mean is a poor expected-return estimate, so the more weight the
-optimizer places on it (low risk aversion), the worse it does. At risk aversion 1 the time-series book
-runs more than twice the volatility of 1/N as it concentrates on whichever sleeve had the highest
-recent mean. Turning risk aversion up walks the book toward minimum variance and recovers most of the
-gap (0.85 against 0.91 for the time-series sleeves), but it never overtakes equal weight, and for the
-eight-market value-and-momentum set, where the covariance is harder to estimate, it stays well behind
-(best 0.39 against 0.51). The same verdict held on the single-name industry cross-section, where the
-verified mean-variance book returned a net Sharpe of 0.60 against 0.70 for 1/N (and a deeper drawdown).
-
-The honest reading is that the value of routing portfolio construction through the verified solver is
-the correctness and auditability of the optimization step, not outperformance: the solve is proven to
-land on the constrained optimum, but a mean-variance objective fed sample-mean inputs does not beat
-naive diversification even in the regime built to favor it. A book that beats 1/N here would need a
-better expected-return signal, not a better optimizer.
+(adapted to the natural price filtration, citing the FTAP development). Separately, the projection
+and convergence of the PGD portfolio solver are proved sorry-free in Lean (`optimization-proofs`,
+where zero `sorry`, Lean's placeholder for an unproven step, means none remain); the running solver
+is a Python implementation of that proven algorithm, and these proofs are not yet wired into the
+continuous-integration matrix.

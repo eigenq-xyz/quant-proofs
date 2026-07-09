@@ -40,24 +40,26 @@ import sys
 import urllib.request
 import zipfile
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-# Reuse verified primitives from the flagship research pipeline.
-_SRC = Path(__file__).resolve().parents[2] / "src"
+# Reuse verified primitives from the flagship research pipeline (a sibling project,
+# not a parent of this exploratory study — see extensions/research-ideas/README.md).
+_SRC = Path(__file__).resolve().parents[2] / "research-pipeline" / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from research_pipeline.data import PricePanel  # noqa: E402
 from research_pipeline.evaluation import max_drawdown, sharpe  # noqa: E402
 
-WTI_MARKET_CODE = "067651"  # NYMEX Light Sweet Crude Oil (WTI-PHYSICAL), CFTC Disaggregated
-CFTC_URL = "https://www.cftc.gov/files/dea/history/fut_disagg_txt_{year}.zip"
-CFTC_FIRST_YEAR = (
-    2010  # Disaggregated COT report begins 2010 (introduced after 2008); 2006-2009 return 404
+WTI_MARKET_CODE = (
+    "067651"  # NYMEX Light Sweet Crude Oil (WTI-PHYSICAL), CFTC Disaggregated
 )
+CFTC_URL = "https://www.cftc.gov/files/dea/history/fut_disagg_txt_{year}.zip"
+CFTC_FIRST_YEAR = 2010  # Disaggregated COT report begins 2010 (introduced after 2008); 2006-2009 return 404
 LOOKBACK_WEEKS = 52  # 52-week percentile window for the positioning extreme
 WEEKS_PER_YEAR = 52
 CACHE = Path(__file__).resolve().parent / "data_cache"
@@ -122,9 +124,13 @@ def _download_cftc_year(year: int) -> pd.DataFrame:
     df = df[df["CFTC_Contract_Market_Code"].str.strip() == WTI_MARKET_CODE].copy()
     out = pd.DataFrame(
         {
-            "as_of": pd.to_datetime(df["As_of_Date_In_Form_YYMMDD"].str.strip(), format="%y%m%d"),
+            "as_of": pd.to_datetime(
+                df["As_of_Date_In_Form_YYMMDD"].str.strip(), format="%y%m%d"
+            ),
             "mm_long": pd.to_numeric(df["M_Money_Positions_Long_All"], errors="coerce"),
-            "mm_short": pd.to_numeric(df["M_Money_Positions_Short_All"], errors="coerce"),
+            "mm_short": pd.to_numeric(
+                df["M_Money_Positions_Short_All"], errors="coerce"
+            ),
         }
     ).dropna()
     out = out.sort_values("as_of").reset_index(drop=True)
@@ -139,7 +145,11 @@ def load_cot(last_year: int) -> pd.DataFrame:
     ``release_date`` = as_of + 3 days (the Friday 3:30pm ET public release).
     """
     frames = [_download_cftc_year(y) for y in range(CFTC_FIRST_YEAR, last_year + 1)]
-    cot = pd.concat(frames, ignore_index=True).drop_duplicates("as_of").sort_values("as_of")
+    cot = (
+        pd.concat(frames, ignore_index=True)
+        .drop_duplicates("as_of")
+        .sort_values("as_of")
+    )
     cot = cot.reset_index(drop=True)
     cot["mm_net"] = cot["mm_long"] - cot["mm_short"]
     # The snapshot is public only the following Friday 3:30pm ET. Tuesday + 3 days = Friday.
@@ -170,7 +180,9 @@ def load_uso(start: str = "2006-01-01") -> PricePanel:
 # --------------------------------------------------------------------------------------
 # Signal
 # --------------------------------------------------------------------------------------
-def positioning_percentile(mm_net: pd.Series, lookback: int = LOOKBACK_WEEKS) -> pd.Series:
+def positioning_percentile(
+    mm_net: pd.Series, lookback: int = LOOKBACK_WEEKS
+) -> pd.Series:
     """Trailing ``lookback``-week percentile rank of net Managed-Money positioning in [0, 1].
 
     Uses only weeks <= the current week (``min_periods`` guards the warm-up); strictly a
@@ -196,16 +208,22 @@ def contrarian_position(pctile: pd.Series) -> pd.Series:
 # --------------------------------------------------------------------------------------
 @dataclass
 class WeeklyBacktest:
-    weekly_index: pd.DatetimeIndex  # the Monday (or first trading day) of each trade week
+    weekly_index: (
+        pd.DatetimeIndex
+    )  # the Monday (or first trading day) of each trade week
     positions: pd.Series  # position held over the week, indexed at week open
-    fwd_returns: pd.Series  # USO return realised over that week (open-to-open, next week)
+    fwd_returns: (
+        pd.Series
+    )  # USO return realised over that week (open-to-open, next week)
     strat_returns: pd.Series  # positions * fwd_returns
     # entry date chosen for each COT report's as_of date, BEFORE dropping returnless weeks.
     # Maps as_of (Tuesday snapshot date) -> the trading day the position is allowed to enter.
     entry_by_as_of: pd.Series
 
 
-def _first_trading_day_on_or_after(trading_days: pd.DatetimeIndex, date: pd.Timestamp) -> object:
+def _first_trading_day_on_or_after(
+    trading_days: pd.DatetimeIndex, date: pd.Timestamp
+) -> object:
     idx = trading_days.searchsorted(date, side="left")
     if idx >= len(trading_days):
         return None
@@ -368,6 +386,15 @@ def run(last_year: int = 2025) -> dict[str, object]:
     }
 
     out: dict[str, object] = {
+        "_meta": {
+            "generated_by": "extensions/research-ideas/commodity-leakage-tax/run_study.py",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "reproduce": (
+                "cd extensions/research-ideas/commodity-leakage-tax && python3.12 run_study.py"
+            ),
+            "verified": False,
+            "notes": "Release-timing leakage-tax cell; empirical study, not routed through the verified backtester.",
+        },
         "n_cot_reports": int(len(cot)),
         "cot_first": str(cot["as_of"].min().date()),
         "cot_last": str(cot["as_of"].max().date()),
@@ -408,7 +435,9 @@ def main() -> None:
     p = res["periods"]
     assert isinstance(p, dict)
     print("\nCFTC WTI Managed-Money COT leakage-tax study")
-    print(f"COT reports: {res['n_cot_reports']} ({res['cot_first']} -> {res['cot_last']})")
+    print(
+        f"COT reports: {res['n_cot_reports']} ({res['cot_first']} -> {res['cot_last']})"
+    )
     print(f"USO: {res['uso_first']} -> {res['uso_last']}\n")
     hdr = (
         f"{'period':>10} {'variant':>7} {'ann_ret':>9} {'sharpe':>7} "
@@ -422,7 +451,9 @@ def main() -> None:
             s = blk[variant]
             assert isinstance(s, dict)
             tax_sr = f"{_f(blk, 'tax_sharpe'):+.2f}" if variant == "naive" else ""
-            tax_bps = f"{_f(blk, 'tax_bps_per_year'):+.0f}" if variant == "naive" else ""
+            tax_bps = (
+                f"{_f(blk, 'tax_bps_per_year'):+.0f}" if variant == "naive" else ""
+            )
             nwt = f"{_f(blk, 'diff_nw_tstat'):+.2f}" if variant == "naive" else ""
             print(
                 f"{pname:>10} {variant:>7} {_f(s, 'ann_return'):>+9.4f} "

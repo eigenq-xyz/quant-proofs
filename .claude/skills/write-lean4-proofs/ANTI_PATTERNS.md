@@ -1,7 +1,7 @@
 # Writing Lean 4 proofs — Anti-patterns
 
-These are the most common mistakes when writing Lean 4 proofs in this repo.
-Each entry shows the problematic pattern, why it is wrong, and the correct alternative.
+The most common Lean 4 mistakes in this repo. Each entry: the bad pattern, why it's
+wrong, the fix.
 
 ---
 
@@ -14,11 +14,10 @@ import Mathlib
 theorem myTheorem : ... := by ...
 ```
 
-**Why it is wrong:**
-- Imports the entire mathlib library (~200k lines). Compilation takes 30-60 minutes on a
-  cold cache.
-- Accepted neither by mathlib PR review nor by this repo's CI performance standards.
-- Makes it impossible to tell which parts of mathlib the theorem actually depends on.
+**Why it's wrong:**
+- Imports all of mathlib (~200k lines) — 30-60 minute cold-cache compile.
+- Rejected by both mathlib PR review and this repo's CI performance standards.
+- Hides which parts of mathlib the theorem actually depends on.
 
 **Correct:**
 ```lean
@@ -28,8 +27,8 @@ import Mathlib.Algebra.BigOperators.Group.Finset
 theorem myTheorem : ... := by ...
 ```
 
-Search [loogle.lean-lang.org](https://loogle.lean-lang.org) by type signature to find the
-right module.
+Search [loogle.lean-lang.org](https://loogle.lean-lang.org) by type signature to find
+the right module.
 
 ---
 
@@ -42,10 +41,10 @@ theorem portfolio_value_add (π₁ π₂ : Portfolio) :
   simp
 ```
 
-**Why it is wrong:**
-- `simp` applies every lemma tagged `@[simp]` in scope, including ones from mathlib that
+**Why it's wrong:**
+- `simp` applies every `@[simp]`-tagged lemma in scope, including mathlib lemmas that
   change over time. A mathlib update can silently break the proof.
-- It hides what the proof actually relies on, making it hard to audit.
+- Hides what the proof actually relies on — hard to audit.
 - mathlib PRs reject bare `simp` in most cases.
 
 **Correct:**
@@ -55,8 +54,8 @@ theorem portfolio_value_add (π₁ π₂ : Portfolio) :
   simp only [portfolioValue, Finset.sum_union π₁.disjoint π₂]
 ```
 
-Use `simp?` interactively to discover which lemmas `simp` used, then copy the result
-into `simp only [...]`.
+Use `simp?` interactively to find which lemmas `simp` used, then copy them into
+`simp only [...]`.
 
 ---
 
@@ -68,13 +67,14 @@ theorem hard_lemma : ArbitrageImpossible market := by
   sorry
 ```
 
-**Why it is wrong:**
-- The theorem is asserted but unproven. Lean accepts it, but it is mathematically meaningless.
-- In `backtest-proofs`, the Cython FFI compiles against the Lean kernel. A `sorry` means the
-  kernel guarantees are void — the Python code is not actually verified.
+**Why it's wrong:**
+- Asserted, not proven. Lean accepts it, but it's mathematically meaningless.
+- In `extensions/hedge-proofs`, the `@[export hedge_*]` FFI surface (`BacktestProofs/Accounting.lean`)
+  compiles against the Lean kernel — a `sorry` voids those guarantees, so code calling through
+  that FFI isn't actually verified. (Same property for `foundations/portfolio-proofs`'s
+  Cython FFI relative to `foundations/optimization-proofs`'s kernel.)
 - CI (`grep -rn sorry --include="*.lean"`) fails on `main`.
-- A `sorry` in `ftap-proofs` would invalidate every theorem in `options-proofs` that depends
-  on the sorry'd result.
+- A `sorry` in `ftap-proofs` invalidates every `options-proofs` theorem depending on it.
 
 **Correct on a feature branch:**
 ```lean
@@ -82,8 +82,8 @@ theorem hard_lemma : ArbitrageImpossible market := by
   sorry  -- TODO: prove this; sketch: apply FarkasLemma, then construct Q explicitly
 ```
 
-Remove the `sorry` before opening a PR. If a theorem is genuinely incomplete, do not include
-it in the PR — wait until the proof is finished.
+Remove the `sorry` before opening a PR. If a theorem is genuinely incomplete, leave it
+out of the PR until the proof is finished.
 
 ---
 
@@ -96,16 +96,16 @@ theorem noArb_iff_rnm (market : FiniteMarket) :
   native_decide
 ```
 
-**Why it is wrong:**
-- `native_decide` works only for decidable propositions over finite, computable types.
-  The FTAP statement ranges over probability measures, which are not decidable this way.
-- Even when it compiles, `native_decide` produces no mathematical insight — it is just a
-  computation. The purpose of `ftap-proofs` is to have a human-readable, auditable proof.
-- mathlib strongly discourages `native_decide` except for closed, finite enumeration checks.
+**Why it's wrong:**
+- `native_decide` only handles decidable propositions over finite, computable types.
+  FTAP ranges over probability measures — not decidable this way.
+- Even when it compiles, it's just a computation, no mathematical insight. The point
+  of `ftap-proofs` is a human-readable, auditable proof.
+- mathlib discourages `native_decide` except for closed, finite enumeration checks.
 
 **Correct:**
-Use `decide` only for small finite propositions like `2 + 2 = 4` or `Finset.card {1, 2, 3} = 3`.
-For mathematical theorems, write a tactic proof.
+Reserve `decide` for small finite propositions like `2 + 2 = 4` or
+`Finset.card {1, 2, 3} = 3`. Write a tactic proof for mathematical theorems.
 
 ---
 
@@ -117,11 +117,10 @@ For mathematical theorems, write a tactic proof.
 theorem valueIdentity ... := by ...  -- no namespace
 ```
 
-**Why it is wrong:**
-- Every theorem in `BacktestProofs` must live under the `BacktestProofs` namespace.
-  Without it, the theorem is in the root namespace, causing name collisions and making
-  the module's API surface ambiguous.
-- In `ftap-proofs`, mathlib PR reviewers will reject theorems not in the declared namespace.
+**Why it's wrong:**
+- Every `BacktestProofs` theorem must live under that namespace. Without it, the
+  theorem lands in the root namespace — collisions, ambiguous API surface.
+- In `ftap-proofs`, mathlib reviewers reject theorems outside the declared namespace.
 
 **Correct:**
 ```lean
@@ -132,7 +131,7 @@ theorem valueIdentity ... := by ...
 end BacktestProofs
 ```
 
-Or, for files where the namespace is open for the whole file:
+Or, when the namespace stays open for the whole file:
 ```lean
 -- At the top of BacktestProofs/Basic.lean
 namespace BacktestProofs
@@ -153,11 +152,10 @@ theorem portfolio_value_nonneg (π : Portfolio) (hPos : AllPositive π) :
   ...
 ```
 
-**Why it is wrong:**
-- The theorem has a name but no explanation of what it means or why it matters.
+**Why it's wrong:**
+- A name alone explains nothing about what the theorem means or why it matters.
 - For `ftap-proofs` (mathlib PR), missing docstrings are a review blocker.
-- For `backtest-proofs`, the purpose of the library is to provide auditable guarantees
-  to a human reviewer. A bare theorem name is not auditable.
+- `hedge-proofs` exists for auditable guarantees — a bare name isn't auditable.
 
 **Correct:**
 ```lean
@@ -185,14 +183,12 @@ theorem valueIdentity ... := by ...
 end BacktestProofs
 ```
 
-**Why it is wrong:**
-- Lean allows reopening namespaces, but duplicate theorem names across files cause
-  ambiguity and are a maintenance hazard.
-- PR reviewers will reject duplicate names.
+**Why it's wrong:** Lean allows reopening namespaces, but duplicate theorem names
+across files cause ambiguity and a maintenance hazard. PR reviewers reject duplicates.
 
 **Correct:**
-Give the theorem a unique name, or replace the existing theorem in its original file.
-If the new theorem is a generalization, rename it appropriately and update callers.
+Give the theorem a unique name, or replace the existing one in its original file.
+If the new theorem generalizes the old one, rename it and update callers.
 
 ---
 
@@ -205,10 +201,9 @@ theorem noArb_price_bound : ask ≤ fair_value := by
   omega   -- fails: omega only handles linear arithmetic over ℤ/ℕ
 ```
 
-**Why it is wrong:**
-- `omega` handles only linear integer/natural number arithmetic. It cannot reason about
-  real-valued financial quantities or mathematical structures.
-- Misapplying a closing tactic wastes time and produces confusing error messages.
+**Why it's wrong:** `omega` handles only linear integer/natural-number arithmetic —
+it can't reason about real-valued financial quantities. A misapplied closing tactic
+wastes time and produces confusing errors.
 
 **Correct tactic selection:**
 | Goal type | Tactic |

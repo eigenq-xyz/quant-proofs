@@ -1,9 +1,9 @@
 # CLAUDE.md: research-pipeline
 
-The flagship. A full quant-research-desk workflow (data → signals → statistical testing → portfolio
-→ backtest → evaluation → cross-asset), orchestrated by `study.run_research_study`. The
-correctness-critical stages are proved in Lean 4; the statistical and evaluation layers are rigorous
-but not formally verified. This file orients an AI agent working here.
+The flagship. Full quant-research-desk workflow (data → signals → statistical testing → portfolio
+→ backtest → evaluation → cross-asset), orchestrated by `study.run_research_study`.
+Correctness-critical stages are proved in Lean 4; statistical and evaluation layers are rigorous
+but not formally verified (see root `CLAUDE.md` for the verified/unverified boundary).
 
 ## Architecture (one module per desk stage)
 
@@ -13,10 +13,10 @@ but not formally verified. This file orients an AI agent working here.
 | Formal core | `lean/ResearchPipeline/NoLeakage.lean` | `embargo_blocks_label_leakage`: OOS embargo ≥ horizon implies no label leak (proved, zero `sorry`) |
 | Formal core | `lean/ResearchPipeline/Measurability.lean` | `momentumSignal_adapted` and `vrpSignal_adapted`: signals are `Adapted` to the relevant filtration (proved, zero `sorry`; cites `ftap-proofs`, needs mathlib) |
 | 1 Data | `src/research_pipeline/data.py` | point-in-time `PricePanel`; `as_of(t)` witnesses the information set |
-| 2 Signals + strategy | `signals.py`, `strategy.py` | non-anticipating alphas; `Strategy` protocol + name-keyed registry (alpha-agnostic) |
+| 2 Signals + strategy | `signals.py`, `strategy.py` | alphas free of implementation look-ahead; `Strategy` protocol + name-keyed registry (alpha-agnostic) |
 | 3 Stats | `stats.py` | IC + Newey-West HAC t-stat, decay, bootstrap, PSR/DSR |
 | 4 Combination | `combination.py` | signal overlap + orthogonalized incremental IC |
-| 5 Portfolio | `portfolio.py` | pluggable constructors + bridge to the verified PGD solver; `verified_pgd_weights` raises rather than silently using an unverified baseline |
+| 5 Portfolio | `portfolio.py` | pluggable constructors + bridge to the correct-by-construction PGD solver; `verified_pgd_weights` raises rather than silently using an unverified baseline |
 | 6 Backtest | `backtest.py` | `𝓕ₜ`-aligned, net-of-cost event loop; configurable horizon |
 | 7 Evaluation | `evaluation.py` | performance, drawdowns, OLS factor attribution |
 | 8 OOS | `oos.py` | expanding walk-forward + embargo; `leakage_gap` runtime witness |
@@ -34,12 +34,13 @@ but not formally verified. This file orients an AI agent working here.
 
 ## Studies (`studies/`)
 
-- `REPORT.md`: headline 12-1 momentum study (49 Ken French industries, daily, 1926-2026) plus
-  cross-asset AQR time-series-momentum breadth.
-- `LEAKAGE_MAP.md` + `commodity-leakage-tax/` + `macro-leakage/`: the data-revision leakage map.
-  Raw data is fetched at runtime into git-ignored `data_cache/`; only source and small summary JSON
-  are tracked. The FRED key is read from the environment, never committed.
+- `REPORT.md`: headline 12-1 momentum study (49 Ken French industries, daily, 1926-2026).
 - `vrp/`: the variance-risk-premium delta-hedged short-vol study; free data, no key.
+
+The data-revision leakage map (CFTC/EIA/payrolls) and cross-asset breadth on pre-built AQR factor
+returns moved to [`extensions/research-ideas/`](../extensions/research-ideas/CLAUDE.md): exploratory,
+not yet a load-bearing result. `crossasset.py` in this package is unaffected: it runs raw prices
+through the backtester proved free of implementation look-ahead, and stays here.
 
 ## Build / test
 
@@ -53,14 +54,8 @@ rp run momentum --oos --out results/                  # full study into results/
 mypy --strict src/ && ruff check .
 ```
 
-## Hard rules
+## Local notes
 
-- Zero `sorry` on main. Develop on a branch; discharge before merge.
-- `mypy --strict` clean on `src/` (scipy import-ignored; pandas via `pandas-stubs`); `ruff` clean.
-- Never commit licensed data; the in-repo synthetic generator and free loaders only.
-- Public-neutral: no grades, no target-firm names in strategy context, no resume paths, no
-  application timelines. Describe the work as a research and verification artifact.
-
-## Planning
-
-GitHub issues are the planning system; open an issue per task and close it in the same PR cycle.
+- `mypy --strict` on `src/`: scipy import-ignored, pandas typed via `pandas-stubs`.
+- No licensed data here either: synthetic generator and free loaders only (see root `CLAUDE.md`
+  for the repo-wide rule).

@@ -13,7 +13,7 @@ execute:
   echo: true
   warning: false
   message: false
-jupyter: python3
+jupyter: portfolio-proofs-venv
 ---
 
 ```{python}
@@ -301,7 +301,8 @@ pgd_lw.print_result(res_pgd, p)
 The Lean 4 PGD (dispatched via `pgd_solve_flat` in `pgd_ffi.pyx`) converges to the
 global minimum on the shrunk problem. Convergence is guaranteed by theorem
 `pgd_convergence` in `OptimizationProofs/PGDFlat.lean`: for any strictly PD $\hat\Sigma$
-and step size $\eta = 1.9 / \lambda_{\max}(\hat\Sigma)$, the iterates satisfy
+and step size $\eta = 0.9 / \lambda_{\max}(\hat\Sigma)$ (satisfying the theorem's
+hypothesis $\eta \cdot \lambda_{\max}(\hat\Sigma) \leq 1$), the iterates satisfy
 $\|w_{k+1} - w_k\| \to 0$ and $f(w_k) \to f(w^*)$. The Lean solver never decomposes
 the covariance matrix; it requires only the matrix-vector product $\hat\Sigma w$ at each
 step. Ledoit-Wolf shrinkage lifts $\lambda_{\min}$ from $-3.762 \times 10^{-18}$ to
@@ -451,7 +452,7 @@ def _proj_budget_l1(y, B=1.0, L=1.5, tol=1e-11):
 def pgd_reference(Sigma, mu, L=1.5, tol=1e-8, max_iter=5000):
     """Unverified reference PGD — for timing comparison only."""
     lam_max = float(np.linalg.eigvalsh(Sigma)[-1])
-    eta = 1.9 / lam_max
+    eta = 0.9 / lam_max
     w = np.ones(len(mu)) / len(mu)
     for k in range(max_iter):
         w_new = _proj_budget_l1(w - eta * (Sigma @ w - mu))

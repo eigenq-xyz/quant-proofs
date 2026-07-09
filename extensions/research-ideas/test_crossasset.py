@@ -1,5 +1,7 @@
 """Cross-asset analysis + AQR parser tests.
 
+EXPLORATORY — not a load-bearing result. See extensions/research-ideas/README.md.
+
 Deterministic and offline: a tiny synthetic returns fixture exercises ``analyze_return_streams``
 and an inline AQR-shaped row list exercises ``parse_aqr_sheet``. No network access.
 """
@@ -7,19 +9,29 @@ and an inline AQR-shaped row list exercises ``parse_aqr_sheet``. No network acce
 from __future__ import annotations
 
 import datetime
+import pathlib
+import sys
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from research_pipeline import (
+_RESEARCH_PIPELINE_SRC = (
+    pathlib.Path(__file__).resolve().parents[2] / "research-pipeline" / "src"
+)
+if str(_RESEARCH_PIPELINE_SRC) not in sys.path:
+    sys.path.insert(0, str(_RESEARCH_PIPELINE_SRC))
+if str(pathlib.Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
+from crossasset import (  # noqa: E402
     analyze_return_streams,
     combine_sleeves_walkforward,
     reproduction_table,
     verification_status_line,
 )
-from research_pipeline.data_sources import parse_aqr_sheet
-from research_pipeline.portfolio import VerifiedSolverUnavailable
+from research_pipeline.data_sources import parse_aqr_sheet  # noqa: E402
+from research_pipeline.portfolio import VerifiedSolverUnavailable  # noqa: E402
 
 
 def _synthetic_streams() -> dict[str, pd.Series]:
@@ -52,7 +64,10 @@ def test_analyze_return_streams_ranks_strong_above_flat() -> None:
     # Deflated Sharpe stays a probability in [0, 1] and ranks consistently with Sharpe.
     for cls in streams:
         assert 0.0 <= summary.loc[cls, "deflated_sharpe"] <= 1.0
-    assert summary.loc["strong", "deflated_sharpe"] >= summary.loc["flat", "deflated_sharpe"]
+    assert (
+        summary.loc["strong", "deflated_sharpe"]
+        >= summary.loc["flat", "deflated_sharpe"]
+    )
 
 
 def test_analyze_return_streams_deflation_uses_n_trials() -> None:
@@ -94,10 +109,20 @@ def test_reproduction_table_tol_ratio_widens_band() -> None:
     realized = pd.DataFrame({"sharpe": [0.55]}, index=["x"])
     published = {"x": 0.20}  # ratio 2.75
     assert (
-        bool(reproduction_table(realized, published, tol_ratio=2.0).loc["x", "reproduced"]) is False
+        bool(
+            reproduction_table(realized, published, tol_ratio=2.0).loc[
+                "x", "reproduced"
+            ]
+        )
+        is False
     )
     assert (
-        bool(reproduction_table(realized, published, tol_ratio=3.0).loc["x", "reproduced"]) is True
+        bool(
+            reproduction_table(realized, published, tol_ratio=3.0).loc[
+                "x", "reproduced"
+            ]
+        )
+        is True
     )
 
 
@@ -135,10 +160,15 @@ def test_verification_status_line() -> None:
     assert "Scope:" not in verification_status_line(include_scope=False)
 
 
-def _diversifying_streams(n: int = 3, periods: int = 120, seed: int = 2) -> dict[str, pd.Series]:
+def _diversifying_streams(
+    n: int = 3, periods: int = 120, seed: int = 2
+) -> dict[str, pd.Series]:
     idx = pd.date_range("2000-01-31", periods=periods, freq="ME")
     rng = np.random.default_rng(seed)
-    return {f"s{k}": pd.Series(0.005 + rng.normal(0.0, 0.03, periods), index=idx) for k in range(n)}
+    return {
+        f"s{k}": pd.Series(0.005 + rng.normal(0.0, 0.03, periods), index=idx)
+        for k in range(n)
+    }
 
 
 def test_combine_sleeves_equal_weight_mechanics() -> None:
@@ -157,10 +187,14 @@ def test_combine_sleeves_equal_weight_mechanics() -> None:
 def test_combine_sleeves_verified_mv_matches_equal_length() -> None:
     streams = _diversifying_streams()
     try:
-        mv = combine_sleeves_walkforward(streams, method="verified_mv", min_obs=24, lookback=36)
+        mv = combine_sleeves_walkforward(
+            streams, method="verified_mv", min_obs=24, lookback=36
+        )
     except VerifiedSolverUnavailable:
         pytest.skip("verified PGD solver not built in this environment")
-    eq = combine_sleeves_walkforward(streams, method="equal_weight", min_obs=24, lookback=36)
+    eq = combine_sleeves_walkforward(
+        streams, method="equal_weight", min_obs=24, lookback=36
+    )
     # Both walk the same dates, so the comparison is on a common index.
     assert mv.index.equals(eq.index)
     assert mv.notna().all()
@@ -171,7 +205,9 @@ def test_combine_sleeves_validation() -> None:
     with pytest.raises(ValueError):
         combine_sleeves_walkforward({"a": pd.Series(0.01, index=idx)})  # < 2 sleeves
     with pytest.raises(ValueError):
-        combine_sleeves_walkforward(_diversifying_streams(), method="bogus")  # bad method
+        combine_sleeves_walkforward(
+            _diversifying_streams(), method="bogus"
+        )  # bad method
     short = {"a": pd.Series(0.01, index=idx[:5]), "b": pd.Series(0.02, index=idx[:5])}
     with pytest.raises(ValueError):
         combine_sleeves_walkforward(short, min_obs=36)  # too few aligned observations

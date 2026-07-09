@@ -14,12 +14,13 @@ allowed-tools: Bash(lake build *) Bash(lake exe *) Read Grep Glob
 
 ## Process
 
-1. **State the theorem in English** before writing Lean — clarity in English predicts clarity in Lean
-2. **Search mathlib first** — `exact?`, `apply?`, or search [leanprover-community.github.io/mathlib4_docs](https://leanprover-community.github.io/mathlib4_docs)
-3. **Choose mode**: term mode for short equalities/implications; tactic mode for case analysis, induction, or multi-step proofs
-4. **Write and iterate** — read the InfoView goal state at each step
-5. **Verify**: `lake build` exits 0, zero sorry
-6. **Style check**: `/check-lean-style` before opening a PR
+1. **State the theorem in English first** — clarity in English predicts clarity in Lean.
+2. **Search mathlib first** — `exact?`, `apply?`, or search [leanprover-community.github.io/mathlib4_docs](https://leanprover-community.github.io/mathlib4_docs).
+3. **Choose mode**: term mode for short equalities/implications; tactic mode for case
+   analysis, induction, or multi-step proofs.
+4. **Write and iterate** — read the InfoView goal state at each step.
+5. **Verify**: `lake build` exits 0, zero sorry.
+6. **Style check**: `/check-lean-style` before opening a PR.
 
 ## Useful tactics for this codebase
 
@@ -40,21 +41,21 @@ allowed-tools: Bash(lake build *) Bash(lake exe *) Read Grep Glob
 ## Namespace rule
 
 New theorems go in the correct namespace:
-- `backtest-proofs/lean/` → `namespace BacktestProofs`
+- `extensions/hedge-proofs/` → `namespace BacktestProofs` (historical name, kept for continuity)
 - `foundations/ftap-proofs/` → `namespace FtapProofs`
 - `foundations/options-proofs/` → `namespace OptionsProofs`
 - `extensions/mortgage-proofs/lean/` → `namespace MortgageProofs`
 
 ## For mathlib candidates (ftap-proofs, options-proofs)
 
-- Use snake_case for theorem names (`no_arbitrage_iff_emm`, not `noArbitrageIffEmm`)
-- Every theorem must have a docstring
-- No `import Mathlib` — specific imports only
-- Run `/check-lean-style` before opening the mathlib PR
+- Use snake_case for theorem names (`no_arbitrage_iff_emm`, not `noArbitrageIffEmm`).
+- Every theorem needs a docstring.
+- No `import Mathlib` — specific imports only.
+- Run `/check-lean-style` before opening the mathlib PR.
 
 ## When stuck
 
-1. `exact?` — searches for a proof term
-2. `simp?` — shows which simp lemmas would close the goal
-3. Split the goal: prove a helper `have h : ... := ...` first
-4. Search mathlib docs for the mathematical concept, not the Lean name
+1. `exact?` — searches for a proof term.
+2. `simp?` — shows which simp lemmas would close the goal.
+3. Split the goal: prove a helper `have h : ... := ...` first.
+4. Search mathlib docs for the mathematical concept, not the Lean name.

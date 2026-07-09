@@ -14,7 +14,7 @@ disallowedTools:
 
 # Lean Style Check
 
-This skill reads and reports. The author fixes the issues.
+Read-only: this skill reports issues, the author fixes them.
 
 ## Checklist
 
@@ -56,7 +56,7 @@ Fix: Replace with specific imports from the mathlib4 docs
 Issue: theorem name `noArbitrageEMM` should be snake_case for mathlib
 Fix: Rename to `no_arbitrage_emm`
 
-[SUGGESTION] File: backtest-proofs/lean/BacktestProofs/Basic.lean, Line: 45
+[SUGGESTION] File: extensions/hedge-proofs/BacktestProofs/Basic.lean, Line: 45
 Issue: `simp` without lemma list — fragile on mathlib updates
 Fix: `simp [Portfolio.value_def]`
 ```

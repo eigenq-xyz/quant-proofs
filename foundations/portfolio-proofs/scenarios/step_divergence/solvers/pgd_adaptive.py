@@ -1,18 +1,20 @@
 """Adaptive-eta PGD for the step-divergence scenario — Lean 4 via FFI.
 
 Delegates to the formally verified Lean 4 PGD (``pgd_solve_flat`` via the
-``pgd_ffi`` Cython extension).  Lean enforces ``eta = 1.9 / lambda_max``
+``pgd_ffi`` Cython extension).  Lean enforces ``eta = 0.9 / lambda_max``
 internally; convergence is guaranteed by theorem ``pgd_convergence`` in
-``OptimizationProofs/PGDFlat.lean``.
+``OptimizationProofs/PGDFlat.lean``, whose hypothesis is
+``eta * lambda_max <= 1``.
 
 The key contrast with ``gd_fixed``:
 
-- ``gd_fixed``: uses ``eta_calibrated`` from the January 2018 window — 6.34×
-  over the post-shock Lipschitz bound — and diverges at step 3.
+- ``gd_fixed``: uses ``eta_calibrated`` from the January 2018 window (the
+  classical, uncertified ``1.9 / lambda_max`` heuristic) — far over the
+  post-shock stability bound — and diverges at step 3.
 - ``pgd_adaptive`` (this module): recomputes ``lambda_max`` from the
   post-shock ``Sigma_shock`` and passes it to Lean, which enforces
-  ``eta = 1.9 / lambda_max_shock < 2 / lambda_max_shock``.  Lean
-  converges in 2 iterations to the KKT-certified minimum.
+  ``eta = 0.9 / lambda_max_shock <= 1 / lambda_max_shock``.  Lean
+  converges to the KKT-certified minimum.
 """
 
 from __future__ import annotations
@@ -118,7 +120,7 @@ def run(p: ProblemData) -> SolverResult:
     """Run the Lean 4 PGD on the post-shock shrunk covariance via FFI.
 
     Passes ``p.Sigma_shock`` and ``p.mu_shock`` to ``lean_pgd.solve()``.
-    Lean computes ``eta = 1.9 / lambda_max(Sigma_shock)`` internally and
+    Lean computes ``eta = 0.9 / lambda_max(Sigma_shock)`` internally and
     runs the PGD loop until convergence.
 
     Parameters
@@ -131,16 +133,16 @@ def run(p: ProblemData) -> SolverResult:
     -------
     SolverResult
         ``converged=True``.  The Lean solver always converges when Sigma
-        is PD and ``eta < 2 / lambda_max``.
+        is PD and ``eta * lambda_max <= 1``.
     """
-    eta_adaptive = 1.9 / p.lam_max_shock
+    eta_adaptive = 0.9 / p.lam_max_shock
 
     print("=== Lean 4 Adaptive-eta PGD (pgd_solve CLI) ===")
     print()
     print(
         f"Adaptive eta = {eta_adaptive:.4f}  "
-        f"< bound {p.lipschitz_bound:.2f}  "
-        f"(1.9 / {p.lam_max_shock:.6f}) ✓"
+        f"<= bound {p.lipschitz_bound:.2f}  "
+        f"(0.9 / {p.lam_max_shock:.6f}) ✓"
     )
     print(
         f"Calibrated eta from January = {p.eta_calibrated:.2f}  "
@@ -170,7 +172,7 @@ def run(p: ProblemData) -> SolverResult:
         converged=True,
         message=(
             f"pgd_solve subprocess  "
-            f"(eta = 1.9 / {lam_max_returned:.6f};  "
+            f"(eta = 0.9 / {lam_max_returned:.6f};  "
             f"native: {LEAN_NATIVE_NS:.3f} ns/solve)"
         ),
         objective=obj_val,

@@ -77,13 +77,15 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-# Reuse verified primitives from the flagship research pipeline.
-_SRC = Path(__file__).resolve().parents[2] / "src"
+# Reuse verified primitives from the flagship research pipeline (a sibling project,
+# not a parent of this exploratory study — see extensions/research-ideas/README.md).
+_SRC = Path(__file__).resolve().parents[2] / "research-pipeline" / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
@@ -113,7 +115,9 @@ THRESHOLD_SWEEP_K: tuple[float, ...] = (0.0, 100.0, 150.0, 197.0, 200.0, 250.0)
 # --------------------------------------------------------------------------------------
 # Signal: discontinuous threshold regime (the one new piece vs run_study_macro)
 # --------------------------------------------------------------------------------------
-def build_threshold_signal(level: pd.Series, release_date: pd.Series, k: float) -> pd.DataFrame:
+def build_threshold_signal(
+    level: pd.Series, release_date: pd.Series, k: float
+) -> pd.DataFrame:
     """Binary threshold regime from a payrolls-level vintage.
 
     The reported MoM change is compared to ``k``: ``position = -1`` (short SPY) when the change is
@@ -127,7 +131,9 @@ def build_threshold_signal(level: pd.Series, release_date: pd.Series, k: float) 
     position = pd.Series(
         np.where(change.to_numpy() >= k, -1.0, 1.0), index=change.index, name="position"
     )
-    df = pd.DataFrame({"change": change, "position": position, "release_date": release_date})
+    df = pd.DataFrame(
+        {"change": change, "position": position, "release_date": release_date}
+    )
     # Drop the first month (no change) and any month without a release timestamp.
     return df.dropna(subset=["change", "release_date"])
 
@@ -195,9 +201,13 @@ def flip_diagnostics(
         "flip_rate": float(n_flip / n_common) if n_common else float("nan"),
         "n_common_decision_months_full_series": n_common_all,
         "n_flip_months_full_series": n_flip_all,
-        "flip_rate_full_series": float(n_flip_all / n_common_all) if n_common_all else float("nan"),
+        "flip_rate_full_series": float(n_flip_all / n_common_all)
+        if n_common_all
+        else float("nan"),
         "n_flip_months_traded": int(len(flip_traded)),
-        "flip_mean_spy_fwd_return": float(fwd_flip.mean()) if len(fwd_flip) else float("nan"),
+        "flip_mean_spy_fwd_return": float(fwd_flip.mean())
+        if len(fwd_flip)
+        else float("nan"),
         "flip_mean_naive_return": float(rn.mean()) if len(rn) else float("nan"),
         "flip_mean_pit_return": float(rp.mean()) if len(rp) else float("nan"),
         "flip_mean_naive_minus_pit": mean_d,
@@ -235,7 +245,8 @@ def leakage_tax_at_threshold(
         "full": pd.Series(True, index=common),
         "pre_2008": pd.Series(common < pd.Timestamp("2008-01-01"), index=common),
         "2008_2016": pd.Series(
-            (common >= pd.Timestamp("2008-01-01")) & (common < pd.Timestamp("2016-01-01")),
+            (common >= pd.Timestamp("2008-01-01"))
+            & (common < pd.Timestamp("2016-01-01")),
             index=common,
         ),
         "2016_2026": pd.Series(common >= pd.Timestamp("2016-01-01"), index=common),
@@ -313,14 +324,23 @@ def run() -> dict[str, object]:
     edge_bearing = [r for r in sweep if _pit_clears_full(r)]
     if edge_bearing:
         headline = max(edge_bearing, key=_flip_rate)
-        headline_basis = (
-            "highest flip rate among edge-bearing thresholds (PIT clears flat-book null)"
-        )
+        headline_basis = "highest flip rate among edge-bearing thresholds (PIT clears flat-book null)"
     else:
         headline = max(sweep, key=_flip_rate)
-        headline_basis = "highest flip rate overall (no threshold's PIT arm cleared the null)"
+        headline_basis = (
+            "highest flip rate overall (no threshold's PIT arm cleared the null)"
+        )
 
     out: dict[str, object] = {
+        "_meta": {
+            "generated_by": "extensions/research-ideas/macro-leakage/run_study_threshold.py",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "reproduce": (
+                "cd extensions/research-ideas/macro-leakage && python3.12 run_study_threshold.py"
+            ),
+            "verified": False,
+            "notes": "Data-revision leakage-tax cell, threshold signal (isolates signal functional form as the binding variable); empirical study, not routed through the verified backtester.",
+        },
         "series_id": SERIES_ID,
         "signal": "binary threshold regime: position = -1 if MoM change >= k else +1 (fade hot print)",
         "median_abs_first_release_change_k": typ_change,
@@ -367,7 +387,9 @@ def main() -> None:
     out_path = Path(__file__).resolve().parent / "results_leakage_tax_threshold.json"
     out_path.write_text(json.dumps(res, indent=2, default=str))
 
-    print("\nNonfarm payrolls (PAYEMS) THRESHOLD-signal data-revision leakage-tax study")
+    print(
+        "\nNonfarm payrolls (PAYEMS) THRESHOLD-signal data-revision leakage-tax study"
+    )
     print(
         f"first-release months: {res['first_release_first']} -> {res['first_release_last']}; "
         f"typical |MoM change| ~{_f(res, 'median_abs_first_release_change_k'):.0f}k; "
@@ -393,7 +415,9 @@ def main() -> None:
     assert isinstance(headline, dict)
     flips = headline["flips"]
     assert isinstance(flips, dict)
-    print(f"\nHeadline threshold k = {_f(headline, 'threshold_k'):.0f}k -- {res['headline_basis']}")
+    print(
+        f"\nHeadline threshold k = {_f(headline, 'threshold_k'):.0f}k -- {res['headline_basis']}"
+    )
     print(
         f"  flip rate (tradable) = {_f(flips, 'flip_rate'):.1%} "
         f"({int(_f(flips, 'n_flip_months'))} of {int(_f(flips, 'n_common_decision_months'))} months); "
@@ -416,7 +440,9 @@ def main() -> None:
         f"{'period':>10} {'variant':>7} {'ann_ret':>9} {'sharpe':>7} "
         f"{'hit':>6} {'IC':>7} {'maxDD':>8} | {'tax_SR':>7} {'tax_bps':>9} {'NW_t':>6}"
     )
-    print(f"Headline threshold k={_f(headline, 'threshold_k'):.0f}k -- full leakage-tax battery:")
+    print(
+        f"Headline threshold k={_f(headline, 'threshold_k'):.0f}k -- full leakage-tax battery:"
+    )
     print(hdr2)
     print("-" * len(hdr2))
     for pname, blk in periods.items():
@@ -425,7 +451,9 @@ def main() -> None:
             s = blk[variant]
             assert isinstance(s, dict)
             tax_sr = f"{_f(blk, 'tax_sharpe'):+.2f}" if variant == "naive" else ""
-            tax_bps = f"{_f(blk, 'tax_bps_per_year'):+.0f}" if variant == "naive" else ""
+            tax_bps = (
+                f"{_f(blk, 'tax_bps_per_year'):+.0f}" if variant == "naive" else ""
+            )
             nwt = f"{_f(blk, 'diff_nw_tstat'):+.2f}" if variant == "naive" else ""
             print(
                 f"{pname:>10} {variant:>7} {_f(s, 'ann_return'):>+9.4f} "

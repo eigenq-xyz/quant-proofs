@@ -67,7 +67,7 @@ def run_window(w: WindowData) -> WindowResult:
         converged=True,
         message=(
             f"pgd_solve_flat via FFI  "
-            f"(eta = 1.9 / {lam_max:.4e};  "
+            f"(eta = 0.9 / {lam_max:.4e};  "
             f"native: {LEAN_NATIVE_NS:.3f} ns/solve at N=10)"
         ),
         objective=w.objective(weights),

@@ -12,8 +12,8 @@ allowed-tools: Bash(jupyter *) Bash(uv run *)
 
 # Verify Research — Level 6 (Local Only)
 
-This level never runs in CI. WRDS MFA blocks automation. The output files
-(`results/charts/*.png`, `results/tables/*.csv`) are what get committed.
+Never runs in CI. WRDS MFA blocks automation. Only the output files
+(`results/charts/*.png`, `results/tables/*.csv`) get committed.
 
 ## Prerequisites
 
@@ -28,7 +28,7 @@ ls local_data/optionmetrics_*.parquet
 ## Running the research pipeline
 
 ```bash
-cd backtest-proofs/python
+cd research-pipeline
 uv sync --extra docs
 
 # Execute all notebooks (outputs are committed, not notebooks)
@@ -46,9 +46,9 @@ uv run jupyter nbconvert --to notebook --execute notebooks/*.ipynb --output-dir 
 
 ## Data quality rules
 
-- **OptionMetrics timestamp**: prices at 15:59 Eastern, not 16:00 — align by date only
-- **In-sample / out-of-sample**: declare the split before running, never retroactively
-- **No raw WRDS data committed** — outputs only, raw stays in `local_data/` (gitignored)
+- **OptionMetrics timestamp** — prices at 15:59 Eastern, not 16:00; align by date only
+- **In-sample / out-of-sample** — declare the split before running, never retroactively
+- **No raw WRDS data committed** — outputs only; raw stays in `local_data/` (gitignored)
 
 ## Committing results
 

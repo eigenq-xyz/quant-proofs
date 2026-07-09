@@ -113,7 +113,7 @@ def main : IO Unit := do
   let N := muFlat.size  -- 10
   IO.println "=== Lean 4 PGD Benchmark — August 2007 (anti-fold edition) ==="
   IO.println s!"N = {N},  cond ≈ 86,  L1-active = true"
-  IO.println s!"λ_max = {lambdaMax},  η = {1.9 / lambdaMax}"
+  IO.println s!"λ_max = {lambdaMax},  η = {0.9 / lambdaMax}"
   IO.println ""
 
   -- ── Single correctness run ────────────────────────────────────────────────

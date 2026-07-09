@@ -4,9 +4,9 @@ Calls the compiled Lean 4 ``pgd_solve`` binary directly via subprocess.
 No Cython, no FFI layer.
 
 The Lean binary runs ``pgdFlat`` (PGDFlat.lean) with step size
-``eta = 1.9 / lambda_max(Sigma)``, recomputed from the current covariance.
-The Lean 4 theorem ``pgd_convergence`` certifies this step size satisfies
-``eta < 2 / lambda_max`` as a Prop at compile time.
+``eta = 0.9 / lambda_max(Sigma)``, recomputed from the current covariance.
+The Lean 4 theorem ``pgd_convergence`` requires ``eta * lambda_max <= 1``
+as a hypothesis; this step size satisfies it with margin.
 
 For trajectory visualisation in the .qmd notebook the ``weight_history``
 field is populated via a Python reference run (same algorithm, same
@@ -63,7 +63,7 @@ def run(p: ProblemData) -> SolverResult:
     """Run the Lean 4 PGD binary directly and return a SolverResult.
 
     Calls ``optimization-proofs/.lake/build/bin/pgd_solve`` via subprocess.
-    Step size eta = 1.9 / lambda_max(Sigma) is enforced by Lean internally.
+    Step size eta = 0.9 / lambda_max(Sigma) is enforced by Lean internally.
 
     The ``weight_history`` field is populated by a Python reference run
     (same algorithm, identical step size) so the trajectory can be plotted.
@@ -81,7 +81,7 @@ def run(p: ProblemData) -> SolverResult:
     """
     # -- Lean binary: certified final answer --------------------------------
     w_lean, lam_max = _lean_solve(p.Sigma, p.mu, p.leverage_cap)
-    eta = 1.9 / lam_max
+    eta = 0.9 / lam_max
 
     # -- Python reference: generate step-by-step history for trajectory plot
     N = p.N
@@ -104,8 +104,8 @@ def run(p: ProblemData) -> SolverResult:
         converged=True,
         message=(
             f"Lean 4 pgdFlat via subprocess  "
-            f"(eta = 1.9 / {lam_max:.4f} = {eta:.4f}  "
-            f"< 2/lambda_max = {2.0 / lam_max:.4f})"
+            f"(eta = 0.9 / {lam_max:.4f} = {eta:.4f}  "
+            f"<= 1/lambda_max = {1.0 / lam_max:.4f})"
         ),
         objective=p.objective(w_lean),
         weights=w_lean,

@@ -136,7 +136,7 @@ def run(p: ProblemData) -> SolverResult:
 
     Calls ``optimization-proofs/.lake/build/bin/pgd_solve`` via subprocess.
     The binary runs ``pgdFlat`` (PGDFlat.lean) with
-    ``eta = 1.9 / lambda_max(Sigma)``; convergence is guaranteed by Lean's
+    ``eta = 0.9 / lambda_max(Sigma)``; convergence is guaranteed by Lean's
     ``pgd_convergence`` theorem when Sigma is PD.
 
     Returns
@@ -147,7 +147,7 @@ def run(p: ProblemData) -> SolverResult:
         projection threshold is an algebraic condition, not an asymptotic one.
     """
     w, lam_max = _lean_solve(p.Sigma, p.mu, p.leverage_cap)
-    eta = 1.9 / lam_max
+    eta = 0.9 / lam_max
 
     obj_val = p.objective(w)
     budget_err = abs(float(np.sum(w)) - 1.0)
@@ -158,7 +158,7 @@ def run(p: ProblemData) -> SolverResult:
         converged=True,
         message=(
             f"Lean 4 pgdFlat via subprocess  "
-            f"(eta = 1.9 / {lam_max:.4e} = {eta:.4f})"
+            f"(eta = 0.9 / {lam_max:.4e} = {eta:.4f})"
         ),
         objective=obj_val,
         weights=w,

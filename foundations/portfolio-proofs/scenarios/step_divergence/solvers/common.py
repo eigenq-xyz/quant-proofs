@@ -5,9 +5,11 @@ Loads the Ken French 10 Industry Portfolio daily VW returns, extracts a
 ending February 5, 2018 (Volmageddon), and defines the mean-variance QP
 used by all solver modules.
 
-The key asymmetry: eta calibrated from January has eta_cal = 5334.47, but
-the post-shock Lipschitz bound is 2 / lam_max_shock = 840.90. The calibrated
-step size exceeds the post-shock stability bound by 6.3x, causing divergence.
+The key asymmetry: eta calibrated from January (using the classical,
+uncertified ``1.9 / lambda_max`` heuristic) has eta_cal = 5334.47, but the
+post-shock stability bound ``pgd_convergence`` actually proves is
+1 / lam_max_shock = 420.45. The calibrated step size exceeds this bound by
+over 12x, causing divergence.
 """
 
 from __future__ import annotations
@@ -50,7 +52,9 @@ class ProblemData:
     # Pre-shock calibration window (January 2018, full-rank)
     cal_window: pd.DataFrame
     lam_max_cal: float  # lambda_max of S_cal (full-rank, no shrinkage needed)
-    eta_calibrated: float  # 1.9 / lam_max_cal = 5334.47
+    eta_calibrated: (
+        float  # 1.9 / lam_max_cal = 5334.47 (classical, uncertified heuristic)
+    )
 
     # Post-shock window (5 days ending Feb 5, 2018)
     shock_window: pd.DataFrame
@@ -60,7 +64,9 @@ class ProblemData:
     Sigma_shock: np.ndarray  # LW-shrunk, PSD
     mu_shock: np.ndarray  # mean returns of shock window
     lam_max_shock: float  # lambda_max(Sigma_shock) = 0.002378
-    lipschitz_bound: float  # 2 / lam_max_shock = 840.90
+    lipschitz_bound: (
+        float  # 1 / lam_max_shock = 420.45 (pgd_convergence's proved bound)
+    )
     leverage_cap: float
     alpha: float  # shrinkage parameter
 
@@ -133,7 +139,7 @@ def load_problem(
     lam_max_cal = float(eigvals_cal[-1])
     eta_calibrated = 1.9 / lam_max_cal
 
-    # --- Shock window: Jan 30 – Feb 5, 2018 (Volmageddon) ---------------
+    # --- Shock window: Jan 30 - Feb 5, 2018 (Volmageddon) ---------------
     shock_window = df.loc[SHOCK_START:SHOCK_END]
     industries = list(shock_window.columns)
     N = len(industries)
@@ -149,7 +155,7 @@ def load_problem(
 
     eigvals_shock = np.linalg.eigvalsh(Sigma_shock)
     lam_max_shock = float(eigvals_shock[-1])
-    lipschitz_bound = 2.0 / lam_max_shock
+    lipschitz_bound = 1.0 / lam_max_shock
 
     return ProblemData(
         cal_window=cal_window,
@@ -182,9 +188,10 @@ def print_problem_header(p: ProblemData) -> None:
         f"Assets : N={p.N}  T={len(p.cal_window)}  rank(S_cal)={rank_S_cal}  (FULL RANK)"
     )
     print(f"lambda_max(S_cal)    : {p.lam_max_cal:.6f}")
-    print(f"Stability bound 2/lambda_max(S_cal): {2.0 / p.lam_max_cal:.2f}")
+    print(f"Stability bound 1/lambda_max(S_cal): {1.0 / p.lam_max_cal:.2f}")
     print(
-        f"Calibrated eta       : {p.eta_calibrated:.2f}  (= 1.9 / {p.lam_max_cal:.6f})"
+        f"Calibrated eta       : {p.eta_calibrated:.2f}  "
+        f"(= 1.9 / {p.lam_max_cal:.6f}, classical uncertified heuristic)"
     )
     print()
     print("=== Shock window (Volmageddon) ===")
@@ -201,7 +208,7 @@ def print_problem_header(p: ProblemData) -> None:
         f"cond={eigvals_shrunk[-1] / eigvals_shrunk[0]:.1f}"
     )
     print(f"lambda_max(Sigma_shock)  : {p.lam_max_shock:.6f}")
-    print(f"Lipschitz bound (2/lambda): {p.lipschitz_bound:.2f}")
+    print(f"Stability bound (1/lambda): {p.lipschitz_bound:.2f}")
     print()
     growth = abs(p.eta_calibrated * p.lam_max_shock - 1.0)
     print("=== Stability violation ===")

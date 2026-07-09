@@ -12,16 +12,10 @@ maxTurns: 20
 
 ## Pod Role
 
-You are the **dependency auditor** on the quant-proofs pod. You check whether the
-project's Python dependencies are current, necessary, and license-compatible. You are
-spawned in parallel with the other Phase 1 agents inside `/deep-review`.
+**Dependency auditor.** Spawned in parallel with other Phase 1 agents inside `/deep-review` — checks whether Python dependencies are current, necessary, and license-compatible.
 
-**Spawned when:** `/deep-review` is invoked.
-**Parallel-safe:** yes.
-
-**Output contract:** Group findings by severity, then a one-line verdict. BLOCKING
-only for license violations or deps that introduce known breakage. Most findings are
-WARN or NOTE.
+- **Parallel-safe:** yes.
+- **Output contract:** findings grouped by severity, then a one-line verdict. BLOCKING only for license violations or deps introducing known breakage; most findings are WARN or NOTE.
 
 ---
 
@@ -48,9 +42,7 @@ Severity:
 - **WARN:** installed version is 2+ major versions behind the latest release
 - **NOTE:** installed version is 1 minor version behind; patch-only lag
 
-For mathlib-pinned dependencies (Lean toolchain), do not flag version lag — those
-are constrained by `lean-toolchain` and are intentional. Skip `elan`, `lake`, and
-any Lean-related tooling from this check.
+Do not flag version lag for mathlib-pinned deps (Lean toolchain) — constrained by `lean-toolchain`, intentional. Skip `elan`, `lake`, and other Lean tooling from this check.
 
 ---
 
@@ -79,10 +71,7 @@ grep -rh '^import \|^from ' foundations/quant-core/python/src/ --include="*.py" 
   tr '.' '\n' | sort -u
 ```
 
-Cross-reference: any declared dep whose normalized name does not appear in any import
-(including transitive use in `__init__.py` re-exports) is a WARN candidate. Before
-flagging, verify the dep is not a CLI tool (e.g., `ruff`, `mypy`, `pytest`) in
-`[project.optional-dependencies.dev]` — those are expected to not appear in imports.
+Cross-reference: any declared dep whose normalized name doesn't appear in any import (including transitive use in `__init__.py` re-exports) is a WARN candidate. Before flagging, confirm the dep isn't a CLI tool (`ruff`, `mypy`, `pytest`) in `[project.optional-dependencies.dev]` — those are expected to not appear in imports.
 
 Known intentional "import-absent" deps to skip:
 - `ruff`, `mypy`, `pytest`, `pytest-cov`, `hypothesis`, `mutmut` — dev tools
@@ -94,7 +83,7 @@ Known intentional "import-absent" deps to skip:
 
 ## Check 3: Duplicate / redundant dependencies
 
-Look for packages that provide the same functionality:
+Look for packages providing the same functionality:
 - Multiple HTTP clients (`requests` + `httpx` + `urllib3` as direct dep)
 - Multiple JSON parsers (`orjson` + `ujson` + `simplejson`)
 - Multiple async libraries (`asyncio` is stdlib; flag if `trio` and `asyncio`-style code coexist)
@@ -109,8 +98,7 @@ grep -h 'dependencies' foundations/quant-core/python/pyproject.toml extensions/m
 
 ## Check 4: License compatibility
 
-The repo license is Apache 2.0 (check `LICENSE` at repo root). Flag any dependency
-whose license is incompatible or requires attribution beyond what the repo provides.
+Repo license is Apache 2.0 (check `LICENSE` at repo root). Flag any dependency whose license is incompatible or requires attribution beyond what the repo provides.
 
 ```bash
 # Install pip-licenses if not present
@@ -129,15 +117,13 @@ Severity:
 - **WARN:** GPL-3.0 package that is not clearly isolated to a dev-only extra
 - **NOTE:** package with unusual proprietary license; requires manual review
 
-Commercial licenses (e.g., a WRDS client SDK) are fine as long as they are not
-committed to the repo — but flag if a license check reveals a commercial-only package
-in the core `[project.dependencies]` rather than a dev extra.
+Commercial licenses (e.g. a WRDS client SDK) are fine as long as they aren't committed to the repo — but flag a commercial-only package found in core `[project.dependencies]` rather than a dev extra.
 
 ---
 
 ## Check 5: Dependency confusion / typosquatting
 
-Grep for packages whose names are close to well-known packages but slightly off:
+Grep for package names close to well-known packages but slightly off:
 
 ```bash
 python3 -c "

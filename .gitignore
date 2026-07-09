@@ -56,6 +56,25 @@
 
 # Antigravity CLI
 .antigravitycli/
+
+# Pi agent runtime — generated copy of .claude/skills + .claude/agents (see setup_pi.sh),
+# not a second source of truth. Regenerate with setup_pi.sh after any .claude/ change
+# rather than hand-editing; never commit.
+.pi/
 foundations/optimization-proofs/pgd_ffi*.so
 foundations/optimization-proofs/ffi/pgd_ffi.c
 docs/_build/
+
+# CI-generated copies of portfolio-proofs content (see .github/workflows/pages.yml
+# "Copy portfolio content to docs/portfolio/" step). Source of truth is
+# foundations/portfolio-proofs/scenarios/*/*.md and reports/lean_pgd_performance.md.
+# docs/portfolio/index.md is hand-written and stays tracked.
+docs/portfolio/boundary_trap.md
+docs/portfolio/cholesky_crash.md
+docs/portfolio/lean_pgd_performance.md
+docs/portfolio/phantom_positions.md
+docs/portfolio/precision_bleed.md
+docs/portfolio/sp500_factor.md
+docs/portfolio/step_divergence.md
+docs/portfolio/vix_shock.md
+docs/portfolio/*_files/

@@ -13,8 +13,7 @@ allowed-tools: Bash(uv run pytest *)
 
 # Verify Property — Level 3
 
-Property tests check that mathematical guarantees hold across arbitrary inputs —
-not just the specific fixtures in unit tests.
+Property tests check mathematical guarantees across arbitrary inputs, not just unit-test fixtures.
 
 ## Command (when infrastructure exists)
 
@@ -24,7 +23,9 @@ uv run pytest tests/property/ -v --hypothesis-seed=0
 
 ## Target properties
 
-### BacktestProofs (backtest-proofs/python)
+### BacktestProofs (extensions/hedge-proofs — Lean only, no Python bindings exist yet; these
+properties are proved directly as Lean theorems in `Invariants.lean`/`SettlementInvariants.lean`,
+not exercised via Hypothesis today)
 
 - **valueIdentity**: `portfolio_value(cash, positions) == cash + sum(qty * price for each position)` — verified for any integer cash and any list of positions
 - **selfFinancing**: applying a trade then reversing it returns the exact same portfolio value
@@ -46,14 +47,16 @@ Hypothesis outputs the minimal input that breaks the property:
 ```
 Falsifying example: portfolio_value(cash=-1, positions=[...])
 ```
-This is the bridge to the Lean proof: if hypothesis finds a falsifying input, either
-(a) the Python implementation has a bug relative to the Lean model, or (b) the
-property test is over-specified. Check the Lean theorem first.
+This is the bridge to the Lean proof. A falsifying input means either (a) the Python
+implementation has a bug relative to the Lean model, or (b) the property test is
+over-specified. Check the Lean theorem first.
 
 ## Current status
 
-`tests/property/` does not yet exist. Create it before running this skill.
-Priority order for implementation:
-1. `tests/property/test_backtest_properties.py` — valueIdentity, selfFinancing
+`tests/property/` does not exist yet. Create it before running this skill.
+Implementation priority order:
+1. `tests/property/test_backtest_properties.py` — valueIdentity, selfFinancing (needs Python
+   bindings for `extensions/hedge-proofs`, which do not exist yet — only the Lean `@[export]`
+   FFI surface in `BacktestProofs/Accounting.lean` is defined today)
 2. `tests/property/test_mortgage_trace.py` — traceInvariant
 3. `tests/property/test_options_parity.py` — putCallParity (needs OptionsProofs Python bindings)

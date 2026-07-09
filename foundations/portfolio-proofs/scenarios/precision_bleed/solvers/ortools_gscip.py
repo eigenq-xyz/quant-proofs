@@ -4,6 +4,9 @@ Uses Google OR-Tools MathOpt API with GSCIP as the backend. Same 2N-variable
 formulation as Gurobi (u, v >= 0, u+v <= 1 as box constraint); no license
 required. Returns OPTIMAL with constraints satisfied to SCIP's default
 feasibility tolerance (1e-9).
+
+This is a benchmark script, not production code: without ortools installed,
+run_window() raises rather than substituting a documented-but-fake result.
 """
 
 from __future__ import annotations
@@ -14,11 +17,15 @@ from .common import PRODUCTION_HALT_THRESHOLD, WindowData, WindowResult
 
 
 def run_window(w: WindowData) -> WindowResult:
-    """Run OR-Tools GSCIP on one rolling window."""
+    """Run OR-Tools GSCIP on one rolling window. Raises if ortools is unavailable."""
     try:
         return _run_ortools(w)
-    except ImportError:
-        return _simulate(w)
+    except ImportError as exc:
+        raise RuntimeError(
+            "ortools is required for this benchmark (precision_bleed GSCIP "
+            "solver); install it (pip install ortools) before running "
+            "reports/benchmark_all_solvers.py, or exclude this solver explicitly."
+        ) from exc
     except Exception as exc:
         return WindowResult(
             solver_name="OR-Tools GSCIP (error)",
@@ -90,22 +97,6 @@ def _run_ortools(w: WindowData) -> WindowResult:
         budget_error=budget_error,
         leverage_violation=leverage_violation,
         status="BLEEDING" if bleeding else "PERFECT",
-    )
-
-
-def _simulate(w: WindowData) -> WindowResult:
-    print("  [ortools not installed — simulation]")
-    return WindowResult(
-        solver_name="OR-Tools GSCIP (simulated)",
-        window_start=w.start,
-        window_end=w.end,
-        converged=True,
-        message="Simulated: ortools not installed",
-        objective=float("nan"),
-        weights=np.zeros(w.N),
-        budget_error=float("nan"),
-        leverage_violation=float("nan"),
-        status="PERFECT (simulated)",
     )
 
 

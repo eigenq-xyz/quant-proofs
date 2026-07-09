@@ -10,14 +10,12 @@ description: >
 
 # `/deep-review` — quant-proofs
 
-Full-depth multi-agent review. Distinct from `/verify` (which runs the build/test
-pyramid) and `qa-checker` (which is a serial gate). This skill fans out six review
-agents in parallel, waits for all to complete, then runs `qa-checker` as the final
-serial gate.
+Full-depth multi-agent review. Distinct from `/verify` (build/test pyramid) and
+`qa-checker` (serial gate). This skill fans out six review agents in parallel, waits for
+all to complete, then runs `qa-checker` as the final serial gate.
 
-**Mutation testing** is intentionally excluded from this skill — it belongs in
-the scheduled `mutation-test.yml` CI job (weekly + `workflow_dispatch`). Do not
-inline it here.
+**Mutation testing is excluded on purpose** — it belongs in the scheduled
+`mutation-test.yml` CI job (weekly + `workflow_dispatch`). Do not inline it here.
 
 ---
 
@@ -72,9 +70,9 @@ git diff --name-only origin/main...HEAD
 git diff --name-only origin/main...HEAD | cut -d/ -f1 | sort -u
 ```
 
-Pass the relevant file list to each agent in its prompt. Agents that operate
-repo-wide (security-reviewer, deps-reviewer, dead-code-reviewer) always scan
-all subdirs regardless of diff scope.
+Pass the relevant file list to each agent in its prompt. Agents that operate repo-wide
+(security-reviewer, deps-reviewer, dead-code-reviewer) always scan all subdirs regardless
+of diff scope.
 
 ---
 
@@ -163,8 +161,8 @@ Stop immediately and surface to the user if:
 - A CVE-rated vulnerability found by `pip-audit` (security-reviewer escalates)
 - A hardcoded secret or credential found (security-reviewer escalates)
 
-Do not wait for remaining agents to complete — escalate immediately when any of
-the above is detected.
+Don't wait for remaining agents to complete — escalate immediately when any of the above
+is detected.
 
 ---
 

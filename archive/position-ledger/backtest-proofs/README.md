@@ -1,159 +1,82 @@
-# backtest-proofs
+# backtest-proofs (archived)
 
-[![Lean CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/lean-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
-[![Python CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/python-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
-[![codecov](https://codecov.io/gh/eigenq-xyz/quant-proofs/branch/main/graph/badge.svg)](https://codecov.io/gh/eigenq-xyz/quant-proofs)
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/eigenq-xyz/quant-proofs/main.svg)](https://results.pre-commit.ci/latest/github/eigenq-xyz/quant-proofs/main)
+**Archived.** Superseded by the FTAP-first rebuild (`foundations/ftap-proofs/` →
+`foundations/options-proofs/` → `research-pipeline/`). Nothing here is deleted or wrong — the
+proofs are real and the code ran — but this project is frozen history, not active code. See
+`archive/README.md` for why. Full design rationale (ADRs, risk register, dev process) lives in
+this directory's own `CONTRIBUTING.md`, `DECISIONS.md`, `DEVELOPMENT.md`, and `RISKS.md` files
+in git history as of the archival commit — not reproduced here.
 
-> **Educational use only.** Research software, not production trading infrastructure. See [DISCLAIMER.md](DISCLAIMER.md).
+## What it was
 
-## Research Paper
+Options portfolio delta-hedging backtester. Lean 4 proved the accounting layer (portfolio
+value, trades, option settlement); Python handled data engineering, Black-Scholes pricing,
+GBM simulation, and backtest orchestration. A Cython FFI bridged the two — Lean compiled to C
+via Lake (`@[export]`), wrapped by Cython, called from Python. Basis-point integers were the
+only numeric type crossing the FFI boundary; Lean never touched floats.
 
-The formal verification methodology and empirical validation are described in:
+## What was proved
 
-> **[Provably Correct Quantitative Backtesting](https://eigenq-xyz.github.io/quant-proofs/paper/backtest-proofs.pdf)** (PDF) · EigenQ Research Series · 2026
+27 theorems, zero `sorry`, zero `axiom`:
 
-Formally verified accounting invariants for options portfolio backtesting.
+| Layer | Count | Key theorems |
+|---|---|---|
+| Option payoffs (`QuantCore.OptionInvariants`) | 8 | `callPayoff_nonneg`, `putPayoff_nonneg`, `optionPayoff_nonneg`, ITM/OTM exactness |
+| Accounting kernel (`Invariants.lean`) | 12 | `valueIdentity`, `cashUpdateCorrect`, `quantityConservation`, `valueUpdateFormula`, `selfFinancing` |
+| Settlement (`SettlementInvariants.lean`) | 6 | `abandonPosition_portfolioValue`, `settlement_cash_itm`, **`settlement_value_formula`** |
+| **Total** | **26 code theorems** (27 counting `integerPayoffDifference`, a pure-integer identity not classified above) | |
 
-> As AI accelerates model development in quantitative finance, the bottleneck shifts from building models to ensuring they are correct. This project applies formal verification to the accounting layer that every backtesting engine depends on.
+**Crown jewel — `settlement_value_formula`:** one theorem statement unifies both settlement
+branches (ITM and OTM):
 
-## What is verified
+```lean
+theorem settlement_value_formula (p : Portfolio) (opt : EuropeanOption)
+    (pos : Position) (hPos : p.getPosition opt.assetId = some pos)
+    (spot : Int) :
+    (applySettlement p opt (settleEuropeanOption opt spot pos.quantity)).portfolioValue =
+      p.portfolioValue + pos.quantity * (optionPayoff opt spot - pos.markPrice)
+```
 
-The following invariants are proved as Lean 4 theorems — not tested, *proved*. Checked by the Lean kernel on every commit via CI. Zero `sorry`, zero `axiom`.
+ΔPV = qty × (payoff − mark) holds identically whether the option expires ITM (settles at the
+payoff price) or OTM (payoff = 0, position written off). Impossible-by-construction states this
+type system ruled out: negative-price positions, negative fees, ghost zero-quantity positions
+after a trade, wrong cash after any trade sequence.
 
-| Invariant | Statement | Theorem |
-| --- | --- | --- |
-| NAV identity | Portfolio value = cash + Σ(quantity × mark price), at every step | `valueIdentity` |
-| Trade accounting | ΔPV = qty × (exec − mark) − fee; cash and quantity update correctly | `valueUpdateFormula`, `cashUpdateCorrect`, `quantityConservation` |
-| Self-financing | Trading at the mark price changes PV only by the fee | `selfFinancing` |
-| Settlement | At expiry ΔPV = qty × (payoff − mark), unifying ITM and OTM | `settlement_value_formula` |
+## What was not verified
 
-13 accounting theorems ([`Invariants.lean`](lean/BacktestProofs/Invariants.lean)) + 6 settlement theorems ([`SettlementInvariants.lean`](lean/BacktestProofs/SettlementInvariants.lean)) + 8 payoff theorems (`QuantCore.OptionInvariants`), zero `sorry`. 27 total across the dependency graph. See [docs/formal_guarantees.md](docs/formal_guarantees.md) for the full list.
+Pricing (Black-Scholes, Greeks), the delta-hedging strategy, the simulator, ETL, and backtest
+orchestration were conventional Python — not formally verified. Proofs covered the accounting
+layer only: invariants that must hold regardless of which strategy or pricing model sits on top.
 
-## Status
+## Numerical validation (not formal proof)
 
-| Component | Status |
-| --- | --- |
-| Accounting invariants (NAV, self-financing, conservation, well-formedness) | ✅ Complete |
-| European option settlement (ITM ∪ OTM unified) | ✅ Complete |
-| Cython FFI bridge (Lean → C → Python) | ✅ Complete |
-| Python/Cython backtesting execution layer | ✅ Complete |
-| Delta-hedging strategy (single-leg + portfolio) | ✅ Complete |
-| P&L attribution identity (Γ/Θ decomposition per path) | 📋 Credibility lever 1 |
-| Leland (1985) rehedge-frequency variance sweep | 📋 Credibility lever 2 |
-| QuantLib A-B price-path comparison (max dev 2.69 bp across 5 scenarios) | 📋 Credibility lever 3 |
-| March 2020 VIX stress run on WRDS OptionMetrics data | 📋 Credibility lever 4 |
+- Black-Scholes pricer matched Hull/DerivaGem reference vectors within `abs=0.01` (price),
+  `abs=0.001` (delta).
+- 500 seeded GBM paths × 20 weekly steps: mean discrete-hedge cost within ±3% of the BS price;
+  all 10,000 step certificates passed `valueUpdateFormula`.
+- BKL (2000) variance scaling and Carr-Madan (1998) P&L decomposition both replicated.
 
-## What is not verified
-
-The pricing layer (Black-Scholes, Greeks), the delta-hedging strategy logic, the simulator, ETL, and the backtesting orchestration are conventional Python — not formally verified. The formal proofs cover the **accounting layer**: the invariants that must hold regardless of which strategy or pricing model sits on top.
-
-## Validation
-
-Numerical results that confirm the engine behaves correctly on externally verifiable benchmarks. Full detail in [docs/validation.md](docs/validation.md).
-
-- **Black-Scholes pricer** matches Hull/DerivaGem reference vectors within `abs=0.01` on price, `abs=0.001` on delta.
-- **Monte Carlo convergence**: over 500 seeded GBM paths × 20 weekly steps, mean discrete-hedge cost is within ±3% of the BS price. All 10,000 step certificates pass `valueUpdateFormula`.
-- **BKL (2000) variance scaling**: `std(10 steps) / std(20 steps) ≈ √2`.
-- **Carr-Madan (1998) decomposition**: `corr(hedge_cost, gamma_pnl) > 0.70` across 200 seeded paths.
-
-## Repository structure
+## Repository structure (as archived)
 
 ```text
-quant-core/lean/QuantCore/           # Shared option types (imported by backtest-proofs)
-├── Option.lean                      # EuropeanOption, callPayoff, putPayoff, optionPayoff
-└── OptionInvariants.lean            # 8 payoff theorems
-
-backtest-proofs/
-├── lean/
-│   ├── lakefile.lean
-│   └── BacktestProofs/
-│       ├── Basic.lean               # Portfolio, Position, Trade
-│       ├── Accounting.lean          # @[export hedge_*] FFI exports
-│       ├── Invariants.lean          # 13 accounting theorems
-│       ├── Settlement.lean          # Settlement functions (ITM trade / OTM abandon)
-│       ├── SettlementInvariants.lean # 6 settlement theorems
-│       └── Tests/UnitTests.lean
-├── python/
-│   ├── pyproject.toml
-│   └── src/backtest_proofs/
-│       ├── pricer/                  # Re-exports quant_core.pricer (Black-Scholes + Greeks)
-│       ├── etl/                     # WRDS OptionMetrics loaders
-│       ├── simulator/               # Re-exports quant_core.simulator (GBM)
-│       ├── backtest/                # delta-hedge runner, certificates
-│       └── ffi/                     # compiled Cython bridge to Lean
-├── docs/                            # JupyterBook → GitHub Pages
-├── notebooks/                       # delta_hedge_demo.ipynb
-└── data/                            # WRDS / FRED (git-crypt)
+lean/BacktestProofs/       # Basic, Accounting (FFI exports), Invariants, Settlement,
+                           # SettlementInvariants, Tests/UnitTests
+python/src/backtest_proofs/  # pricer/, etl/ (WRDS), simulator/ (GBM), backtest/, ffi/
+docs/                      # JupyterBook source (archived, not built)
+data/                      # WRDS OptionMetrics + FRED, git-crypt encrypted
 ```
 
-## Prerequisites
+## Disclaimer
 
-- Lean 4 v4.30.0-rc2 (installed via `elan` by `make setup`)
-- Python 3.12+ (managed by `uv`)
-- Make
+Educational and research use only. Not intended for live trading or real financial
+decision-making. No warranty, no financial advice. Formal verification does not guarantee
+correctness for real-world trading — it eliminates one class of bug (accounting errors), not
+all classes. Submitting this code as your own academic coursework is plagiarism under most
+institutions' policies.
 
-## Setup
-
-```bash
-git clone https://github.com/eigenq-xyz/quant-proofs
-cd quant-proofs/backtest-proofs
-make setup      # elan + uv + Mathlib cache (~5 min first run)
-make test       # Lean proofs + Python tests
-```
-
-## Running the proofs
-
-```bash
-cd lean && lake build
-```
-
-Any `sorry` would cause a compile error; the build succeeding is the audit.
-
-## Running a backtest
-
-```python
-from backtest_proofs.backtest.runner import run_delta_hedge
-from backtest_proofs.backtest.scenarios import (
-    hull_192_path, HULL_192_K, HULL_192_R, HULL_192_SIGMA, HULL_192_N_CONTRACTS,
-)
-
-result = run_delta_hedge(
-    path=hull_192_path(),
-    K=HULL_192_K, r=HULL_192_R, sigma=HULL_192_SIGMA,
-    n_contracts=HULL_192_N_CONTRACTS,
-)
-print(f"Hedging cost: ${result.total_hedging_cost:,.0f}")
-print(f"Certificates passed: {all(c.invariant_holds for c in result.certificates)}")
-```
-
-## Motivation
-
-A unit test checks one input. A Lean proof checks all inputs. For accounting invariants — *after any trade, portfolio value equals cash plus mark-to-market positions* — a proof is qualitatively stronger than any finite test suite.
-
-This matters as AI-generated trading code becomes common. A model that produces plausible-looking results can still contain an accounting error that compounds silently over months. Machine-checked proofs eliminate this class of error entirely. The project also explores a development pattern in which the human reviews theorem statements while the AI produces implementations that must discharge them ([docs/human_ai.md](docs/human_ai.md)).
-
-## Credibility roadmap
-
-The Lean accounting module is complete at v0.5 (27 theorems, zero `sorry`). The remaining
-work is empirical: showing the engine produces correct *numbers*, not just formally
-consistent accounting. Four credibility levers, ordered by effort:
-
-1. **P&L attribution identity** — `P&L ≈ ½·Γ·(ΔS)² − Θ·Δt + residual` on a GBM path; fastest catch of any hidden accounting bug.
-2. **Leland (1985) rehedge-frequency sweep** — `Var(P&L) ∝ Γ²·S²·σ²·Δt`; replicate Leland's Table II across daily/hourly/15-min frequencies. JupyterBook exhibit.
-3. **QuantLib A-B comparison** — 5 benchmark scenarios through both engines; max deviation 2.69 bp across all evaluation points. Differentiator: same numbers + formal proof.
-4. **March 2020 VIX stress run** — run on WRDS OptionMetrics data through the fastest VIX spike on record; confirm invariants never fail, `settlement_value_formula` holds every bar.
-
-See the credibility roadmap in [DEVELOPMENT.md](DEVELOPMENT.md) and [DECISIONS.md](DECISIONS.md) for pending ADRs.
+Apache 2.0. Research software, not production trading infrastructure.
 
 ## References
 
-- Hull, *Options, Futures, and Other Derivatives*, 9th Global ed. (2014), Tables 19.2 and 19.3
-- [Leland (1985)](https://doi.org/10.1111/j.1540-6261.1985.tb02383.x), *JF* 40(4): option pricing and replication with transaction costs
-- [Bertsimas, Kogan & Lo (2000)](https://doi.org/10.1016/S0304-405X(99)00048-6), *JFE* 55(2): discrete hedging variance
-- [Carr & Madan (1998)](https://ssrn.com/abstract=1691942): realized P&L decomposition via dollar gamma
-- [de Moura & Ullrich (2021)](https://doi.org/10.1007/978-3-030-79876-5_37): Lean 4 theorem prover
-
----
-
-Apache 2.0. See [LICENSE](LICENSE). Research software — not production trading infrastructure.
+Hull, *Options, Futures, and Other Derivatives*, 9th ed. (2014), Tables 19.2–19.3 · Leland
+(1985), *JF* 40(4) · Bertsimas, Kogan & Lo (2000), *JFE* 55(2) · Carr & Madan (1998)

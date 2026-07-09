@@ -31,10 +31,10 @@ VIX-based thresholds applied to `data/computed/regime_labels.csv`:
 
 ## What regime tests check
 
-- **Parity deviation by regime**: crisis deviation > normal deviation (statistically)
-- **Backtest performance by regime**: strategy Sharpe higher in normal than crisis
-- **VRP signal**: positive mean in low/normal, check sign in elevated/crisis
-- **Regime transition**: no artificial jumps at threshold boundaries
+- **Parity deviation by regime** — crisis deviation > normal deviation (statistically)
+- **Backtest performance by regime** — strategy Sharpe higher in normal than crisis
+- **VRP signal** — positive mean in low/normal; check sign in elevated/crisis
+- **Regime transition** — no artificial jumps at threshold boundaries
 
 ## Stress event validations
 
@@ -53,5 +53,5 @@ Run: `pytest tests/regime/test_source_comparison.py -v`
 
 ## Current status
 
-`tests/regime/` and `data/computed/regime_labels.csv` not yet built.
-Depends on `data-computed` skill producing regime labels from VIX thresholds.
+`tests/regime/` and `data/computed/regime_labels.csv` aren't built yet.
+Depends on the `data-computed` skill producing regime labels from VIX thresholds.

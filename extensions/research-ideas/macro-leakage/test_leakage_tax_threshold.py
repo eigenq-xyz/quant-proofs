@@ -56,7 +56,8 @@ def _levels_with_threshold_crossing(
     revised.iloc[cross_idx] = revised.iloc[cross_idx] + bump
 
     release = pd.Series(
-        [m + pd.offsets.MonthBegin(1) + pd.Timedelta(days=5) for m in months], index=months
+        [m + pd.offsets.MonthBegin(1) + pd.Timedelta(days=5) for m in months],
+        index=months,
     )
     return first, revised, release, k
 
@@ -75,8 +76,12 @@ def test_revision_crossing_threshold_flips_position() -> None:
     sig_pit = build_threshold_signal(first, release, k)
     sig_naive = build_threshold_signal(revised, release, k)
 
-    assert sig_pit.loc[cross_month, "position"] == +1.0  # first-release 180k < 200k -> long
-    assert sig_naive.loc[cross_month, "position"] == -1.0  # revised 220k >= 200k -> short
+    assert (
+        sig_pit.loc[cross_month, "position"] == +1.0
+    )  # first-release 180k < 200k -> long
+    assert (
+        sig_naive.loc[cross_month, "position"] == -1.0
+    )  # revised 220k >= 200k -> short
 
     common = sig_pit.index.intersection(sig_naive.index)
     diff = sig_naive.loc[common, "position"] != sig_pit.loc[common, "position"]
@@ -84,7 +89,9 @@ def test_revision_crossing_threshold_flips_position() -> None:
     # The planted crossing flips the crossing month. (The +40k bump at cross_idx also lowers the
     # change at cross_idx+1 by 40k, which here is the only OTHER month that can flip; the test
     # asserts the crossing month is among the flips, the necessary mechanism.)
-    assert cross_month in flipped_months, "the threshold-crossing revision must flip the position"
+    assert cross_month in flipped_months, (
+        "the threshold-crossing revision must flip the position"
+    )
 
 
 def test_below_threshold_no_flip() -> None:
@@ -97,7 +104,9 @@ def test_below_threshold_no_flip() -> None:
     sig_pit = build_threshold_signal(first, release, k)
     sig_naive = build_threshold_signal(revised, release, k)
     assert sig_pit.loc[cross_month, "position"] == +1.0
-    assert sig_naive.loc[cross_month, "position"] == +1.0  # 190k still < 200k -> no flip
+    assert (
+        sig_naive.loc[cross_month, "position"] == +1.0
+    )  # 190k still < 200k -> no flip
 
 
 def test_position_is_binary_pm1() -> None:
@@ -128,7 +137,8 @@ def test_fade_direction_short_above_threshold() -> None:
         name="level",
     )
     release = pd.Series(
-        [m + pd.offsets.MonthBegin(1) + pd.Timedelta(days=5) for m in months], index=months
+        [m + pd.offsets.MonthBegin(1) + pd.Timedelta(days=5) for m in months],
+        index=months,
     )
     sig = build_threshold_signal(level, release, k=200.0)
     # month index 3 has change +400 (>=200) -> short; month index 1 has +150 (<200) -> long.
@@ -151,11 +161,14 @@ def test_flip_diagnostics_counts_and_negates() -> None:
     fr_changes = np.full(n, 190.0)  # first-release: 190k, just BELOW k -> LONG
     first_level = 100000.0 + np.cumsum(np.concatenate([[0.0], fr_changes[1:]]))
     first = pd.Series(first_level, index=months, name="level")
-    rev_changes = np.full(n, 210.0)  # revised: 210k, just ABOVE k -> SHORT (a flip every month)
+    rev_changes = np.full(
+        n, 210.0
+    )  # revised: 210k, just ABOVE k -> SHORT (a flip every month)
     rev_level = 100000.0 + np.cumsum(np.concatenate([[0.0], rev_changes[1:]]))
     revised = pd.Series(rev_level, index=months, name="level")
     release = pd.Series(
-        [m + pd.offsets.MonthBegin(1) + pd.Timedelta(days=5) for m in months], index=months
+        [m + pd.offsets.MonthBegin(1) + pd.Timedelta(days=5) for m in months],
+        index=months,
     )
 
     days = pd.bdate_range("1999-12-01", "2011-12-31")
@@ -182,4 +195,6 @@ def test_flip_diagnostics_counts_and_negates() -> None:
     mn = flips["flip_mean_naive_return"]
     mp = flips["flip_mean_pit_return"]
     assert isinstance(mn, float) and isinstance(mp, float)
-    assert np.isclose(mn, -mp, atol=1e-9), "opposite positions must produce negated returns"
+    assert np.isclose(mn, -mp, atol=1e-9), (
+        "opposite positions must produce negated returns"
+    )

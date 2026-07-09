@@ -304,7 +304,7 @@ print(res_tc)
                 method: tr_interior_point
             optimality: 3.7000243999138685e-13
       constr_violation: 2.220446049250313e-16
-        execution_time: 0.016649961471557617
+        execution_time: 0.026602983474731445
              tr_radius: 55337450.4474261
         constr_penalty: 1.0
      barrier_parameter: 1.0240000000000006e-08
@@ -386,7 +386,7 @@ for ind, wi in zip(p.industries, w_g, strict=True):
     Set parameter Username
     Set parameter LicenseID to value 2827581
     Academic license - for non-commercial use only - expires 2027-05-25
-    Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 25.5.0 25F71)
+    Gurobi Optimizer version 13.0.2 build v13.0.2rc1 (mac64[arm] - Darwin 25.5.0 25F80)
 
     CPU model: Apple M2 Max
     Thread count: 12 physical cores, 12 logical processors, using up to 12 threads
@@ -402,7 +402,7 @@ for ind, wi in zip(p.industries, w_g, strict=True):
       Bounds range     [0e+00, 0e+00]
       RHS range        [1e+00, 2e+00]
 
-    Presolve time: 0.00s
+    Presolve time: 0.01s
     Presolved: 2 rows, 20 columns, 40 nonzeros
     Presolved model has 210 quadratic objective terms
     Ordering time: 0.00s
@@ -501,7 +501,7 @@ for ind, wi in zip(p.industries, w_or, strict=True):
     presolved problem has 21 variables (0 bin, 0 int, 21 cont) and 3 constraints
           2 constraints of type <linear>
           1 constraints of type <nonlinear>
-    Presolving Time: 0.00
+    Presolving Time: 0.01
 
      time | node  | left  |LP iter|LP it/n|mem/heur|mdpt |vars |cons |rows |cuts |sepa|confs|strbr|  dualbound   | primalbound  |  gap   | compl.
       0.0s|     1 |     0 |   107 |     - |  3048k |   0 | 232 |   3 | 163 |   0 |  0 |   0 |   0 |-4.712522e-03 |      --      |    Inf | unknown
@@ -520,12 +520,12 @@ for ind, wi in zip(p.industries, w_or, strict=True):
       0.0s|     1 |     0 |   159 |     - |  3250k |   0 | 232 |   3 | 242 |  79 | 10 |   0 |   0 |-3.602328e-03 |-3.576587e-03 |   0.72%| unknown
       0.0s|     1 |     0 |   160 |     - |  3250k |   0 | 232 |   3 | 189 |  81 | 11 |   0 |   0 |-3.602328e-03 |-3.576587e-03 |   0.72%| unknown
      time | node  | left  |LP iter|LP it/n|mem/heur|mdpt |vars |cons |rows |cuts |sepa|confs|strbr|  dualbound   | primalbound  |  gap   | compl.
-      0.0s|     1 |     0 |  5599 |     - |  3334k |   0 | 232 |   3 | 189 |  81 | 12 |   0 |   0 |-3.602328e-03 |-3.576587e-03 |   0.72%| unknown
-      0.0s|     1 |     0 |  5606 |     - |  3334k |   0 | 232 |   3 | 191 |  83 | 13 |   0 |   0 |-3.576587e-03 |-3.576587e-03 |   0.00%| unknown
-      0.0s|     1 |     0 |  5606 |     - |  3334k |   0 | 232 |   3 | 191 |  83 | 13 |   0 |   0 |-3.576587e-03 |-3.576587e-03 |   0.00%| unknown
+      0.1s|     1 |     0 |  5599 |     - |  3334k |   0 | 232 |   3 | 189 |  81 | 12 |   0 |   0 |-3.602328e-03 |-3.576587e-03 |   0.72%| unknown
+      0.1s|     1 |     0 |  5606 |     - |  3334k |   0 | 232 |   3 | 191 |  83 | 13 |   0 |   0 |-3.576587e-03 |-3.576587e-03 |   0.00%| unknown
+      0.1s|     1 |     0 |  5606 |     - |  3334k |   0 | 232 |   3 | 191 |  83 | 13 |   0 |   0 |-3.576587e-03 |-3.576587e-03 |   0.00%| unknown
 
     SCIP Status        : problem is solved [optimal solution found]
-    Solving Time (sec) : 0.03
+    Solving Time (sec) : 0.05
     Solving Nodes      : 1
     Primal Bound       : -3.57658745562500e-03 (1 solutions)
     Dual Bound         : -3.57658745562500e-03
@@ -601,8 +601,8 @@ trust-constr and Gurobi on synthetic ill-conditioned problems (same
 structural parameters as the August 2007 reconstruction: $T = N/5$,
 $\alpha = 0.10$ shrinkage). The Python PGD is used **for benchmarking
 only** — it carries no formal correctness guarantee. The Lean 4
-implementation in `foundations/optimization-proofs/` is what provides the verified
-guarantees.
+implementation in `foundations/optimization-proofs/` is what provides
+the verified guarantees.
 
 ``` python
 import io, contextlib, time
@@ -639,7 +639,7 @@ def _proj_l1(y, B=1.0, L=1.5):
 def pgd_reference(Sigma, mu, L=1.5, tol=1e-8, max_iter=5000):
     """Unverified reference PGD — for timing comparison only."""
     lam_max = float(np.linalg.eigvalsh(Sigma)[-1])
-    eta = 1.9 / lam_max                    # step size < 2/lambda_max
+    eta = 0.9 / lam_max                    # step size <= 1/lambda_max
     w = np.ones(len(mu)) / len(mu)
     for k in range(max_iter):
         w_new = _proj_l1(w - eta * (Sigma @ w - mu))
@@ -747,11 +747,11 @@ steps.
 |  | PGD (ms) | trust-constr (ms) | Gurobi (ms) | PGD iterations | Speedup vs trust-constr | Speedup vs Gurobi |
 |----|----|----|----|----|----|----|
 | N |  |  |  |  |  |  |
-| 10 | 0.1 | 12.9 | 0.2 | 2 | 202× | 3× |
-| 50 | 0.1 | 60.4 | 1.7 | 2 | 439× | 12× |
-| 100 | 0.4 | 151.9 | 6.5 | 3 | 399× | 17× |
-| 250 | 2.2 | 936.9 | 42.5 | 3 | 431× | 20× |
-| 500 | 10.4 | 6287.5 | 156.4 | 14 | 604× | 15× |
+| 10 | 0.1 | 18.7 | 0.3 | 2 | 162× | 3× |
+| 50 | 0.3 | 83.6 | 2.5 | 4 | 318× | 9× |
+| 100 | 0.6 | 213.7 | 8.8 | 5 | 364× | 15× |
+| 250 | 3.0 | 1227.3 | 50.8 | 5 | 406× | 17× |
+| 500 | 14.9 | 7884.8 | 187.1 | 30 | 530× | 13× |
 
 </div>
 
@@ -771,10 +771,10 @@ wall-clock advantage over trust-constr and a 15-fold advantage over
 Gurobi.
 
 **Lean 4 native implementation.** The Lean 4 PGD in
-`foundations/optimization-proofs/` (compiled to native code via LLVM, no interpreter
-boundary at any point) solves the August 2007 $N = 10$ problem in
-**13.834 ns** per solve (1,000-run average on Apple M-series, measured
-by `lake exe pgd_bench`), converging in 6 iterations to the
+`foundations/optimization-proofs/` (compiled to native code via LLVM, no
+interpreter boundary at any point) solves the August 2007 $N = 10$
+problem in **13.834 ns** per solve (1,000-run average on Apple M-series,
+measured by `lake exe pgd_bench`), converging in 6 iterations to the
 KKT-certified optimum. The Python PGD reference at the same problem runs
 at approximately 60 µs, reflecting Python and numpy dispatch overhead at
 $N = 10$ where each BLAS call costs more than the 10-element arithmetic.

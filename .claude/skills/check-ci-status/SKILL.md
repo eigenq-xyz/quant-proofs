@@ -83,21 +83,21 @@ gh run watch --repo eigenq-xyz/quant-proofs
 
 ## Background monitoring (automatic)
 
-After every `git push` or `gh pr merge`, a background hook polls GitHub until
-all CI runs on that branch complete, then wakes Claude with the result:
+After every `git push` or `gh pr merge`, a background hook polls GitHub until all CI runs
+on that branch complete, then wakes Claude with the result:
 
 - `CI finished: PASS: all checks on <branch>` — everything green
 - `CI finished: FAIL on <branch>: <workflow names>` — one or more failed
 
-The hook polls every 15 seconds and times out after 11 minutes. If CI is still
-running at that point, check manually with the commands above.
+The hook polls every 15 seconds, times out after 11 minutes. If CI is still running at
+that point, check manually with the commands above.
 
 ## Claude Code Review — mandatory gate
 
-The `claude-review` check runs the Claude Code Review bot on every PR. It is
-**not optional** — never merge before it completes, even when all other checks
-are green. It surfaces issues that automated CI misses: logic errors, convention
-violations, paper-section inconsistencies, and style drift.
+The `claude-review` check runs the Claude Code Review bot on every PR. **Not optional** —
+never merge before it completes, even when all other checks are green. It catches what
+automated CI misses: logic errors, convention violations, paper-section inconsistencies,
+style drift.
 
 ```bash
 # Check claude-review status specifically
@@ -110,13 +110,13 @@ for c in json.load(sys.stdin)['statusCheckRollup']:
 "
 ```
 
-If `claude-review` is IN_PROGRESS, use `ScheduleWakeup` with `delaySeconds: 270`
-to re-check automatically. When it completes, read the review comments on the PR
-thread and act on any blocking findings before merging.
+If `claude-review` is IN_PROGRESS, use `ScheduleWakeup` with `delaySeconds: 270` to
+re-check automatically. When it completes, read the review comments and act on any
+blocking findings before merging.
 
-**Proactive review requests:** After opening a PR, post a comment tagging `@claude`
-with specific review asks (see `ship` skill Step 5). This focuses the review on
-the areas that matter most and generates actionable feedback.
+**Proactive review requests:** after opening a PR, post a comment tagging `@claude`
+with specific review asks (see `ship` skill Step 5). Focused asks get more actionable
+feedback.
 
 ```bash
 # Read review comments left by claude-review

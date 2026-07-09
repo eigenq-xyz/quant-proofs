@@ -1,7 +1,7 @@
 # Financial Data Reference — quant-proofs
 
-Per-source details: URL patterns, file formats, Python library usage, API setup,
-and download script conventions.
+Per-source details: URL patterns, file formats, Python library usage, API setup, and
+download script conventions.
 
 ---
 
@@ -9,9 +9,9 @@ and download script conventions.
 
 **Base URL:** `https://www.aqr.com/Insights/Datasets`
 
-AQR datasets are delivered as Excel (`.xlsx`) files, with a preamble section before
-the actual data. The data rows begin at a row that varies by file — always inspect
-a new file manually before writing the loader.
+AQR datasets are delivered as Excel (`.xlsx`) files, with a preamble section before the
+actual data. Data rows begin at a row that varies by file — always inspect a new file
+manually before writing the loader.
 
 Standard loader pattern:
 ```python
@@ -44,8 +44,8 @@ Download script: `scripts/download_aqr.py`
 
 **Base URL:** `https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/`
 
-Datasets are `.zip` archives containing one or more CSV files. The CSVs have a
-header section separated from the data by an empty line.
+Datasets are `.zip` archives containing one or more CSV files. The CSVs have a header
+section separated from the data by an empty line.
 
 Standard loader using `pandas_datareader`:
 ```python
@@ -126,9 +126,8 @@ Key series codes:
 | `FEDFUNDS` | Federal funds effective rate | Monthly |
 | `CPIAUCSL` | CPI (all urban consumers) | Monthly |
 
-FRED series use end-of-period dating. For daily series, each observation is the
-value on that calendar date. Align with equity return data by merging on date
-(not timestamp).
+FRED series use end-of-period dating. For daily series, each observation is the value on
+that calendar date. Align with equity return data by merging on date, not timestamp.
 
 ---
 
@@ -165,9 +164,9 @@ db = wrds.Connection()
 # First call opens browser for MFA. Subsequent calls (same IP, <30 days) use cached token.
 ```
 
-Session caching: the `wrds` library caches a PostgreSQL session token. If your IP
-address changes (e.g., switching networks), the session is invalidated and MFA is
-required again. Plan bulk downloads for a single session on a stable connection.
+Session caching: the `wrds` library caches a PostgreSQL session token. If your IP address
+changes (e.g., switching networks), the session invalidates and MFA is required again.
+Plan bulk downloads for a single session on a stable connection.
 
 OptionMetrics query pattern:
 ```python
@@ -182,8 +181,8 @@ query = """
 df = db.raw_sql(query.format(year=2023, start="2023-01-01", end="2023-12-31"))
 ```
 
-Note: OptionMetrics uses `secid` not ticker. SPX secid is `108105`; retrieve the
-mapping via `optionm.securd`.
+Note: OptionMetrics uses `secid` not ticker. SPX secid is `108105`; retrieve the mapping
+via `optionm.securd`.
 
 CRSP query pattern:
 ```python
@@ -243,8 +242,8 @@ def get_options_chain(
     raise RuntimeError(f"Polygon.io rate limit exceeded after {max_retries} retries")
 ```
 
-Rate limits (paid tier): 100 calls/minute for most endpoints. Use exponential backoff
-as shown. Free tier: current-day snapshots only; no historical data.
+Rate limits (paid tier): 100 calls/minute for most endpoints. Use exponential backoff as
+shown. Free tier: current-day snapshots only, no historical data.
 
 ---
 
@@ -255,7 +254,7 @@ All download scripts live in `scripts/` and follow these conventions:
 1. Accept `--start` and `--end` date arguments.
 2. Write output to `data/raw/<source>/` by default; accept `--output-dir` override.
 3. Log what was downloaded and where.
-4. Exit with code 1 on failure; do not silently continue.
+4. Exit with code 1 on failure; don't silently continue.
 5. Never overwrite existing files without `--force` flag.
 
 Script naming: `scripts/download_<source>.py`

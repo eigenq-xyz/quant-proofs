@@ -1,4 +1,11 @@
 {
+  "_meta": {
+    "generated_by": "foundations/ftap-proofs/results/parity_consistency_study.py",
+    "generated_at": "2026-07-09T07:14:43.611918+00:00",
+    "reproduce": "cd foundations/ftap-proofs && python results/parity_consistency_study.py",
+    "verified": false,
+    "notes": "Synthetic cross-section, not a real-market claim; the put-call parity theorem this study probes numerically is formally verified, this harness is not."
+  },
   "description": "Controlled put-call parity consistency study. Parity deviation in basis points of spot, on an arbitrage-free Black-Scholes cross-section perturbed by multiplicative quote noise. Synthetic generator; the harness runs on real quotes unchanged.",
   "parameters": {
     "seed": 20260530,

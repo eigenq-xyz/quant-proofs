@@ -1,13 +1,16 @@
 """Bounded cross-asset generalisation study on FREE published AQR data.
 
+EXPLORATORY — not a load-bearing result. See extensions/research-ideas/README.md for
+why this lives here and not in research-pipeline/studies/.
+
 The same momentum effect should appear across asset classes if it is structural, not a
 single-market artifact. AQR's free data library publishes *already-built* long/short factor
 return streams per asset class, which is exactly the cross-asset breadth question without any
 per-asset tuning or custom futures/FX/commodity ingestion.
 
-    python -m scripts.run_cross_asset                  # AQR Time-Series Momentum (default)
-    python -m scripts.run_cross_asset --dataset vme    # AQR Value-and-Momentum-Everywhere (momentum)
-    python -m scripts.run_cross_asset --json studies/out.json
+    cd extensions/research-ideas && python run_cross_asset.py                # AQR Time-Series Momentum (default)
+    cd extensions/research-ideas && python run_cross_asset.py --dataset vme  # AQR Value-and-Momentum-Everywhere
+    cd extensions/research-ideas && python run_cross_asset.py --json out.json
 
 VERIFICATION SCOPE (important): these AQR streams are pre-built factor returns; they do NOT run
 through the verified daily event-driven backtester. The no-look-ahead theorem is scoped to the
@@ -20,16 +23,28 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import sys
+from datetime import UTC, datetime
 
 import numpy as np
 import pandas as pd
 
-from research_pipeline.crossasset import (
+# research_pipeline is an installed package from research-pipeline/src/; crossasset.py
+# is a local sibling module here, not part of that package (see README.md for why).
+_RESEARCH_PIPELINE_SRC = (
+    pathlib.Path(__file__).resolve().parents[2] / "research-pipeline" / "src"
+)
+if str(_RESEARCH_PIPELINE_SRC) not in sys.path:
+    sys.path.insert(0, str(_RESEARCH_PIPELINE_SRC))
+if str(pathlib.Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
+from crossasset import (  # noqa: E402
     analyze_return_streams,
     reproduction_table,
     verification_status_line,
 )
-from research_pipeline.data_sources import (
+from research_pipeline.data_sources import (  # noqa: E402
     TSMOM_PUBLISHED_DIVERSIFIED_SHARPE,
     TSMOM_PUBLISHED_SOURCE,
     VME_PUBLISHED_MOMENTUM_SHARPE,
@@ -37,7 +52,7 @@ from research_pipeline.data_sources import (
     load_aqr_tsmom,
     load_aqr_vme_monthly,
 )
-from research_pipeline.evaluation import sharpe
+from research_pipeline.evaluation import sharpe  # noqa: E402
 
 _CAVEAT = (
     "Pre-built AQR factor return streams, NOT routed through the verified daily backtester. "
@@ -49,7 +64,9 @@ _CAVEAT = (
 def _df_to_records(df: pd.DataFrame) -> dict[str, dict[str, float | None]]:
     out: dict[str, dict[str, float | None]] = {}
     for idx, row in df.iterrows():
-        out[str(idx)] = {str(k): (float(v) if pd.notna(v) else None) for k, v in row.items()}
+        out[str(idx)] = {
+            str(k): (float(v) if pd.notna(v) else None) for k, v in row.items()
+        }
     return out
 
 
@@ -97,16 +114,16 @@ def main() -> None:
         # Factor Sharpe, so every realized sleeve has a published anchor.
         repro_df = reproduction_table(summary_df, VME_PUBLISHED_MOMENTUM_SHARPE)
         published_source = VME_PUBLISHED_SOURCE
-        repro_note = (
-            "Per-market momentum Factor Sharpe vs Asness-Moskowitz-Pedersen (2013), Table I."
-        )
+        repro_note = "Per-market momentum Factor Sharpe vs Asness-Moskowitz-Pedersen (2013), Table I."
     else:
         # MOP (2012) does NOT tabulate per-sleeve TSMOM Sharpes; only the diversified all-asset
         # composite is published (">1.0"). Reproduce that composite. The per-sleeve figures above
         # are computed from AQR data, not quoted from the paper.
         diversified = load_aqr_tsmom(asset_classes_only=False)
         if "TSMOM" not in diversified.columns:
-            raise SystemExit("AQR TSMOM file has no diversified 'TSMOM' column to reproduce")
+            raise SystemExit(
+                "AQR TSMOM file has no diversified 'TSMOM' column to reproduce"
+            )
         comp = diversified["TSMOM"].dropna()
         comp_summary = pd.DataFrame(
             {"sharpe": [sharpe(comp, periods_per_year=12)]}, index=["diversified"]
@@ -133,13 +150,22 @@ def main() -> None:
     print(summary_df.round(4).to_string())
     print("\n[cross-asset] correlation of monthly return streams")
     print(corr_df.round(3).to_string())
-    print("\n[reproduction] realized Sharpe vs published (sign + rough magnitude, 2x band)")
+    print(
+        "\n[reproduction] realized Sharpe vs published (sign + rough magnitude, 2x band)"
+    )
     print(repro_df.round(3).to_string())
     print(f"[reproduction] {n_reproduced}/{n_compared} reproduced. {repro_note}")
     print(f"[reproduction] source: {published_source}")
     print(f"\n[verify] {verification}")
 
     out = {
+        "_meta": {
+            "generated_by": "extensions/research-ideas/run_cross_asset.py",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "reproduce": f"cd extensions/research-ideas && python run_cross_asset.py --dataset {args.dataset}",
+            "verified": False,
+            "notes": _CAVEAT,
+        },
         "name": name,
         "dataset": args.dataset,
         "verification": _CAVEAT,
@@ -159,7 +185,12 @@ def main() -> None:
     json_path = (
         pathlib.Path(args.json)
         if args.json
-        else (pathlib.Path(__file__).resolve().parents[1] / "studies" / "results_crossasset.json")
+        else (
+            pathlib.Path(__file__).resolve().parent
+            / f"results_crossasset_{args.dataset}.json"
+            if args.dataset != "tsmom"
+            else pathlib.Path(__file__).resolve().parent / "results_crossasset.json"
+        )
     )
     json_path.parent.mkdir(parents=True, exist_ok=True)
     json_path.write_text(json.dumps(out, indent=2, default=str))

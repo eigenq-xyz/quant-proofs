@@ -9,6 +9,10 @@ Uses the standard 2N-variable slack reformulation:
 The dense Newton step requires O((2N)^3) per iteration. At N=250 this is
 approximately 1.5e8 operations per step times 25 steps = approximately 4e9 total,
 which should visibly exceed 1 second on typical hardware.
+
+This is a benchmark script, not production code: without gurobipy installed and a
+valid license, benchmark() raises rather than returning a NaN placeholder that
+could be silently averaged into a results table.
 """
 
 from __future__ import annotations
@@ -35,19 +39,16 @@ TIMEOUT_SECONDS: float = 30.0  # fail-safe timeout per solve
 def benchmark(
     p: ProblemData, reps: int = 3, timeout: float = TIMEOUT_SECONDS
 ) -> GurobiResult:
-    """Run Gurobi and time it, with timeout handling."""
+    """Run Gurobi and time it, with timeout handling. Raises if unavailable."""
     try:
         import gurobipy as gp
         from gurobipy import GRB
-    except ImportError:
-        return GurobiResult(
-            N=p.N,
-            solve_time_ms=float("nan"),
-            converged=False,
-            objective=float("nan"),
-            timed_out=False,
-            n_bar_iters=0,
-        )
+    except ImportError as exc:
+        raise RuntimeError(
+            "gurobipy is required for this benchmark (sp500_factor Gurobi solver); "
+            "install it and provide a valid license before running "
+            "reports/benchmark_all_solvers.py, or exclude this solver explicitly."
+        ) from exc
 
     N = p.N
     times: list[float] = []

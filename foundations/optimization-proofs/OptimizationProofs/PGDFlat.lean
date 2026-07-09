@@ -174,7 +174,7 @@ partial def pgdFlat (sigma mu : FloatArray) (lambdaMax : Float)
     (tol : Float := 1e-8)
     (maxIter : Nat := 5000) : FloatArray × Nat :=
   let N := mu.size
-  let eta := 1.9 / lambdaMax
+  let eta := 0.9 / lambdaMax
   let w0 : FloatArray := Id.run do
     let mut a := FloatArray.empty
     for _ in [:N] do

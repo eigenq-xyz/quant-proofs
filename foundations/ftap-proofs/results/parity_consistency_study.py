@@ -20,9 +20,9 @@ The generator here is synthetic, so this is a controlled study, not a
 real-market claim. The same harness runs on real quotes by replacing
 ``arbitrage_free_chain`` with a loader for a committable option snapshot.
 
-Run (from repo root) with an environment that has numpy and scipy:
+Run with an environment that has numpy and scipy:
 
-    quant-core/python/.venv/bin/python ftap-proofs/results/parity_consistency_study.py
+    cd foundations/ftap-proofs && python results/parity_consistency_study.py
 
 Reproducible: all randomness is drawn from a seeded generator.
 """
@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
@@ -154,6 +155,17 @@ def run() -> dict[str, object]:
                 )
             )
     return {
+        "_meta": {
+            "generated_by": "foundations/ftap-proofs/results/parity_consistency_study.py",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "reproduce": "cd foundations/ftap-proofs && python results/parity_consistency_study.py",
+            "verified": False,
+            "notes": (
+                "Synthetic cross-section, not a real-market claim; the put-call parity "
+                "theorem this study probes numerically is formally verified, this "
+                "harness is not."
+            ),
+        },
         "description": (
             "Controlled put-call parity consistency study. Parity deviation in "
             "basis points of spot, on an arbitrage-free Black-Scholes "

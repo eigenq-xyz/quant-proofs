@@ -1,10 +1,14 @@
 """Verified total-portfolio combine across diversifying sleeves vs 1/N.
 
-The companion to ``compare_pgd.py``. That script runs the verified PGD solver on the *noisy
-single-name* 49-industry cross-section, where mean-variance famously loses to 1/N. This one runs
-the same verified solver on the regime that is *supposed* to favor mean-variance: a handful of
-weakly correlated factor sleeves (AQR's free TSMOM or VME momentum return streams) with decades
-of monthly data, where the covariance is estimable.
+EXPLORATORY — not a load-bearing result. See extensions/research-ideas/README.md for
+why this lives here and not in research-pipeline/studies/.
+
+The companion to ``compare_pgd.py`` (which stays in research-pipeline/scripts/). That script
+runs the verified PGD solver on the *noisy single-name* 49-industry cross-section, where
+mean-variance famously loses to 1/N. This one runs the same verified solver on the regime that
+is *supposed* to favor mean-variance: a handful of weakly correlated factor sleeves (AQR's free
+TSMOM or VME momentum return streams) with decades of monthly data, where the covariance is
+estimable.
 
 At each month the weights are formed from data up to and including that month and realised the
 next month (no look-ahead): ``mu`` = annualised trailing mean, ``Sigma`` = annualised
@@ -15,12 +19,12 @@ cost. To show the result is not a single-knob artifact, the verified MV book is 
 of risk-aversion settings (higher risk aversion trusts ``mu`` less, approaching minimum variance).
 
 Usage:
-    uv run python -m scripts.compare_combine                 # TSMOM, 4 sleeves (default)
-    uv run python -m scripts.compare_combine --dataset vme   # VME momentum, 8 sleeves
+    cd extensions/research-ideas && python compare_combine.py                # TSMOM, 4 sleeves
+    cd extensions/research-ideas && python compare_combine.py --dataset vme  # VME, 8 sleeves
 
-Results are written to ``studies/results_combine_<dataset>.json``. NOT routed through the verified
-daily backtester: these are pre-built breadth streams, so the no-look-ahead theorem is scoped to
-the daily equity study, not to this combine.
+Results are written to ``results_combine_<dataset>.json`` alongside this script. NOT routed
+through the verified daily backtester: these are pre-built breadth streams, so the no-look-ahead
+theorem is scoped to the daily equity study, not to this combine.
 """
 
 from __future__ import annotations
@@ -28,13 +32,25 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import sys
+from datetime import UTC, datetime
 
 import pandas as pd
 
-from research_pipeline.crossasset import combine_sleeves_walkforward, verification_status_line
-from research_pipeline.data_sources import load_aqr_tsmom, load_aqr_vme_monthly
-from research_pipeline.evaluation import performance_summary
-from research_pipeline.stats import deflated_sharpe_ratio, probabilistic_sharpe_ratio
+# research_pipeline is an installed package from research-pipeline/src/; crossasset.py
+# is a local sibling module here, not part of that package (see README.md for why).
+_RESEARCH_PIPELINE_SRC = (
+    pathlib.Path(__file__).resolve().parents[2] / "research-pipeline" / "src"
+)
+if str(_RESEARCH_PIPELINE_SRC) not in sys.path:
+    sys.path.insert(0, str(_RESEARCH_PIPELINE_SRC))
+if str(pathlib.Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
+from crossasset import combine_sleeves_walkforward, verification_status_line  # noqa: E402
+from research_pipeline.data_sources import load_aqr_tsmom, load_aqr_vme_monthly  # noqa: E402
+from research_pipeline.evaluation import performance_summary  # noqa: E402
+from research_pipeline.stats import deflated_sharpe_ratio, probabilistic_sharpe_ratio  # noqa: E402
 
 
 def _summary(net: pd.Series, n_trials: int) -> dict[str, float]:
@@ -45,7 +61,9 @@ def _summary(net: pd.Series, n_trials: int) -> dict[str, float]:
         "ann_vol": float(perf.get("ann_vol", float("nan"))),
         "max_drawdown": float(perf.get("max_drawdown", float("nan"))),
         "psr": probabilistic_sharpe_ratio(net, periods_per_year=12),
-        "deflated_sharpe": deflated_sharpe_ratio(net, n_trials=n_trials, periods_per_year=12),
+        "deflated_sharpe": deflated_sharpe_ratio(
+            net, n_trials=n_trials, periods_per_year=12
+        ),
         "n": float(len(net)),
     }
 
@@ -57,7 +75,10 @@ def main() -> None:
         "--leverage", type=float, default=1.5, help="gross-exposure cap for the MV book"
     )
     ap.add_argument(
-        "--cost-bps", type=float, default=10.0, help="proportional cost per unit turnover"
+        "--cost-bps",
+        type=float,
+        default=10.0,
+        help="proportional cost per unit turnover",
     )
     ap.add_argument(
         "--risk-aversions",
@@ -82,7 +103,10 @@ def main() -> None:
     n_trials = len(args.risk_aversions) + 1
 
     eq = combine_sleeves_walkforward(
-        streams, method="equal_weight", leverage_cap=args.leverage, cost_bps=args.cost_bps
+        streams,
+        method="equal_weight",
+        leverage_cap=args.leverage,
+        cost_bps=args.cost_bps,
     )
     eq_summary = _summary(eq, n_trials)
 
@@ -101,7 +125,9 @@ def main() -> None:
     best_mv = max(row["sharpe"] for row in mv_rows.values())
 
     print(f"================ verified combine vs 1/N: {name} ================")
-    print(f"[data] {len(streams)} sleeves, {df.index.min().date()} -> {df.index.max().date()}")
+    print(
+        f"[data] {len(streams)} sleeves, {df.index.min().date()} -> {df.index.max().date()}"
+    )
     print(
         f"[setup] budget simplex (sum w = 1, gross <= {args.leverage}); {args.cost_bps:g} bps cost"
     )
@@ -114,6 +140,13 @@ def main() -> None:
     print(f"\n[verify] {verification_status_line()}")
 
     out = {
+        "_meta": {
+            "generated_by": "extensions/research-ideas/compare_combine.py",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "reproduce": f"cd extensions/research-ideas && python compare_combine.py --dataset {args.dataset}",
+            "verified": False,
+            "notes": verification_status_line(),
+        },
         "name": name,
         "dataset": args.dataset,
         "n_sleeves": len(streams),
@@ -130,8 +163,7 @@ def main() -> None:
     json_path = (
         pathlib.Path(args.out)
         if args.out
-        else pathlib.Path(__file__).resolve().parents[1]
-        / "studies"
+        else pathlib.Path(__file__).resolve().parent
         / f"results_combine_{args.dataset}.json"
     )
     json_path.parent.mkdir(parents=True, exist_ok=True)

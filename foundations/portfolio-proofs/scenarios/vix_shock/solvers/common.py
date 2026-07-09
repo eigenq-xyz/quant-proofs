@@ -27,10 +27,13 @@ W_STAR_POST: np.ndarray = np.array([0.6458333333, 0.3333333333, 0.0208333333])
 LAMBDA_PRE: float = 0.11
 LAMBDA_POST: float = 7.0 / 150.0  # exactly 0.04̄6̄
 
-# Step sizes
+# Step sizes. The stale baseline (ETA_PRE) uses the classical unconstrained
+# gradient-descent bound (eta < 2/lambda_max) as a naive practitioner would;
+# the certified value (ETA_POST) uses the tighter bound pgd_convergence
+# actually proves (eta * lambda_max <= 1, i.e. eta <= 1/lambda_max).
 ETA_PRE: float = 1.9 / SIGMA_SQ_PRE  # = 47.5 (stale after shock)
-ETA_POST: float = 1.9 / SIGMA_SQ_POST  # = 11.875 (certified)
-STABILITY_BOUND_POST: float = 2.0 / SIGMA_SQ_POST  # = 12.5
+ETA_POST: float = 0.9 / SIGMA_SQ_POST  # = 5.625 (certified)
+STABILITY_BOUND_POST: float = 1.0 / SIGMA_SQ_POST  # = 6.25
 
 
 @dataclass

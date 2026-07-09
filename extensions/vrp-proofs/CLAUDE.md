@@ -1,7 +1,7 @@
 # vrp-proofs
 
-Lean 4 proofs of discrete variance-risk-premium identities on the CRR binomial tree.
-Namespace: `VrpProofs`. Depends on `options-proofs` (which cites `ftap-proofs`).
+Lean 4 proofs of discrete variance-risk-premium identities on the Cox-Ross-Rubinstein (CRR)
+binomial tree. Namespace: `VrpProofs`. Depends on `options-proofs` (which cites `ftap-proofs`).
 
 ## Build
 
@@ -14,7 +14,7 @@ lake build
 ## Test
 
 ```bash
-# Zero-sorry check (empty output = clean):
+# Zero-sorry check (sorry is Lean's placeholder tactic for an unproven step; empty output = none remain):
 grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake .
 ```
 
@@ -22,7 +22,7 @@ grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake .
 
 | File | Contents |
 |------|----------|
-| `VrpProofs/Replication.lean` | `nodeVal`, `nodeDelta`, `nodeBond`, `replPortfolio`; the main theorem `replicates` (perfect path-by-path replication) |
+| `VrpProofs/Replication.lean` | `nodeVal`, `nodeDelta`, `nodeBond`, `replPortfolio`; the main theorem `replicates` (perfect path-by-path replication: the hedge portfolio reproduces the payoff exactly, with no residual P&L, on every branch) |
 | `VrpProofs/VarianceRiskPremium.lean` | `binomDensity`, `binomExp`, `claimPrice`, `physicalPV`, `vrp`; theorems `vrp_decomposition`, `vrp_pos_iff`, and the documented non-claims (convex-payoff bridge is false; gamma-variance-gap is vacuous) |
 | `lakefile.lean` | Declares `require «options-proofs»` from `../../foundations/options-proofs`; mathlib pinned to monorepo-wide rev |
 
@@ -32,14 +32,12 @@ grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake .
 - `vrp_decomposition` (CLAIM 2a): `vrp = (E^Q[G] − E^P[G]) / (1+r)^T`.
 - `vrp_pos_iff` (CLAIM 2b): `0 < vrp ↔ binomExp p G < binomExp q G`.
 
-## Hard rules
+## Local notes
 
-- Zero `sorry` on `main`. No exceptions.
-- Do not remove or weaken the non-claims note at the end of `VarianceRiskPremium.lean`; it is
-  the documented reason the convex-payoff bridge and the gamma-variance-gap identity are absent.
-- Do not run `lake update`: it bumps mathlib to HEAD and drifts from sibling proofs. Bump the
-  whole monorepo together by updating the pinned rev in every `lakefile.lean` simultaneously.
-- No private content: no GPA, no grades, no target firm names, no application timelines.
+- Never remove or weaken the non-claims note at the end of `VarianceRiskPremium.lean`: it's the
+  documented reason the convex-payoff bridge and the gamma-variance-gap identity are absent.
+- Never run `lake update` here: it bumps mathlib to HEAD and drifts from sibling proofs. Bump the
+  whole monorepo together by updating the pinned rev in every `lakefile.lean` at once.
 
 ## Dependency context
 

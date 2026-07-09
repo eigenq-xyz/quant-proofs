@@ -12,11 +12,11 @@ allowed-tools: Read Edit Write Bash(git *)
 
 ## When to invoke this skill
 
-- A skill gave wrong commands or outdated information
-- A skill was missing a common case (e.g., a failure mode not in the table)
-- A skill was too verbose or too sparse for the task
-- A recurring task has no skill — you've done it manually three times
-- A CI failure isn't in the `check-ci-status` common-failures table
+- A skill gave wrong commands or outdated information.
+- A skill missed a common case (e.g., a failure mode not in the table).
+- A skill was too verbose or too sparse for the task.
+- A recurring task has no skill — you've done it manually three times.
+- A CI failure isn't in the `check-ci-status` common-failures table.
 
 ## Feedback format
 
@@ -31,8 +31,8 @@ File a feedback entry in `SKILL_FEEDBACK.md` at the repo root (create if absent)
 **Skill change needed:** [Specific line or section to update]
 ```
 
-Then immediately apply the fix to the skill file on a branch, open a PR.
-Don't let feedback sit in `SKILL_FEEDBACK.md` without a corresponding PR.
+Then immediately apply the fix to the skill file on a branch, and open a PR. Don't let
+feedback sit in `SKILL_FEEDBACK.md` without a corresponding PR.
 
 ## Making a skill update
 
@@ -48,8 +48,8 @@ gh pr create --title "Fix(<skill-name>): <what changed>" --body "..."
 
 ## Requesting a new skill
 
-When you've manually performed the same multi-step task three or more times,
-it belongs in a skill. Open an issue or add to `SKILL_FEEDBACK.md`:
+Manually performed the same multi-step task three or more times? It belongs in a skill.
+Open an issue or add to `SKILL_FEEDBACK.md`:
 
 ```markdown
 ## New skill request: <proposed-name>
@@ -64,8 +64,8 @@ it belongs in a skill. Open an issue or add to `SKILL_FEEDBACK.md`:
 ## Catalog alignment
 
 Before writing a new skill, check against the 27-skill catalog in memory
-(`reference-skills-catalog`). Names, parallelism, and dependency relationships
-are already decided. If a skill you need is in the catalog, use its catalog name.
+(`reference-skills-catalog`). Names, parallelism, and dependency relationships are
+already decided. If a skill you need is in the catalog, use its catalog name.
 
 ## What makes a good skill update
 

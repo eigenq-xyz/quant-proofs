@@ -13,7 +13,7 @@ execute:
   echo: true
   warning: false
   message: false
-jupyter: python3
+jupyter: portfolio-proofs-venv
 ---
 
 ```{python}
@@ -485,7 +485,7 @@ def _proj_l1(y, B=1.0, L=1.5):
 def pgd_reference(Sigma, mu, L=1.5, tol=1e-8, max_iter=5000):
     """Unverified reference PGD — for timing comparison only."""
     lam_max = float(np.linalg.eigvalsh(Sigma)[-1])
-    eta = 1.9 / lam_max                    # step size < 2/lambda_max
+    eta = 0.9 / lam_max                    # step size <= 1/lambda_max
     w = np.ones(len(mu)) / len(mu)
     for k in range(max_iter):
         w_new = _proj_l1(w - eta * (Sigma @ w - mu))

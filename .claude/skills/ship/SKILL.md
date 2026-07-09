@@ -2,9 +2,9 @@
 name: ship
 description: >
   Commit staged and unstaged changes, push the branch, and open a PR — all in one
-  pass using quant-proofs conventions. Reads write-commits-and-prs for commit
-  format and type tokens, and contribute-to-eigenq for branch naming and PR
-  template. Use after finishing a unit of work that is ready for review.
+  pass using quant-proofs conventions. Reads contribute-to-eigenq for commit format,
+  branch naming, and PR template. Use after finishing a unit of work that is ready
+  for review.
 allowed-tools: >
   Bash(git status)
   Bash(git diff *)
@@ -30,7 +30,7 @@ allowed-tools: >
 
 ## Step 1 — branch
 
-If on `main`, cut a branch first using the naming convention from `/contribute-to-eigenq`:
+On `main`? Cut a branch first, using the naming convention from `/contribute-to-eigenq`:
 
 ```
 proof/<subdir>/<leanIdentifier>    # theorem fully discharged
@@ -43,11 +43,11 @@ mathlib/<subdir>/<module-name>     # mathlib upstream prep
 
 Use lowercase kebab-case for `<description>`, camelCase for `<leanIdentifier>`.
 
-If already on a feature branch, stay on it.
+Already on a feature branch? Stay on it.
 
 ## Step 2 — commit
 
-Stage all relevant files and write a commit message following `/write-commits-and-prs`:
+Stage all relevant files and write a commit message following `/contribute-to-eigenq`:
 
 ```
 <type>(<scope>): <imperative subject, ≤72 chars>
@@ -68,9 +68,11 @@ Stage all relevant files and write a commit message following `/write-commits-an
 | `Test` | Tests added or updated |
 | `Chore` | Dependency bumps, CI config, tooling |
 
-**Scope:** subdir abbreviation — `backtest`, `ftap`, `options`, `mortgage`, `quant-core` — or `meta` for top-level files.
+**Scope:** subdir abbreviation — `backtest`, `ftap`, `options`, `mortgage`, `quant-core` —
+or `meta` for top-level files.
 
-**Body:** for proof commits, include the exact Lean 4 identifier in backticks. For Python commits, state what broke and what the fix is.
+**Body:** proof commits include the exact Lean 4 identifier in backticks. Python commits
+state what broke and what the fix is.
 
 Before committing, verify:
 - `grep -rn sorry --include="*.lean" .` returns nothing (on non-scaffold commits)
@@ -119,9 +121,8 @@ If this PR depends on another unmerged PR, add at the top:
 
 ## Step 5 — solicit Claude Code Review
 
-Immediately after the PR is created, post a comment on the PR thread that tags
-`@claude` and asks for focused feedback. Tailor the asks to what actually changed
-in this PR. Template:
+Immediately after the PR is created, post a comment tagging `@claude` with focused
+feedback requests. Tailor the asks to what actually changed. Template:
 
 ```bash
 gh pr comment <PR-number> --body "$(cat <<'EOF'
@@ -139,12 +140,12 @@ EOF
 )"
 ```
 
-Adapt the bullet points to the PR's actual content. This offloads review work to
-the Claude Code Review bot and generates feedback that informs future commits.
+Adapt the bullets to the PR's actual content. This offloads review work to the Claude
+Code Review bot and generates feedback that informs future commits.
 
-**Hard rule: never merge before `claude-review` completes.** Even when all other
-CI checks are green, wait for the Claude review — it surfaces issues the automated
-checks miss (logic errors, convention violations, paper-section inconsistencies).
+**Hard rule: never merge before `claude-review` completes.** Even when all other CI
+checks are green, wait for the Claude review — it surfaces issues automated checks miss
+(logic errors, convention violations, paper-section inconsistencies).
 
 After posting the @claude comment, schedule **two wakeups** in the same message:
 
@@ -168,11 +169,10 @@ Before finishing, scan open issues for any this PR resolves:
 gh issue list --state open
 ```
 
-Ensure the PR body contains `closes #N` for each resolved issue. GitHub
-auto-closes the issue on merge — do NOT run `gh issue close N` manually
-before the PR merges, as that marks the issue done before the code is reviewed.
-Wiring the closure to the PR keeps the milestone burndown accurate and makes
-planning visible across sessions.
+Ensure the PR body contains `closes #N` for each resolved issue. GitHub auto-closes the
+issue on merge — do NOT run `gh issue close N` manually before the PR merges; that marks
+the issue done before the code is reviewed. Wiring closure to the PR keeps the milestone
+burndown accurate and planning visible across sessions.
 
 ## Do all six steps in a single message
 

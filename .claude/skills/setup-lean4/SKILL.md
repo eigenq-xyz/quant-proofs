@@ -22,12 +22,12 @@ allowed-tools: >
 
 ## Prerequisites
 
-Before building any subproject, three things must be in place:
+Three things must be in place before building any subproject:
 
 1. **elan** — the Lean version manager (like `rustup` for Rust). Manages Lean toolchains.
 2. **lake** — the Lean build system, bundled with elan.
-3. **An editor** — VS Code with the `lean4` extension is the standard. JetBrains is a
-   supported alternative but InfoView is VS Code-first.
+3. **An editor** — VS Code with the `lean4` extension is standard. JetBrains works too,
+   but InfoView is VS Code-first.
 
 ## Installing elan
 
@@ -39,13 +39,16 @@ source ~/.elan/env
 
 Verify: `elan --version` and `lake --version` should both print version strings.
 
-If `elan` is not on PATH after install: add `~/.elan/bin` to your `PATH` in `~/.zshrc`
-or `~/.bashrc`.
+`elan` not on PATH after install? Add `~/.elan/bin` to your `PATH` in `~/.zshrc` or
+`~/.bashrc`.
 
 ## First-time setup for a subproject
 
 Work always happens inside a specific subdir. Replace `<subdir>` with one of
-`backtest-proofs/lean`, `ftap-proofs`, `options-proofs`, or `mortgage-proofs`.
+`research-pipeline/lean`, `foundations/quant-core/lean`, `foundations/ftap-proofs`,
+`foundations/options-proofs`, `foundations/portfolio-proofs/lean`, `extensions/vrp-proofs`,
+`extensions/hedge-proofs`, `extensions/perpetual-proofs`, `extensions/stopped-time-proofs`,
+or `extensions/mortgage-proofs`.
 
 ```bash
 cd /Users/akhilkarra/ode/eigenq/quant-proofs/<subdir>
@@ -57,8 +60,8 @@ cd /Users/akhilkarra/ode/eigenq/quant-proofs/<subdir>
 lake exe cache get
 ```
 
-This downloads pre-compiled `.olean` files for the version of mathlib pinned in `lakefile.toml`.
-Skipping this step causes a full mathlib rebuild that takes 30-60 minutes.
+Downloads pre-compiled `.olean` files for the mathlib version pinned in `lakefile.toml`.
+Skip this and you trigger a full mathlib rebuild — 30-60 minutes.
 
 **Step 2 — Build the subproject:**
 
@@ -66,7 +69,7 @@ Skipping this step causes a full mathlib rebuild that takes 30-60 minutes.
 lake build
 ```
 
-Must exit 0. If it does not, see "Common issues" below.
+Must exit 0. If not, see "Common issues" below.
 
 **Step 3 — Verify zero sorry (for main branch):**
 
@@ -79,8 +82,8 @@ Must produce no output on `main`. Any `sorry` is a CI failure.
 ## VS Code setup
 
 1. Install the `lean4` extension (identifier: `leanprover.lean4`).
-2. Open the subproject directory as the workspace root (not the monorepo root).
-3. Open a `.lean` file. The extension reads `lean-toolchain` to select the correct Lean version.
+2. Open the subproject directory as the workspace root, not the monorepo root.
+3. Open a `.lean` file. The extension reads `lean-toolchain` to select the Lean version.
 
 **InfoView:** shows the current proof goal and type information.
 - Open/close: `Ctrl+Shift+Enter` (macOS: `Cmd+Shift+Enter`)
@@ -99,12 +102,12 @@ Use these inside a proof to discover what mathlib already has:
 | `simp?` | Runs simp and reports which lemmas it used |
 | `decide?` | Checks if the goal is decidable and suggests `decide` |
 
-Also search [loogle.lean-lang.org](https://loogle.lean-lang.org) by type signature,
-and [mathlib4 docs](https://leanprover-community.github.io/mathlib4_docs/) by name.
+Also search [loogle.lean-lang.org](https://loogle.lean-lang.org) by type signature, and
+[mathlib4 docs](https://leanprover-community.github.io/mathlib4_docs/) by name.
 
 ## CI checks
 
-The two mandatory checks are:
+Two mandatory checks:
 
 ```bash
 # 1. No sorry
@@ -122,8 +125,9 @@ Both run automatically in pre-commit hooks. Do not disable them.
 
 **Mathlib cache miss (slow rebuild):**
 Symptom: `lake build` starts compiling `Mathlib.*` files one by one.
-Fix: `lake exe cache get` — you forgot step 1, or the cache server was temporarily unavailable.
-If `cache get` itself fails, check internet access and retry; builds still succeed, just slowly.
+Fix: `lake exe cache get` — you skipped step 1, or the cache server was temporarily
+unavailable. If `cache get` itself fails, check internet access and retry; builds still
+succeed, just slowly.
 
 **`elan` not on PATH:**
 Symptom: `command not found: lake` or `command not found: elan`.
@@ -131,8 +135,9 @@ Fix: `source ~/.elan/env` or add `~/.elan/bin` to your shell's PATH permanently.
 
 **Wrong toolchain version:**
 Symptom: `error: toolchain 'leanprover/lean4:v4.x.x' is not installed`.
-Fix: `elan toolchain install leanprover/lean4:v4.27.0-rc1` (or the version in `lean-toolchain`).
-elan reads the `lean-toolchain` file automatically once the toolchain is installed.
+Fix: `elan toolchain install leanprover/lean4:v4.27.0-rc1` (or the version in
+`lean-toolchain`). elan reads the `lean-toolchain` file automatically once the toolchain
+is installed.
 
 **Lake package resolution failure:**
 Symptom: `error: unknown package 'Mathlib'` or similar.
@@ -146,8 +151,8 @@ lake build
 **`options-proofs` fails to build:**
 This subproject imports `FtapProofs`. Build `ftap-proofs` first:
 ```bash
-cd /Users/akhilkarra/ode/eigenq/quant-proofs/ftap-proofs && lake build
-cd /Users/akhilkarra/ode/eigenq/quant-proofs/options-proofs && lake build
+cd /Users/akhilkarra/ode/eigenq/quant-proofs/foundations/ftap-proofs && lake build
+cd /Users/akhilkarra/ode/eigenq/quant-proofs/foundations/options-proofs && lake build
 ```
 
 ## Quick reference

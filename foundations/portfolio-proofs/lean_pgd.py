@@ -285,7 +285,7 @@ def solve(
         ``sum|w| ≤ leverage_cap`` to float64 rounding.
     lambda_max : float
         Largest eigenvalue of ``sigma`` (the Lipschitz constant used to
-        set the step size ``eta = 1.9 / lambda_max``).  Returned so
+        set the step size ``eta = 0.9 / lambda_max``).  Returned so
         callers can log or audit the step-size choice.
 
     Raises

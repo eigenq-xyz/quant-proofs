@@ -10,8 +10,8 @@ structurally interesting proof work: a Hahn-Banach separation argument for the
 FTAP, a formal counterexample to a published finance specification, and a
 standalone geometric-stopping-time library. The
 [Research Integrity flagship](../pillar-research-integrity.md) adds the
-measure-theoretic layer: machine-checked signal adaptedness and
-filtration-measurability proofs over a natural price filtration.
+measure-theoretic layer: signal adaptedness and filtration-measurability
+proofs over a natural price filtration.
 
 ## What this project is
 
@@ -54,8 +54,8 @@ pricing theorems in `extensions/perpetual-proofs/`.
 - `foundations/options-proofs/`: put-call parity in the Cox-Ross-Rubinstein binomial model,
   citing the FTAP result from `foundations/ftap-proofs/`, 31 theorems.
 - `extensions/vrp-proofs/`: discrete variance-risk-premium identities on the CRR tree.
-  Includes two deliberately unmade claims, documented with machine-checked justifications:
-  a convex-payoff shortcut is false on a fixed tree (numerical counterexample constructed
+  Includes two deliberately unmade claims, each with a proved justification: a
+  convex-payoff shortcut is false on a fixed tree (numerical counterexample constructed
   and proved), and the gamma-variance-gap profit identity is vacuous in a complete market.
   12 theorems, zero sorry.
 - `extensions/perpetual-proofs/`: a formal counterexample showing the He-Manela perpetual

@@ -6,9 +6,10 @@ repulsion prevents exact zeros at inactive assets. Phantom positions appear
 at magnitudes on the order of the barrier parameter at termination (~1e-8
 to 1e-10 for default complementarity tolerance 1e-8).
 
-This module runs with a valid Gurobi license when gurobipy is installed.
-Without a license it prints a documented analysis of the failure mechanism
-and returns a SolverResult flagged as simulated.
+This is a benchmark script, not production code: without gurobipy installed and a
+valid license, run() raises rather than substituting a documented-but-fake result
+(the phantom-position magnitude below is a fact about Gurobi's barrier method that
+must come from an actual solve, not a fabricated weight vector).
 """
 
 from __future__ import annotations
@@ -17,15 +18,9 @@ import numpy as np
 
 from .common import ProblemData, SolverResult
 
-# Approximate barrier-exit phantom position magnitude for this problem.
-# With default complementarity gap 1e-8 and KKT multiplier ~0.1, inactive
-# slacks satisfy u_i, v_i ~ 1e-8 / 0.1 = 1e-7.
-_SIMULATED_OBJ: float = -0.235  # correct objective (barrier converges here)
-_SIMULATED_PHANTOM_MAG: float = 1e-7  # approximate |w_i| for inactive assets
-
 
 def run(p: ProblemData) -> SolverResult:
-    """Run Gurobi barrier QP; fall back to simulation if unavailable.
+    """Run Gurobi barrier QP. Raises if gurobipy is unavailable or unlicensed.
 
     Parameters
     ----------
@@ -35,12 +30,16 @@ def run(p: ProblemData) -> SolverResult:
     Returns
     -------
     SolverResult with correct objective but nonzero phantom weights at
-    inactive assets. If gurobipy is not installed, returns a simulated result.
+    inactive assets.
     """
     try:
         return _run_gurobi(p)
-    except ImportError:
-        return _simulate(p)
+    except ImportError as exc:
+        raise RuntimeError(
+            "gurobipy is required for this benchmark (phantom_positions Gurobi "
+            "solver); install it and provide a valid license before running "
+            "reports/benchmark_all_solvers.py, or exclude this solver explicitly."
+        ) from exc
     except Exception as exc:
         return SolverResult(
             solver_name="Gurobi barrier (error)",
@@ -115,60 +114,16 @@ def _run_gurobi(p: ProblemData) -> SolverResult:
     )
 
 
-def _simulate(p: ProblemData) -> SolverResult:
-    """Document the expected Gurobi behavior without a license.
-
-    Prints a mechanistic explanation of the phantom position phenomenon
-    and returns a SolverResult with synthetic phantom weights for illustration.
-    """
-    print(
-        "  [gurobipy not installed -- printing documented behavior analysis]"
-    )
-    print()
-    print("  Gurobi uses the 2N-variable reformulation: w = u - v,")
-    print("  with u, v >= 0 enforced by a log-barrier term:")
-    print()
-    print("    B(x; mu_B) = f(w) - mu_B * sum(log(u_i) + log(v_i))")
-    print()
-    print("  For inactive assets (w_i* = 0), the optimality condition")
-    print("  for u_i and v_i in the barrier problem is:")
-    print()
-    print("    (partial f / partial u_i) - mu_B / u_i = 0")
-    print("    => u_i = mu_B / (KKT complementarity multiplier)")
-    print()
-    print("  With default complementarity gap tolerance 1e-8 and multiplier")
-    print("  approximately 0.1 for this problem:")
-    print()
-    print("    u_i, v_i ~ 1e-8 / 0.1 = 1e-7  for inactive assets")
-    print("    => phantom |w_i| = |u_i - v_i| ~ 1e-7 to 1e-8")
-    print()
-    print("  The solver reports OPTIMAL (status=2) because the duality gap")
-    print("  is below the complementarity tolerance, not because w* = 0")
-    print("  for inactive assets.")
-    print()
-    print("  Expected objective: -0.235000000000 (matches KKT certificate)")
-    print(f"  Expected phantom magnitude: ~{_SIMULATED_PHANTOM_MAG:.0e}")
-
-    # Construct a synthetic result with phantom positions for illustration
-    phantom_w = np.array(
-        [
-            1.25,
-            _SIMULATED_PHANTOM_MAG,
-            -_SIMULATED_PHANTOM_MAG,
-            _SIMULATED_PHANTOM_MAG,
-            -0.25,
-        ]
-    )
-    budget_err = abs(float(np.sum(phantom_w)) - 1.0)
-    lev_viol = max(0.0, float(np.sum(np.abs(phantom_w))) - p.leverage_cap)
-
-    return SolverResult(
-        solver_name="Gurobi barrier (simulated)",
-        converged=True,
-        message="Simulated: gurobipy not installed",
-        objective=_SIMULATED_OBJ,
-        weights=phantom_w,
-        n_iterations=0,
-        budget_error=budget_err,
-        leverage_violation=lev_viol,
-    )
+# Expected behavior without gurobipy (kept for context; run() raises instead of
+# returning this as a fabricated result). Gurobi uses the 2N-variable
+# reformulation w = u - v, with u, v >= 0 enforced by a log-barrier term:
+#
+#     B(x; mu_B) = f(w) - mu_B * sum(log(u_i) + log(v_i))
+#
+# For inactive assets (w_i* = 0), the barrier optimality condition for u_i, v_i is
+# (partial f / partial u_i) - mu_B / u_i = 0, so u_i = mu_B / (KKT complementarity
+# multiplier). With default complementarity gap tolerance 1e-8 and multiplier
+# ~0.1 for this problem, u_i, v_i ~ 1e-8 / 0.1 = 1e-7 for inactive assets, giving
+# phantom |w_i| = |u_i - v_i| ~ 1e-7 to 1e-8. Gurobi reports OPTIMAL (status=2)
+# because the duality gap is below the complementarity tolerance, not because
+# w* = 0 for inactive assets.

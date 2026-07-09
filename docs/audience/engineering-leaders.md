@@ -2,7 +2,8 @@
 
 If you lead teams that build or maintain quantitative production systems, the most
 relevant starting point is the [Verified AI Decision Systems pillar](../pillar-ai-systems.md),
-which covers the architecture for AI pipelines with machine-checked audit trails. The
+which covers the architecture for AI pipelines whose audit trails are checked against
+formal invariants proved correct in Lean 4. The
 [Verified Optimization pillar](../pillar-optimization.md) covers the Lean-to-Cython
 pipeline, the integer arithmetic contract that closes the gap between proofs and
 execution, and the stress-scenario infrastructure. The
@@ -94,8 +95,9 @@ pattern generalizes to any decision pipeline where auditability matters.
 
 ## CI infrastructure: zero-sorry gate
 
-The main branch is protected by a CI gate that rejects any commit containing a sorry in
-any Lean source file. The grep pattern used:
+The main branch is protected by a CI gate that rejects any commit containing a `sorry`
+(Lean's placeholder for an unproven step, none remain on main) in any Lean source file.
+The grep pattern used:
 
 ```bash
 grep -rn '^\s*sorry\b' --include="*.lean" <subdir>/

@@ -13,17 +13,20 @@ allowed-tools: Bash(quarto *) Read Write Edit Glob
 
 # Writing Research Reports
 
+Authors full-length research papers in the eigenq-xyz Quarto format, with
+mandatory Formalization and Robustness sections.
+
 ## When to use
 
-- Starting a new `reports/<project>-proofs.qmd`
-- Drafting or revising any section of an existing paper
-- Reviewing a draft for adherence to the standard format
+- Starting a new `reports/<project>-proofs.qmd`.
+- Drafting or revising any section of an existing paper.
+- Reviewing a draft for adherence to the standard format.
 
 Not this skill:
-- Single-exhibit results in a README → `write-readme-results`
-- Cross-project aggregation site → `docs-research`
-- Lean 4 proof docstrings → `write-technical-docs`
-- Empirical methodology design → `conduct-quant-research`
+- Single-exhibit results in a README: `write-readme-results`.
+- Cross-project aggregation site: `docs-research`.
+- Lean 4 proof docstrings: `write-technical-docs`.
+- Empirical methodology design: `conduct-quant-research`.
 
 ## Format
 
@@ -59,20 +62,20 @@ make paper-fast  # frozen-cache render
 
 **Quarto configuration rules** (see `docs-report` skill for full detail):
 
-- **PDF engine:** `xelatex` only — set `pdf-engine: xelatex` in `_quarto.yml`
-  under `format.pdf`. Never `pdflatex` (Unicode math breaks in prose sections).
+- **PDF engine:** `xelatex` only. Set `pdf-engine: xelatex` in `_quarto.yml`
+  under `format.pdf`. Never `pdflatex` — Unicode math breaks in prose sections.
 - **Citations:** `cite-method: citeproc` at top of `_quarto.yml`. Never
-  `cite-method: biblatex` — TinyTeX's stripped biblatex lacks `.dbx` files
-  required by biblatex 3.18+, causing CI failures.
+  `cite-method: biblatex` — TinyTeX's stripped biblatex lacks the `.dbx`
+  files biblatex 3.18+ needs, which breaks CI.
 - **Cross-references:** Quarto native only (`@fig-x`, `@tbl-x`, `@thm-x`).
-  Do not load `cleveref` in `_eigenq.tex` — `\usepackage` inside
-  `\AtBeginDocument` is illegal; load-order with hyperref is unsolvable in
-  `include-in-header`.
+  Don't load `cleveref` in `_eigenq.tex` — `\usepackage` inside
+  `\AtBeginDocument` is illegal, and load order with hyperref is unsolvable
+  in `include-in-header`.
 - **Freeze:** `execute: freeze: auto` in `_quarto.yml`. Commit `_freeze/` to
   git — this is the reproducibility contract for CI fast-path renders.
 - **Committed PDF:** `reports/<project>-proofs.pdf` is committed via the
-  `post-render.sh` hook. This is what CI copies to GitHub Pages — no LaTeX
-  needed in GitHub Actions.
+  `post-render.sh` hook. CI copies this to GitHub Pages — no LaTeX needed
+  in GitHub Actions.
 
 PDF requires TinyTeX (managed via `quarto install tinytex`) or a system
 xelatex with the packages listed at the top of `reports/_eigenq.tex`.
@@ -81,18 +84,18 @@ Install missing packages with:
 
 ## Composition with the rest of the monorepo
 
-- `<project>-proofs/results/` — committed empirical artifacts (figures, JSON metrics).
-  Papers cite these by relative path; they do not regenerate them.
+- `<project>-proofs/results/` — committed empirical artifacts (figures, JSON
+  metrics). Papers cite these by relative path; they do not regenerate them.
 - `docs/` — Jupyter Book reference site. A finished paper can be indexed from
   the docs site via the `docs-research` skill.
-- `<project>-proofs/CLAUDE.md` — project architecture; a paper's Setup section
-  should be consistent with that document.
+- `<project>-proofs/CLAUDE.md` — project architecture. A paper's Setup section
+  should stay consistent with it.
 
 ## Mandatory sections
 
-Every paper — including pure-proof papers — has these nine sections in this
-order. Empirical content is required everywhere; "we proved it, no empirics" is
-not acceptable in the eigenq-xyz series.
+Every paper, including pure-proof papers, has these nine sections in this
+order. Empirical content is required everywhere. "We proved it, no empirics"
+is not acceptable in the eigenq-xyz series.
 
 | # | Section          | Target      |
 |---|------------------|-------------|
@@ -110,23 +113,23 @@ Body length 20–30 pages, excluding appendix and references.
 
 ## Section conventions
 
-The template's placeholder prose covers section content in detail. The points
-below are the rules a reviewer should enforce in a draft.
+The template's placeholder prose covers section content in detail. Below are
+the rules a reviewer should enforce in a draft.
 
 **Abstract.** Question (1 sentence), answer (1 sentence), method,
 formalization claim quoting the commit SHA and zero-`sorry` status, empirical
-sample (window + universe + source), the single number that best conveys the
+sample (window, universe, source), the single number that best conveys the
 result, scope/limitation. No marketing language.
 
 **Formalization** *(mandatory).* Table mapping every paper-level theorem to
 its Lean name and source file. A `::: {.callout-note title="Formalization
 claim"}` block stating "`lake build` succeeds and `grep -rn sorry` returns
 no matches at commit `<short-sha>`." A scope statement listing what is NOT
-formalized (floating-point execution, data ingestion, statistical claims).
+formalized: floating-point execution, data ingestion, statistical claims.
 
 **Empirical Setup.** A table with data source, sample window, universe,
-frequency, filters, and final N. Licensed-data sources documented per
-`source-financial-data`; raw data never committed.
+frequency, filters, and final N. Document licensed-data sources per
+`source-financial-data`; never commit raw data.
 
 **Results.** Lead with the headline figure. Plain-English result in the
 figure caption. Every empirical claim traceable to
@@ -136,21 +139,21 @@ figure caption. Every empirical claim traceable to
 including 2008 and 2020 sub-periods, (2) regime conditioning (VIX quintiles
 or NBER recessions), (3) data-source A/B where applicable, (4) at least one
 specification alternative. Report worst-case bps/dollar magnitudes, not just
-p-values. If the result reverses anywhere, report it here, not the appendix.
+p-values. If the result reverses anywhere, report it here — not the appendix.
 
 ## Format conventions
 
-- **Theorems**: Quarto native callouts `::: {#thm-name}`, not raw
+- **Theorems** — Quarto native callouts `::: {#thm-name}`, not raw
   `\begin{theorem}`.
-- **Lean code**: ` ```lean ` fences; caption states source file and theorem
-  name; do not paste full proof bodies — link to the file.
-- **Figures**: `<project>-proofs/results/figures/` by relative path; every
+- **Lean code** — ` ```lean ` fences; caption states source file and theorem
+  name; don't paste full proof bodies, link to the file instead.
+- **Figures** — `<project>-proofs/results/figures/` by relative path; every
   caption states data source and sample window.
-- **Tables**: from `<project>-proofs/results/*.json` rendered via a Quarto
+- **Tables** — from `<project>-proofs/results/*.json` rendered via a Quarto
   code cell (Python or R).
-- **Citations**: BibTeX in `_references.bib`; add entries rather than inline
-  URLs.
-- **Numbers**: point estimate with SE in parentheses; range with brackets;
+- **Citations** — BibTeX in `_references.bib`; add entries rather than
+  inline URLs.
+- **Numbers** — point estimate with SE in parentheses; range with brackets;
   unit (bps, %, $) stated on first use in each section.
 
 ## Authoring a new paper
@@ -173,12 +176,12 @@ Build and proofread the rendered PDF, not the source:
 cd reports && quarto render <project>-proofs.qmd --no-execute
 ```
 
-Commit both:
+Commit all three:
 1. The `.qmd` source file.
 2. The `_freeze/` frozen chunk cache (reproducibility contract for CI).
-3. The committed `<project>-proofs.pdf` at the repo root of `reports/` — this
-   is copied there automatically by `reports/post-render.sh` on every render,
-   and is what CI deploys to GitHub Pages without requiring LaTeX.
+3. The committed `<project>-proofs.pdf` at the repo root of `reports/`.
+   `reports/post-render.sh` copies it there automatically on every render;
+   CI deploys it to GitHub Pages without requiring LaTeX.
 
 Do NOT commit `_output/` (gitignored) or `*.tex` intermediate files.
 
@@ -187,25 +190,25 @@ Do NOT commit `_output/` (gitignored) or `*.tex` intermediate files.
 - No paper without **both** Formalization and Robustness sections.
 - No empirical claim without a sample window and a data source in the same
   paragraph.
-- No theorem statement without a `verify-lean`–passing artifact in the
+- No theorem statement without a `verify-lean`-passing artifact in the
   corresponding `<project>-proofs/` source.
-- No retroactive sample selection. In-sample / out-of-sample split declared
-  in Empirical Setup.
+- No retroactive sample selection. Declare the in-sample / out-of-sample
+  split in Empirical Setup.
 - No private context: no GPA, firm names, internship timelines, or
-  "developed to impress X." Write for a public research audience. Same rule
-  as `write-readme-results`.
+  "developed to impress X." Write for a public research audience — same
+  rule as `write-readme-results`.
 - No raw `.tex` reports. Quarto only.
 
 ## Related skills
 
-- `write-readme-results` — short single-exhibit results writeup for a README. The
-  Results section here can pull from a `write-readme-results` exhibit, but a paper
-  is not a stitched series of exhibits.
+- `write-readme-results` — short single-exhibit results writeup for a
+  README. The Results section here can pull from a `write-readme-results`
+  exhibit, but a paper is not a stitched series of exhibits.
 - `docs-research` — Jupyter Book aggregation site; cites finished papers
   from `reports/`.
-- `conduct-quant-research` — empirical methodology behind §6–§8.
+- `conduct-quant-research` — empirical methodology behind §6-§8.
 - `write-technical-docs` — proof docstrings, narrative project docs.
 - `verify-empirical`, `verify-regime` — produce the `results/` artifacts
   cited in §7 and §8.
-- `write-commits-and-prs` — commit message conventions when landing a
+- `contribute-to-eigenq` — commit message conventions when landing a
   paper draft.

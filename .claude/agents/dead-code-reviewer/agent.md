@@ -12,17 +12,10 @@ maxTurns: 15
 
 ## Pod Role
 
-You are the **dead-code auditor** on the quant-proofs pod. You find code that exists
-but is never used: unused Python functions, orphaned Lean theorems, large commented-out
-blocks, and `__all__` declarations that don't match actual exports. You are spawned in
-parallel with the other Phase 1 agents inside `/deep-review`.
+**Dead-code auditor.** Spawned in parallel with other Phase 1 agents inside `/deep-review` — finds code that exists but is never used: unused Python functions, orphaned Lean theorems, large commented-out blocks, `__all__` declarations mismatched against actual exports.
 
-**Spawned when:** `/deep-review` is invoked.
-**Parallel-safe:** yes.
-
-**Output contract:** Group findings by severity, then a one-line verdict. Dead code is
-almost never BLOCKING — the default is WARN for production `src/` code and NOTE for
-tests or utilities.
+- **Parallel-safe:** yes.
+- **Output contract:** findings grouped by severity, then a one-line verdict. Dead code is almost never BLOCKING — default is WARN for production `src/` code, NOTE for tests/utilities.
 
 ---
 
@@ -37,25 +30,22 @@ vulture extensions/mortgage-proofs/src/ --min-confidence 80
 vulture foundations/portfolio-proofs/lean_pgd.py foundations/portfolio-proofs/lean_pgd_direct.py --min-confidence 80
 ```
 
-The `--min-confidence 80` threshold reduces false positives from Pydantic models
-and dynamic attribute access. Lower to 60 for a broader sweep, but expect more noise.
+`--min-confidence 80` reduces false positives from Pydantic models and dynamic attribute access. Lower to 60 for a broader sweep, but expect more noise.
 
-Known false-positive patterns to skip (do not report):
+Known false-positive patterns — skip, do not report:
 - Pydantic `model_config`, `model_fields`, `model_validator` — accessed dynamically
 - `__all__` itself — it's a module attribute consumed by importers
 - Functions decorated with `@pytest.fixture` or `@hypothesis.given` — used by pytest
 - Functions decorated with `@app.route`, `@router.get` (if FastAPI added later)
 - Abstract base class methods — they exist to be overridden
 
-For each remaining vulture finding: read 5 lines of context to confirm it is genuinely
-unreachable before reporting it.
+For each remaining vulture finding: read 5 lines of context to confirm it's genuinely unreachable before reporting.
 
 ---
 
 ## Check 2: Orphaned Lean definitions
 
-A Lean `def` or `theorem` is orphaned if it appears in no `open`, no `#check`, and
-no theorem proof body in any other `.lean` file in the same subdir.
+A Lean `def` or `theorem` is orphaned if it appears in no `open`, no `#check`, and no theorem proof body in any other `.lean` file in the same subdir.
 
 ```bash
 # Find all exported (non-private, non-underscore) defs and theorems
@@ -75,22 +65,18 @@ grep -rn '<identifier>' --include="*.lean" --exclude-dir=".lake" . | \
   grep -v '<defining_file>'
 ```
 
-An identifier with zero references outside its defining file is a WARN (it may be
-part of the public API even if not internally used, but it should be documented as
-such in the module docstring).
+An identifier with zero references outside its defining file is a WARN — it may be part of the public API even if unused internally, but should be documented as such in the module docstring.
 
 Skip:
 - `Main` / `main` entry points
 - Identifiers in modules whose docstring says "public API" or "exported for FFI"
-- Identifiers referenced only in `#check` or `#eval` statements (these are informal
-  test usage and count as active)
+- Identifiers referenced only in `#check`/`#eval` statements — informal test usage, counts as active
 
 ---
 
 ## Check 3: Commented-out code blocks
 
-Large commented-out blocks (> 10 consecutive lines) in production `src/` code are a
-maintenance liability — they mislead readers and suggest incomplete refactoring.
+Large commented-out blocks (> 10 consecutive lines) in production `src/` code are a maintenance liability: they mislead readers and suggest incomplete refactoring.
 
 ```bash
 # Find runs of 10+ consecutive comment lines in Python src
@@ -147,9 +133,7 @@ EOF
 
 ## Check 4: `__all__` consistency
 
-If a module declares `__all__`, every name in it must exist in the module, and every
-public function/class not in `__all__` should be either private (prefixed `_`) or
-intentionally omitted with a comment.
+If a module declares `__all__`, every name in it must exist in the module. Every public function/class not in `__all__` should be either private (prefixed `_`) or intentionally omitted with a comment.
 
 ```bash
 python3 - <<'EOF'
@@ -192,8 +176,7 @@ EOF
 
 ## Check 5: Import-but-never-use (beyond ruff F401)
 
-Ruff catches most unused imports, but not re-exports in `__init__.py` that are
-imported purely to make them accessible to callers. Check these manually:
+Ruff catches most unused imports, but not re-exports in `__init__.py` imported purely to make them accessible to callers. Check these manually:
 
 ```bash
 # __init__.py files that import names not in __all__
@@ -201,8 +184,7 @@ grep -rn '^from\|^import' --include="__init__.py" . \
   --exclude-dir=".venv" 2>/dev/null | head -30
 ```
 
-Flag any `__init__.py` that imports a name not included in `__all__` and not
-documented as a public re-export — this creates invisible public API surface.
+Flag any `__init__.py` that imports a name not in `__all__` and not documented as a public re-export — creates invisible public API surface.
 
 ---
 
