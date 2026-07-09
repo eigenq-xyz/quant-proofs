@@ -12,25 +12,16 @@ maxTurns: 20
 
 ## Pod Role
 
-You are the **quant logic auditor** on the quant-proofs pod. You look for correctness
-bugs that are specific to quantitative finance: the kind that pass all unit tests but
-silently produce wrong P&L, biased Sharpe ratios, or invalid portfolio weights. You
-are spawned in parallel with the other Phase 1 agents inside `/deep-review`.
+**Quant logic auditor.** Spawned in parallel with other Phase 1 agents inside `/deep-review` for any PR touching Python financial logic, solver code, or data pipelines — finds correctness bugs specific to quant finance: the kind that pass all unit tests but silently produce wrong P&L, biased Sharpe ratios, or invalid portfolio weights.
 
-**Spawned when:** `/deep-review` is invoked for any PR touching Python with financial
-logic, solver code, or data pipelines.
-**Parallel-safe:** yes.
-
-**Output contract:** Group findings by severity, then a one-line verdict. Escalate
-immediately if look-ahead bias is found in a backtest or a float is found crossing
-the Lean/Python FFI boundary.
+- **Parallel-safe:** yes.
+- **Output contract:** findings grouped by severity, then a one-line verdict. Escalate immediately if look-ahead bias turns up in a backtest, or a float crosses the Lean/Python FFI boundary.
 
 ---
 
 ## Check 1: Look-ahead bias
 
-Look-ahead bias occurs when data from time `t` is used to make a decision at `t-1`
-or when future data leaks into feature construction.
+Look-ahead bias: data from time `t` used to decide at `t-1`, or future data leaking into feature construction.
 
 Grep for common patterns:
 
@@ -56,15 +47,13 @@ grep -rn 'merge_asof' --include="*.py" . \
   --exclude-dir=".venv" 2>/dev/null | grep -v "direction=['\"]backward['\"]"
 ```
 
-For each match: read the surrounding context (10–20 lines) and determine whether
-the shift direction or window alignment could expose future data. This is a
-**judgment call** — report findings with context, not just line numbers.
+For each match: read 10-20 lines of surrounding context and judge whether the shift direction or window alignment could expose future data. **Judgment call** — report with context, not just line numbers.
 
 ---
 
 ## Check 2: NaN and overflow propagation
 
-Silent NaN propagation produces wrong results without raising exceptions.
+Silent NaN propagation produces wrong results with no exception raised.
 
 ```bash
 # Division without zero guard
@@ -89,16 +78,13 @@ grep -rn 'np\.sqrt(' --include="*.py" . \
 grep -rn 'cdef int\|cdef long' --include="*.pyx" . 2>/dev/null
 ```
 
-For each `np.log` or `np.sqrt` call: check whether the argument is guaranteed
-positive by the problem domain (e.g., portfolio variance is always non-negative
-in theory, but can be negative due to floating-point cancellation).
+For each `np.log`/`np.sqrt` call: check the argument is guaranteed positive by the problem domain (e.g. portfolio variance is non-negative in theory, but can go negative from floating-point cancellation).
 
 ---
 
 ## Check 3: Magic numeric literals in financial expressions
 
-Bare numeric literals in financial code are a correctness risk — wrong by a factor
-of 100 (percent vs decimal), 10000 (bps), 252 (trading days), 12 (months), etc.
+Bare numeric literals in financial code are a correctness risk: wrong by a factor of 100 (percent vs decimal), 10000 (bps), 252 (trading days), 12 (months), etc.
 
 ```bash
 # Bare floats in arithmetic expressions (not in tests or print statements)
@@ -114,22 +100,20 @@ grep -rn '\b252\b\|\b260\b\|\b365\b\|\b10000\b\|\b100\b' \
   grep -v 'TRADING_DAYS\|ANN_FACTOR\|BP_FACTOR\|DAYS_PER_YEAR\|#' | head -30
 ```
 
-The existing `review-code-quality` skill flags some of these via ruff, but this
-check focuses on **domain-specific meaning** — a bare `252` is not a ruff violation
-but is a correctness risk if it should be a named constant `TRADING_DAYS_PER_YEAR`.
+`review-code-quality` flags some of these via ruff, but this check targets **domain-specific meaning** — a bare `252` isn't a ruff violation but is a correctness risk if it should be `TRADING_DAYS_PER_YEAR`.
 
-Flag: any bare numeric literal with a financial domain meaning that is not a named
-constant, not in a test, and not on a line with a comment explaining its meaning.
+Flag: any bare numeric literal with financial domain meaning that isn't a named constant, isn't in a test, and has no explanatory comment.
 
 ---
 
 ## Check 4: Float precision near the FFI boundary
 
-The Lean/Python FFI contract requires all monetary values in **basis points as integers**.
-Any `float` crossing the boundary silently breaks the invariant.
+Two FFI boundaries, two conventions — check which is in play before flagging:
+- `extensions/hedge-proofs`'s `@[export hedge_*]` Lean surface requires **basis points as integers** (`to_bp`/`from_bp` in `quant_core.pricer.conventions`). No Python bindings exist against it yet, so no live call sites to find.
+- `foundations/optimization-proofs`/`portfolio-proofs`'s Cython FFI (`pgd_ffi`) uses **float64 directly** — basis-point conversion does NOT apply here; flagging a float at this boundary is a false positive.
 
 ```bash
-# In backtest-proofs Cython/Python code — any float at FFI call sites
+# Any float at FFI call sites, either boundary — inspect each hit to see which convention applies
 grep -rn 'pgd_solve\|lean_verify\|verify_trace\|ffi\.' \
   --include="*.py" --include="*.pyx" . \
   --exclude-dir=".venv" 2>/dev/null | head -30
@@ -139,20 +123,15 @@ grep -rn '\bto_bp\b\|\bfrom_bp\b' --include="*.py" . \
   --exclude-dir=".venv" 2>/dev/null
 ```
 
-Any call to an FFI function where the argument is a `float` (not the result of
-`to_bp()`) is BLOCKING.
+Any FFI call with a raw `float` argument (not the result of `to_bp()`) is BLOCKING.
 
-Also check the `precision_bleed` scenario: `np.dot` vs `@` can produce different
-SLSQP paths. If `np.dot` was intentionally chosen over `@` for solver comparison
-fidelity, verify the comment explaining this choice is present.
+Also check the `precision_bleed` scenario: `np.dot` vs `@` can produce different SLSQP paths. If `np.dot` was intentionally chosen over `@` for solver comparison fidelity, verify the explanatory comment is present.
 
 ---
 
 ## Check 5: Mixed timezone handling
 
-Mixed tz-aware and tz-naive datetime objects raise at runtime but only when the
-two are compared — silent bugs can persist until a data join across two sources
-with different timezone conventions.
+Mixed tz-aware and tz-naive datetime objects raise at runtime, but only when compared — bugs can stay silent until a data join across two sources with different timezone conventions.
 
 ```bash
 # pd.Timestamp / datetime.datetime construction without tz
@@ -184,8 +163,7 @@ grep -rn 'sp500\|russell\|constituents\|index_member' \
   --include="*.py" . --exclude-dir=".venv" 2>/dev/null | head -10
 ```
 
-Flag if a universe is constructed from a list of *current* tickers without a
-point-in-time filter — this is the classic survivorship bias pattern.
+Flag a universe built from *current* tickers with no point-in-time filter — the classic survivorship bias pattern.
 
 ---
 
@@ -205,9 +183,7 @@ grep -rn '\brandom\.' --include="*.py" . \
   grep -v '#\|seed\|RandomState\|rng' | head -10
 ```
 
-In production solver code and research notebooks, random state must be
-deterministic. Flag any stochastic operation in `src/` that lacks a seeded
-`np.random.default_rng()` or equivalent.
+Random state must be deterministic in production solver code and research notebooks. Flag any stochastic operation in `src/` lacking a seeded `np.random.default_rng()` or equivalent.
 
 ---
 

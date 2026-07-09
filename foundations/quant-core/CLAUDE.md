@@ -46,13 +46,12 @@ python/src/quant_core/
 
 ## The basis-point contract
 
-All monetary values in Lean use basis points (×10,000) as `Int`. Python computes in floats and converts at the boundary via `to_bp` / `from_bp` in `conventions.py`. This is the only place conversion happens. Do not convert to basis points inside pricing or simulation logic; convert only at the explicit boundary.
+All monetary values in Lean use basis points (x10,000) as `Int`. Python computes in floats and
+converts at the boundary via `to_bp` / `from_bp` in `conventions.py` — the **only** place
+conversion happens. Never convert to basis points inside pricing or simulation logic.
 
-## Hard rules
+## Local notes
 
-- No FFI between Lean and Python in this module. No Cython. No ctypes. No pipeline orchestration.
-- Lean depends only on `mathlib`.
-- Python depends only on `numpy` and `scipy`.
-- `mypy --strict` must pass on all Python in `src/`.
-- Zero `sorry` on `main`. No exceptions.
-- Apache 2.0 license: do not add dependencies with incompatible licenses.
+- **No FFI between Lean and Python** in this module. No Cython, no ctypes, no pipeline orchestration.
+- Lean depends only on `mathlib`. Python depends only on `numpy` and `scipy`.
+- Apache 2.0 license: don't add dependencies with incompatible licenses.

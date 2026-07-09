@@ -1,6 +1,6 @@
 # Python Code Examples — quant-proofs
 
-Annotated good and bad examples. Each bad example is followed by the corrected version.
+Good and bad examples, annotated. Each bad example is followed by the fix.
 
 ---
 
@@ -41,13 +41,13 @@ def compute_delta_pnl(
     return sum(d * m for d, m in zip(deltas_bps, price_moves_bps))
 ```
 
-What makes this good:
+Why it's good:
 - `from __future__ import annotations` at the top of the module.
-- `TypeAlias` for the return type, which appears in multiple places.
-- `Sequence[int]` rather than `list[int]` because the function only reads.
-- Full docstring with Args / Returns / Raises.
+- `TypeAlias` for the return type, used in multiple places.
+- `Sequence[int]` not `list[int]` — the function only reads.
+- Full docstring: Args / Returns / Raises.
 - Validation at the function boundary, not inside the computation loop.
-- Clear error message that includes the actual values.
+- Clear error message with the actual values.
 
 ---
 
@@ -59,16 +59,15 @@ def compute_delta_pnl(deltas, price_moves):
 ```
 
 Problems:
-- No type annotations — mypy --strict will reject this.
+- No type annotations — `mypy --strict` rejects this.
 - No docstring.
-- No validation of equal lengths — silently produces wrong result if inputs differ.
+- No length validation — silently wrong result if inputs differ.
 
 ---
 
 ## Protocol usage
 
-Use `Protocol` when you need to accept any object that has a specific interface,
-not just a specific class.
+Use `Protocol` to accept any object with a specific interface, not a specific class.
 
 ```python
 from __future__ import annotations
@@ -90,10 +89,9 @@ def run_backtest(model: PricingModel, strikes_bps: list[int]) -> list[int]:
     return [model.price_bps(s, expiry_days=30) for s in strikes_bps]
 ```
 
-Why this is better than `Union[BlackScholes, BinomialModel]`:
-- Adding a new model doesn't require touching `run_backtest`.
-- The `@runtime_checkable` decorator lets you use `isinstance(obj, PricingModel)`
-  in tests.
+Better than `Union[BlackScholes, BinomialModel]`:
+- A new model doesn't require touching `run_backtest`.
+- `@runtime_checkable` enables `isinstance(obj, PricingModel)` in tests.
 
 ---
 
@@ -143,8 +141,8 @@ def process_application(data: Any) -> Any:
 ```
 
 Problems:
-- `Any` on both input and output — mypy cannot check this at all.
-- Ratios are computed as floats, not basis points — inconsistent with FFI rules.
+- `Any` on both input and output — mypy can't check any of this.
+- Ratios computed as floats, not basis points — breaks FFI convention.
 - No validation that `data` has the required keys.
 - No docstring.
 

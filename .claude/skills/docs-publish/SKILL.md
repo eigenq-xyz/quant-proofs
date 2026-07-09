@@ -11,10 +11,11 @@ allowed-tools: Bash(lake *) Bash(uv run *) Bash(quarto *) Bash(cp *) Bash(mkdir 
 
 # Docs Publish — Orchestrator
 
+Orchestrates all documentation builds and deploys to GitHub Pages.
+
 ## Gate rule
 
-`/verify` (Levels 1–5) must pass before docs-publish. Documentation built from
-a broken proof or failing tests misleads readers.
+`/verify` (Levels 1–5) must pass first. Docs built from a broken proof or failing tests mislead readers.
 
 ## When each sub-build triggers
 
@@ -29,10 +30,10 @@ a broken proof or failing tests misleads readers.
 
 ```bash
 # Lean API reference (per project, or loop over projects)
-cd backtest-proofs/lean && lake doc
+cd extensions/hedge-proofs && lake doc
 
 # Aggregation site (Jupyter Book) — narrative index across projects
-cd backtest-proofs/python && uv run jupyter-book build ../../docs/
+cd research-pipeline && uv run jupyter-book build ../docs/
 
 # Research papers (Quarto) — PDF + HTML per project
 cd reports && quarto render
@@ -62,8 +63,9 @@ Target layout (once fully implemented):
 ## Current status
 
 The root Jupyter Book (`docs/`) and Pages workflow (`pages.yml`) are deployed.
-- `/docs-lean` is blocked on doc-gen4 being added to lakefiles.
-- `/docs-research` is blocked on `results/` directory existing.
-- `/docs-report` is unblocked — `reports/` scaffold exists; needs the first
-  `<project>-proofs.qmd` authored via `write-research-reports`, then a
-  `cp` step added to `pages.yml`.
+
+- `/docs-lean` — blocked on doc-gen4 being added to lakefiles.
+- `/docs-research` — blocked on `results/` directory existing.
+- `/docs-report` — unblocked. `reports/` scaffold exists; needs the first
+  `<project>-proofs.qmd` authored via `write-research-reports`, then a `cp`
+  step added to `pages.yml`.

@@ -29,9 +29,8 @@ grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake .   # must be empty
 
 No imports from any finance library. If `geomPMF` and `geometricExpectation` land in mathlib, delete this module and update the `perpetual-proofs` import.
 
-## Hard rules
+## Local notes
 
-- Zero `sorry` on main. No exceptions.
-- Do not add finance-domain content (no asset prices, rates, or payoff logic).
-- Do not bump the mathlib pin without verifying that `perpetual-proofs` still builds against the new revision.
-- Do not suppress linter warnings with `set_option linter.X false`; fix the root cause.
+- **No finance-domain content** — no asset prices, rates, or payoff logic. This is the mathlib-PR path.
+- Never bump the mathlib pin without verifying `perpetual-proofs` still builds against the new revision.
+- Never suppress linter warnings with `set_option linter.X false` — fix the root cause.

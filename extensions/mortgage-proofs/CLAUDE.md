@@ -39,6 +39,27 @@ cd lean && lake exe verify-trace ../tests/fixtures/sample_record_valid.json
 
 ## Architecture
 
+Data flow:
+
+```text
+MortgageApplication (JSON)
+    |
+    v
+LangGraph Orchestrator
+    |-- IntakeAgent           document completeness
+    |-- RiskAssessmentAgent   DTI, LTV, credit score   (parallel)
+    |-- ComplianceAgent       regulatory rules          (parallel)
+    +-- UnderwriterAgent      final decision
+    |
+    v
+DecisionRecord (JSON)  -->  lake exe verify-trace
+                                  |
+                                  v
+                       VerificationResult { passed, violations }
+```
+
+Module layout:
+
 ```
 extensions/mortgage-proofs/
   src/mortgage_proofs/
@@ -80,12 +101,9 @@ Python/Lean interface. When adding a new invariant:
 4. Update the `DecisionRecord` schema and domain models if new fields are needed.
 5. Add Python tests in `tests/lean_bridge/` for the new invariant path.
 
-## Hard rules
+## Local notes
 
-- Zero `sorry` in `lean/` on main. No exceptions.
-- `mypy --strict` must pass on `src/`.
 - Integration tests are marked `@pytest.mark.integration` and excluded from CI
-  (`-m "not integration"`); they require a live LLM API key and the Lean binary.
-- `schemas/decision_record.json` is canonical; never let the Python dataclass
-  diverge from the schema.
-- No private content: no real applicant data in fixtures, tests, or docs.
+  (`-m "not integration"`); they need a live LLM API key and the Lean binary.
+- `schemas/decision_record.json` is canonical. Never let the Python dataclass diverge from it.
+- No real applicant data in fixtures, tests, or docs.

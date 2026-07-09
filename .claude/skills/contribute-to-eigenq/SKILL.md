@@ -1,18 +1,69 @@
 ---
 name: contribute-to-eigenq
 description: >
-  PR workflow, branch conventions, testing requirements, and mathlib upstream process
-  for the quant-proofs monorepo. Use before opening a PR, when setting up a branch,
-  or when preparing ftap-proofs or options-proofs for a mathlib contribution.
+  PR workflow, commit message format, branch conventions, testing requirements, and
+  mathlib upstream process for the quant-proofs monorepo. Use before writing a commit,
+  opening a PR, setting up a branch, or preparing ftap-proofs or options-proofs for a
+  mathlib contribution.
 paths:
   - "**/*"
 ---
 
 # Contributing to quant-proofs
 
+## Commit message format
+
+```
+<type>(<scope>): <imperative subject, ≤72 chars>
+
+<body: explain WHY, not WHAT — reference theorem names, paper sections, or
+issue numbers; wrap at 72 chars; may be omitted for trivial one-liners>
+```
+
+**Rules:**
+- **Subject:** imperative mood ("Add", "Fix", "Prove"), ≤72 chars, no trailing period.
+- **Scope:** subdir abbreviation (`backtest`, `ftap`, `binomial`, `mortgage`) or `meta`
+  for top-level files.
+- **Blank line** between subject and body, always.
+- **Body:** motivation, not a diff restatement. Proof commits name the theorem (exact
+  Lean identifier, in backticks so it's greppable), the key lemma, and any non-obvious step.
+
+**Type tokens:**
+
+| Token | When to use |
+|-------|-------------|
+| `Prove` | A Lean 4 theorem is fully discharged (no sorry) |
+| `Scaffold` | A Lean 4 theorem stub is added with sorry as placeholder |
+| `Fix` | Bug fix — proof repair, Python logic error, type error |
+| `Add` | New module, new agent, new FFI export |
+| `Refactor` | Internal restructure with no behavior or spec change |
+| `Docs` | CLAUDE.md, inline comments, docstrings — no code change |
+| `Test` | Tests added or updated |
+| `Chore` | Dependency bumps, CI config, tooling |
+
+**Examples:**
+```
+Prove(ftap): noArbitrageMartingale — FTAP no-arbitrage direction
+
+Key lemma: `FtapProofs.existsRNM` (risk-neutral measure existence).
+Discharges the forward direction of Harrison-Pliska 1981 Theorem 1.
+```
+```
+Fix(backtest): settle_option now handles zero-quantity positions
+
+Previously a ZeroDivisionError was raised when a position had qty=0
+at expiry. Guard added before payoff computation. Regression test added.
+```
+```
+Add(backtest): BacktestProofs.Options.callPayoff Cython FFI export
+
+Exposes the Lean-proven callPayoff function to the Python backtester.
+The Cython wrapper validates the Lean return type against the float64 contract.
+```
+
 ## Branch naming conventions
 
-Every branch is scoped to a single subdir. Pick the prefix that describes the intent:
+Every branch scopes to one subdir. Pick the prefix that matches intent:
 
 | Prefix | Use when |
 |--------|----------|
@@ -25,19 +76,19 @@ Every branch is scoped to a single subdir. Pick the prefix that describes the in
 
 Examples:
 ```
-feat/backtest-proofs/cython-ffi-export
+feat/hedge-proofs/settlement-invariant
 fix/mortgage-proofs/compliance-agent-nil-trace
 proof/ftap-proofs/noArbitrageMartingale
 proof/options-proofs/putCallParity
 mathlib/ftap-proofs/Mathlib.Finance.NoArbitrage
 ```
 
-Use lowercase kebab-case for `<description>` and camelCase for `<theorem-name>` (matching
+Use lowercase kebab-case for `<description>`, camelCase for `<theorem-name>` (matching
 the Lean 4 identifier).
 
 ## Pre-merge checklist
 
-Before opening a PR — and before requesting review — verify every item:
+Verify every item before opening a PR or requesting review.
 
 ### Lean 4
 - [ ] `lake build` passes with no errors in the affected subdir
@@ -45,16 +96,16 @@ Before opening a PR — and before requesting review — verify every item:
   ```
   grep -rn sorry <subdir>/lean --include="*.lean"
   ```
-  (An empty result is required. `-- sorry` comments in docs are fine; actual `sorry` terms
+  (Empty result required. `-- sorry` comments in docs are fine; actual `sorry` terms
   are not.)
-- [ ] If `foundations/options-proofs/` is changed, also build `foundations/ftap-proofs/` — the dependency goes
-  `options-proofs → ftap-proofs`, so `ftap-proofs` must still build cleanly.
+- [ ] If `foundations/options-proofs/` changes, also build `foundations/ftap-proofs/` —
+  the dependency runs `options-proofs → ftap-proofs`, so `ftap-proofs` must still build.
 - [ ] New theorems have `-- Proof sketch:` comments explaining the high-level argument.
 
 ### Python / Cython
 - [ ] `pytest` passes in the affected subdir's Python tree
 - [ ] `mypy --strict <subdir>/python/src/` (or `<subdir>/src/`) is clean
-- [ ] No licensed data files are staged (`git diff --cached --name-only` must not include
+- [ ] No licensed data files staged (`git diff --cached --name-only` must not include
   `.csv`, `.parquet`, `.h5`, or raw data files)
 
 ### All PRs
@@ -64,8 +115,8 @@ Before opening a PR — and before requesting review — verify every item:
 
 ## PR template
 
-Use this structure for every PR. Omit sections that don't apply (e.g., no Proof sketch for
-a pure Python change), but keep the headers so reviewers can scan quickly.
+Use this structure for every PR. Omit sections that don't apply (e.g., no Proof sketch
+for a pure Python change) but keep the headers so reviewers can scan fast.
 
 ```markdown
 ## Summary
@@ -93,34 +144,35 @@ High-level argument for the main theorem(s) introduced or modified:
 
 ## Mathlib upstream process
 
-When a proof in `foundations/ftap-proofs/` or `foundations/options-proofs/` is ready for mathlib:
+When a proof in `foundations/ftap-proofs/` or `foundations/options-proofs/` is ready for
+mathlib:
 
 ### Namespace requirements
 
 Lean 4 identifiers must conform to mathlib style:
 - Top-level namespace must be `Mathlib.` (e.g., `Mathlib.Finance.NoArbitrage`)
-- The module name should fit under an existing mathlib parent:
+- Module name fits under an existing mathlib parent:
   - `Mathlib.Analysis.` for analytical results
   - `Mathlib.Probability.` for measure-theoretic probability
   - `Mathlib.Finance.` (proposed; check current mathlib tree before assuming this exists)
 - Use `theorem` not `lemma` for results intended as the main export.
-- All `def`, `theorem`, and `lemma` names must be in `UpperCamelCase` (types/structures)
+- All `def`, `theorem`, and `lemma` names must be `UpperCamelCase` (types/structures)
   or `lowerCamelCase` (theorems/lemmas) per mathlib convention.
 
 ### Preparation steps
 
-1. **Create a `mathlib/<subdir>/<module-name>` branch** from the current `main`.
+1. **Create a `mathlib/<subdir>/<module-name>` branch** from current `main`.
 2. **Restructure the namespace.** Move from `FtapProofs.X` to `Mathlib.Finance.X` (or
    agreed parent). Update all imports in `foundations/options-proofs/` accordingly.
 3. **Strip non-mathlib dependencies.** The submitted file must import only from `Mathlib`
-   and `Std`. Remove any local utility lemmas that duplicate existing mathlib lemmas —
+   and `Std`. Remove local utility lemmas that duplicate existing mathlib lemmas —
    search `Mathlib` first.
 4. **Add `#check` and `#eval` sanity lines** in a separate `Examples.lean` file (not
    submitted, but useful for review prep).
 5. **Run mathlib4 CI locally** using the `leanprover-community/mathlib4` Docker image or
    `lake exe cache get && lake build`.
 6. **Open a draft PR on mathlib4.** Title format: `feat(Finance): <short description>`.
-   The PR description must include the mathematical statement in plain English, the
+   The description must include the mathematical statement in plain English, the
    formalization approach, and a pointer to the paper (Harrison-Pliska 1981 for FTAP).
 7. **Track review comments on the `mathlib/` branch** and sync back to `main` once merged.
 
@@ -129,25 +181,25 @@ Lean 4 identifiers must conform to mathlib style:
 Do not open the mathlib PR until:
 - `lake build` is clean on the `mathlib/` branch with zero `sorry`.
 - The proof has been stable on `main` for at least one week (no further edits anticipated).
-- The `foundations/options-proofs/` dependency on the FTAP result has been tested post-namespace-change.
+- The `foundations/options-proofs/` dependency on the FTAP result has been tested
+  post-namespace-change.
 
 ## PR sequencing and dependency management
 
-**PRs must be sequential, not parallel, when they share files or build on each other.**
-Opening two PRs that both touch the same file creates a race: whichever merges second
-will have conflicts or silently overwrite the other's changes. Sequence instead.
+**Sequence dependent PRs — never run them in parallel.** Two PRs touching the same file
+race: whichever merges second gets conflicts or silently overwrites the other's changes.
 
 ### Express the dependency through branch structure
 
-Branch the dependent PR off the dependency's branch — not off main:
+Branch the dependent PR off the dependency's branch, not off main:
 
 ```bash
 # PR A: foundational change
-git checkout main && git checkout -b feat/backtest-proofs/new-invariant
+git checkout main && git checkout -b feat/hedge-proofs/new-invariant
 
 # PR B: builds on A — branch off A, not off main
-git checkout feat/backtest-proofs/new-invariant
-git checkout -b feat/backtest-proofs/ffi-export-for-invariant
+git checkout feat/hedge-proofs/new-invariant
+git checkout -b feat/hedge-proofs/ffi-export-for-invariant
 ```
 
 When PR A merges to main, rebase B onto main and force-push:
@@ -161,23 +213,23 @@ B's diff on GitHub is now clean against main, showing only B's actual changes.
 
 ```markdown
 > **Depends on #N — merge that first.** This branch was cut from
-> `feat/backtest-proofs/new-invariant`. After #N merges, rebase this
+> `feat/hedge-proofs/new-invariant`. After #N merges, rebase this
 > branch onto main before merging.
 ```
 
-Use "depends on" or "blocked by" — not "related to". It signals merge order.
+Use "depends on" or "blocked by," not "related to" — it signals merge order.
 
 ### Merge strategy
 
-**Use a merge commit** (`gh pr merge --merge`) when the branch has clean,
-meaningful commits worth preserving in history. This is the default.
+**Use a merge commit** (`gh pr merge --merge`) when the branch has clean, meaningful
+commits worth preserving. This is the default.
 
 **Use squash and merge** (`gh pr merge --squash`) only when:
 - The branch has WIP / fixup commits that would clutter history, or
 - You rebased to resolve conflicts and the rebased commits are noisy
 
-Never merge two dependent PRs simultaneously — merge A, pull main locally,
-rebase B, then merge B.
+Never merge two dependent PRs simultaneously: merge A, pull main locally, rebase B, then
+merge B.
 
 ### Recovering from parallel PRs that conflict
 
@@ -190,14 +242,14 @@ If two parallel PRs already exist and conflict:
 
 ## Claude Code Review — the mandatory review gate
 
-Every PR gets reviewed by the Claude Code Review bot (`claude-review` CI check).
-This is not a formality — it is the primary code review mechanism for this repo.
+Every PR gets reviewed by the Claude Code Review bot (`claude-review` CI check). This is
+the primary code review mechanism for this repo, not a formality.
 
 **Hard rules:**
-- Never merge before `claude-review` completes. Even with all other checks green,
-  wait for it. Use `ScheduleWakeup` (~270s) to re-check if it's IN_PROGRESS.
-- After creating a PR, immediately post a focused `@claude` comment to direct the
-  review. The bot reviews everything, but a targeted ask produces better signal.
+- Never merge before `claude-review` completes, even with all other checks green. Use
+  `ScheduleWakeup` (~270s) to re-check if it's IN_PROGRESS.
+- Immediately after creating a PR, post a focused `@claude` comment directing the review.
+  The bot reviews everything, but a targeted ask produces better signal.
 
 **Template for the @claude comment** (post right after `gh pr create`):
 ```
@@ -213,18 +265,17 @@ Any blocking issues or follow-up commit suggestions are most useful.
 gh pr view <PR-number> --comments | grep -A 30 "github-actions\[bot\]"
 ```
 
-Act on blocking findings before merging. Log non-blocking findings as follow-up
-tasks. The review feedback informs future commits and skill updates.
+Act on blocking findings before merging. Log non-blocking findings as follow-up tasks.
+The review feedback informs future commits and skill updates.
 
 ## GitHub workflow rules
 
-**Never push directly to a protected branch.** All changes go through a PR, regardless
-of how small. The repo's `PreToolUse` hook enforces this automatically by querying the
-GitHub API for protected branches before any push; the same rule applies when working
-manually.
+**Never push directly to a protected branch.** Every change goes through a PR, regardless
+of size. The repo's `PreToolUse` hook enforces this by querying the GitHub API for
+protected branches before any push; the same rule applies when working manually.
 
-**Use draft PRs for work in progress.** If a branch isn't ready for review — sorry
-still present, tests failing, proof incomplete — open it as a draft:
+**Use draft PRs for work in progress.** If a branch isn't ready for review — sorry still
+present, tests failing, proof incomplete — open it as a draft:
 ```bash
 gh pr create --draft --title "proof/ftap-proofs/noArbitrageEMM" --body "..."
 ```
@@ -233,17 +284,16 @@ pre-merge checklist is fully green.
 
 **Reviewer etiquette:**
 - Respond to every review comment, even with just "done" or "won't fix, because...".
-- Use GitHub's "Resolve conversation" only after the fix is pushed — not to dismiss.
+- Use GitHub's "Resolve conversation" only after the fix is pushed, not to dismiss.
 - For blocking concerns, push a fix and re-request review; don't merge over a BLOCKING
   comment.
-- Prefer GitHub's suggestion feature for one-line reviewer edits; it makes the
-  diff reviewable.
+- Prefer GitHub's suggestion feature for one-line reviewer edits — it keeps the diff
+  reviewable.
 
-## Commit standards
+## Commit standards recap
 
-See `/write-commits-and-prs` for the full commit message format. Summary:
 - Imperative mood, subject ≤72 characters.
 - Reference theorem names by their Lean 4 identifier for proof commits.
 - Body explains why the change was made, not what the diff shows.
-- One logical change per commit (a proof and its FFI export may be one commit if inseparable;
-  otherwise split).
+- One logical change per commit (a proof and its FFI export may be one commit if
+  inseparable; otherwise split).

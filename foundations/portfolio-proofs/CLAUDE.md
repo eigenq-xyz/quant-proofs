@@ -1,9 +1,8 @@
 # CLAUDE.md: portfolio-proofs
 
 Applied allocation and hedging on top of the verified PGD solver from
-`foundations/optimization-proofs/`. This project is **not** a Lean proof project; it
-routes production portfolio problems through the verified core and documents solver
-behavior on stressed inputs.
+`foundations/optimization-proofs/`. **Not a Lean proof project** — it routes production
+portfolio problems through the verified core and documents solver behavior on stressed inputs.
 
 ## Architecture
 
@@ -81,21 +80,16 @@ form); the Lean parser handles both decimal and scientific-notation strings.
 - N=3, identity sigma, uniform mu: budget error ~1e-6 (degenerate input, documented in
   `test_solve_degenerate_n3_uniform`).
 - `cholesky_crash`: PGD takes 580+ iterations on Ledoit-Wolf-shrunk covariance (cond=87.6),
-  approximately 3.8 s. Other solvers are faster but produce incorrect results on the raw
-  rank-deficient input.
-- `lean_pgd_ffi.py`: FFI-boxed path is approximately 1.5x faster than subprocess for
-  condition number ≥ 150 (e.g., `boundary_trap` random sigma, cond approximately 204).
+  ~3.8s. Other solvers are faster but produce **incorrect** results on the raw rank-deficient input.
+- `lean_pgd_ffi.py`: FFI-boxed path is ~1.5x faster than subprocess for condition number >= 150
+  (e.g. `boundary_trap` random sigma, cond ~204).
 
-## Hard rules
+## Local notes
 
-- Do not edit `scenarios/**/*.qmd`, `scenarios/**/*.md`, or `reports/` files; those are
-  Quarto content maintained separately.
-- Do not edit `data/README.md`.
-- `lean_pgd.py` public API (`solve`, `LEAN_NATIVE_NS`) is frozen; scenarios import it
-  directly. Changes must remain backward-compatible.
-- Never claim a theorem is "guaranteed" or "verified" unless it appears, zero `sorry`, in a
-  Lean file. The statistical layer (covariance estimation, expected-return inputs) is
-  rigorous but not formally verified; say so if it comes up.
-- `mypy --strict` and `ruff` must pass before any commit.
-- Licensed data (WRDS, OptionMetrics, paid) is never committed; describe it as
-  licensed-not-included if referenced.
+- Never edit `scenarios/**/*.qmd`, `scenarios/**/*.md`, `reports/`, or `data/README.md` — Quarto
+  content maintained separately.
+- `lean_pgd.py` public API (`solve`, `LEAN_NATIVE_NS`) is frozen; scenarios import it directly.
+  Changes must stay backward-compatible.
+- Never claim a theorem is "guaranteed" or "verified" unless it appears, zero `sorry`, in a Lean
+  file. The statistical layer here (covariance estimation, expected-return inputs) is rigorous but
+  not formally verified — say so if it comes up.

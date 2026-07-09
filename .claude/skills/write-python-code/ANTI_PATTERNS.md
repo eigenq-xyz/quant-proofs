@@ -1,14 +1,14 @@
 # Python Anti-Patterns — quant-proofs
 
-Patterns that are prohibited in this codebase. Most will be caught by ruff or mypy;
-all will be caught in code review. For each anti-pattern, the fix is shown.
+Patterns banned in this codebase. Most are caught by ruff or mypy; all are caught
+in code review. Each entry shows the fix.
 
 ---
 
 ## 1. `import *`
 
-**Why it's prohibited:** Pollutes the namespace, makes it impossible to know where
-a name comes from, breaks mypy's ability to track types.
+**Why it's prohibited:** pollutes the namespace, hides where a name comes from,
+breaks mypy's type tracking.
 
 ```python
 # Bad
@@ -29,7 +29,7 @@ ruff rule: `F403` (import star), `F401` (unused import after star import).
 ## 2. `Any` as a type annotation shortcut
 
 **Why it's prohibited:** `Any` turns off mypy's type checking for that value.
-Every use of `Any` is a hole in the type safety guarantee.
+Every use is a hole in the type-safety guarantee.
 
 ```python
 # Bad
@@ -55,7 +55,7 @@ def load_data(path: str) -> list[OptionRecord]:
     ...
 ```
 
-If you genuinely cannot avoid `Any` (e.g., wrapping a dynamically-typed third-party
+If `Any` is genuinely unavoidable (e.g., wrapping a dynamically-typed third-party
 library), add a comment:
 ```python
 result: Any  # wrds.Connection returns untyped cursor results; narrowed below
@@ -65,7 +65,7 @@ result: Any  # wrds.Connection returns untyped cursor results; narrowed below
 
 ## 3. Floats across the Lean FFI boundary
 
-**Why it's prohibited:** The Lean 4 accounting kernel uses integer arithmetic to
+**Why it's prohibited:** the Lean 4 accounting kernel uses integer arithmetic to
 maintain formally verified invariants. Floats introduce rounding errors that
 silently invalidate those guarantees.
 
@@ -87,7 +87,7 @@ pnl_bps = compute_pnl(delta_bps=delta_bps, price_move_bps=price_move_bps)
 
 ## 4. Catching bare `Exception`
 
-**Why it's prohibited:** Catches everything including `KeyboardInterrupt`,
+**Why it's prohibited:** catches everything, including `KeyboardInterrupt`,
 `SystemExit`, and programming errors that should propagate. Makes debugging
 impossible and hides real failures.
 
@@ -108,17 +108,16 @@ except ValueError as exc:
     result = default_value
 ```
 
-If you truly need a broad catch (e.g., at a top-level agent entry point), use
-`except Exception as exc` (not bare `except`), log the full traceback, and re-raise
-or return a structured error — do not silently swallow the exception.
+A broad catch is sometimes needed (e.g., a top-level agent entry point). Use
+`except Exception as exc` (not bare `except`), log the full traceback, then
+re-raise or return a structured error. Never swallow the exception silently.
 
 ---
 
 ## 5. Mutable default arguments
 
-**Why it's prohibited:** The default value is evaluated once at function definition
-time. All calls that use the default share the same mutable object, leading to
-state leaking between calls.
+**Why it's prohibited:** the default is evaluated once, at function-definition time.
+Every call using the default shares the same mutable object — state leaks between calls.
 
 ```python
 # Bad
@@ -150,9 +149,9 @@ ruff rule: `B006`.
 
 ## 6. `os.system()` instead of `subprocess.run()`
 
-**Why it's prohibited:** `os.system()` does not capture output, does not raise on
-failure, and passes the command through a shell (injection risk). `subprocess.run()`
-is explicit, safe, and captures output.
+**Why it's prohibited:** `os.system()` doesn't capture output, doesn't raise on
+failure, and shells out (injection risk). `subprocess.run()` is explicit, safe,
+and captures output.
 
 ```python
 # Bad
@@ -172,9 +171,8 @@ result = subprocess.run(
 )
 ```
 
-Use `check=True` unless you intentionally want to handle non-zero exit codes
-yourself. Use `capture_output=True` unless you explicitly want output to stream
-to the terminal.
+`check=True` unless you intentionally handle non-zero exits yourself.
+`capture_output=True` unless you want output streamed to the terminal.
 
 ruff rule: `S605` (os.system with shell=True).
 
@@ -182,11 +180,10 @@ ruff rule: `S605` (os.system with shell=True).
 
 ## 7. Magic numeric literals
 
-**Why it's prohibited:** A bare number carries no semantic meaning. `502500` is
-opaque; `to_bp(50.25)` documents the unit and makes the conversion explicit. This is
-especially critical in this codebase where basis-point integers cross the Lean FFI
-boundary — a wrong unit silently produces incorrect results that no type checker can
-catch.
+**Why it's prohibited:** a bare number carries no semantic meaning. `502500` is
+opaque; `to_bp(50.25)` documents the unit and makes the conversion explicit. This
+matters most where basis-point integers cross the Lean FFI boundary — a wrong unit
+silently produces incorrect results no type checker catches.
 
 ```python
 # Bad — what does 10_000 mean? Basis-point factor? Days? A fee cap?
@@ -210,10 +207,8 @@ if fee > MAX_FEE_BPS:
 ```
 
 Rules:
-- Domain constants go at module level with `ALL_CAPS` names.
-- Use `to_bp` / `from_bp` at every float↔int conversion; never multiply by `10_000`
-  inline.
-- Named keyword arguments are preferred over positional literals in function calls.
+- Domain constants at module level, `ALL_CAPS` names.
+- `to_bp` / `from_bp` at every float↔int conversion — never multiply by `10_000` inline.
+- Prefer named keyword arguments over positional literals in function calls.
 
-No automatic ruff rule — must be caught in review. Pay extra attention near FFI
-call sites.
+No automatic ruff rule — catch this in review. Pay extra attention near FFI call sites.

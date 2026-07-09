@@ -14,19 +14,23 @@ allowed-tools: Read Write Edit Glob
 
 # Readme Results
 
+Writes the empirical results section of a README from committed `results/`
+charts and tables, AQR-style: state the hypothesis, document the data, report
+the result honestly including where it breaks down.
+
 ## Style benchmark
 
-AQR white paper exhibit format: numbered exhibits, tight captions, no marketing
-language, limitations always stated.
+AQR white paper exhibit format: numbered exhibits, tight captions, no
+marketing language, limitations always stated.
 
 ## Required elements for each result
 
-1. **Hypothesis** — stated before showing data
-2. **Data source** — name, access tier, sample period, frequency
-3. **In-sample period** declared; **out-of-sample period** declared separately
-4. **Result** — central estimate + confidence interval or range
-5. **Where it breaks down** — regime, subsample, transaction cost sensitivity
-6. **Connection to Lean proof** — which theorem the result validates or relies on
+1. **Hypothesis** — stated before showing data.
+2. **Data source** — name, access tier, sample period, frequency.
+3. **In-sample period** declared; **out-of-sample period** declared separately.
+4. **Result** — central estimate plus confidence interval or range.
+5. **Where it breaks down** — regime, subsample, transaction cost sensitivity.
+6. **Connection to Lean proof** — which theorem the result validates or relies on.
 
 ## Exhibit template
 
@@ -49,21 +53,21 @@ Transaction costs: assumed zero / modeled as X bps. Out-of-sample period: [dates
 
 ## Privacy rule
 
-No GPA, no personal timelines, no "this demonstrates skill for X firm."
-Write as if for a public research audience.
+No GPA, no personal timelines, no "this demonstrates skill for X firm." Write
+for a public research audience.
 
-AQR and Fama-French are fine as data source names (they publish public datasets).
-"This was developed to impress AQR interviewers" is not acceptable.
+AQR and Fama-French are fine as data source names — they publish public
+datasets. "This was developed to impress AQR interviewers" is not.
 
 ## Hard rules
 
-- Never cherry-pick the sample period after seeing results
-- Never omit transaction costs without explicitly noting "assumes zero transaction costs"
-- Never call a backtest result "alpha" without risk adjustment
-- In-sample / out-of-sample split must be declared in the methodology section,
-  not chosen retroactively
+- Never cherry-pick the sample period after seeing results.
+- Never omit transaction costs without noting "assumes zero transaction costs."
+- Never call a backtest result "alpha" without risk adjustment.
+- Declare the in-sample / out-of-sample split in the methodology section —
+  never choose it retroactively.
 
-## Example of good vs bad
+## Good vs bad example
 
 Bad: "Our strategy significantly outperforms the market with 23% annual returns."
 

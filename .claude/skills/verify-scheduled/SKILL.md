@@ -27,9 +27,9 @@ gh workflow run scheduled.yml --repo eigenq-xyz/quant-proofs
 
 1. **Refresh FRED data** — download five series (VIX, T-bill, 10yr, SP500, HY spread)
 2. **Regenerate computed series** — VRP, regime labels from fresh FRED + VOLARE data
-3. **Run data-quality gate** — block commit if any quality check fails
-4. **Run Levels 1–5** — full verification pyramid (no Level 6, WRDS blocked)
-5. **Commit updated CSVs** — with `[skip ci]` to avoid infinite loop
+3. **Run data-quality gate** — blocks commit if any quality check fails
+4. **Run Levels 1–5** — full verification pyramid (no Level 6; WRDS blocked)
+5. **Commit updated CSVs** — with `[skip ci]` to avoid an infinite loop
 
 ## Rate limit awareness
 
@@ -51,12 +51,12 @@ All quality checks passed. Levels 1-5 green.
 
 ## What it does NOT do
 
-- Does NOT touch WRDS / OptionMetrics data (MFA blocks automation)
-- Does NOT run `verify-research` (Level 6)
-- Does NOT rebuild Cython FFI (Lean sources unchanged)
+- **Never touches** WRDS / OptionMetrics data (MFA blocks automation)
+- **Never runs** `verify-research` (Level 6)
+- **Never rebuilds** Cython FFI (Lean sources unchanged)
 
 ## Current status
 
-`.github/workflows/scheduled.yml` does not yet exist. The existing `lean-ci.yml`
-runs on push/PR only. Create the scheduled workflow when the data pipeline
+`.github/workflows/scheduled.yml` doesn't exist yet. The existing `lean-ci.yml`
+runs on push/PR only. Create the scheduled workflow once the data pipeline
 (`data-fred`, `data-computed`, `data-quality` skills) is implemented.

@@ -12,6 +12,9 @@ paths:
 
 # Writing Technical Docs — quant-proofs
 
+Documentation standards for READMEs, proof docstrings, and notebook exhibits
+across quant-proofs.
+
 ---
 
 ## README style
@@ -20,8 +23,8 @@ Every subproject README follows this structure, in order:
 
 ### 1. One-sentence summary (first line, no heading)
 
-State what the project is and what it does. Lead with the mathematical or
-technical substance — not with what it "demonstrates" or "explores."
+State what the project is and does. Lead with the mathematical or technical
+substance, not with what it "demonstrates" or "explores."
 
 Good:
 > `ftap-proofs` is a Lean 4 formalization of the discrete Fundamental Theorem of
@@ -33,12 +36,12 @@ Avoid:
 
 ### 2. What it proves / what it does
 
-For proof projects: state the main theorem in one sentence of plain English,
-then the formal statement as a Lean code block. Explain why the result matters
+Proof projects: state the main theorem in one plain-English sentence, then
+the formal statement as a Lean code block. Explain why the result matters
 mathematically.
 
-For pipeline projects: describe the pipeline in one paragraph (agents, inputs,
-outputs, what is formally verified).
+Pipeline projects: describe the pipeline in one paragraph — agents, inputs,
+outputs, what is formally verified.
 
 ### 3. How to build
 
@@ -71,26 +74,26 @@ uv run mypy --strict src/
 
 ### 5. Project structure
 
-A short table or tree showing the key files and what each does. Keep it to 10–15
-lines — do not list every file. Focus on files a contributor would need to find.
+A short table or tree of key files and what each does. Keep it to 10-15
+lines — don't list every file. Focus on what a contributor needs to find.
 
 ### Rules for all READMEs
 
-- No private content: no personal timelines, no target firm names in strategy
-  framing, no grades, no application context.
-- Tense: present tense for current state, future tense for planned work.
-- Links: use relative paths for links within the repo; absolute URLs for external
+- **No private content** — no personal timelines, no target firm names in
+  strategy framing, no grades, no application context.
+- **Tense** — present tense for current state, future tense for planned work.
+- **Links** — relative paths within the repo; absolute URLs for external
   references. Verify links before committing.
-- Code blocks: always specify the language identifier (` ```lean`, ` ```python`,
-  ` ```bash`).
+- **Code blocks** — always specify the language identifier (` ```lean`,
+  ` ```python`, ` ```bash`).
 
 ---
 
 ## Proof docstrings (for a non-Lean audience)
 
-Every exported theorem must have a docstring that a mathematician who does not know
-Lean can understand. Do not assume Lean familiarity. Do not assume measure theory
-unless the theorem is in a clearly measure-theoretic module.
+Every exported theorem needs a docstring a mathematician who doesn't know
+Lean can understand. Don't assume Lean familiarity. Don't assume measure
+theory unless the theorem sits in a clearly measure-theoretic module.
 
 Structure:
 
@@ -118,13 +121,13 @@ theorem putCallParity ...
 ```
 
 Components:
-1. **Plain-English statement** of the theorem (what it says, not the Lean syntax).
-2. **Formula** in LaTeX-style math, rendered as a code block if LaTeX is not available.
+1. **Plain-English statement** of the theorem — what it says, not the Lean syntax.
+2. **Formula** in LaTeX-style math, as a code block if LaTeX isn't available.
 3. **Why it matters** — connect to the broader mathematical context.
 4. **Key references** — cite the paper the result comes from.
 
-Do not include implementation details (tactics, imports used) in the docstring.
-Those belong in inline comments inside the proof body.
+Leave implementation details (tactics, imports) out of the docstring. Those
+belong in inline comments inside the proof body.
 
 ---
 
@@ -134,9 +137,9 @@ Those belong in inline comments inside the proof body.
 
 - Label every column with units in the header: `Return (% ann.)`, `Sharpe (ann.)`,
   `Turnover (% ann.)`.
-- Include the sample period and sample size in a caption below the table:
+- State the sample period and sample size in a caption below the table:
   `Note: Monthly data, Jan 1990 – Dec 2023, N = 408 months.`
-- The caption explains what to take away, not just what the table shows:
+- The caption explains the takeaway, not just what the table shows.
   Good: "VRP strategy Sharpe ratios are consistently positive across sub-periods,
   declining after 2015."
   Avoid: "Table 1 shows Sharpe ratios for the VRP strategy."
@@ -144,30 +147,29 @@ Those belong in inline comments inside the proof body.
 ### Charts
 
 Label requirements:
-- **X-axis:** label with units (e.g., `Date`, `Strike / Spot`, `Moneyness (%)`)
-- **Y-axis:** label with units (e.g., `Cumulative Return (%)`, `Implied Vol (ann. %)`)
-- **Title:** short, descriptive, present-tense
-- **Legend:** always include when there are multiple series; place inside the plot
-  area if space permits
+- **X-axis** — units (e.g., `Date`, `Strike / Spot`, `Moneyness (%)`).
+- **Y-axis** — units (e.g., `Cumulative Return (%)`, `Implied Vol (ann. %)`).
+- **Title** — short, descriptive, present-tense.
+- **Legend** — always include for multiple series; place inside the plot area
+  if space permits.
 
-Caption: every chart must have a caption that explains the key takeaway, not just
-what is plotted.
+Every chart needs a caption that states the key takeaway, not just what is plotted.
 
 ### Chart visual conventions
 
-- **Palette:** use seaborn's `colorblind` palette for all multi-series charts.
+- **Palette** — seaborn's `colorblind` palette for all multi-series charts,
+  for accessibility to viewers with color vision deficiency:
   ```python
   import seaborn as sns
   sns.set_palette("colorblind")
   ```
-  This ensures accessibility for viewers with color vision deficiency.
-- **Background:** dark-on-light only. No dark backgrounds, no neon colors.
-- **3D plots:** never. They add visual complexity without information. Use a
-  heatmap, contour plot, or faceted 2D plots instead.
-- **Font size:** minimum 11pt for all axis labels, tick labels, and legend text.
+- **Background** — dark-on-light only. No dark backgrounds, no neon colors.
+- **3D plots** — never. They add visual complexity without information. Use
+  a heatmap, contour plot, or faceted 2D plots instead.
+- **Font size** — minimum 11pt for axis labels, tick labels, and legend text.
   Smaller text becomes unreadable in print and in slide decks.
-- **Figure size:** default `(10, 5)` for single-panel time-series charts; `(12, 6)`
-  for multi-panel. Use `tight_layout()` to prevent label clipping.
+- **Figure size** — default `(10, 5)` for single-panel time-series charts,
+  `(12, 6)` for multi-panel. Use `tight_layout()` to prevent label clipping.
 
 Standard chart setup:
 ```python
@@ -191,19 +193,22 @@ fig.tight_layout()
 ## JupyterBook site conventions (docs/)
 
 The repo uses JupyterBook with the **QuantEcon Book Theme** (`quantecon-book-theme`),
-matching the style used in other eigenq-xyz projects. Theme is in
-`backtest-proofs/python/pyproject.toml` under `[project.optional-dependencies] docs`.
+matching other eigenq-xyz projects. The `docs` extra below is intended to live in
+`research-pipeline/pyproject.toml` under `[project.optional-dependencies] docs` —
+as of this writing that extra hasn't actually been added there yet (`dev` is the
+only extra currently defined). Treat this as the target convention, not a command
+that runs today without adding it first.
 
 Build:
 ```bash
-cd backtest-proofs/python && uv sync --extra docs
-uv run jupyter-book build ../../docs/
+cd research-pipeline && uv sync --extra docs
+uv run jupyter-book build ../docs/
 ```
 
 Theme-specific conventions:
-- `execute_notebooks: "off"` — notebooks are pre-executed; outputs committed to repo
-- `myst_enable_extensions: [colon_fence, deflist]` — use `:::` for admonitions
-- Mathematical notation rendered via MathJax — use `$...$` inline, `$$...$$` display
-- `bibtex_bibfiles: []` — add a `.bib` file here when references are added
-- All `.ipynb` notebooks go in `docs/` or `backtest-proofs/notebooks/`; symlink if needed
-- Do not add dark-mode styles — the QuantEcon theme handles this
+- `execute_notebooks: "off"` — notebooks are pre-executed; outputs committed to repo.
+- `myst_enable_extensions: [colon_fence, deflist]` — use `:::` for admonitions.
+- Mathematical notation renders via MathJax — `$...$` inline, `$$...$$` display.
+- `bibtex_bibfiles: []` — add a `.bib` file here when references are added.
+- All `.ipynb` notebooks go in `docs/` or `research-pipeline/notebooks/`; symlink if needed.
+- Don't add dark-mode styles — the QuantEcon theme handles this.

@@ -1,7 +1,7 @@
 # Python Code Reference — quant-proofs
 
-Full conventions for naming, tooling configuration, test structure, and Pydantic usage.
-This file is the authoritative reference; SKILL.md is the summary.
+Authoritative reference for naming, tooling config, test structure, and Pydantic usage.
+SKILL.md is the summary.
 
 ---
 
@@ -20,15 +20,14 @@ This file is the authoritative reference; SKILL.md is the summary.
 | Test functions | `test_<what>_<condition>` | `test_delta_hedge_at_expiry()` |
 | Test fixtures | descriptive noun phrase | `sample_option_chain`, `mock_wrds_session` |
 
-Do not use abbreviations unless they are standard in quantitative finance
-(e.g., `pnl`, `vol`, `bps`, `atm`, `itm`, `otm`) or in the Python ecosystem
-(`cls`, `fn`, `cfg`).
+Abbreviations only if standard in quant finance (`pnl`, `vol`, `bps`, `atm`, `itm`,
+`otm`) or the Python ecosystem (`cls`, `fn`, `cfg`).
 
 ---
 
 ## ruff configuration
 
-`ruff` is configured in `pyproject.toml` under `[tool.ruff]`. The active rule sets are:
+Configured in `pyproject.toml` under `[tool.ruff]`. Active rule sets:
 
 | Code | Rule set | Why enabled |
 |------|----------|-------------|
@@ -40,7 +39,7 @@ Do not use abbreviations unless they are standard in quantitative finance
 | `SIM` | flake8-simplify | Unnecessary complexity |
 | `ANN` | flake8-annotations | Annotation completeness (subset) |
 
-The `line-length` is set to `88` (Black-compatible). Do not override this per-file.
+`line-length` is `88` (Black-compatible). Never override per-file.
 
 To auto-fix safe issues:
 ```
@@ -75,15 +74,15 @@ python_version = "3.12"
 warn_unused_configs = true
 ```
 
-For third-party libraries without stubs, add an explicit ignore in `pyproject.toml`:
+Third-party libraries without stubs: explicit ignore in `pyproject.toml`:
 ```toml
 [[tool.mypy.overrides]]
 module = ["wrds.*", "fredapi.*"]
 ignore_missing_imports = true
 ```
 
-Do not use `# type: ignore` without specifying the error code. Prefer
-`# type: ignore[import-untyped]` over bare `# type: ignore`.
+Always specify the error code. Prefer `# type: ignore[import-untyped]` over
+bare `# type: ignore`.
 
 ---
 
@@ -99,10 +98,9 @@ Do not use `# type: ignore` without specifying the error code. Prefer
 | Show installed packages | `uv pip list` |
 | Update lockfile | `uv lock --upgrade` |
 
-The lockfile (`uv.lock`) is committed to the repository. Do not delete or
-manually edit it.
+`uv.lock` is committed to the repo. Never delete or hand-edit it.
 
-`pyproject.toml` structure for optional dev dependencies:
+Optional dev dependencies in `pyproject.toml`:
 ```toml
 [project.optional-dependencies]
 dev = [
@@ -126,13 +124,13 @@ tests/
   unit/
     test_<module>.py   # one file per source module
   integration/
-    test_ffi.py        # Cython FFI integration (backtest-proofs)
+    test_lean_pgd.py   # Cython/subprocess FFI integration (portfolio-proofs)
     test_agents.py     # LangGraph agent integration (mortgage-proofs)
 ```
 
 ### conftest.py patterns
 
-Use `conftest.py` for fixtures shared across multiple test files. Keep
+`conftest.py` holds fixtures shared across multiple test files. Keep
 module-specific fixtures in the test file itself.
 
 ```python
@@ -152,14 +150,14 @@ def sample_option_chain() -> list[dict[str, int]]:
 
 ### Fixture naming
 
-- Use descriptive noun phrases: `sample_option_chain`, `mock_wrds_session`
+- Descriptive noun phrases: `sample_option_chain`, `mock_wrds_session`
 - Prefix mocks with `mock_`: `mock_polygon_client`
 - Prefix minimal/small fixtures with `minimal_`: `minimal_decision_record`
 
 ### Parametrize usage
 
-Use `@pytest.mark.parametrize` for testing multiple inputs to the same logic.
-Give each case an `id` for readable output:
+`@pytest.mark.parametrize` for multiple inputs to the same logic. Give each case
+an `id` for readable output:
 
 ```python
 @pytest.mark.parametrize(
@@ -177,7 +175,7 @@ def test_hedge_pnl(delta_bps: int, expected_bps: int) -> None:
 
 ### Coverage
 
-New code must reach at least 80% test coverage. Check with:
+New code needs at least 80% test coverage. Check with:
 ```
 uv run pytest --cov=src/ --cov-report=term-missing
 ```
@@ -218,9 +216,9 @@ class DecisionRecord(BaseModel):
 ```
 
 Rules:
-- Use `Field(ge=..., le=...)` for range constraints — do not validate in an `if` block.
-- Use `Literal` for fixed-choice string fields.
-- Use `model_validator(mode="after")` for cross-field validation.
-- Always use `model.model_dump()` (not `.dict()`) and `Model.model_validate()` (not
-  `.parse_obj()`) — these are the v2 APIs.
+- `Field(ge=..., le=...)` for range constraints, not an `if` block.
+- `Literal` for fixed-choice string fields.
+- `model_validator(mode="after")` for cross-field validation.
+- Use the v2 APIs: `model.model_dump()` (not `.dict()`), `Model.model_validate()`
+  (not `.parse_obj()`).
 - JSON round-trip: `Model.model_validate_json(json_str)` and `model.model_dump_json()`.

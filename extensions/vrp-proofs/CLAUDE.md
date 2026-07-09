@@ -32,14 +32,12 @@ grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake .
 - `vrp_decomposition` (CLAIM 2a): `vrp = (E^Q[G] − E^P[G]) / (1+r)^T`.
 - `vrp_pos_iff` (CLAIM 2b): `0 < vrp ↔ binomExp p G < binomExp q G`.
 
-## Hard rules
+## Local notes
 
-- Zero `sorry` on `main`. No exceptions.
-- Do not remove or weaken the non-claims note at the end of `VarianceRiskPremium.lean`; it is
-  the documented reason the convex-payoff bridge and the gamma-variance-gap identity are absent.
-- Do not run `lake update`: it bumps mathlib to HEAD and drifts from sibling proofs. Bump the
-  whole monorepo together by updating the pinned rev in every `lakefile.lean` simultaneously.
-- No private content: no GPA, no grades, no target firm names, no application timelines.
+- Never remove or weaken the non-claims note at the end of `VarianceRiskPremium.lean` — it's the
+  documented reason the convex-payoff bridge and the gamma-variance-gap identity are absent.
+- Never run `lake update` here: it bumps mathlib to HEAD and drifts from sibling proofs. Bump the
+  whole monorepo together by updating the pinned rev in every `lakefile.lean` at once.
 
 ## Dependency context
 

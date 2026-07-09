@@ -27,9 +27,7 @@ Single library `OptionsProofs`. Three modules in dependency order:
 - `quant-core`: shared option primitives (`QuantCore.Option`).
 - `mathlib`: finite probability, conditional expectation, big operators.
 
-## Hard rules
+## Local notes
 
-- Zero `sorry` on main. No exceptions.
-- Do not suppress linter warnings with `set_option linter.X false`. Fix the root cause.
+- Never suppress linter warnings with `set_option linter.X false` — fix the root cause.
 - Apache 2.0 license: compatible with mathlib for upstream contribution.
-- No private content in commits, docstrings, or PRs (no grades, application context, or firm names in strategy framing).

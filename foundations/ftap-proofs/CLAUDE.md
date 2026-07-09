@@ -1,6 +1,6 @@
 # CLAUDE.md: ftap-proofs
 
-Lean 4 formalization of the discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981): no-arbitrage iff an equivalent martingale measure exists. Complete, zero `sorry`, targeting a mathlib PR.
+Lean 4 formalization of the discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981): no-arbitrage iff an equivalent martingale measure exists. Proof complete, zero `sorry`.
 
 ## Build and test
 
@@ -41,10 +41,8 @@ The hard direction (NA implies EMM) proceeds via `geometric_hahn_banach_compact_
 - Every exported theorem has a `/-- ... -/` docstring stating the result in plain English before restating the Lean signature.
 - `private` for intermediate lemmas (`state_price_functional`, `state_prices_to_emm`) that are implementation detail rather than public API.
 
-## Hard rules
+## Local notes
 
-- Zero `sorry` on main. No exceptions.
-- Do not edit `.lean` files to change proof terms without running `lake build` to confirm zero sorry.
-- No private content in commits or PRs: no personal timelines, no GPA, no target firm names.
-- Apache 2.0 license matches mathlib; do not introduce incompatible dependencies.
-- `lake update` bumps `lean-toolchain` and recompiles mathlib from scratch: run it intentionally, not as a reflex.
+- `lake update` bumps `lean-toolchain` and recompiles mathlib from scratch — run it intentionally,
+  never as a reflex (see root `CLAUDE.md` for the monorepo-wide pinned rev this must stay consistent with).
+- Apache 2.0 license matches mathlib; don't introduce incompatible dependencies.

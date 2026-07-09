@@ -1,9 +1,9 @@
 # CLAUDE.md: research-pipeline
 
-The flagship. A full quant-research-desk workflow (data → signals → statistical testing → portfolio
-→ backtest → evaluation → cross-asset), orchestrated by `study.run_research_study`. The
-correctness-critical stages are proved in Lean 4; the statistical and evaluation layers are rigorous
-but not formally verified. This file orients an AI agent working here.
+The flagship. Full quant-research-desk workflow (data → signals → statistical testing → portfolio
+→ backtest → evaluation → cross-asset), orchestrated by `study.run_research_study`.
+Correctness-critical stages are proved in Lean 4; statistical and evaluation layers are rigorous
+but not formally verified (see root `CLAUDE.md` for the verified/unverified boundary).
 
 ## Architecture (one module per desk stage)
 
@@ -53,14 +53,8 @@ rp run momentum --oos --out results/                  # full study into results/
 mypy --strict src/ && ruff check .
 ```
 
-## Hard rules
+## Local notes
 
-- Zero `sorry` on main. Develop on a branch; discharge before merge.
-- `mypy --strict` clean on `src/` (scipy import-ignored; pandas via `pandas-stubs`); `ruff` clean.
-- Never commit licensed data; the in-repo synthetic generator and free loaders only.
-- Public-neutral: no grades, no target-firm names in strategy context, no resume paths, no
-  application timelines. Describe the work as a research and verification artifact.
-
-## Planning
-
-GitHub issues are the planning system; open an issue per task and close it in the same PR cycle.
+- `mypy --strict` on `src/`: scipy import-ignored, pandas typed via `pandas-stubs`.
+- No licensed data here either — synthetic generator and free loaders only (see root `CLAUDE.md`
+  for the repo-wide rule).

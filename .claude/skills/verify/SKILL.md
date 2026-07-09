@@ -9,7 +9,7 @@ allowed-tools: Bash(lake *) Bash(uv run *) Bash(grep *) Bash(git *)
 
 # Verify — quant-proofs
 
-Verification pyramid: each level must pass before the next runs.
+Each level must pass before the next runs.
 
 | Level | Skill | CI | Local | What it checks |
 |-------|-------|----|-------|---------------|
@@ -24,14 +24,22 @@ Verification pyramid: each level must pass before the next runs.
 ## Quick commands per level
 
 ```bash
-# Level 1 — Lean
-for dir in backtest-proofs/lean ftap-proofs options-proofs extensions/mortgage-proofs/lean; do
+# Level 1 — Lean (full current subdir list; see /verify-lean for the authoritative loop)
+for dir in research-pipeline/lean foundations/quant-core/lean foundations/ftap-proofs \
+           foundations/options-proofs foundations/optimization-proofs foundations/portfolio-proofs/lean \
+           extensions/vrp-proofs extensions/hedge-proofs extensions/stopped-time-proofs \
+           extensions/perpetual-proofs extensions/mortgage-proofs/lean; do
   (cd "$dir" && lake build) || exit 1
 done
-grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake {backtest-proofs/lean,ftap-proofs,options-proofs,extensions/mortgage-proofs/lean}/
+grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake \
+  {research-pipeline/lean,foundations/quant-core/lean,foundations/ftap-proofs,foundations/options-proofs,\
+foundations/optimization-proofs,foundations/portfolio-proofs/lean,extensions/vrp-proofs,extensions/hedge-proofs,\
+extensions/stopped-time-proofs,extensions/perpetual-proofs,extensions/mortgage-proofs/lean}/
 
-# Level 2 — Python
-(cd backtest-proofs/python && uv run pytest -q && uv run mypy src/ --strict && uv run ruff check src/ tests/)
+# Level 2 — Python (see /verify-unit for the authoritative per-subdir commands)
+(cd research-pipeline && pytest -q && mypy --strict src/ && ruff check .)
+(cd foundations/quant-core/python && uv run pytest -q)
+(cd foundations/portfolio-proofs && uv run pytest tests/test_lean_pgd.py -v -k "not integration")
 (cd extensions/mortgage-proofs && uv run pytest -m "not integration" -q && uv run mypy src/ --strict)
 
 # Levels 3–5 (when infrastructure exists)
@@ -40,8 +48,8 @@ uv run pytest tests/property/ tests/empirical/ tests/regime/ -v
 
 ## Gate rule
 
-A level that fails stops the run. Diagnose with the level-specific skill, fix,
-and re-run from that level — do not skip ahead.
+A failing level **stops the run**. Diagnose with the level-specific skill, fix,
+re-run from that level. Never skip ahead.
 
 ## Pre-merge minimum
 
@@ -56,3 +64,9 @@ Run the level-specific skill for diagnosis commands and common causes:
 - Level 3 fails → `/verify-property`
 - Level 4 fails → `/verify-empirical`
 - Level 5 fails → `/verify-regime`
+
+## Pre-commit hooks
+
+Hooks run automatically on `git commit`: `ruff`, `mypy --strict`, `lake build`, `pytest` for
+each changed subdir. A failing hook **aborts the commit** — fix, re-stage, retry.
+Never `--no-verify`. Run without committing: `pre-commit run --all-files`.

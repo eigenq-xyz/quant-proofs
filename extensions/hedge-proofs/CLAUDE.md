@@ -27,7 +27,7 @@ Unit tests compile with `lake build` via `BacktestProofs/Tests/UnitTests.lean`.
 | `BacktestProofs/Basic.lean` | Core types: `Position` (price proved positive at construction), `Portfolio` (value proved equal to cash + positions at construction), `Trade` (fee proved non-negative); `applyTrade` |
 | `BacktestProofs/Invariants.lean` | All trade invariants: `valueIdentity`, `cashUpdateCorrect`, `quantityConservation`, `valueUpdateFormula`, `selfFinancing`, `selfFinancingWithCost`; well-formedness preservation under `applyTrade` |
 | `BacktestProofs/Settlement.lean` | `settleEuropeanOption` (ITM/OTM dispatch), `applySettlement`; OTM uses `abandonPosition`, ITM uses `applyTrade` via `Trade.settlementITM` |
-| `BacktestProofs/SettlementInvariants.lean` | `settlement_value_formula` (crown jewel: value change = qty * (payoff - mark), both branches); supporting lemmas for abandonment and ITM cash credit |
+| `BacktestProofs/SettlementInvariants.lean` | `settlement_value_formula` (value change = qty * (payoff - mark), both branches); supporting lemmas for abandonment and ITM cash credit |
 | `BacktestProofs/Accounting.lean` | `@[export hedge_*]` C-callable FFI wrappers; no new theorems |
 | `BacktestProofs/Tests/UnitTests.lean` | `native_decide` unit tests; basis-point convention (all prices x10,000) |
 
@@ -38,12 +38,5 @@ Unit tests compile with `lake build` via `BacktestProofs/Tests/UnitTests.lean`.
 
 ## Numeric convention
 
-All monetary values in basis points (x10,000). $50.00 = 500,000 bp. This is enforced throughout and required by the FFI contract.
-
-## Hard rules
-
-- Zero `sorry` on main. No exceptions.
-- Do not extend `archive/` or reference it as active code.
-- Do not commit licensed data (WRDS, OptionMetrics, Polygon paid tiers).
-- No private content: no GPA, no target firm names, no personal timelines.
-- `lake build` must stay clean before any PR. Run the sorry grep to confirm.
+All monetary values in basis points (x10,000). $50.00 = 500,000 bp. Enforced throughout; required
+by the FFI contract.

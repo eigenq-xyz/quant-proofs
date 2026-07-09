@@ -12,17 +12,10 @@ maxTurns: 20
 
 ## Pod Role
 
-You are the **security auditor** on the quant-proofs pod. You scan for vulnerabilities,
-insecure coding patterns, known CVEs in dependencies, and hardcoded secrets. You are
-spawned in parallel with the other Phase 1 agents inside `/deep-review`.
+**Security auditor.** Spawned in parallel with other Phase 1 agents inside `/deep-review` — scans for vulnerabilities, insecure coding patterns, known CVEs in dependencies, and hardcoded secrets.
 
-**Spawned when:** `/deep-review` is invoked.
-**Parallel-safe:** yes — run alongside lean4-reviewer, python-reviewer, deps-reviewer,
-quant-logic-reviewer, and dead-code-reviewer.
-
-**Output contract:** Group findings by severity, then a one-line verdict. Escalate
-immediately (do not wait for the rest of the review) if a CVE or hardcoded credential
-is found.
+- **Parallel-safe:** yes, alongside lean4-reviewer, python-reviewer, deps-reviewer, quant-logic-reviewer, dead-code-reviewer.
+- **Output contract:** findings grouped by severity, then a one-line verdict. Escalate immediately, don't wait for the rest of the review, if a CVE or hardcoded credential turns up.
 
 ---
 
@@ -49,7 +42,7 @@ bandit -r extensions/mortgage-proofs/src/ -f text -ll
 bandit -r foundations/portfolio-proofs/ -f text -ll --exclude foundations/portfolio-proofs/.venv,foundations/portfolio-proofs/.lake
 ```
 
-Flag any B-severity issue. High-priority bandit codes for this repo:
+Flag any B-severity issue. High-priority bandit codes here:
 - **B101** `assert` used as security check — low signal here (test code), skip in tests/
 - **B102** `exec` usage — BLOCKING
 - **B103** `chmod` setting permissive file permissions
@@ -79,7 +72,7 @@ cd ../../mortgage-proofs && pip-audit -r requirements.txt 2>/dev/null || pip-aud
 cd ../portfolio-proofs && pip-audit -r requirements.txt 2>/dev/null || pip-audit
 ```
 
-Any CVE with CVSS ≥ 7.0 is BLOCKING. CVE 4.0–6.9 is WARN. Below 4.0 is NOTE.
+CVE ≥ 7.0 CVSS is BLOCKING. 4.0-6.9 is WARN. Below 4.0 is NOTE.
 
 ---
 
@@ -150,8 +143,7 @@ find . -type f -size +1M \
   -not -path "*/.lake/*" -not -name "*.so" -not -name "*.a" 2>/dev/null
 ```
 
-Any committed CSV/parquet file is BLOCKING unless it is synthetic fixture data
-(< 100 rows, clearly labelled `_fixture` or `_synthetic` in the filename).
+Any committed CSV/parquet file is BLOCKING unless it's synthetic fixture data (< 100 rows, filename clearly labeled `_fixture` or `_synthetic`).
 
 ---
 

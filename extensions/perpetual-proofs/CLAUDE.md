@@ -64,15 +64,20 @@ combines them into the headline theorem.
 
 - `stopped-time-proofs`: `GeometricExpectation`, `geometricExpectation_const`,
   `geometricExpectation_strict_mono`, Jensen lemmas. `InversePerpCorrection.lean`
-  uses `StrictConvexOn.map_sum_lt` via `jensen_geom_strict_convex`.
+  uses `StrictConvexOn.map_sum_lt` via `jensen_geom_strict_convex`. Load-bearing
+  (heavy): appears in nearly every perp definition and theorem.
 - `ftap-proofs`: complete (zero `sorry`). `Market.lean` and `CashFlow.lean` import
   `FtapProofs.Market` and `FtapProofs.Strategy`. `OnePeriodEMM` is a local struct;
   it does not import `FtapProofs.MartingaleMeasure` (that module uses a different
-  EMM formulation).
+  EMM formulation). **This import is vestigial** (per `DEPENDENCY_GRAPH.md`): no
+  `FtapProofs.*` name is referenced in any signature or proof in this project, and
+  removing the import breaks nothing. It is aspirational (a TODO to swap in
+  `FtapProofs.EquivalentMartingaleMeasure` once available), not yet done. Do not
+  describe it as load-bearing in any doc.
+- `mathlib`: measure theory, convex analysis (`strictConvexOn_zpow` for `1/x`),
+  `tsum_geometric_of_lt_one`.
 
-## Hard rules
+## Local notes
 
-- Zero `sorry` on main. No exceptions.
-- Do not edit `.lean` files to resolve documentation issues; fix documentation only.
-- Do not import private context from outside this repository.
+- Never edit `.lean` files to resolve documentation issues; fix the documentation only.
 - Apache 2.0 license; keep compatible with mathlib for upstream contribution.

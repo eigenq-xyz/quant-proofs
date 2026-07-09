@@ -13,30 +13,33 @@ allowed-tools: Bash(uv run *) Read Write Edit
 
 # Docs Research
 
+Builds the research paper site from committed `results/` charts and tables, for quant researchers who know finance but not Lean 4.
+
 ## Build command
 
 ```bash
-cd backtest-proofs/python
+cd research-pipeline
 uv sync --extra docs       # installs jupyter-book + quantecon-book-theme
-uv run jupyter-book build ../../docs/
+uv run jupyter-book build ../docs/
 ```
 
-**Theme:** `quantecon-book-theme` — configured in `docs/_config.yml`. Same theme used across eigenq-xyz projects. Do not change the theme without updating all docs.
+**Theme:** `quantecon-book-theme`, configured in `docs/_config.yml`. Same theme
+across all eigenq-xyz projects — don't change it without updating all docs.
 
 The root JupyterBook at `docs/` is already configured. Add paper sections to
 `docs/_toc.yml` as results become available.
 
 ## Audience
 
-Write for a quant researcher or portfolio manager: knows options pricing, factor
-models, and backtesting — does not know Lean 4. Explain formal proofs in terms
-of what they *rule out*, not how they work internally.
+Quant researcher or portfolio manager who knows options pricing, factor
+models, and backtesting, but not Lean 4. Explain formal proofs by what they
+*rule out*, not how they work internally.
 
-Bad: "The `settlement_value_formula` theorem in `BacktestProofs.OptionInvariants`
+Bad: "The `settlement_value_formula` theorem in `BacktestProofs.SettlementInvariants`
 uses a tactic proof with `omega` to discharge the integer arithmetic."
 
 Good: "The accounting layer is formally proved to be self-consistent: no matter
-how complex the hedging strategy, settlement cannot silently mis-report PnL.
+how complex the hedging strategy, settlement cannot silently misreport PnL.
 This eliminates a class of backtesting bugs that only appear at expiry."
 
 ## Exhibit format
@@ -54,7 +57,7 @@ guarantees this deviation is not an accounting artefact — it reflects
 genuine market friction.
 ```
 
-Required elements: numbered exhibit, data source, sample period, statistic definition,
+Required: numbered exhibit, data source, sample period, statistic definition,
 connection to the Lean proof.
 
 ## Current status

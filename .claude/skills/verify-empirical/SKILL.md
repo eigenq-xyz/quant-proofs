@@ -21,12 +21,12 @@ uv run pytest tests/data_quality/ -v
 ```
 
 Checks across all `data/` files:
-- No missing values in critical columns (price, date, return)
-- Dates monotonically increasing
-- All prices > 0
-- VIX > 0 at all dates
-- Factor returns within historical range (no 50%+ daily moves)
-- VRP mean positive over full sample (implied > realized on average)
+- **No missing values** in critical columns (price, date, return)
+- **Dates** monotonically increasing
+- **All prices** > 0
+- **VIX** > 0 at all dates
+- **Factor returns** within historical range (no 50%+ daily moves)
+- **VRP mean** positive over full sample (implied > realized on average)
 
 ## Empirical tests
 
@@ -58,5 +58,5 @@ What gets tested:
 
 ## Current status
 
-`tests/empirical/`, `tests/data_quality/`, and `data/` pipeline not yet built.
+`tests/empirical/`, `tests/data_quality/`, and the `data/` pipeline aren't built yet.
 Implement `data-fred` and `data-synthetic` source skills first, then this gate.

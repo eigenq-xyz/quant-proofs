@@ -2,8 +2,10 @@
 name: write-python-code
 description: >
   Python coding standards for the quant-proofs monorepo. Use whenever writing
-  or modifying Python or Cython code in backtest-proofs/ or extensions/mortgage-proofs/.
-  Covers types, docstrings, validation, FFI rules, and the pre-commit checklist.
+  or modifying Python or Cython code in research-pipeline/, foundations/quant-core/,
+  foundations/portfolio-proofs/ (the one live Cython FFI boundary), or
+  extensions/mortgage-proofs/. Covers types, docstrings, validation, FFI rules, and the
+  pre-commit checklist.
 paths:
   - "**/*.py"
   - "**/*.pyx"
@@ -13,25 +15,31 @@ paths:
 
 # Writing Python Code — quant-proofs
 
-See REFERENCE.md for full naming conventions, ruff/mypy config details, and uv
-commands. See EXAMPLES.md for annotated good/bad examples. See ANTI_PATTERNS.md
-for a quick list of things the linters will reject.
+Type everything, validate at boundaries, never float across a bps FFI boundary.
+Full detail: REFERENCE.md (naming/tooling), EXAMPLES.md (good/bad code),
+ANTI_PATTERNS.md (what linters reject).
 
 ---
 
 ## Project layout
 
-Both Python projects use the `src/` layout:
+Most projects use the `src/` layout:
 
 ```
-backtest-proofs/python/
+research-pipeline/
   src/
-    backtest_proofs/
+    research_pipeline/
       __init__.py
       ...
   tests/
   pyproject.toml
-  setup_ffi.py          # compiles Cython extension against Lean IR
+
+foundations/quant-core/python/
+  src/
+    quant_core/
+      __init__.py
+      ...
+  tests/
 
 extensions/mortgage-proofs/
   src/
@@ -42,8 +50,15 @@ extensions/mortgage-proofs/
   pyproject.toml
 ```
 
-The package name matches the directory name with underscores: `backtest_proofs`,
-`mortgage_proofs`.
+**Exception:** `portfolio-proofs/` is flat (no `src/` root) — `lean_pgd.py`,
+`lean_pgd_direct.py`, `lean_pgd_ffi.py` sit under the project root next to `tests/`.
+`lean_pgd_ffi.py` is the Cython FFI wrapper; `optimization-proofs/ffi/` holds the
+matching `.pyx`/`setup_ffi.py` that compiles it against the Lean IR.
+
+Package name = directory name with underscores (`research_pipeline`, `quant_core`,
+`mortgage_proofs`). `portfolio-proofs` has no installable package name — modules
+import directly by path. `extensions/hedge-proofs` is Lean-only today: a
+`@[export hedge_*]` FFI surface with no Python bindings yet.
 
 ---
 
@@ -59,125 +74,94 @@ The package name matches the directory name with underscores: `backtest_proofs`,
 | Rebuild Cython extension | `uv run python setup_ffi.py build_ext --inplace` |
 
 Run `uv sync --extra dev` once after cloning or after any `pyproject.toml` change.
-Do not use `pip install` directly — `uv` manages the lockfile.
+Never `pip install` directly — `uv` manages the lockfile.
 
 ---
 
 ## Type annotations
 
-All public functions and methods **must** have type annotations. No exceptions.
+**All public functions and methods need type annotations.** No exceptions.
 
-```python
-from __future__ import annotations
-```
+`from __future__ import annotations` at the top of every module — enables PEP 563,
+so forward references need no quotes.
 
-Place this at the top of every module. It enables PEP 563 postponed evaluation,
-which lets you use forward references without quotes.
-
-Rules:
-- No bare `Any`. If the type is genuinely dynamic, use `object` or define a
-  `Protocol`. If `Any` is unavoidable (e.g., third-party library without stubs),
-  add a `# type: ignore[misc]` comment with a one-line explanation.
-- Use `Protocol` for duck typing instead of `Union` over concrete types.
-- Use `TypeAlias` for complex type expressions repeated more than twice.
-- Use `Sequence[T]` over `list[T]` in function signatures when you only read;
-  use `list[T]` when you mutate.
-- Use `Mapping[K, V]` over `dict[K, V]` in function signatures when you only read.
+- **No bare `Any`.** Dynamic → `object` or `Protocol`. Unavoidable (no third-party
+  stubs) → `# type: ignore[misc]` with a one-line explanation.
+- `Protocol` for duck typing, not `Union` over concrete types.
+- `TypeAlias` for type expressions repeated more than twice.
+- `Sequence[T]` over `list[T]` when read-only; `list[T]` when mutating.
+- `Mapping[K, V]` over `dict[K, V]` when read-only.
 
 ---
 
 ## Docstrings
 
-Follow Google style. Every public function, method, and class needs a docstring.
+Google style. Every public function, method, and class needs one:
+one-line summary (imperative, no period), blank line, longer description if needed
+(why, not what), `Args:`/`Returns:`/`Raises:` (omit each if not applicable).
 
-Structure:
-1. One-line summary (imperative mood, no period).
-2. Blank line.
-3. Longer description if needed (explain why, not just what).
-4. `Args:` section (omit if no args).
-5. `Returns:` section (omit if returns None).
-6. `Raises:` section (omit if raises nothing documented).
-
-Skip the docstring only if the function is trivially obvious and has no public
-callers outside its own module (e.g., a private `_validate_foo()` helper with an
-obvious name). When in doubt, write it.
+Skip only for trivially obvious, non-public functions (e.g., `_validate_foo()`).
+When in doubt, write it.
 
 ---
 
 ## Validation rules
 
-Validate at the boundary; trust internal invariants.
+Validate at the boundary; trust internal invariants after that.
 
-- **Validate:** user inputs, CLI arguments, external API responses, FFI return values,
-  deserialized JSON/CSV data.
-- **Trust:** values that have already passed validation and are flowing through
-  internal pure functions. Don't re-validate inside a function that documents its
-  preconditions in the type signature.
-- Use Pydantic models (mortgage-proofs) or explicit `if not isinstance(...)` guards
-  (backtest-proofs) at boundaries. Raise `ValueError` with a descriptive message
-  when validation fails.
+- **Validate:** user inputs, CLI args, external API responses, FFI return values,
+  deserialized JSON/CSV.
+- **Trust:** values already validated inside internal pure functions — don't
+  re-validate what the type signature already documents.
+- Pydantic models (mortgage-proofs) or `if not isinstance(...)` guards
+  (research-pipeline, quant-core, portfolio-proofs). Raise `ValueError` with a
+  descriptive message.
 
 ---
 
-## Cython FFI rules (backtest-proofs only)
+## FFI rules — two boundaries, two conventions, never conflate them
 
-The Cython extension bridges Python and the Lean 4 accounting kernel.
+**Cython boundary** (`portfolio-proofs` + `optimization-proofs`): `pgd_ffi.pyx` bridges
+Python and the Lean 4 PGD kernel; `lean_pgd_ffi.py` wraps it. Opt-in, not default —
+`lean_pgd.py`'s subprocess bridge to the compiled `pgd_solve` binary is primary. Wire
+format is `float64` directly, not basis points.
 
-**Critical constraint: all monetary values cross the FFI boundary in basis points
-(int64). Never pass floats.**
+Rebuild after any `optimization-proofs` Lean change:
+```
+cd foundations/optimization-proofs && python ffi/setup_ffi.py build_ext --inplace
+```
+Never test against a stale `.so`.
+
+**Basis-point boundary** (`extensions/hedge-proofs`, Lean-only, no Cython): Lean
+`@[export hedge_*]` wrappers in `BacktestProofs/Accounting.lean`. **Contract is basis
+points (int64), never floats** — use `to_bp`/`from_bp` from `quant_core.pricer.conventions`
+if Python bindings ever get written:
 
 | Correct | Incorrect |
 |---------|-----------|
 | `delta_bps: int = int(round(delta * 10_000))` | `delta: float = 0.0123` |
 | `pnl_bps: int` | `pnl: float` |
 
-Rationale: Lean's integer arithmetic guarantees that the formally verified
-accounting invariants are preserved. Floating-point representation breaks those
-guarantees.
-
-After any change to Lean source files, rebuild the extension:
-```
-uv run python setup_ffi.py build_ext --inplace
-```
-
-Do not run tests against a stale `.so` file — the test suite will silently use
-the old binary.
-
 ---
 
 ## Pre-commit hooks
 
-Both projects run pre-commit hooks on every commit. A commit will **fail** if any
-hook does not pass.
-
-Hooks installed:
-- `ruff` — linting (E, F, I, UP rule sets) and formatting
-- `mypy` — `--strict` type checking (uses `repo: local` + `uv run` so the
-  project venv supplies all stubs and typed dependencies — same flags as CI)
-
-Run hooks manually at any time:
-```
-uv run pre-commit run --all-files
-```
-
-**Fixing mypy errors:** Fix the actual type error. Do **not** add
-`[[tool.mypy.overrides]]` blocks or `ignore_missing_imports = true` to paper
-over failures. If a third-party dependency lacks stubs, add a `py.typed` marker
-to the package (if it is internal to this monorepo) or add a narrow
-`# type: ignore[import-untyped]` comment at the import site with a one-line
-explanation — never a blanket project-wide suppression.
+Every commit runs `ruff` (lint + format) and `mypy --strict`; any failure blocks the
+commit. Run manually: `uv run pre-commit run --all-files`. Fix the actual type error —
+**never** `[[tool.mypy.overrides]]` or `ignore_missing_imports = true`. Missing
+third-party stubs: `py.typed` marker (internal packages) or a narrow
+`# type: ignore[import-untyped]` with a one-line explanation, never a blanket suppression.
 
 ### Pre-commit checklist
 
-Before committing Python or Cython changes, verify:
-
-- [ ] `uv run ruff check src/ tests/` exits 0 (no linting errors)
-- [ ] `uv run ruff format --check src/ tests/` exits 0 (no formatting drift)
-- [ ] `uv run mypy --strict src/` exits 0 (no type errors)
-- [ ] `uv run pytest` exits 0 (all tests pass)
-- [ ] No bare `Any` annotations added without a comment justifying them
-- [ ] No floats crossing the FFI boundary (backtest-proofs)
-- [ ] Cython extension rebuilt after any Lean changes (`setup_ffi.py build_ext --inplace`)
-- [ ] No licensed data files staged (`git diff --cached --name-only` must not include `.csv`, `.parquet`, `.h5`)
-- [ ] Docstrings present on all new public functions/methods/classes
-- [ ] `from __future__ import annotations` at the top of every new module
+- [ ] `uv run ruff check src/ tests/` exits 0
+- [ ] `uv run ruff format --check src/ tests/` exits 0
+- [ ] `uv run mypy --strict src/` exits 0
+- [ ] `uv run pytest` exits 0
+- [ ] No bare `Any` without a justifying comment
+- [ ] No floats across the hedge-proofs bps FFI boundary (Cython boundary is `float64`
+  by design — exempt)
+- [ ] Cython extension rebuilt after any `optimization-proofs` Lean change
+- [ ] No licensed data staged (`git diff --cached --name-only`: no `.csv`/`.parquet`/`.h5`)
+- [ ] Docstrings on all new public functions/methods/classes
+- [ ] `from __future__ import annotations` in every new module

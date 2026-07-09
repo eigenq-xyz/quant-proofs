@@ -4,9 +4,8 @@
 
 ### Theorem and lemma names
 
-mathlib uses a systematic naming scheme where the theorem name encodes the conclusion.
-For `ftap-proofs` (targeting mathlib), follow this precisely.
-For `backtest-proofs`, `options-proofs`, `mortgage-proofs`, follow it as a guide.
+mathlib's theorem names encode the conclusion. Follow this precisely for `ftap-proofs`
+(targeting mathlib); use it as a guide for `hedge-proofs`, `options-proofs`, `mortgage-proofs`.
 
 | Pattern | Example name | Meaning |
 |---------|-------------|---------|
@@ -18,7 +17,7 @@ For `backtest-proofs`, `options-proofs`, `mortgage-proofs`, follow it as a guide
 | `thing_of_thing` | `arbitrage_of_neg_price` | A follows from B |
 | `not_thing_of_thing` | `not_arb_of_risk_neutral` | Negation from condition |
 
-Auxiliary lemmas that should not be exported use `private`:
+Non-exported auxiliary lemmas use `private`:
 
 ```lean
 private lemma sum_split_helper (s : Finset α) : ... := by ...
@@ -146,21 +145,21 @@ theorem myTheorem (h : Hypothesis) : Conclusion := by
 end BacktestProofs
 ```
 
-The `/-! ... -/` module docstring (at the top) and section docstrings are optional for
-library files but required for files that will be submitted as mathlib PRs.
+Top-level `/-! ... -/` and section docstrings: optional for library files,
+required for mathlib-PR files.
 
 ## Writing mathlib-style proofs
 
-For `ftap-proofs` (targeting a mathlib PR), follow these additional rules:
+Additional rules for `ftap-proofs` (targeting a mathlib PR):
 
-1. **No `sorry`.** Mathlib CI rejects it unconditionally.
-2. **Every definition has a docstring.**
-3. **Proofs are term-mode when short** (≤ 3 lines), tactic mode otherwise.
-4. **Use `@[simp]` judiciously** — only on lemmas that are genuinely always
-   useful for simplification. Over-tagging `@[simp]` pollutes the simp set.
-5. **Avoid `classical` when constructive proofs are feasible.**
-6. **Namespace exported definitions** — everything lives under `FtapProofs.*`.
-7. **Split large proofs into private lemmas** rather than writing one 50-line tactic block.
+1. **No `sorry`** — mathlib CI rejects it unconditionally.
+2. **Every definition gets a docstring.**
+3. **Term-mode when short** (≤ 3 lines), tactic mode otherwise.
+4. **Tag `@[simp]` judiciously** — only lemmas genuinely always useful for
+   simplification. Over-tagging pollutes the simp set.
+5. **Avoid `classical`** when a constructive proof is feasible.
+6. **Namespace everything exported** — under `FtapProofs.*`.
+7. **Split large proofs into private lemmas**, not one 50-line tactic block.
 
 ## Common import patterns for this repo
 
@@ -186,6 +185,5 @@ import Mathlib.Order.Bounds.Basic
 import Mathlib.Order.WithBot
 ```
 
-Finding the right module: search [loogle.lean-lang.org](https://loogle.lean-lang.org)
-by the type signature of the lemma you need, then look at its source file header for the
-import path.
+Find the module via [loogle.lean-lang.org](https://loogle.lean-lang.org) by type
+signature, then check the result's source header for the import path.

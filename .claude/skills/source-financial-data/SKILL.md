@@ -13,15 +13,15 @@ paths:
 # Sourcing Financial Data — quant-proofs
 
 See REFERENCE.md for per-source details (URL patterns, file formats, Python library
-usage, API key setup). See QUALITY_NOTES.md for data quality idiosyncrasies — read
-that file before merging any data pipeline change.
+usage, API key setup). See QUALITY_NOTES.md for data quality idiosyncrasies — read it
+before merging any data pipeline change.
 
 ---
 
 ## Source hierarchy
 
-Use sources in this order of preference. Move down the list only when the higher
-source cannot satisfy the requirement.
+Use sources in this order of preference. Move down the list only when the higher source
+can't satisfy the requirement.
 
 | Priority | Category | Examples |
 |----------|----------|---------|
@@ -29,15 +29,15 @@ source cannot satisfy the requirement.
 | 2 | Institutional (requires login) | WRDS: OptionMetrics, CRSP, Compustat |
 | 3 | Paid commercial | Polygon.io, Bloomberg |
 
-**Decision rule:** if a free academic source covers your time range and resolution,
-use it. Do not reach for WRDS or Polygon.io for something you can get from French
-or FRED — institutional licenses are shared resources.
+**Decision rule:** if a free academic source covers your time range and resolution, use
+it. Don't reach for WRDS or Polygon.io for something available from French or FRED —
+institutional licenses are shared resources.
 
 ---
 
 ## Licensing rules
 
-**Never commit licensed data to the repository.** This is a hard rule with no exceptions.
+**Never commit licensed data to the repository.** Hard rule, no exceptions.
 
 Licensed data includes:
 - OptionMetrics (WRDS)
@@ -52,7 +52,7 @@ Freely distributable data (OK to commit in small amounts for test fixtures):
 - FRED series (public domain)
 - CBOE VIX history (public)
 
-When in doubt, do not commit. Use a download script and add the data path to
+When in doubt, don't commit. Use a download script and add the data path to
 `.gitignore`.
 
 ---
@@ -87,12 +87,12 @@ For test fixtures using small public-domain data samples, place them under
 
 ### AQR Data Library (aqr.com/Insights/Datasets)
 
-Available datasets include: quality-minus-junk (QMJ), betting-against-beta (BAB),
-time series momentum (TSMOM), value and momentum everywhere.
+Available datasets: quality-minus-junk (QMJ), betting-against-beta (BAB), time series
+momentum (TSMOM), value and momentum everywhere.
 
-Key loading quirk: AQR Excel files use a multi-row header. Always inspect a new
-file before writing a loader. The standard is `skiprows=18`, but this varies.
-See QUALITY_NOTES.md for date format details.
+Key loading quirk: AQR Excel files use a multi-row header. Always inspect a new file
+before writing a loader. The standard is `skiprows=18`, but this varies. See
+QUALITY_NOTES.md for date format details.
 
 Download script: `scripts/download_aqr.py`
 
@@ -114,21 +114,23 @@ Use the `fredapi` Python library. Key series:
 ### CBOE
 
 VIX history: available as CSV download from CBOE website.
-Historical options data: limited free availability; full chains require institutional access.
+Historical options data: limited free availability; full chains require institutional
+access.
 
 ---
 
 ## Institutional sources (WRDS)
 
-Requires an active institutional login. Do not hardcode credentials; use the
-`wrds` library's built-in credential management, which stores a session token.
+Requires an active institutional login. Don't hardcode credentials — use the `wrds`
+library's built-in credential management, which stores a session token.
 
 Key databases:
-- **OptionMetrics** — standardized options prices, implied vols, greeks. Primary
-  source for options backtesting. See QUALITY_NOTES.md for the 15:59 timestamp issue.
+- **OptionMetrics** — standardized options prices, implied vols, greeks. Primary source
+  for options backtesting. See QUALITY_NOTES.md for the 15:59 timestamp issue.
 - **CRSP** — stock prices and returns, adjusted for splits/dividends. The authoritative
   source for US equity prices in academic research.
-- **Compustat** — company fundamentals (earnings, book value, etc.) for factor construction.
+- **Compustat** — company fundamentals (earnings, book value, etc.) for factor
+  construction.
 
 WRDS requires MFA. See QUALITY_NOTES.md for session caching behavior.
 
@@ -138,10 +140,10 @@ WRDS requires MFA. See QUALITY_NOTES.md for session caching behavior.
 
 ### Polygon.io
 
-Historical options data with full chain depth requires the paid Options tier.
-Use for high-frequency or recent options data not available through WRDS.
-Rate limits on the paid tier: 100 calls/minute for most endpoints. Implement
-exponential backoff in all Polygon.io clients.
+Historical options data with full chain depth requires the paid Options tier. Use for
+high-frequency or recent options data not available through WRDS. Rate limits on the
+paid tier: 100 calls/minute for most endpoints. Implement exponential backoff in all
+Polygon.io clients.
 
 API key: stored in environment variable `POLYGON_API_KEY`. Never hardcode.
 

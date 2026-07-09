@@ -2,8 +2,6 @@
 
 ## Example 1: Well-documented theorem (BacktestProofs style)
 
-This is the style to follow for all exported theorems.
-
 ```lean
 import Mathlib.Data.Finset.Basic
 import Mathlib.Algebra.BigOperators.Group.Finset
@@ -25,10 +23,10 @@ theorem valueIdentity (π : Portfolio) :
 end BacktestProofs
 ```
 
-What makes this good:
-- Docstring explains the theorem in English, then symbolically, then its role.
-- Named simp lemmas (not bare `simp`).
-- Namespace is properly opened and closed.
+Why it's good:
+- Docstring: English, then symbolic, then role.
+- Named simp lemmas, not bare `simp`.
+- Namespace opened/closed properly.
 - Import is specific.
 
 ---
@@ -59,16 +57,14 @@ theorem selfFinancing_net_zero
 end FtapProofs
 ```
 
-What makes this good:
+Why it's good:
 - Named induction cases (`zero`, `succ n ih`).
-- Hypothesis extracted with `have`, then arithmetic closed by `linarith`.
-- `rw` + `linarith` is clearer than a large `simp` call.
+- Hypothesis extracted with `have`, arithmetic closed by `linarith`.
+- `rw` + `linarith` beats one large `simp` call.
 
 ---
 
 ## Example 3: Short term-mode proof
-
-For obvious equalities, term mode is acceptable and cleaner:
 
 ```lean
 /-- The empty portfolio has zero value. -/
@@ -76,7 +72,7 @@ theorem emptyPortfolio_value_zero : portfolioValue emptyPortfolio = 0 :=
   Finset.sum_empty
 ```
 
-One line, no `by`. This is appropriate here because `Finset.sum_empty` closes the goal directly.
+Term mode: one line, no `by` — `Finset.sum_empty` closes the goal directly.
 
 ---
 
@@ -105,9 +101,9 @@ theorem thing (x : ℝ) : x + 0 = x := by
 ```
 
 Problems:
-1. No `/-- ... -/` docstring.
-2. `simp` without lemma list — fragile, will break if simp set changes.
-3. `sorry` — this theorem is unproven. Blocked from `main`.
+- No `/-- ... -/` docstring.
+- `simp` without a lemma list — fragile, breaks if the simp set changes.
+- `sorry` — unproven, blocked from `main`.
 
 Fixed version:
 
@@ -122,24 +118,21 @@ theorem real_add_zero (x : ℝ) : x + 0 = x :=
 
 ## Exercise: Add a new theorem to BacktestProofs
 
-Suppose you want to prove that a portfolio with a single option position has
-value equal to that option's Black-Scholes price at expiry.
+Goal: single-option portfolio value = that option's Black-Scholes payoff at expiry.
 
-Before writing:
-
-1. Check InfoView goal at the `by`:
+1. Check the InfoView goal at `by`:
    ```
    ⊢ portfolioValue (singleOption opt) = optionPayoff opt S
    ```
 
-2. Run `exact?` — does mathlib have it? Almost certainly not (domain-specific).
+2. Run `exact?` — mathlib almost certainly lacks this; it's domain-specific.
 
 3. Unfold definitions manually:
    ```lean
    simp only [portfolioValue, singleOption, Finset.sum_singleton]
    ```
 
-4. The remaining goal should be `optionPayoff opt S = optionPayoff opt S` → `rfl`.
+4. Remaining goal reduces to `optionPayoff opt S = optionPayoff opt S` → `rfl`.
 
 Full proof:
 ```lean

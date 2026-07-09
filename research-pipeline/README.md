@@ -1,16 +1,14 @@
 # research-pipeline
 
-The flagship: a full quant-research-desk workflow, end to end, with its load-bearing steps formally
-verified. It takes a signal idea from hypothesis to an auditable, net-of-cost verdict, exercising
-every stage a research desk runs. The repo thesis in one module: the durable skill is knowing
-whether to trust a backtest.
+A full quant-research-desk workflow, data through cross-asset generalization, with its
+load-bearing correctness properties proved in Lean 4: backtest non-anticipation, out-of-sample
+no-leakage, and signal measurability. The statistical and P&L layers are rigorous but not
+formally verified; the table below marks the boundary.
 
-The engine is alpha-agnostic (cross-sectional and time-series strategies through one interface) and
-driven by a command-line tool, `rp`. The correctness-critical stages carry verification contracts
-that build `sorry`-free; the statistical layer is rigorous but not formally verified, and this README
-marks the boundary.
+The engine is alpha-agnostic (cross-sectional and time-series strategies through one interface)
+and driven by a command-line tool, `rp`.
 
-## What is verified
+## What it proves
 
 | Property | Where | Status |
 |----------|-------|--------|
@@ -21,10 +19,18 @@ marks the boundary.
 | Portfolio construction | `portfolio.py` | Routed through the verified PGD solver; raises rather than silently using an unverified baseline |
 | Statistical layer (IC, Newey-West HAC, PSR/DSR) | `stats.py` | Rigorous, cross-checked against `statsmodels`/`scipy`; not formally verified |
 
-Alpha is never "proved": it is empirical and lives in the honest statistics, not in Lean.
-`Measurability.lean` is the measure-theoretic form of non-anticipation, proving the signal map is
-adapted to the natural filtration `σ(price s : s ≤ t)`; the VRP signal additionally reads an
+`Measurability.lean` is the measure-theoretic form of non-anticipation: the signal map is adapted
+to the natural filtration `σ(price s : s ≤ t)`. The VRP signal additionally reads an
 implied-variance process, so it is proved adapted to the joint price-and-implied-vol filtration.
+
+## What it doesn't claim
+
+Alpha is never proved. The momentum and VRP studies below are empirical results that live in the
+statistics layer (`stats.py`), not in Lean: a real, significant backtest result is not the same
+claim as a machine-checked proof, and this README does not blur the two. Portfolio construction is
+routed through the verified PGD solver, but it raises rather than silently falling back to an
+unverified baseline if that routing fails; it does not prove the resulting portfolio is optimal in
+any sense beyond what the solver's own proofs (in `optimization-proofs/`) establish.
 
 ## The pipeline (one module per desk stage)
 
@@ -74,18 +80,27 @@ for multiple testing, is what separates an edge from a lucky backtest.
 - **Use the pipeline** (`scripts/run_study.py`, `studies/`): real out-of-sample studies. A report from
   an unvalidated pipeline is not written.
 
-## Quick start
+## Build and verify
 
 ```bash
-cd research-pipeline/lean && lake exe cache get && lake build   # verification contracts, sorry-free
-cd research-pipeline && pip install -e ".[dev]"
-
-rp list                                  # registered strategies and portfolios
-rp run momentum --cost-bps 10 --oos --out results/
+cd research-pipeline/lean && lake exe cache get && lake build
+grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake .   # empty = clean
+cd research-pipeline && pip install -e ".[dev]" && pytest -q
 rp validate                              # no-look-ahead and no-leakage gates
-pytest -q                                # unit and property contracts
-mypy --strict src/ && ruff check .
 ```
+
+Full build/test/lint matrix and study-running commands: see `CLAUDE.md`.
 
 Licensed data (WRDS/CRSP, paid feeds) is never committed; the Ken French and AQR loaders use free
 data. Keep the `as_of` guard on any new data source.
+
+## Dependencies
+
+Cites [`foundations/ftap-proofs/`](../foundations/ftap-proofs/) at one point:
+`market_price_natural_le_filtration` feeds `FtapProofs.FinancialMarket.S_adapted` into the
+adaptedness proof. Load-bearing, single point of contact; see `DEPENDENCY_GRAPH.md` at the repo
+root.
+
+## License
+
+Apache 2.0.

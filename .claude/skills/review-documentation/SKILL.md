@@ -16,56 +16,56 @@ disallowedTools:
 
 # Reviewing Documentation — quant-proofs
 
-This skill is read-only. Report issues found; do not fix them directly. The author
-fixes the issues and re-requests review.
+This skill is read-only: report issues, don't fix them. The author fixes and
+re-requests review.
 
 ---
 
 ## How to use this checklist
 
-Work through each section that applies. For each item, mark it:
-- **Pass** — verified correct
-- **Fail** — describe the specific file and location of the issue
-- **N/A** — section does not apply
+Work through each section that applies. Mark each item:
+- **Pass** — verified correct.
+- **Fail** — describe the specific file and location of the issue.
+- **N/A** — section does not apply.
 
-A documentation change is ready to merge only when all applicable items are **Pass**.
+A documentation change is ready to merge only when every applicable item is **Pass**.
 
 ---
 
 ## Cross-reference accuracy
 
-Every command or path mentioned in the documentation must actually work.
+Every command or path in the documentation must actually work.
 
-- [ ] Every shell command in the documentation runs as written from the directory
-  stated. Test each command; do not assume it works because it looks plausible.
-  Commands to check: install, build, test, and any example invocations.
-- [ ] Every file path mentioned in the documentation exists in the repository
-  (or is clearly marked as a path that will exist after a build step).
-- [ ] Every internal link (relative Markdown link) resolves to an existing file.
+- [ ] Every shell command runs as written from the stated directory. Test
+  each one; don't assume it works because it looks plausible. Check install,
+  build, test, and any example invocations.
+- [ ] Every file path exists in the repository, or is clearly marked as a
+  path that will exist after a build step.
+- [ ] Every internal (relative Markdown) link resolves to an existing file.
   Check with: `find . -name "*.md" | xargs grep -l "\]\(\./"` and verify each target.
-- [ ] Every external URL is reachable and points to the correct resource. Spot-check
-  at least three external links per document.
+- [ ] Every external URL is reachable and points to the right resource.
+  Spot-check at least three external links per document.
 
 ---
 
 ## Notation consistency
 
-Mathematical notation must be consistent within a file and across files in the same
-subproject.
+Mathematical notation must stay consistent within a file and across files in
+the same subproject.
 
-- [ ] The same symbol is used for the same quantity throughout. Flag any case where
-  two symbols are used for the same concept (e.g., `S_t` and `P_t` both used for
+- [ ] The same symbol denotes the same quantity throughout. Flag any case
+  where two symbols cover one concept (e.g., `S_t` and `P_t` both used for
   stock price in different sections).
-- [ ] The same concept is not denoted by two different symbols in different files
-  within the same subproject (e.g., `B(0,T)` in one file and `P(0,T)` for the
-  bond price in another).
-- [ ] Conventions are stated explicitly where they are introduced. For example: "All
-  returns are log returns unless stated otherwise" or "Prices are in basis points
-  throughout."
-- [ ] LaTeX notation is rendered consistently: inline math uses `$...$`; display
-  math uses `$$...$$` or a fenced code block. Do not mix styles within a document.
-- [ ] Factor names match their published names: Mkt-RF (not MKT or market), SMB,
-  HML, RMW, CMA (Fama-French 5-factor convention); MOM or UMD for momentum.
+- [ ] The same concept isn't denoted by two different symbols across files
+  in the same subproject (e.g., `B(0,T)` in one file, `P(0,T)` for the bond
+  price in another).
+- [ ] Conventions are stated explicitly where introduced. For example: "All
+  returns are log returns unless stated otherwise" or "Prices are in basis
+  points throughout."
+- [ ] LaTeX notation renders consistently: inline math uses `$...$`; display
+  math uses `$$...$$` or a fenced code block. Don't mix styles in one document.
+- [ ] Factor names match their published names: Mkt-RF (not MKT or market),
+  SMB, HML, RMW, CMA (Fama-French 5-factor convention); MOM or UMD for momentum.
 
 ---
 
@@ -91,36 +91,36 @@ Mathematical results must be attributed to their sources.
 
 ## Privacy check
 
-Public documentation must not contain private context.
+Public documentation must contain zero private context.
 
 - [ ] No GPA, grades, or academic performance metrics anywhere in public files.
 - [ ] No personal application timelines or recruiting context.
-- [ ] No target firm names used in a strategy-framing context (e.g., "this project
-  is designed to demonstrate skills for X firm"). AQR and Fama-French are fine as
-  data source names — they publish public datasets.
-- [ ] No paths to personal files outside the repository (e.g., no references to
-  `~/personal/` or any path not under `quant-proofs/`).
-- [ ] Positioning language, if present, refers to "academic and industry research"
-  or "production quant codebases" — not to specific firms or job applications.
+- [ ] No target firm names in a strategy-framing context (e.g., "this project
+  is designed to demonstrate skills for X firm"). AQR and Fama-French are fine
+  as data source names — they publish public datasets.
+- [ ] No paths to personal files outside the repository (e.g., no references
+  to `~/personal/` or any path not under `quant-proofs/`).
+- [ ] Positioning language, if present, refers to "academic and industry
+  research" or "production quant codebases" — not specific firms or job
+  applications.
 
 ---
 
 ## Proof docstrings
 
-Proof docstrings must be written for a mathematician who does not know Lean — not
-for a Lean expert.
+Proof docstrings target a mathematician who does not know Lean, not a Lean expert.
 
 - [ ] Every exported theorem has a `/-- ... -/` docstring.
-- [ ] The docstring states the theorem in plain English first, before or instead of
-  restating the Lean syntax.
-- [ ] The docstring explains why the result matters: what it enables, what it
-  prevents (e.g., "this rules out arbitrage in the binomial model"), or how it
-  connects to the broader mathematical theory.
+- [ ] The docstring states the theorem in plain English first, before or
+  instead of restating the Lean syntax.
+- [ ] The docstring explains why the result matters: what it enables, what
+  it prevents (e.g., "this rules out arbitrage in the binomial model"), or
+  how it connects to the broader mathematical theory.
 - [ ] The docstring cites the mathematical literature for non-trivial results.
-- [ ] The docstring does not explain Lean syntax or tactics (that belongs in inline
-  comments inside the proof body, not the docstring).
-- [ ] A reader who knows Harrison-Pliska (1981) but not Lean 4 could understand the
-  docstring. Test this by reading it yourself without looking at the proof.
+- [ ] The docstring skips Lean syntax or tactics — those belong in inline
+  comments inside the proof body.
+- [ ] A reader who knows Harrison-Pliska (1981) but not Lean 4 could
+  understand the docstring. Test this by reading it without looking at the proof.
 
 ---
 
@@ -128,17 +128,17 @@ for a Lean expert.
 
 All example code must be clearly marked and must actually run.
 
-- [ ] Every code block that is intended to be runnable is actually runnable. Test it.
-  Copy the block into a fresh environment and run it.
-- [ ] Code that is not runnable (pseudocode, schematic, illustrative) is clearly
-  marked as such with a comment: `# Pseudocode — not runnable as-is` or a note in
-  the surrounding prose.
-- [ ] Example code uses the conventions from `/write-python-code`: `from __future__
+- [ ] Every code block meant to be runnable is actually runnable. Test it:
+  copy the block into a fresh environment and run it.
+- [ ] Code that isn't runnable (pseudocode, schematic, illustrative) is
+  clearly marked with a comment — `# Pseudocode — not runnable as-is` — or a
+  note in the surrounding prose.
+- [ ] Example code follows `/write-python-code` conventions: `from __future__
   import annotations`, typed function signatures, no bare `Any`.
-- [ ] Example code does not import private modules or modules that are not in the
-  project's `pyproject.toml` dependencies.
-- [ ] Example Lean code does not use `sorry`. If a proof is incomplete, mark the
-  gap explicitly in prose rather than including a `sorry` in an example.
+- [ ] Example code doesn't import private modules or modules missing from
+  the project's `pyproject.toml` dependencies.
+- [ ] Example Lean code doesn't use `sorry`. If a proof is incomplete, mark
+  the gap explicitly in prose rather than including a `sorry` in an example.
 
 ---
 
@@ -153,8 +153,8 @@ Required fix: <what needs to change>
 ```
 
 Severity levels:
-- **BLOCK** — must be fixed before merge (broken commands, privacy violation,
-  sorry in example code)
-- **WARN** — should be fixed; may merge with documented justification (missing
-  citation, notation inconsistency)
-- **NOTE** — style or clarity improvement; does not block merge
+- **BLOCK** — must be fixed before merge: broken commands, privacy violation,
+  sorry in example code.
+- **WARN** — should be fixed; may merge with documented justification:
+  missing citation, notation inconsistency.
+- **NOTE** — style or clarity improvement; does not block merge.
