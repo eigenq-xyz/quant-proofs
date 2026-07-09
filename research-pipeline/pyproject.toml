@@ -11,6 +11,7 @@ dependencies = [
     "pandas>=2.0.0",
     "scipy>=1.11.0",
     "openpyxl>=3.1.0",  # read AQR .xlsx factor datasets (data_sources.load_aqr_*)
+    "yfinance>=0.2.40",  # free SPX data (studies/vrp/run_study.py)
 ]
 
 [project.scripts]

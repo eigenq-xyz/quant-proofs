@@ -3,9 +3,8 @@
 Gurobi uses the same 2N-variable slack reformulation as trust-constr,
 solving the post-shock mean-variance problem with Sigma_shock and mu_shock.
 
-This module runs with a valid Gurobi license when gurobipy is installed.
-Without a license it prints a documented analysis and returns a SolverResult
-flagged as simulated.
+This is a benchmark script, not production code: without gurobipy installed and a
+valid license, run() raises rather than substituting a documented-but-fake result.
 """
 
 from __future__ import annotations
@@ -14,16 +13,17 @@ import numpy as np
 
 from .common import ProblemData, SolverResult
 
-# Approximate objective at the KKT optimum for the post-shock problem
-_KKT_OBJ = 0.00439722
-
 
 def run(p: ProblemData) -> SolverResult:
-    """Run Gurobi barrier QP; fall back to simulation if unavailable."""
+    """Run Gurobi barrier QP. Raises if gurobipy is unavailable or unlicensed."""
     try:
         return _run_gurobi(p)
-    except ImportError:
-        return _simulate(p)
+    except ImportError as exc:
+        raise RuntimeError(
+            "gurobipy is required for this benchmark (step_divergence Gurobi solver); "
+            "install it and provide a valid license before running "
+            "reports/benchmark_all_solvers.py, or exclude this solver explicitly."
+        ) from exc
     except Exception as exc:
         return SolverResult(
             solver_name="Gurobi barrier (error)",
@@ -87,34 +87,11 @@ def _run_gurobi(p: ProblemData) -> SolverResult:
     )
 
 
-def _simulate(p: ProblemData) -> SolverResult:
-    """Document the expected Gurobi behavior without a license."""
-    print(
-        "  [gurobipy not installed — printing expected convergence to KKT optimum]"
-    )
-    print()
-    print("  Gurobi barrier on the post-shock problem (well-conditioned after")
-    print(
-        "  LW shrinkage) is expected to converge to the KKT-certified optimum."
-    )
-    print("  The 2N-variable barrier reformulation is stable here because the")
-    print("  shrunk Sigma_shock is strictly PD.")
-    print()
-    print("  Expected Gurobi output (documented, not run):")
-    print(f"    Obj: {_KKT_OBJ:.12f}  (matches KKT certificate)")
-    print("    Status: OPTIMAL  (2 — Gurobi reports success)")
-    print("    Nonzero weights: Utils +1.25, Enrgy -0.25")
-
-    return SolverResult(
-        solver_name="Gurobi barrier (simulated)",
-        converged=True,
-        message="Simulated: gurobipy not installed",
-        objective=_KKT_OBJ,
-        weights=np.zeros(p.N),
-        n_iterations=0,
-        budget_error=float("nan"),
-        leverage_violation=float("nan"),
-    )
+# Expected behavior without gurobipy (kept for context; run() raises instead of
+# returning this as a fabricated result): the same 2N-variable reformulation as
+# trust-constr. Gurobi barrier on the post-shock problem (well-conditioned after
+# LW shrinkage, Sigma_shock strictly PD) is expected to converge to the
+# KKT-certified optimum (objective ~0.00439722, nonzero weights on Utils/Enrgy).
 
 
 def print_result(result: SolverResult, p: ProblemData) -> None:

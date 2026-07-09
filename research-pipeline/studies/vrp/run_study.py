@@ -103,7 +103,8 @@ RV_WINDOW = 21  # trading days for realized variance
 HOLD_DAYS = 21  # ~30 calendar days, one trading month
 TENOR_YEARS = 30.0 / 365.0  # option tenor at inception
 
-RESULTS_DIR = Path(__file__).parent / "results"
+STUDY_DIR = Path(__file__).parent
+RESULTS_DIR = STUDY_DIR / "results"
 
 
 @dataclass(frozen=True)
@@ -663,7 +664,16 @@ def main() -> None:
     results["half_spread_sweep"] = [asdict(r) for r in hs_rows]
     results["combined_sweep"] = [asdict(r) for r in combined_rows]
 
-    results["generated_utc"] = datetime.now(UTC).isoformat()
+    results["_meta"] = {
+        "generated_by": "research-pipeline/studies/vrp/run_study.py",
+        "generated_at": datetime.now(UTC).isoformat(),
+        "reproduce": "python3.12 research-pipeline/studies/vrp/run_study.py",
+        "verified": False,
+        "notes": (
+            "Signal non-anticipation is machine-checked (vrpSignal_adapted); the delta-hedge "
+            "P&L simulation and cost model below are ordinary Python, not formally verified."
+        ),
+    }
     results["headline_config"] = asdict(HEADLINE)
     results["data_sources"] = {
         "spx": "Yahoo Finance ^GSPC (auto_adjust)",
@@ -671,11 +681,12 @@ def main() -> None:
         "rf": "FRED DTB3 3M T-bill (public CSV, no key)",
     }
 
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = RESULTS_DIR / "results_vrp.json"
+    # Committed JSON lives flat under studies/vrp/, matching every other study's convention.
+    # The per-trade CSV is an inspection-only artifact and stays gitignored under results/.
+    out_path = STUDY_DIR / "results_vrp.json"
     with open(out_path, "w") as f:
         json.dump(results, f, indent=2, default=str)
-    # Persist the per-trade panel too, for inspection.
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     pd.DataFrame([asdict(t) for t in trades]).to_csv(RESULTS_DIR / "vrp_trades.csv", index=False)
 
     print(f"\nWrote {out_path}\n")

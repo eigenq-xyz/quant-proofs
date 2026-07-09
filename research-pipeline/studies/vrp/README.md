@@ -26,7 +26,8 @@ where `VIX(t)` is annualized implied volatility (squared to get implied variance
 21 trading days. The signal uses only information observed up to and including time `t`, so
 it is `F_t`-measurable (no look-ahead).
 
-This non-anticipation property is machine-checked, sorry-free, in
+This property, that the signal is free of implementation look-ahead, is proved in Lean 4, zero
+`sorry` (Lean's placeholder for an unproven step, none remain), in
 `research-pipeline/lean/ResearchPipeline/Measurability.lean`. The theorem `vrpSignal_adapted`
 proves that the VRP signal process is **adapted**: its value at `t` is measurable with respect
 to the information available at `t`. Because the signal reads two observable processes, the
@@ -242,5 +243,5 @@ skew worse at -2.03 vs -0.87), reported faithfully.
 python3.12 research-pipeline/studies/vrp/run_study.py
 ```
 
-Outputs `results/results_vrp.json` (summary statistics) and `results/vrp_trades.csv`
-(per-trade panel).
+Outputs `results_vrp.json` (summary statistics, committed) and `results/vrp_trades.csv`
+(per-trade panel, gitignored; regenerate locally rather than diffing it).

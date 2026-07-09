@@ -1,6 +1,8 @@
 # ftap-proofs
 
-A Lean 4 machine-checked proof of the discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981).
+A discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981), proved correct in Lean 4:
+every proof step is checked line by line by the Lean kernel, so the result holds without relying
+on tests or human review to catch an error.
 
 [![Lean CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/lean-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
 
@@ -22,20 +24,22 @@ theorem ftap (m : FinancialMarket Ω) (hP_full : ∀ ω : Ω, 0 < m.P {ω}) :
 | Absence of arbitrage forces an EMM to exist | `no_arbitrage_implies_emm` |
 | Attainable payoffs price as discounted expectations under the measure | `risk_neutral_pricing` |
 
-16 theorems/lemmas total (see `DEPENDENCY_GRAPH.md` at the repo root), zero `sorry`, axioms confined to `[propext, Classical.choice, Quot.sound]`.
+16 theorems/lemmas total (see `DEPENDENCY_GRAPH.md` at the repo root), zero `sorry` (Lean's placeholder
+tactic for "trust me, no proof yet"; none remain, so no unproven steps), axioms confined to
+`[propext, Classical.choice, Quot.sound]`.
 
 The forward direction (no arbitrage implies an EMM exists) goes through a geometric Hahn-Banach separation of the attainable-payoff subspace from the standard simplex in `EuclideanSpace ℝ Ω`, constructing the state-price vector explicitly via `InnerProductSpace.toDual`. The reverse direction is a short contradiction from risk-neutral pricing: a zero-cost strategy with non-negative terminal value has zero expected value under any EMM, ruling out any strictly positive profit.
 
 ## What it doesn't claim
 
-The proof is complete and machine-checked. It has not been submitted to mathlib — no PR exists yet. "Complete" here means the Lean proof compiles with zero `sorry` and standard axioms; it does not mean the result has cleared mathlib review or naming conventions.
+The proof is complete and proved correct in Lean 4. It has not been submitted to mathlib: no PR exists yet. "Complete" here means the Lean proof compiles with zero `sorry` and standard axioms; it does not mean the result has cleared mathlib review or naming conventions.
 
 ## Build and verify
 
 ```bash
 cd foundations/ftap-proofs
 lake exe cache get    # fetch prebuilt mathlib (first run; a few minutes)
-lake build            # compile and machine-check every proof
+lake build            # compile every proof; the Lean kernel checks each step
 grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake .   # empty output = clean
 ```
 

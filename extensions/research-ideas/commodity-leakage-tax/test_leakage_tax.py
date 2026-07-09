@@ -29,7 +29,10 @@ def _synthetic_panel() -> PricePanel:
     # A long daily trading calendar covering the injected report's neighbourhood.
     days = pd.bdate_range("2018-01-01", "2018-12-31")
     px = pd.DataFrame(
-        {"open": np.arange(1.0, len(days) + 1.0), "close": np.arange(1.0, len(days) + 1.0)},
+        {
+            "open": np.arange(1.0, len(days) + 1.0),
+            "close": np.arange(1.0, len(days) + 1.0),
+        },
         index=days,
     )
     return PricePanel(px)
@@ -41,7 +44,9 @@ def _synthetic_cot(as_of_tuesday: pd.Timestamp, extreme: bool = True) -> pd.Data
     n = LOOKBACK_WEEKS + 2
     dates = pd.date_range(end=as_of_tuesday, periods=n, freq="W-TUE")
     net = np.linspace(0.0, 100.0, n) if extreme else np.zeros(n)
-    cot = pd.DataFrame({"as_of": dates, "mm_long": net + 1000.0, "mm_short": 1000.0, "mm_net": net})
+    cot = pd.DataFrame(
+        {"as_of": dates, "mm_long": net + 1000.0, "mm_short": 1000.0, "mm_net": net}
+    )
     cot["release_date"] = cot["as_of"] + pd.Timedelta(days=3)
     return cot
 

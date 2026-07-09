@@ -86,13 +86,15 @@ import json
 import os
 import sys
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-# Reuse verified primitives from the flagship research pipeline.
-_SRC = Path(__file__).resolve().parents[2] / "src"
+# Reuse verified primitives from the flagship research pipeline (a sibling project,
+# not a parent of this exploratory study — see extensions/research-ideas/README.md).
+_SRC = Path(__file__).resolve().parents[2] / "research-pipeline" / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
@@ -128,7 +130,9 @@ def _fred() -> object:
                     key = line.split("=", 1)[1].strip().strip('"').strip("'")
                     break
     if not key:
-        raise RuntimeError("FRED_API_KEY not set; source ~/.config/eigenq/fred.env before running.")
+        raise RuntimeError(
+            "FRED_API_KEY not set; source ~/.config/eigenq/fred.env before running."
+        )
     from fredapi import Fred
 
     return Fred(api_key=key)
@@ -204,7 +208,9 @@ def load_spy(start: str = "1993-01-01") -> PricePanel:
     else:
         close = raw["Close"]
         open_ = raw["Open"]
-    prices = pd.DataFrame({"close": close.astype(float), "open": open_.astype(float)}).dropna()
+    prices = pd.DataFrame(
+        {"close": close.astype(float), "open": open_.astype(float)}
+    ).dropna()
     prices.index = pd.DatetimeIndex(prices.index).normalize()
     return PricePanel(prices)
 
@@ -221,7 +227,9 @@ def monthly_change(level: pd.Series) -> pd.Series:
     return level.diff()
 
 
-def trend_expectation(change: pd.Series, lookback: int = TREND_LOOKBACK_MONTHS) -> pd.Series:
+def trend_expectation(
+    change: pd.Series, lookback: int = TREND_LOOKBACK_MONTHS
+) -> pd.Series:
     """Trailing mean monthly change over the prior ``lookback`` months (a PIT expectation).
 
     For month ``m`` the expectation is the average reported change over the ``lookback`` months
@@ -279,7 +287,9 @@ class MonthlyBacktest:
     entry_by_month: pd.Series  # maps reference month -> chosen SPY entry trading day
 
 
-def _first_trading_day_on_or_after(trading_days: pd.DatetimeIndex, date: pd.Timestamp) -> object:
+def _first_trading_day_on_or_after(
+    trading_days: pd.DatetimeIndex, date: pd.Timestamp
+) -> object:
     idx = trading_days.searchsorted(date, side="left")
     if idx >= len(trading_days):
         return None
@@ -302,7 +312,9 @@ def assemble(panel: PricePanel, signal: pd.DataFrame) -> MonthlyBacktest:
     positions: list[float] = []
     months: list[object] = []
     for ref_month, row in sig.iterrows():
-        entry = _first_trading_day_on_or_after(trading_days, pd.Timestamp(row["release_date"]))
+        entry = _first_trading_day_on_or_after(
+            trading_days, pd.Timestamp(row["release_date"])
+        )
         if entry is None:
             continue
         entry_dates.append(entry)
@@ -415,7 +427,9 @@ def run() -> dict[str, object]:
 
     # Diagnostic: how much do the two vintages actually disagree, on the LEVEL and the CHANGE?
     common_levels = first_level.index.intersection(revised.index)
-    level_diff = (revised.reindex(common_levels) - first_level.reindex(common_levels)).dropna()
+    level_diff = (
+        revised.reindex(common_levels) - first_level.reindex(common_levels)
+    ).dropna()
     ch_first = monthly_change(first_level)
     ch_rev = monthly_change(revised)
     common_ch = ch_first.dropna().index.intersection(ch_rev.dropna().index)
@@ -423,7 +437,9 @@ def run() -> dict[str, object]:
     n_revised = int((level_diff.abs() > 1e-9).sum())
     typ_change = float(ch_first.reindex(common_ch).abs().median())
 
-    naive = assemble(panel, build_signal(revised, release))  # revised-as-if-known: the leak
+    naive = assemble(
+        panel, build_signal(revised, release)
+    )  # revised-as-if-known: the leak
     pit = assemble(panel, build_signal(first_level, release))  # first-release-honest
 
     common = naive.monthly_index.intersection(pit.monthly_index)
@@ -435,13 +451,24 @@ def run() -> dict[str, object]:
         "full": pd.Series(True, index=common),
         "pre_2008": pd.Series(common < pd.Timestamp("2008-01-01"), index=common),
         "2008_2016": pd.Series(
-            (common >= pd.Timestamp("2008-01-01")) & (common < pd.Timestamp("2016-01-01")),
+            (common >= pd.Timestamp("2008-01-01"))
+            & (common < pd.Timestamp("2016-01-01")),
             index=common,
         ),
         "2016_2026": pd.Series(common >= pd.Timestamp("2016-01-01"), index=common),
     }
 
     out: dict[str, object] = {
+        "_meta": {
+            "generated_by": "research-pipeline/studies/macro-leakage/run_study_macro.py",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "reproduce": (
+                "cd research-pipeline/studies/macro-leakage && "
+                "source ~/.config/eigenq/fred.env && python3.12 run_study_macro.py"
+            ),
+            "verified": False,
+            "notes": "Data-revision leakage-tax cell, standardized signal (heavily revised series); empirical study, not routed through the verified backtester.",
+        },
         "series_id": SERIES_ID,
         "n_months_first_release": int(len(first_level)),
         "n_months_revised": int(len(revised)),
@@ -452,7 +479,9 @@ def run() -> dict[str, object]:
         "mean_abs_change_revision_k": float(change_diff.abs().mean()),
         "max_abs_change_revision_k": float(change_diff.abs().max()),
         "median_abs_first_release_change_k": typ_change,
-        "median_change_revision_pct_of_change": float(change_diff.abs().median() / typ_change),
+        "median_change_revision_pct_of_change": float(
+            change_diff.abs().median() / typ_change
+        ),
         "first_release_first": str(first_level.index.min().date()),
         "first_release_last": str(first_level.index.max().date()),
         "spy_first": str(panel.prices.index.min().date()),
@@ -522,7 +551,9 @@ def main() -> None:
             s = blk[variant]
             assert isinstance(s, dict)
             tax_sr = f"{_f(blk, 'tax_sharpe'):+.2f}" if variant == "naive" else ""
-            tax_bps = f"{_f(blk, 'tax_bps_per_year'):+.0f}" if variant == "naive" else ""
+            tax_bps = (
+                f"{_f(blk, 'tax_bps_per_year'):+.0f}" if variant == "naive" else ""
+            )
             nwt = f"{_f(blk, 'diff_nw_tstat'):+.2f}" if variant == "naive" else ""
             print(
                 f"{pname:>10} {variant:>7} {_f(s, 'ann_return'):>+9.4f} "

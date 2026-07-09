@@ -1,8 +1,9 @@
 # CLAUDE.md: mortgage-proofs
 
-LangGraph multi-agent mortgage pipeline with Lean 4 invariant checking. Each
-routing decision is recorded as a `DecisionRecord` JSON and validated by
-`lake exe verify-trace`.
+LangGraph multi-agent mortgage pipeline where an independent Lean 4 layer, proved
+correct rather than only tested, checks every agent decision against codified
+underwriting rules. Each routing decision is recorded as a `DecisionRecord` JSON (a
+structured log of what was decided and why) and checked by `lake exe verify-trace`.
 
 ## Build
 
@@ -30,7 +31,7 @@ uv run mypy src/ --strict
 # Lint
 uv run ruff check src/ tests/
 
-# Zero-sorry check
+# Zero-sorry check (sorry is Lean's "not proved yet" placeholder; none should remain)
 grep -rn 'sorry' --include="*.lean" lean/
 
 # Run verifier on sample trace
@@ -48,7 +49,7 @@ MortgageApplication (JSON)
 LangGraph Orchestrator
     |-- IntakeAgent           document completeness
     |-- RiskAssessmentAgent   DTI, LTV, credit score   (parallel)
-    |-- ComplianceAgent       regulatory rules          (parallel)
+    |-- ComplianceAgent       underwriting rule checks  (parallel)
     +-- UnderwriterAgent      final decision
     |
     v
@@ -71,7 +72,7 @@ extensions/mortgage-proofs/
   lean/
     MortgageProofs/
       Types.lean      Lean types mirroring Python domain models
-      Invariants.lean Formal invariant definitions (DTI bound, predatory-lending rules)
+      Invariants.lean Formal invariant definitions (DTI/LTV/credit-score underwriting caps)
       Theorems.lean   13 proof obligations, zero sorry
       Checker.lean    Validates a DecisionRecord sequence against invariants
       Parser.lean     JSON-to-Lean type parser

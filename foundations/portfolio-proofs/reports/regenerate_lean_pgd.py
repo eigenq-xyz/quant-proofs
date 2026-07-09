@@ -20,6 +20,7 @@ import json
 import pathlib
 import sys
 import time
+from datetime import UTC, datetime
 from typing import Any
 
 import numpy as np
@@ -746,9 +747,15 @@ def main() -> None:
 
     new_data: dict[str, Any] = {
         "_meta": {
-            "generated_by": "reports/regenerate_lean_pgd.py",
-            "date": "2026-05-25",
-            "note": "Run regenerate_lean_pgd.py to refresh from live solvers",
+            "generated_by": "foundations/portfolio-proofs/reports/regenerate_lean_pgd.py",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "reproduce": "cd foundations/portfolio-proofs && python reports/regenerate_lean_pgd.py",
+            "verified": False,
+            "notes": (
+                "Warm-subprocess median solve latency for the verified Lean PGD solver alone "
+                "(12 reps); the benchmark harness is not formally verified, the solve it "
+                "times is."
+            ),
         }
     }
 

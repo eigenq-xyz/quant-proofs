@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+from datetime import UTC, datetime
 
 import pandas as pd
 
@@ -84,6 +85,17 @@ def main() -> None:
 
     # Machine-readable artifact for reproducible reporting.
     out = {
+        "_meta": {
+            "generated_by": "research-pipeline/scripts/run_study.py",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "reproduce": "cd research-pipeline && python -m scripts.run_study",
+            "verified": True,
+            "notes": (
+                "Routed through the verified pipeline: backtest non-anticipation and "
+                "OOS no-leakage (embargo >= label horizon) are Lean-proved; the "
+                "statistical layer (IC, PSR/DSR) is rigorous but not formally verified."
+            ),
+        },
         "name": name,
         "universe": slug,
         "n_trials": args.n_trials,

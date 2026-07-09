@@ -1,15 +1,19 @@
 # hedge-proofs
 
-A formally verified delta-hedge accounting engine: Lean 4 proofs of self-financing,
-settlement-value, and portfolio value-update invariants over a discrete rebalancing schedule.
+A delta-hedge accounting engine proved correct in Lean 4: self-financing (no cash added
+or withdrawn after inception), settlement-value, and portfolio value-update invariants
+over a discrete rebalancing schedule.
 
 Cites [`foundations/quant-core/`](../../foundations/quant-core/) for option types and payoff bounds.
 
 ## What it proves
 
 The engine tracks a portfolio of positions and cash through a sequence of trades and
-expiries. 19 theorems, zero `sorry` (`grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake .`
-returns empty). `#print axioms` on each reports only `[propext, Classical.choice, Quot.sound]`.
+expiries. 19 theorems, zero `sorry` (Lean's placeholder tactic for an unproven step; none
+remain here). Confirm with `grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake .`,
+which returns empty. `#print axioms` (Lean's command to list the axioms a proof ultimately
+rests on) on each theorem reports only `[propext, Classical.choice, Quot.sound]`, the three
+axioms mathlib itself relies on, not any unproven assumption specific to this project.
 
 | Guarantee | Theorem |
 |---|---|
@@ -24,8 +28,8 @@ returns empty). `#print axioms` on each reports only `[propext, Classical.choice
 
 This engine covers the accounting layer only: that each rebalance is self-financing, that
 settlement credit flows through cash correctly, and that the portfolio value identity holds
-at every step. The statistical and execution layers above this engine — signal generation,
-P&L attribution, backtest economics — are not formally verified.
+at every step. The statistical and execution layers above this engine (signal generation,
+P&L attribution, backtest economics) are not formally verified.
 
 ## Build and verify
 
@@ -33,7 +37,7 @@ P&L attribution, backtest economics — are not formally verified.
 cd extensions/hedge-proofs
 lake exe cache get
 lake build
-grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake .   # empty = clean
+grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake .   # empty = zero sorry, clean
 ```
 
 Unit tests are in `BacktestProofs/Tests/UnitTests.lean` and run as part of `lake build`.

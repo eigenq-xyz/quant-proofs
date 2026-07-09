@@ -1,6 +1,6 @@
 # CLAUDE.md: optimization-proofs
 
-Lean 4 PGD solver for convex QPs on the budget-leverage constraint set. Exposes two compiled binaries (`pgd_solve`, `pgd_bench`) and an optional Cython FFI layer. 10 theorems, zero `sorry`.
+Lean 4 PGD solver for convex QPs on the budget-leverage constraint set. Exposes two compiled binaries (`pgd_solve`, `pgd_bench`) and an optional Cython FFI layer. 10 theorems, zero `sorry` (Lean's placeholder tactic for an unproven step; none remain here).
 
 ## Build and test
 
@@ -10,7 +10,8 @@ Lean 4 PGD solver for convex QPs on the budget-leverage constraint set. Exposes 
 # Fetch prebuilt mathlib cache (first run per worktree)
 lake exe cache get
 
-# Build both binaries and machine-check all proofs
+# Build both binaries and type-check all proofs (proof checking is mechanical:
+# the compiler rejects any unproven step)
 lake build
 
 # Build only the CLI server

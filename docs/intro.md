@@ -2,18 +2,19 @@
 
 The central question in quantitative research is not "what does the model say?" It is "should we
 trust it?" Standard testing tells you the code ran. Formal verification tells you the code is
-correct, as a machine-checked mathematical theorem.
+correct, proved as a mathematical theorem in Lean 4.
 
 Every project in the EigenQ Research Series takes a named result from financial theory, a
 load-bearing step of quant research, or a deployed decision system, and makes it formally
 verifiable. The theorem statement is the specification. The Lean 4 proof is the test. Zero `sorry`
-on main means no gaps.
+(Lean's placeholder tactic for an unproven step, meaning literally "trust me, no proof yet") on
+main means no gaps remain.
 
 ## What this means in practice
 
-A proof in Lean 4 is checked by a small, independently audited kernel. When a theorem carries zero
-`sorry`, every inference step has been verified, not sampled and not spot-checked. The result either
-compiles or it does not.
+A proof in Lean 4 is checked line by line by a small, independently audited kernel. When a theorem
+carries zero `sorry`, every inference step has been proved, not sampled and not spot-checked. The
+result either compiles or it does not.
 
 This is different from unit tests, which check behavior on selected inputs. It is different from type
 checking, which rules out a class of runtime errors. Formal verification rules out all
@@ -27,10 +28,10 @@ and what they conclude. See [How we verify](how-we-verify.md) for the method and
 ## The flagship
 
 **[Research Integrity](pillar-research-integrity.md).** A full research-desk workflow whose
-trust-critical steps are machine-checked: no look-ahead, no out-of-sample leakage, and signals that
-provably use only what was knowable at decision time. Paired with honest empirical studies, a
-century-long momentum study and a map of where point-in-time data discipline actually matters, that
-report their limitations intact. The proofs are the rigor backbone; the research is the point.
+trust-critical steps are proved correct in Lean 4: free of implementation look-ahead, no
+out-of-sample leakage, and signals that provably use only what was knowable at decision time.
+Paired with a century-long momentum study that reports its limitations intact. The proofs are the
+rigor backbone; the research is the point.
 
 ## Three theory pillars
 

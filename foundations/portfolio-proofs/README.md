@@ -1,19 +1,24 @@
 # portfolio-proofs
 
-Mean-variance allocation with Ledoit-Wolf shrinkage, routed through the verified PGD solver from
-[`optimization-proofs`](../optimization-proofs/), with stressed-solver scenarios that document
-where standard solvers break and why.
+Mean-variance allocation with Ledoit-Wolf shrinkage, routed through the correct-by-construction
+PGD (projected gradient descent) solver from [`optimization-proofs`](../optimization-proofs/):
+convergence and projection correctness are proved in Lean 4, not just tested. Seven adversarial
+scenarios document concrete cases where SciPy SLSQP, CVXPY/OSQP, and Gurobi fail to converge or
+silently violate constraints, and where the Lean-verified solver matches the KKT-certified
+(the standard first-order optimality conditions for a constrained convex program) analytical
+optimum instead.
 
 [![Lean CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/lean-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
 
 ## What it provides
 
 This is an applied/empirical project. It contains no new Lean 4 proofs. The convergence and
-projection-correctness guarantees reside in `optimization-proofs` (zero `sorry`); this project
-routes production allocation problems through that verified core and documents the solver's
-behavior on stressed inputs.
+projection-correctness guarantees are proved in `optimization-proofs` (zero `sorry`, Lean's
+placeholder tactic for an unproven step; none remain there); this project routes production
+allocation problems through that correct-by-construction core and documents the solver's behavior
+on stressed inputs.
 
-The verified guarantees this project relies on (proved in `optimization-proofs`):
+The guarantees this project relies on, each proved correct in Lean 4 in `optimization-proofs`:
 
 | Guarantee | Theorem |
 |-----------|---------|
@@ -26,9 +31,10 @@ The verified guarantees this project relies on (proved in `optimization-proofs`)
 
 - The statistical layer (covariance estimation, expected-return inputs) is rigorous but not
   formally verified. Results here inherit that boundary.
-- The seven stressed-solver scenarios compare the verified PGD against SLSQP, CVXPY/OSQP, and
-  Gurobi on adversarially chosen inputs; they document specific failure modes, not a general claim
-  that PGD dominates these solvers.
+- The seven scenarios are built around each competitor solver's known weak point (rank-deficient
+  covariance, tight numerical tolerance, L1-ball corners, and so on); they document specific,
+  concrete failure modes (SLSQP non-convergence, silent constraint violation, Gurobi refusal), not
+  a general claim that PGD dominates these solvers on arbitrary inputs.
 
 ## The solver
 

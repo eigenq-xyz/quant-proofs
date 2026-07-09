@@ -111,7 +111,10 @@ def test_assemble_enters_after_thursday_release() -> None:
     first, _ = _synthetic_levels(n=260)
     days = pd.bdate_range("2015-12-01", "2021-12-31")
     px = pd.DataFrame(
-        {"open": np.arange(1.0, len(days) + 1.0), "close": np.arange(1.0, len(days) + 1.0)},
+        {
+            "open": np.arange(1.0, len(days) + 1.0),
+            "close": np.arange(1.0, len(days) + 1.0),
+        },
         index=days,
     )
     panel = PricePanel(px)

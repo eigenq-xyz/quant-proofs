@@ -1,6 +1,6 @@
 # CLAUDE.md: ftap-proofs
 
-Lean 4 formalization of the discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981): no-arbitrage iff an equivalent martingale measure exists. Proof complete, zero `sorry`.
+Lean 4 formalization of the discrete Fundamental Theorem of Asset Pricing (Harrison-Pliska 1981): no-arbitrage iff an equivalent martingale measure exists. Proved correct in Lean 4, zero `sorry` (Lean's placeholder tactic for "trust me, no proof yet"; none remain, so no unproven steps).
 
 ## Build and test
 

@@ -4,8 +4,8 @@ The central question in quantitative research is not "what does the backtest say
 we trust it?" A backtest can be wrong because the code peeked at the future, because an
 out-of-sample split leaked a label, or because the data it read was not knowable at decision time.
 This pillar is the EigenQ Research Series flagship: a full research-desk workflow whose
-trust-critical steps are machine-checked, paired with honest empirical studies that map where that
-trust actually breaks.
+trust-critical steps are proved correct in Lean 4, paired with honest empirical studies that map
+where that trust actually breaks.
 
 The proofs here are the rigor backbone, not the headline. The headline is the research: a pipeline
 that is correct by construction, and studies that are reported with their limitations intact.
@@ -15,19 +15,21 @@ that is correct by construction, and studies that are reported with their limita
 ## `research-pipeline`: a verified research desk
 
 `research-pipeline` runs the stages a research desk runs, from data through signals, statistical
-testing, portfolio construction, backtesting, evaluation, and a cross-asset robustness check. The
-engine is alpha-agnostic: a strategy maps the information set available at time `t` to a target
-portfolio, so cross-sectional and time-series ideas share one interface.
+testing, portfolio construction, backtesting, and evaluation. The engine is alpha-agnostic: a
+strategy maps the information set available at time `t` to a target portfolio, so cross-sectional
+and time-series ideas share one interface.
 
-What is machine-checked, zero `sorry`:
+What is proved correct in Lean 4, zero `sorry` (Lean's placeholder for an unproven step, none
+remain):
 
-- **No look-ahead.** The backtester is proved non-anticipating: a position built from a
-  non-anticipating signal cannot depend on the future.
+- **No look-ahead.** The backtester is proved non-anticipating (free of implementation look-ahead):
+  a position built from a non-anticipating signal cannot depend on the future.
 - **No leakage.** An out-of-sample split with an embargo at least the label horizon is proved
   unable to leak a training label into the test window.
-- **Signal measurability.** The signal map is proved adapted to the natural filtration of the price
-  process, the measure-theoretic form of "uses only what was knowable at `t`." This holds for the
-  momentum signal and for the variance-risk-premium signal, the latter adapted to the joint
+- **Signal measurability.** The signal map is proved adapted (a filtration-theoretic property
+  meaning the map depends only on information available by time `t`) to the natural filtration of
+  the price process, the measure-theoretic form of "uses only what was knowable at `t`." This holds
+  for the momentum signal and for the variance-risk-premium signal, the latter adapted to the joint
   information of prices and implied volatility.
 
 What is rigorous but not formally verified: the statistical layer (information coefficients,
@@ -47,31 +49,30 @@ sample, the deflated Sharpe ratio over 50 trials is 0.72, and the maximum drawdo
 
 The verdict, stated in the report, is honest: the effect is real, strongly significant, and stable,
 but the net edge is modest and has decayed across decades. A known alpha is used deliberately as a
-control, because the research object is the pipeline's correctness, not the signal. A cross-asset
-check finds a multiple-testing-significant momentum Sharpe in equities, fixed income, currencies,
-and commodities, with low cross-asset correlation.
+control, because the research object is the pipeline's correctness, not the signal.
 
 [Read the pipeline](https://github.com/eigenq-xyz/quant-proofs/tree/main/research-pipeline)
 
 ---
 
-## The leakage-tax map: where point-in-time discipline matters
+## Exploratory work: where point-in-time discipline matters
 
 A backtest can be perfectly non-anticipating in its logic and still be contaminated if the values it
-reads were later revised. This study asks how much apparent alpha is such an artifact, and measures
-it on real data across several series: CFTC positioning (a release-timing channel), EIA gas storage
-(a barely-revised series), and nonfarm payrolls (revised in essentially every month). Each cell runs
-identical code with only the data-timing rule changed, and reports a Newey-West HAC t-statistic on
-the difference.
+reads were later revised. A preliminary study in `extensions/research-ideas/`, not yet a load-bearing
+claim, asks how much apparent alpha is such an artifact, measured on real data across several series:
+CFTC positioning (a release-timing channel), EIA gas storage (a barely-revised series), and nonfarm
+payrolls (revised in essentially every month). Each cell runs identical code with only the
+data-timing rule changed, and reports a Newey-West HAC t-statistic on the difference.
 
-The result is a map, not an alpha claim. The binding axis is the signal's functional form, not how
-heavily the series is revised. A standardized, clipped signal is structurally immune to revision
-look-ahead even on the most heavily revised series; a hard threshold signal on the same data is
-exposed, though the exposed case is modest and regime-dependent. Point-in-time discipline is cheap
-insurance whose payoff depends on signal design, a conclusion drawn from a Federal Reserve
-forecasting question and made precise here.
+The early finding is a map, not an alpha claim, and not yet backed by enough series to generalize:
+the binding axis looks like the signal's functional form, not how heavily the series is revised. A
+standardized, clipped signal is structurally immune to revision look-ahead even on the most heavily
+revised series tested so far; a hard threshold signal on the same data is exposed, though the
+exposed case is modest and regime-dependent. This idea traces to a Federal Reserve forecasting
+question; it is not yet routed through the verified backtester above and is presented as ongoing
+exploration, not a result.
 
-[Read the map](https://github.com/eigenq-xyz/quant-proofs/tree/main/research-pipeline/studies)
+[Read the exploration](https://github.com/eigenq-xyz/quant-proofs/tree/main/extensions/research-ideas)
 
 ---
 
@@ -79,8 +80,9 @@ forecasting question and made precise here.
 
 A delta-hedged short-volatility strategy on the S&P 500, harvesting the gap by which index implied
 variance exceeds subsequently realized variance (Bollerslev, Tauchen, and Zhou, 2009). The signal's
-non-anticipation is machine-checked, and its discrete pricing identities are proved on the
-Cox-Ross-Rubinstein tree (see [No-Arbitrage Pricing](pillar-pricing.md)).
+non-anticipation (freedom from implementation look-ahead) is proved correct in Lean 4, and its
+discrete pricing identities are proved on the Cox-Ross-Rubinstein tree (see
+[No-Arbitrage Pricing](pillar-pricing.md)).
 
 The result is reported with its frictions and its tail. The premium survives realistic hedging
 costs, but the defensible net Sharpe ratio is on the order of 0.7 to 1.0 once realistic index-option
@@ -98,6 +100,5 @@ Premia." *Review of Financial Studies* 22, no. 11 (2009): 4463-4492.
 ## Why this is the flagship
 
 Every result in this pillar reflects one discipline: never treat an input as ground truth. A proof
-will not compile a false correctness claim; point-in-time data refuses values that were not knowable;
-the revision map refuses to assume a knowable value was the right one. The verification is what makes
-the research auditable, and the research is the point.
+will not compile a false correctness claim; point-in-time data refuses values that were not knowable.
+The verification is what makes the research auditable, and the research is the point.

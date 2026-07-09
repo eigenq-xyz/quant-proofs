@@ -5,9 +5,8 @@ Under stressed covariance (condition number 86.4), the barrier algorithm
 halts at the default complementarity gap tolerance (1e-8) in a flat
 penalty valley, returning a suboptimal solution.
 
-This module runs with a valid Gurobi license when gurobipy is installed.
-Without a license it prints a documented analysis of the failure mechanism
-and returns a SolverResult flagged as simulated.
+This is a benchmark script, not production code: without gurobipy installed and a
+valid license, run() raises rather than substituting a documented-but-fake result.
 """
 
 from __future__ import annotations
@@ -16,15 +15,17 @@ import numpy as np
 
 from .common import ProblemData, SolverResult
 
-_SIMULATED_OBJ = -0.003413  # approximate barrier early-exit objective
-
 
 def run(p: ProblemData) -> SolverResult:
-    """Run Gurobi barrier QP; fall back to simulation if unavailable."""
+    """Run Gurobi barrier QP. Raises if gurobipy is unavailable or unlicensed."""
     try:
         return _run_gurobi(p)
-    except ImportError:
-        return _simulate(p)
+    except ImportError as exc:
+        raise RuntimeError(
+            "gurobipy is required for this benchmark (boundary_trap Gurobi solver); "
+            "install it and provide a valid license before running "
+            "reports/benchmark_all_solvers.py, or exclude this solver explicitly."
+        ) from exc
     except Exception as exc:
         return SolverResult(
             solver_name="Gurobi barrier (error)",
@@ -88,37 +89,13 @@ def _run_gurobi(p: ProblemData) -> SolverResult:
     )
 
 
-def _simulate(p: ProblemData) -> SolverResult:
-    """Document the expected Gurobi behavior without a license."""
-    print("  [gurobipy not installed — printing documented failure analysis]")
-    print()
-    print(
-        "  Gurobi barrier algorithm uses the same 2N-variable reformulation:"
-    )
-    print("  w = u - v,  sum(u+v) <= L.")
-    print()
-    print("  Under condition number 86.4, the Hessian of the extended problem")
-    print("  is nearly singular along (u_i, v_i) -> 0 directions. The barrier")
-    print("  penalty -1/mu * sum(log u_i + log v_i) dominates step selection")
-    print(
-        "  in flat regions. Gurobi halts when the complementarity gap < 1e-8,"
-    )
-    print("  which is satisfied far from the true minimum.")
-    print()
-    print("  Expected Gurobi output (documented, not run):")
-    print(f"    Obj: {_SIMULATED_OBJ:.12f}  (gap vs KKT optimum: ~4.6%)")
-    print("    Status: OPTIMAL  (2 — Gurobi reports success)")
-
-    return SolverResult(
-        solver_name="Gurobi barrier (simulated)",
-        converged=True,
-        message="Simulated: gurobipy not installed",
-        objective=_SIMULATED_OBJ,
-        weights=np.zeros(p.N),  # weights not available in simulation
-        n_iterations=0,
-        budget_error=float("nan"),
-        leverage_violation=float("nan"),
-    )
+# Expected failure mode without gurobipy (kept for context; run() raises instead of
+# returning this as a fabricated result): the same 2N-variable reformulation as
+# trust-constr (w = u - v, sum(u+v) <= L). Under condition number 86.4, the Hessian
+# of the extended problem is nearly singular along (u_i, v_i) -> 0 directions; the
+# barrier penalty -1/mu * sum(log u_i + log v_i) dominates step selection in flat
+# regions, and Gurobi halts when the complementarity gap < 1e-8, satisfied far from
+# the true minimum (reports OPTIMAL with an objective gap vs the KKT optimum).
 
 
 def print_result(result: SolverResult, p: ProblemData) -> None:

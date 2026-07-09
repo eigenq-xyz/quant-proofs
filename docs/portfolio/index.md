@@ -1,14 +1,16 @@
-# Portfolio Optimization — EigenQ Research Series
+# Portfolio Optimization (EigenQ Research Series)
 
-Formally verified portfolio optimization: every solver guarantee is machine-checked
-in Lean 4. The core claim is that standard QP solvers fail in predictable, testable
-ways. This section documents seven stress scenarios, each designed to expose one
-failure mode, each paired with an analytically certified KKT optimum.
+Formally verified portfolio optimization: every solver guarantee is proved correct
+in Lean 4. The core claim is that standard QP (quadratic programming) solvers fail
+in predictable, testable ways. This section documents seven stress scenarios, each
+designed to expose one failure mode, each paired with an analytically certified
+optimum satisfying the KKT conditions (Karush-Kuhn-Tucker, the standard first-order
+conditions for a constrained optimum).
 
 ## Research report
 
-[**Lean PGD: Formally Verified Portfolio Optimization**](lean_pgd_performance) —
-Performance across seven stress scenarios. Includes the 5×7 solver comparison matrix
+[**Lean PGD: Formally Verified Portfolio Optimization**](lean_pgd_performance)
+(performance across seven stress scenarios). Includes the 5×7 solver comparison matrix
 (rows = solvers, columns = scenarios), accuracy table (objective gap vs KKT certificate),
 speed table (wall-clock ms), and combined speed-accuracy scatter figure.
 

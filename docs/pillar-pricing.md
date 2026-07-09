@@ -6,7 +6,8 @@ projects in this pillar trace the arc from the foundational theorem of asset pri
 derivative pricing in a binomial tree and on to a modern crypto derivative whose payoff
 depends on a geometric stopping time.
 
-Every proof in this pillar is zero sorry and builds clean.
+Every proof in this pillar is zero `sorry` (Lean's placeholder tactic for an unproven step; none
+remain) and builds clean.
 
 ---
 
@@ -15,13 +16,15 @@ Every proof in this pillar is zero sorry and builds clean.
 The discrete Fundamental Theorem of Asset Pricing (Harrison and Pliska, 1981) is the result
 everything else here cites. In a finite-state, discrete-time market, the theorem is a
 biconditional: the market is free of arbitrage if and only if there exists an equivalent
-martingale measure (EMM). The Lean 4 formalization proves both directions of this
-biconditional, stated formally as `NoArbitrage ↔ ∃ EMM`, over an arbitrary finite
-probability space.
+martingale measure (EMM: a probability measure, equivalent to the real-world one, under which
+discounted asset prices are martingales, i.e. fair bets). The Lean 4 formalization proves both
+directions of this biconditional, stated formally as `NoArbitrage ↔ ∃ EMM`, over an arbitrary
+finite probability space.
 
 Why it matters: once you have an EMM, risk-neutral pricing follows as a theorem, not an
 assumption. Every pricing formula in the projects below inherits its no-arbitrage guarantee
-from this result. The proof is a candidate for a mathlib contribution.
+from this result. The proof is a candidate for a mathlib (Lean's community-maintained
+mathematics library) contribution.
 
 Reference: Harrison, J.M., and S.R. Pliska. "Martingales and Stochastic Integrals in the
 Theory of Continuous Trading." *Stochastic Processes and Their Applications* 11, no. 3
@@ -45,8 +48,8 @@ put-call parity follows by risk-neutral pricing:
 $$C - P = S_0 - \frac{K}{(1 + r)^T}$$
 
 This is the first result in the series to price a derivative purely from no-arbitrage
-reasoning. The proof is zero sorry and cites the FTAP theorem directly, making the logical
-chain from foundational theorem to derivative price machine-verifiable.
+reasoning. The proof is zero `sorry` and cites the FTAP theorem directly, making the logical
+chain from foundational theorem to derivative price formally proved end to end.
 
 Reference: Cox, J.C., S.A. Ross, and M. Rubinstein. "Option Pricing: A Simplified
 Approach." *Journal of Financial Economics* 7, no. 3 (1979): 229-263.
@@ -80,8 +83,8 @@ companion to this proof is the [variance-risk-premium study](pillar-research-int
 Perpetual futures are the dominant derivative in cryptocurrency markets: contracts with no
 expiry date, where the long pays the short a continuous funding rate. Pricing them correctly
 requires summing cash flows over a geometric stopping time, which is what `stopped-time-proofs`
-supplies (see below). This project then applies `ftap-proofs` to prove eight theorems about
-perpetual futures pricing, all zero sorry:
+supplies (see below). This project proves eight theorems about perpetual futures pricing, all
+zero sorry:
 
 - The Ackerer-Hugonnier-Jermann cash-flow specification satisfies costless entry (the
   no-arbitrage entry condition). The earlier He-Manela specification does not: an explicit
@@ -90,8 +93,11 @@ perpetual futures pricing, all zero sorry:
 - The inverse perpetual price is strictly discounted relative to the forward price by a
   convexity correction, proved via Jensen's inequality.
 
-The project follows Ackerer, Hugonnier, and Jermann (2025) and depends on both `ftap-proofs`
-and `stopped-time-proofs`.
+The project follows Ackerer, Hugonnier, and Jermann (2025) and depends on `stopped-time-proofs`
+for the geometric-stopping-time machinery. It imports `ftap-proofs`, but the import is
+import-only: no `FtapProofs` declaration (a named theorem or definition in that project) is
+referenced in any signature or proof (see `DEPENDENCY_GRAPH.md`); the no-arbitrage results above
+are self-contained.
 
 Reference: Ackerer, D., J. Hugonnier, and R. Jermann. "Perpetual Futures Pricing."
 *Mathematical Finance* (2025).
@@ -105,7 +111,7 @@ Reference: Ackerer, D., J. Hugonnier, and R. Jermann. "Perpetual Futures Pricing
 This is a self-contained mathlib contribution candidate with no finance content of its own.
 It formalizes the geometric probability mass function and a `GeometricExpectation` operator,
 the infrastructure `perpetual-proofs` needs to sum cash flows over the geometric stopping
-time that models contract termination. Zero sorry. The separation keeps the mathematical
+time that models contract termination. Zero `sorry`. The separation keeps the mathematical
 infrastructure reusable and the mathlib contribution clean.
 
 [Read the proof](https://github.com/eigenq-xyz/quant-proofs/tree/main/extensions/stopped-time-proofs)
@@ -115,7 +121,7 @@ infrastructure reusable and the mathlib contribution clean.
 ## `quant-core`: Shared Pricing Primitives
 
 The reusable foundation that the pricing proofs import. On the Lean side: option types (call
-and put, European options with positive strike) and eight payoff theorems proved zero sorry,
+and put, European options with positive strike) and eight payoff theorems proved zero `sorry`,
 including nonnegativity of option payoffs and the call-minus-put payoff identity. On the
 Python side: a Black-Scholes pricer and a seeded geometric Brownian motion simulator.
 
@@ -126,8 +132,8 @@ Python side: a Black-Scholes pricer and a seeded geometric Brownian motion simul
 ## How the projects connect
 
 `quant-core` supplies types. `ftap-proofs` supplies the no-arbitrage theorem. `options-proofs`
-and `perpetual-proofs` each import `ftap-proofs` and use it to establish that their specific
-market is arbitrage-free, then derive prices. `vrp-proofs` builds on `options-proofs` to prove the
-variance-risk-premium identities on the same CRR tree. `stopped-time-proofs` supplies the summation
-infrastructure `perpetual-proofs` needs. The dependency graph is a directed acyclic chain:
-no pricing result is proved in isolation.
+imports `ftap-proofs` and uses it to establish that the CRR market is arbitrage-free, then
+derives prices from that. `vrp-proofs` builds on `options-proofs` to prove the
+variance-risk-premium identities on the same CRR tree. `perpetual-proofs` proves its
+no-arbitrage results self-contained, using the summation infrastructure `stopped-time-proofs`
+supplies; its `ftap-proofs` import is currently unused (see `DEPENDENCY_GRAPH.md`).

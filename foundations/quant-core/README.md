@@ -16,7 +16,7 @@ Shared pricing primitives for the quant-proofs monorepo: option-type invariants 
 | ITM/OTM payoff characterization, put | `putPayoff_itm`, `putPayoff_otm` |
 | `callPayoff − putPayoff = spot − strike` (integer identity; not the continuous-time put-call parity relation, which is in `options-proofs`) | `integerPayoffDifference` |
 
-All monetary values use basis points (×10,000) as `Int`, enabling exact arithmetic and direct proof via `omega`. Zero `sorry`.
+All monetary values use basis points (×10,000) as `Int`, enabling exact arithmetic and direct proof via `omega`. Zero `sorry` (Lean's placeholder tactic for "trust me, no proof yet"; none remain, so no unproven steps).
 
 **Python** (`python/`) implements runtime pricing and simulation with no backtester dependencies:
 
@@ -27,7 +27,7 @@ The basis-point convention (`to_bp` / `from_bp`) is the contract that lets a pri
 
 ## What it doesn't claim
 
-The basis-point contract is enforced by code convention, not by a machine-checked bridge. Nothing in Lean verifies that the Python conversion is called correctly, and there is no FFI between the two layers in this module. The Python pricing and simulation layer (Black-Scholes, GBM) is rigorous but not formally verified: it is ordinary numerical code, checked by `pytest`, not by Lean.
+The basis-point contract is enforced by code convention, not proved correct in Lean. Nothing in Lean verifies that the Python conversion is called correctly, and there is no FFI between the two layers in this module. The Python pricing and simulation layer (Black-Scholes, GBM) is rigorous but not formally verified: it is ordinary numerical code, checked by `pytest`, not by Lean.
 
 ## Build and verify
 

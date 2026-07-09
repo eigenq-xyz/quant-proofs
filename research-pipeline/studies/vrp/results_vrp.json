@@ -1,0 +1,425 @@
+{
+  "config": {
+    "is_window": [
+      "1990-01-01",
+      "2009-12-31"
+    ],
+    "oos_window": [
+      "2010-01-01",
+      "2025-12-31"
+    ],
+    "rv_window_days": 21,
+    "hold_days": 21,
+    "tenor_years": 0.0821917808219178,
+    "tc_hedge_bps": 2.0,
+    "entry_half_spread": 0.01,
+    "tc_option_roundtrip": 0.005,
+    "rebalance_every": 1,
+    "n_trades": 435,
+    "periods_per_year": 12.0
+  },
+  "IS": {
+    "hedged_short_vol_gross": {
+      "n_months": 239,
+      "mean_monthly": 0.009785734102041931,
+      "ann_return": 0.11742880922450318,
+      "ann_vol": 0.04157148533741318,
+      "sharpe": 2.824744131016664,
+      "max_drawdown": -0.11364673437976536,
+      "skew": -0.8379376061644846,
+      "excess_kurtosis": 9.280159551477453,
+      "nw_tstat": 11.288169329033757,
+      "min_month": -0.06608649367418451
+    },
+    "hedged_short_vol_net": {
+      "n_months": 239,
+      "mean_monthly": 0.00887955741573075,
+      "ann_return": 0.10655468898876899,
+      "ann_vol": 0.04154757118341618,
+      "sharpe": 2.564643033364621,
+      "max_drawdown": -0.1168039668248696,
+      "skew": -0.8714968828217693,
+      "excess_kurtosis": 9.274275785812975,
+      "nw_tstat": 10.221541234502583,
+      "min_month": -0.06720030400969479
+    },
+    "static_short_straddle": {
+      "n_months": 239,
+      "mean_monthly": 0.012169745567675434,
+      "ann_return": 0.14603694681210522,
+      "ann_vol": 0.09075882459655894,
+      "sharpe": 1.6090660876368612,
+      "max_drawdown": -0.24362480761406113,
+      "skew": -1.6105252673348842,
+      "excess_kurtosis": 4.469992307207521,
+      "nw_tstat": 7.38274005955199,
+      "min_month": -0.11966884868021216
+    },
+    "long_index_bh": {
+      "n_months": 239,
+      "mean_monthly": 0.006256589802197713,
+      "ann_return": 0.07507907762637256,
+      "ann_vol": 0.1605334666147694,
+      "sharpe": 0.4676848959260258,
+      "max_drawdown": -0.5566676823401498,
+      "skew": -0.023051618344150395,
+      "excess_kurtosis": 3.7316200679710816,
+      "nw_tstat": 2.1262366763750893,
+      "min_month": -0.18599661322617866
+    },
+    "vrp_signal_vs_fwd_realized_corr": -0.5031542406872382,
+    "vrp_signal_vs_hedged_pnl_corr": 0.07233795357898579,
+    "mean_vrp_monthly": 0.0010065925950809868,
+    "pct_vrp_positive": 0.9037656903765691,
+    "mean_hedge_cost": 0.0006760804240771705,
+    "mean_option_cost": 0.0002300962622340119
+  },
+  "OOS": {
+    "hedged_short_vol_gross": {
+      "n_months": 196,
+      "mean_monthly": 0.0078031582658806805,
+      "ann_return": 0.09363789919056817,
+      "ann_vol": 0.04588343696818278,
+      "sharpe": 2.040777792114833,
+      "max_drawdown": -0.1057617901843918,
+      "skew": -2.013882142788337,
+      "excess_kurtosis": 8.073077446618747,
+      "nw_tstat": 7.723608063319995,
+      "min_month": -0.07257166760541058
+    },
+    "hedged_short_vol_net": {
+      "n_months": 196,
+      "mean_monthly": 0.006930178679308227,
+      "ann_return": 0.08316214415169873,
+      "ann_vol": 0.045947132870678115,
+      "sharpe": 1.809952851373017,
+      "max_drawdown": -0.10867643220854739,
+      "skew": -2.033452197322893,
+      "excess_kurtosis": 8.147267298376626,
+      "nw_tstat": 6.843130520624566,
+      "min_month": -0.07377654871725764
+    },
+    "static_short_straddle": {
+      "n_months": 196,
+      "mean_monthly": 0.009604944701624448,
+      "ann_return": 0.11525933641949337,
+      "ann_vol": 0.07564769383597071,
+      "sharpe": 1.5236331813288828,
+      "max_drawdown": -0.10371822416709509,
+      "skew": -0.8141682620380586,
+      "excess_kurtosis": 2.6781194479977124,
+      "nw_tstat": 6.7463258920018525,
+      "min_month": -0.09844855672734465
+    },
+    "long_index_bh": {
+      "n_months": 196,
+      "mean_monthly": 0.010391023964327175,
+      "ann_return": 0.1246922875719261,
+      "ann_vol": 0.1351215649413953,
+      "sharpe": 0.9228155966518552,
+      "max_drawdown": -0.22519705492653663,
+      "skew": -0.6975027023886484,
+      "excess_kurtosis": 0.9604475988330665,
+      "nw_tstat": 4.333341296133318,
+      "min_month": -0.13386983411957187
+    },
+    "vrp_signal_vs_fwd_realized_corr": -0.06842544584473909,
+    "vrp_signal_vs_hedged_pnl_corr": -0.07433074989520055,
+    "mean_vrp_monthly": 0.0006570770833702777,
+    "pct_vrp_positive": 0.8418367346938775,
+    "mean_hedge_cost": 0.0006626539099391986,
+    "mean_option_cost": 0.00021032567663325447
+  },
+  "ALL": {
+    "hedged_short_vol_gross": {
+      "n_months": 435,
+      "mean_monthly": 0.008892435564369276,
+      "ann_return": 0.1067092267724313,
+      "ann_vol": 0.04365025604951235,
+      "sharpe": 2.444641485066923,
+      "max_drawdown": -0.11364673437976536,
+      "skew": -1.4691344068232652,
+      "excess_kurtosis": 8.874994996308912,
+      "nw_tstat": 13.364380389954464,
+      "min_month": -0.07257166760541058
+    },
+    "hedged_short_vol_net": {
+      "n_months": 435,
+      "mean_monthly": 0.008001216651733476,
+      "ann_return": 0.09601459982080171,
+      "ann_vol": 0.043663420242870725,
+      "sharpe": 2.198971113273674,
+      "max_drawdown": -0.1168039668248696,
+      "skew": -1.4976499489189243,
+      "excess_kurtosis": 8.915114767345365,
+      "nw_tstat": 12.002526494237095,
+      "min_month": -0.07377654871725764
+    },
+    "static_short_straddle": {
+      "n_months": 435,
+      "mean_monthly": 0.011014111154466254,
+      "ann_return": 0.13216933385359506,
+      "ann_vol": 0.0843086223507897,
+      "sharpe": 1.5676846586778208,
+      "max_drawdown": -0.24362480761406113,
+      "skew": -1.3369560258154969,
+      "excess_kurtosis": 4.007824597213624,
+      "nw_tstat": 9.870522587249075,
+      "min_month": -0.11966884868021216
+    },
+    "long_index_bh": {
+      "n_months": 435,
+      "mean_monthly": 0.008119461286743403,
+      "ann_return": 0.09743353544092084,
+      "ann_vol": 0.149622134889517,
+      "sharpe": 0.651197334624767,
+      "max_drawdown": -0.5566676823401498,
+      "skew": -0.26996861984796877,
+      "excess_kurtosis": 3.030333338441869,
+      "nw_tstat": 4.1590374232467635,
+      "min_month": -0.18599661322617866
+    },
+    "vrp_signal_vs_fwd_realized_corr": -0.2437133841821968,
+    "vrp_signal_vs_hedged_pnl_corr": -0.011012772404572917,
+    "mean_vrp_monthly": 0.000849109743827426,
+    "pct_vrp_positive": 0.8758620689655172,
+    "mean_hedge_cost": 0.0006700307763276475,
+    "mean_option_cost": 0.00022118813630815336
+  },
+  "worst_5_hedged_months": [
+    {
+      "entry_date": "2020-03-10",
+      "pnl_hedged_net": -0.07377654871725764,
+      "index_ret": -0.045884610491245925
+    },
+    {
+      "entry_date": "2008-09-03",
+      "pnl_hedged_net": -0.06720030400969479,
+      "index_ret": -0.1260411564366628
+    },
+    {
+      "entry_date": "2025-03-14",
+      "pnl_hedged_net": -0.04323344971894812,
+      "index_ret": -0.0413144543093682
+    },
+    {
+      "entry_date": "2018-01-05",
+      "pnl_hedged_net": -0.04322131630290612,
+      "index_ret": -0.01750178133706992
+    },
+    {
+      "entry_date": "2008-10-02",
+      "pnl_hedged_net": -0.039144064216277134,
+      "index_ret": -0.13060453877891565
+    }
+  ],
+  "cost_sweep": [
+    {
+      "label": "0bps/reb, 1% half-spread, daily",
+      "tc_hedge_bps": 0.0,
+      "entry_half_spread": 0.01,
+      "rebalance_every": 1,
+      "is_sharpe": 2.761795165362017,
+      "oos_sharpe": 1.9872945948959417,
+      "is_ann_return": 0.11466765407769504,
+      "oos_ann_return": 0.09111399107096911,
+      "is_skew": -0.8667765564083436,
+      "oos_skew": -2.03679138531095,
+      "mean_hedge_cost": 0.0
+    },
+    {
+      "label": "1bps/reb, 1% half-spread, daily",
+      "tc_hedge_bps": 1.0,
+      "entry_half_spread": 0.01,
+      "rebalance_every": 1,
+      "is_sharpe": 2.663226251579475,
+      "oos_sharpe": 1.8985551455844853,
+      "is_ann_return": 0.11061117153323202,
+      "oos_ann_return": 0.08713806761133393,
+      "is_skew": -0.8691475628439032,
+      "oos_skew": -2.0351823954419883,
+      "mean_hedge_cost": 0.00033501538816382376
+    },
+    {
+      "label": "2bps/reb, 1% half-spread, daily",
+      "tc_hedge_bps": 2.0,
+      "entry_half_spread": 0.01,
+      "rebalance_every": 1,
+      "is_sharpe": 2.564643033364621,
+      "oos_sharpe": 1.809952851373017,
+      "is_ann_return": 0.10655468898876899,
+      "oos_ann_return": 0.08316214415169873,
+      "is_skew": -0.8714968828217693,
+      "oos_skew": -2.033452197322893,
+      "mean_hedge_cost": 0.0006700307763276475
+    },
+    {
+      "label": "5bps/reb, 1% half-spread, daily",
+      "tc_hedge_bps": 5.0,
+      "entry_half_spread": 0.01,
+      "rebalance_every": 1,
+      "is_sharpe": 2.268898885225721,
+      "oos_sharpe": 1.545040831759377,
+      "is_ann_return": 0.0943852413553799,
+      "oos_ann_return": 0.07123437377279317,
+      "is_skew": -0.8784117942846578,
+      "oos_skew": -2.0275531278999965,
+      "mean_hedge_cost": 0.0016750769408191187
+    },
+    {
+      "label": "10bps/reb, 1% half-spread, daily",
+      "tc_hedge_bps": 10.0,
+      "entry_half_spread": 0.01,
+      "rebalance_every": 1,
+      "is_sharpe": 1.7765544901981716,
+      "oos_sharpe": 1.1069218624066244,
+      "is_ann_return": 0.0741028286330648,
+      "oos_ann_return": 0.05135475647461721,
+      "is_skew": -0.8894763986125214,
+      "oos_skew": -2.015476273549421,
+      "mean_hedge_cost": 0.0033501538816382375
+    }
+  ],
+  "frequency_sweep": [
+    {
+      "label": "2bps/reb, 1% half-spread, daily",
+      "tc_hedge_bps": 2.0,
+      "entry_half_spread": 0.01,
+      "rebalance_every": 1,
+      "is_sharpe": 2.564643033364621,
+      "oos_sharpe": 1.809952851373017,
+      "is_ann_return": 0.10655468898876899,
+      "oos_ann_return": 0.08316214415169873,
+      "is_skew": -0.8714968828217693,
+      "oos_skew": -2.033452197322893,
+      "mean_hedge_cost": 0.0006700307763276475
+    },
+    {
+      "label": "2bps/reb, 1% half-spread, every 2 days",
+      "tc_hedge_bps": 2.0,
+      "entry_half_spread": 0.01,
+      "rebalance_every": 2,
+      "is_sharpe": 2.195352335142279,
+      "oos_sharpe": 1.7275979622433792,
+      "is_ann_return": 0.10190459040232022,
+      "oos_ann_return": 0.0854985913409404,
+      "is_skew": -0.8999987005684033,
+      "oos_skew": -1.8455006767715074,
+      "mean_hedge_cost": 0.0005527199709169413
+    },
+    {
+      "label": "2bps/reb, 1% half-spread, weekly",
+      "tc_hedge_bps": 2.0,
+      "entry_half_spread": 0.01,
+      "rebalance_every": 5,
+      "is_sharpe": 2.0938473707518006,
+      "oos_sharpe": 1.813884796543616,
+      "is_ann_return": 0.11154613587374942,
+      "oos_ann_return": 0.09795204328440801,
+      "is_skew": -1.1974140020501651,
+      "oos_skew": -0.995389615748663,
+      "mean_hedge_cost": 0.00043813104484184245
+    }
+  ],
+  "half_spread_sweep": [
+    {
+      "label": "2bps/reb, 0% half-spread, daily",
+      "tc_hedge_bps": 2.0,
+      "entry_half_spread": 0.0,
+      "rebalance_every": 1,
+      "is_sharpe": 2.753588320491237,
+      "oos_sharpe": 1.970221535126893,
+      "is_ann_return": 0.1148543950101114,
+      "oos_ann_return": 0.09073961435874625,
+      "is_skew": -0.7853327987591991,
+      "oos_skew": -1.9653317729640596,
+      "mean_hedge_cost": 0.0006700307763276475
+    },
+    {
+      "label": "2bps/reb, 1% half-spread, daily",
+      "tc_hedge_bps": 2.0,
+      "entry_half_spread": 0.01,
+      "rebalance_every": 1,
+      "is_sharpe": 2.373367342598242,
+      "oos_sharpe": 1.648615777350282,
+      "is_ann_return": 0.09827122354834457,
+      "oos_ann_return": 0.07559041979290157,
+      "is_skew": -0.9572888865161325,
+      "oos_skew": -2.101087296377637,
+      "mean_hedge_cost": 0.0006700307763276475
+    },
+    {
+      "label": "2bps/reb, 2% half-spread, daily",
+      "tc_hedge_bps": 2.0,
+      "entry_half_spread": 0.02,
+      "rebalance_every": 1,
+      "is_sharpe": 1.9833710416403465,
+      "oos_sharpe": 1.322702054629215,
+      "is_ann_return": 0.0816880520865776,
+      "oos_ann_return": 0.060441225227057145,
+      "is_skew": -1.126484694694698,
+      "oos_skew": -2.2343311664634493,
+      "mean_hedge_cost": 0.0006700307763276475
+    },
+    {
+      "label": "2bps/reb, 3% half-spread, daily",
+      "tc_hedge_bps": 2.0,
+      "entry_half_spread": 0.03,
+      "rebalance_every": 1,
+      "is_sharpe": 1.5858303057007819,
+      "oos_sharpe": 0.9934788894021863,
+      "is_ann_return": 0.06510488062481068,
+      "oos_ann_return": 0.04529203066121256,
+      "is_skew": -1.29062582483876,
+      "oos_skew": -2.364082466318343,
+      "mean_hedge_cost": 0.0006700307763276475
+    }
+  ],
+  "combined_sweep": [
+    {
+      "label": "5bps/reb, 3% half-spread, daily",
+      "tc_hedge_bps": 5.0,
+      "entry_half_spread": 0.03,
+      "rebalance_every": 1,
+      "is_sharpe": 1.287588975258452,
+      "oos_sharpe": 0.7291904835846773,
+      "is_ann_return": 0.052935432991421616,
+      "oos_ann_return": 0.03336426028230699,
+      "is_skew": -1.2936887039325635,
+      "oos_skew": -2.3523976017796437,
+      "mean_hedge_cost": 0.0016750769408191187
+    },
+    {
+      "label": "10bps/reb, 5% half-spread, daily",
+      "tc_hedge_bps": 10.0,
+      "entry_half_spread": 0.05,
+      "rebalance_every": 1,
+      "is_sharpe": -0.01244582326519176,
+      "oos_sharpe": -0.3654349068344282,
+      "is_ann_return": -0.0005133226544272381,
+      "oos_ann_return": -0.016813746147557818,
+      "is_skew": -1.5923639279078923,
+      "oos_skew": -2.563272917672355,
+      "mean_hedge_cost": 0.0033501538816382375
+    }
+  ],
+  "_meta": {
+    "generated_by": "research-pipeline/studies/vrp/run_study.py",
+    "generated_at": "2026-07-09T13:36:48.757331+00:00",
+    "reproduce": "python3.12 research-pipeline/studies/vrp/run_study.py",
+    "verified": false,
+    "notes": "Signal non-anticipation is machine-checked (vrpSignal_adapted); the delta-hedge P&L simulation and cost model below are ordinary Python, not formally verified."
+  },
+  "headline_config": {
+    "tc_hedge_bps": 2.0,
+    "entry_half_spread": 0.01,
+    "tc_option_roundtrip": 0.005,
+    "rebalance_every": 1,
+    "label": "headline (2bps/reb, 1% half-spread, daily)"
+  },
+  "data_sources": {
+    "spx": "Yahoo Finance ^GSPC (auto_adjust)",
+    "vix": "FRED VIXCLS (public CSV, no key)",
+    "rf": "FRED DTB3 3M T-bill (public CSV, no key)"
+  }
+}

@@ -5,9 +5,10 @@ execution. This file orients an agent at the repo root. Each subproject has its 
 with local detail — read that before working in a subproject.
 
 **The point:** every project takes a named result from asset-pricing theory, or a load-bearing
-step of quant research, and makes it machine-checkable. The research is the point; verification
-makes its correctness auditable. The flagship, `research-pipeline/`, runs a full research-desk
-workflow whose correctness-critical steps are proved in Lean 4.
+step of quant research, and proves it correct in Lean 4 rather than only testing it. The research
+is the point; verification makes its correctness auditable, not just asserted from a backtest. The
+flagship, `research-pipeline/`, runs a full research-desk workflow whose correctness-critical steps
+are proved this way.
 
 ## Projects
 
@@ -24,6 +25,7 @@ workflow whose correctness-critical steps are proved in Lean 4.
 | `extensions/perpetual-proofs/` | extension | No-arbitrage perpetual-futures pricing; depends on stopped-time-proofs + ftap-proofs | `cd extensions/perpetual-proofs && lake build` | same |
 | `extensions/stopped-time-proofs/` | extension | Geometric PMF + expectation operator; mathlib-PR candidate, no finance content | `cd extensions/stopped-time-proofs && lake build` | same |
 | `extensions/mortgage-proofs/` | extension | LangGraph multi-agent pipeline + Lean invariant checking | `cd extensions/mortgage-proofs && lake build` | `cd extensions/mortgage-proofs && pytest` |
+| `extensions/research-ideas/` | exploratory | Leakage-tax map (CFTC/EIA/payrolls) + AQR cross-asset breadth; no Lean, no verified claim | — | `cd extensions/research-ideas && pytest` |
 | `archive/` | archive | Superseded work, do not build or extend | — | — |
 
 Run `lake exe cache get` before any Lean build in a fresh checkout or worktree — it fetches the
@@ -43,8 +45,9 @@ mathlib cache (building mathlib from source otherwise takes about an hour). All 
 
 State this boundary wherever a claim could be misread.
 
-- **Proved** (zero `sorry`, clean axioms): the asset-pricing theorems, backtest non-anticipation,
-  OOS no-leakage, signal 𝓕ₜ-measurability.
+- **Proved** (zero `sorry`, clean axioms): the asset-pricing theorems, backtest non-anticipation
+  (the Lean type is literally named `NonAnticipating`: no future data reaches a past decision), OOS
+  no-leakage, signal 𝓕ₜ-measurability (the signal only reads information available by time `t`).
 - **Rigorous but not formally verified:** the statistical layer (IC, Newey-West HAC, PSR/DSR) and
   all P&L and strategy economics.
 

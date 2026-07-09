@@ -15,8 +15,8 @@ Output
 
 Run
 ---
-    uv run python reports/benchmark_all_solvers.py          # all scenarios
-    uv run python reports/benchmark_all_solvers.json --json-only  # skip console
+    uv run python reports/benchmark_all_solvers.py             # all scenarios
+    uv run python reports/benchmark_all_solvers.py --json-only  # skip console
 
 Why median + IQR, not mean/min
 -------------------------------
@@ -33,6 +33,7 @@ import sys
 import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 import numpy as np
@@ -815,17 +816,20 @@ def main(json_only: bool = False) -> None:
     out_path = _RESULTS / "benchmark_all_solvers.json"
     payload: dict[str, Any] = {
         "_meta": {
-            "generated_by": "reports/benchmark_all_solvers.py",
-            "date": "2026-05-26",
-            "protocol": f"warmup={WARMUP}, reps={REPS}, stat=median+IQR",
-            "platform": "Apple M2 Max, macOS Darwin 25.5.0",
-            "lean_iters": 53,
-            "clock": "time.perf_counter() (monotonic, nanosecond resolution)",
-            "note": (
-                "median_ms is the defensible latency estimate. "
-                "IQR [q1_ms, q3_ms] shows spread. "
-                "min_ms is optimistic (best-case OS scheduling). "
-                "All Lean PGD times are warm persistent-subprocess."
+            "generated_by": "foundations/portfolio-proofs/reports/benchmark_all_solvers.py",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "reproduce": "cd foundations/portfolio-proofs && uv run python reports/benchmark_all_solvers.py",
+            "verified": False,
+            "notes": (
+                "Wall-clock benchmark of the verified Lean PGD solver against unverified "
+                "reference solvers (SLSQP, trust-constr, Gurobi, OR-Tools/SCIP); the timings "
+                "are not formally verified, the PGD solve itself is. "
+                f"Protocol: warmup={WARMUP}, reps={REPS}, stat=median+IQR, "
+                "clock=time.perf_counter() (monotonic, nanosecond resolution), "
+                "platform=Apple M2 Max/macOS Darwin 25.5.0, lean_iters=53. "
+                "median_ms is the defensible latency estimate; IQR [q1_ms, q3_ms] shows "
+                "spread; min_ms is optimistic (best-case OS scheduling). All Lean PGD times "
+                "are warm persistent-subprocess."
             ),
         },
         "rows": [asdict(r) for r in all_rows],

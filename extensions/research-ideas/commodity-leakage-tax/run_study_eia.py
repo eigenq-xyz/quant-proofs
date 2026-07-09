@@ -65,20 +65,24 @@ import ssl
 import sys
 import urllib.request
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-# Reuse verified primitives from the flagship research pipeline.
-_SRC = Path(__file__).resolve().parents[2] / "src"
+# Reuse verified primitives from the flagship research pipeline (a sibling project,
+# not a parent of this exploratory study — see extensions/research-ideas/README.md).
+_SRC = Path(__file__).resolve().parents[2] / "research-pipeline" / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from research_pipeline.data import PricePanel  # noqa: E402
 from research_pipeline.evaluation import max_drawdown, sharpe  # noqa: E402
 
-REVISIONS_URL = "https://ir.eia.gov/ngs/revisions.xls"  # first-release (original) estimates
+REVISIONS_URL = (
+    "https://ir.eia.gov/ngs/revisions.xls"  # first-release (original) estimates
+)
 HISTORY_URL = "https://ir.eia.gov/ngs/ngshistory.xls"  # current/revised database
 SEASONAL_LOOKBACK_YEARS = 5  # trailing years used for the same-week seasonal average
 ZSCORE_LOOKBACK_WEEKS = 104  # trailing window for standardizing the surprise (~2 years)
@@ -172,7 +176,9 @@ def load_ung(start: str = "2010-01-01") -> PricePanel:
     else:
         close = raw["Close"]
         open_ = raw["Open"]
-    prices = pd.DataFrame({"close": close.astype(float), "open": open_.astype(float)}).dropna()
+    prices = pd.DataFrame(
+        {"close": close.astype(float), "open": open_.astype(float)}
+    ).dropna()
     prices.index = pd.DatetimeIndex(prices.index).normalize()
     return PricePanel(prices)
 
@@ -241,9 +247,16 @@ def build_signal(level: pd.Series) -> pd.DataFrame:
     surprise = (change - expected).rename("surprise")
     position = (-rolling_zscore(surprise)).clip(-3.0, 3.0).rename("position")
     df = pd.DataFrame(
-        {"change": change, "expected_change": expected, "surprise": surprise, "position": position}
+        {
+            "change": change,
+            "expected_change": expected,
+            "surprise": surprise,
+            "position": position,
+        }
     )
-    df["release_date"] = df.index + pd.Timedelta(days=6)  # week-ending Fri + 6 = following Thu
+    df["release_date"] = df.index + pd.Timedelta(
+        days=6
+    )  # week-ending Fri + 6 = following Thu
     return df.dropna(subset=["position"])
 
 
@@ -259,7 +272,9 @@ class WeeklyBacktest:
     entry_by_week: pd.Series  # maps week-ending Friday -> chosen UNG entry trading day
 
 
-def _first_trading_day_on_or_after(trading_days: pd.DatetimeIndex, date: pd.Timestamp) -> object:
+def _first_trading_day_on_or_after(
+    trading_days: pd.DatetimeIndex, date: pd.Timestamp
+) -> object:
     idx = trading_days.searchsorted(date, side="left")
     if idx >= len(trading_days):
         return None
@@ -392,7 +407,9 @@ def run() -> dict[str, object]:
 
     # Diagnostic: how much do the two vintages actually disagree?
     common_levels = first.index.intersection(revised.index)
-    level_diff = (revised.reindex(common_levels) - first.reindex(common_levels)).dropna()
+    level_diff = (
+        revised.reindex(common_levels) - first.reindex(common_levels)
+    ).dropna()
     n_revised = int((level_diff.abs() > 1e-9).sum())
 
     naive = assemble(panel, build_signal(revised))  # revised-as-if-known: the leak
@@ -410,6 +427,15 @@ def run() -> dict[str, object]:
     }
 
     out: dict[str, object] = {
+        "_meta": {
+            "generated_by": "research-pipeline/studies/commodity-leakage-tax/run_study_eia.py",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "reproduce": (
+                "cd research-pipeline/studies/commodity-leakage-tax && python3.12 run_study_eia.py"
+            ),
+            "verified": False,
+            "notes": "Data-revision leakage-tax cell (tiny revisions); empirical study, not routed through the verified backtester.",
+        },
         "n_weeks_first_release": int(len(first)),
         "n_weeks_revised": int(len(revised)),
         "n_weeks_actually_revised": n_revised,
@@ -476,7 +502,9 @@ def main() -> None:
             s = blk[variant]
             assert isinstance(s, dict)
             tax_sr = f"{_f(blk, 'tax_sharpe'):+.2f}" if variant == "naive" else ""
-            tax_bps = f"{_f(blk, 'tax_bps_per_year'):+.0f}" if variant == "naive" else ""
+            tax_bps = (
+                f"{_f(blk, 'tax_bps_per_year'):+.0f}" if variant == "naive" else ""
+            )
             nwt = f"{_f(blk, 'diff_nw_tstat'):+.2f}" if variant == "naive" else ""
             print(
                 f"{pname:>10} {variant:>7} {_f(s, 'ann_return'):>+9.4f} "

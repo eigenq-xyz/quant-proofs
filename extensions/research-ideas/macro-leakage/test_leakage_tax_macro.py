@@ -44,7 +44,8 @@ def _synthetic_levels(
     revised = first.copy()
     revised.iloc[revise_idx] = revised.iloc[revise_idx] + revise_by
     release = pd.Series(
-        [m + pd.offsets.MonthBegin(1) + pd.Timedelta(days=5) for m in months], index=months
+        [m + pd.offsets.MonthBegin(1) + pd.Timedelta(days=5) for m in months],
+        index=months,
     )
     return first, revised, release
 
@@ -114,7 +115,10 @@ def test_assemble_enters_after_release() -> None:
     first, _, release = _synthetic_levels(n=200)
     days = pd.bdate_range("1999-12-01", "2017-12-31")
     px = pd.DataFrame(
-        {"open": np.arange(1.0, len(days) + 1.0), "close": np.arange(1.0, len(days) + 1.0)},
+        {
+            "open": np.arange(1.0, len(days) + 1.0),
+            "close": np.arange(1.0, len(days) + 1.0),
+        },
         index=days,
     )
     panel = PricePanel(px)

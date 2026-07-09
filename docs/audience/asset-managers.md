@@ -6,9 +6,10 @@ the most relevant starting points are the
 [Verified Optimization pillar](../pillar-optimization.md).
 
 The flagship demonstrates what trustworthy quantitative research looks like in practice:
-a pipeline whose non-anticipation and leakage-prevention properties are machine-checked,
-paired with empirical studies that report their limitations honestly, including the
-conditions under which apparent alpha is an artifact of data look-ahead.
+a pipeline whose non-anticipation (plain English: free of implementation look-ahead) and
+leakage-prevention properties are proved correct in Lean 4, paired with empirical studies
+that report their limitations honestly, including the conditions under which apparent
+alpha is an artifact of data look-ahead.
 
 The optimization pillar covers portfolio constraints that the solver is formally proved
 to respect: budget feasibility and the no-leverage constraint, held under numerical stress
@@ -22,34 +23,37 @@ a unit test covers the inputs that were written. Neither provides a guarantee th
 solver will remain within its stated constraints under every possible input, or that a
 pipeline will not inadvertently use data that was not knowable at decision time.
 
-Formal verification provides a different kind of assurance. A machine-checked proof that
-a solver satisfies a constraint is not a claim about behavior on a sample of inputs: it
-is a mathematical guarantee that holds for every input satisfying the stated hypotheses.
+Formal verification provides a different kind of assurance. A proof, checked mechanically
+by the Lean 4 proof assistant, that a solver satisfies a constraint is not a claim about
+behavior on a sample of inputs: it is a mathematical guarantee that holds for every input
+satisfying the stated hypotheses.
 The [verification methodology](../how-we-verify.md) explains what this means in practice
 and where the limits of that assurance lie.
 
 ## A pipeline proved non-anticipating
 
 The `research-pipeline` module is a full research-desk workflow, and its trust-critical
-properties are machine-checked:
+properties are formally proved, zero `sorry` (Lean's placeholder for an unproven step,
+none remain):
 
-- The backtester is proved non-anticipating: a position built from a non-anticipating
-  signal cannot depend on the future.
+- The backtester is proved non-anticipating (free of implementation look-ahead): a
+  position built from a non-anticipating signal cannot depend on the future.
 - The out-of-sample split is proved unable to leak a training label into the test window
   when the embargo is at least the label horizon.
-- The signal map is proved adapted to the natural filtration of the price process, the
-  measure-theoretic form of "uses only what was knowable at this time."
+- The signal map is proved Adapted, the standard term for "measurable with respect to
+  the information available up to time t," to the natural filtration (the sequence of
+  what's knowable at each point in time) of the price process. In plain English: the
+  signal provably uses only what was knowable at that time.
 
 What is rigorous but not formally verified: the statistical layer and all profit-and-loss
 economics. The report states the verified and unverified boundary explicitly.
 
-The [leakage-tax map](../pillar-research-integrity.md) addresses a related governance
-concern: even a perfectly non-anticipating pipeline can be contaminated if the values it
-reads were later revised. The study measures this on real data across CFTC positioning,
-EIA gas storage, and nonfarm payrolls, and finds that the binding axis is signal
-functional form. A standardized, clipped signal is structurally immune; a hard threshold
-on the same data is exposed. For model governance, this means that data look-ahead risk
-is not uniform across signal designs, and the risk can be bounded.
+A related governance concern is explored, not yet claimed, in `extensions/research-ideas/`:
+even a perfectly non-anticipating pipeline can be contaminated if the values it reads
+were later revised. A preliminary data-revision leakage map tests this across CFTC
+positioning, EIA gas storage, and nonfarm payrolls, with an early finding that the
+binding axis is signal functional form rather than how heavily a series is revised.
+This is exploratory, not yet backed by enough series to generalize.
 
 ## Portfolio constraints the solver cannot violate
 
@@ -87,14 +91,15 @@ conditions are met, the routing is consistent with the declared rules, and no de
 violates the integrity constraints.
 
 Compliance with routing rules is not enforced by code review of the AI agent's internal
-logic, which may be opaque, but by a machine-checkable audit trail. An auditor can
-re-run the invariant checker on any logged decision sequence and obtain a machine-readable
-verdict. The pattern generalizes to any decision pipeline where auditability is required.
+logic, which may be opaque, but by an audit trail that a program, not a human reader,
+checks against the formal invariants. An auditor can re-run the invariant checker on any
+logged decision sequence and obtain a machine-readable verdict. The pattern generalizes
+to any decision pipeline where auditability is required.
 
 ## Pricing results for derivatives risk
 
-The [No-Arbitrage Pricing pillar](../pillar-pricing.md) provides machine-checked proofs
-of results that underpin derivatives pricing:
+The [No-Arbitrage Pricing pillar](../pillar-pricing.md) provides proofs, formally
+verified in Lean 4, of results that underpin derivatives pricing:
 
 - The discrete Fundamental Theorem of Asset Pricing: no arbitrage is equivalent to the
   existence of a risk-neutral measure. Every hypothesis about market structure is stated

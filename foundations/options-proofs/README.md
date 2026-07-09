@@ -1,6 +1,6 @@
 # options-proofs
 
-Put-call parity `C - P = S₀ - K/(1+r)^T` proved from first principles in Lean 4 via the Cox-Ross-Rubinstein binomial model. Zero `sorry`, axioms verified.
+Put-call parity `C - P = S₀ - K/(1+r)^T` proved correct in Lean 4 from first principles via the Cox-Ross-Rubinstein binomial model. Zero `sorry` (Lean's placeholder tactic for "trust me, no proof yet"; none remain, so no unproven steps), axioms verified.
 
 [![Lean CI](https://github.com/eigenq-xyz/quant-proofs/actions/workflows/lean-ci.yml/badge.svg)](https://github.com/eigenq-xyz/quant-proofs/actions)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eigenq-xyz/quant-proofs/blob/main/notebooks/binomial_put_call_parity.ipynb)
@@ -38,7 +38,7 @@ Open the [binomial pricing notebook](https://colab.research.google.com/github/ei
 ```bash
 cd foundations/options-proofs
 lake exe cache get     # fetch prebuilt mathlib (first run only)
-lake build             # compile and machine-check every proof
+lake build             # compile every proof; the Lean kernel checks each step
 grep -rn '\bsorry\b' --include="*.lean" OptionsProofs/    # empty output = clean
 ```
 

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Lean 4 proof of put-call parity via the Cox-Ross-Rubinstein binomial model. Builds the CRR market, establishes the equivalent martingale measure, and derives parity as a theorem. Complete, 31 theorems, zero `sorry`.
+Lean 4 proof of put-call parity via the Cox-Ross-Rubinstein binomial model, proved correct rather than only tested. Builds the CRR market, establishes the equivalent martingale measure, and derives parity as a theorem. Complete, 31 theorems, zero `sorry` (Lean's placeholder tactic for "trust me, no proof yet"; none remain, so no unproven steps).
 
 ## Build and test
 

@@ -4,25 +4,28 @@ If you work in asset pricing, derivatives theory, or financial economics, the mo
 relevant starting points are the [Research Integrity flagship](../pillar-research-integrity.md)
 and the [No-Arbitrage Pricing pillar](../pillar-pricing.md). The flagship shows what
 formal verification looks like when applied to a running empirical study, including
-honest reporting of the leakage-tax map and the variance-risk-premium results. The
-pricing pillar covers machine-checked formalizations of Harrison-Pliska, put-call
-parity via Cox-Ross-Rubinstein, and the discrete variance-risk-premium identities,
-along with a formal counterexample to a published perpetual futures specification.
+honest reporting of the variance-risk-premium results. The pricing pillar covers
+formalizations, proved correct in Lean 4, of Harrison-Pliska, put-call parity via
+Cox-Ross-Rubinstein, and the discrete variance-risk-premium identities, along with a
+formal counterexample to a published perpetual futures specification.
 
 Formal verification provides something that pen-and-paper proofs cannot: a guarantee
 that every inference step is logically valid as stated, with all hypotheses explicit
 and no implicit appeal to convention or context. The
-[verification methodology](../how-we-verify.md) describes how Lean 4 and the mathlib
-library achieve this and where the method's limits lie.
+[verification methodology](../how-we-verify.md) describes how Lean 4, a proof
+assistant that mechanically checks every step of a proof, and mathlib (its community
+mathematics library) achieve this and where the method's limits lie.
 
-## Machine-checked theorems in asset pricing
+## Theorems proved correct in Lean 4
 
 ### The discrete FTAP
 
 `foundations/ftap-proofs/` is a Lean 4 formalization of the discrete Fundamental Theorem
 of Asset Pricing (Harrison and Pliska, 1981): a finite securities market admits no
 arbitrage if and only if there exists a probability measure equivalent to the physical
-measure under which all discounted asset prices are martingales. 16 theorems, zero sorry.
+measure (an equivalent martingale measure, EMM) under which all discounted asset prices
+are martingales. 16 theorems, zero `sorry` (Lean's placeholder for an unproven step,
+none remain).
 
 The formalization states all hypotheses explicitly in the Lean type signature: finite
 state space, finite trading horizon, a fixed filtration on the probability space, and
@@ -74,13 +77,13 @@ in the research pipeline.
 The He-Manela specification of the no-arbitrage funding rate for perpetual futures is
 shown to admit arbitrage under the hypotheses stated in that paper. The corrected
 specification follows Ackerer, Hugonnier, and Jermann (2025). The counterexample is
-machine-checked: Lean verifies that the He-Manela formula, under the stated conditions,
-produces a price that allows a riskless profit.
+proved correct in Lean 4: the Lean kernel checks, line by line, that the He-Manela
+formula, under the stated conditions, produces a price that allows a riskless profit.
 
 Formal counterexamples to published specifications are uncommon in the finance
-formalization literature. This result illustrates what machine-checked proofs add
-beyond peer review: a proof assistant will reject a subtly flawed argument that a
-careful human reader might accept.
+formalization literature. This result illustrates what a proof assistant adds
+beyond peer review: it will reject a subtly flawed argument that a careful human
+reader might accept.
 
 Reference: Ackerer, D., J. Hugonnier, and R. Jermann. "Perpetual Futures Pricing."
 *Mathematical Finance* (2025).
@@ -92,14 +95,15 @@ measure-theoretic contribution directly relevant to empirical asset pricing. The
 `research-pipeline` module proves that the 12-1 momentum signal is adapted to the
 natural filtration of the price process (`momentumSignal_adapted`) and that the
 variance-risk-premium signal is adapted to the joint filtration of prices and implied
-volatility (`vrpSignal_adapted`). These are machine-checked proofs that the signals
-use only what was knowable at decision time.
+volatility (`vrpSignal_adapted`). These are proofs, checked by the Lean kernel, that
+the signals use only what was knowable at decision time.
 
-Paired with these proofs is the leakage-tax map, an empirical study measuring how
-much apparent backtest alpha is a data look-ahead artifact across several macroeconomic
-series. The result is honest: the binding axis is signal functional form, not revision
-magnitude. A standardized, clipped signal is structurally immune; a hard threshold on
-the same data is exposed, though modestly and regime-dependently.
+A related, not-yet-load-bearing line of work lives in `extensions/research-ideas/`:
+a data-revision leakage map testing whether apparent backtest alpha in several
+macroeconomic series (CFTC positioning, EIA gas storage, nonfarm payrolls) is a
+data look-ahead artifact. Early finding: the binding axis is signal functional
+form, not revision magnitude, but not enough series have been tested to generalize
+past this preliminary result.
 
 ## Explicit hypotheses as a research discipline
 
@@ -115,7 +119,7 @@ each result requires.
 
 ## Entry points
 
-- Research integrity, leakage-tax map, and VRP study: [pillar-research-integrity.md](../pillar-research-integrity.md)
+- Research integrity and VRP study: [pillar-research-integrity.md](../pillar-research-integrity.md)
 - Pricing theorems (FTAP, put-call parity, VRP, perpetual futures): [pillar-pricing.md](../pillar-pricing.md)
 - Verification methodology: [how-we-verify.md](../how-we-verify.md)
 - Optimization theorems (PGD, projection, shrinkage): [pillar-optimization.md](../pillar-optimization.md)

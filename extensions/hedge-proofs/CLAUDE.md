@@ -1,6 +1,6 @@
 # CLAUDE.md: hedge-proofs
 
-Formally verified delta-hedge accounting engine. Namespace: `BacktestProofs` (historical name from the archived engine; kept for continuity).
+Delta-hedge accounting engine, proved correct in Lean 4. Namespace: `BacktestProofs` (historical name from the archived engine; kept for continuity).
 
 ## Build
 
@@ -12,7 +12,7 @@ lake build
 
 ## Test
 
-Zero-sorry check (empty output = clean):
+Zero-sorry check (`sorry` is Lean's placeholder tactic for an unproven step; empty output means none remain):
 
 ```bash
 grep -rn '\bsorry\b' --include="*.lean" --exclude-dir=.lake extensions/hedge-proofs/

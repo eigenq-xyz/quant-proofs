@@ -11,23 +11,27 @@ is automatically satisfied. There is no need for slack variables or an L1 reform
 Gurobi solves this directly as a convex QP with N non-negative variables and one equality
 constraint, yielding the post-shock optimum as a ground-truth check.
 
-This module gracefully handles a missing gurobipy installation with a documented
-description of the expected output.
+This is a benchmark script, not production code: without gurobipy installed and a
+valid license, run() raises rather than substituting a documented-but-fake result.
 """
 
 from __future__ import annotations
 
 import numpy as np
 
-from .common import W_STAR_POST, ProblemData, SolverResult
+from .common import ProblemData, SolverResult
 
 
 def run(p: ProblemData) -> SolverResult:
-    """Run Gurobi QP on the post-shock long-only simplex; fall back gracefully."""
+    """Run Gurobi QP on the post-shock long-only simplex. Raises if unavailable."""
     try:
         return _run_gurobi(p)
-    except ImportError:
-        return _simulate(p)
+    except ImportError as exc:
+        raise RuntimeError(
+            "gurobipy is required for this benchmark (vix_shock Gurobi solver); "
+            "install it and provide a valid license before running "
+            "reports/benchmark_all_solvers.py, or exclude this solver explicitly."
+        ) from exc
     except Exception as exc:
         return SolverResult(
             solver_name="Gurobi QP (error)",
@@ -89,30 +93,7 @@ def _run_gurobi(p: ProblemData) -> SolverResult:
     )
 
 
-def _simulate(p: ProblemData) -> SolverResult:
-    """Document the expected Gurobi output without a license installed."""
-    print("  [gurobipy not installed -- printing documented expected output]")
-    print()
-    print("  Gurobi solves the long-only simplex QP directly:")
-    print("  N=3 variables w_i >= 0, one equality constraint sum(w_i)=1.")
-    print("  No L1 reformulation required since sum(|w_i|) = sum(w_i) = 1.")
-    print()
-    w_sim = W_STAR_POST.copy()
-    obj_sim = p.objective(w_sim)
-    print("  Expected Gurobi output:")
-    print("    Status: 2 (OPTIMAL)")
-    print(f"    ObjVal: {obj_sim:.15f}")
-    print(f"    Weights: {w_sim}")
-    print(f"    Budget: sum(w) = {np.sum(w_sim):.10f}")
-
-    return SolverResult(
-        solver_name="Gurobi QP (simulated -- gurobipy not installed)",
-        converged=True,
-        message="Simulated: gurobipy not installed",
-        objective=obj_sim,
-        weights=w_sim,
-        n_iterations=0,
-        budget_error=abs(float(np.sum(w_sim)) - 1.0),
-        diverged=False,
-        weight_history=w_sim.reshape(1, p.N),
-    )
+# Expected behavior without gurobipy (kept for context; run() raises instead of
+# returning this as a fabricated result): Gurobi solves the long-only simplex QP
+# directly (N variables w_i >= 0, one equality constraint sum(w_i)=1, no L1
+# reformulation needed since sum(|w_i|) = sum(w_i) = 1), converging to W_STAR_POST.

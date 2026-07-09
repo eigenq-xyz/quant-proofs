@@ -2,7 +2,9 @@
 
 Uses the same 2N-variable slack reformulation as trust-constr, with
 box bounds u_i, v_i <= 1 (encoding w_i in [-1, 1]).
-Falls back to a documented simulation log when gurobipy is unavailable.
+This is a benchmark script, not production code: without gurobipy installed and a
+valid license, run_window() raises rather than substituting a documented-but-fake
+result.
 """
 
 from __future__ import annotations
@@ -13,11 +15,15 @@ from .common import PRODUCTION_HALT_THRESHOLD, WindowData, WindowResult
 
 
 def run_window(w: WindowData) -> WindowResult:
-    """Run Gurobi barrier on one rolling window."""
+    """Run Gurobi barrier on one rolling window. Raises if unavailable/unlicensed."""
     try:
         return _run_gurobi(w)
-    except ImportError:
-        return _simulate(w)
+    except ImportError as exc:
+        raise RuntimeError(
+            "gurobipy is required for this benchmark (precision_bleed Gurobi "
+            "solver); install it and provide a valid license before running "
+            "reports/benchmark_all_solvers.py, or exclude this solver explicitly."
+        ) from exc
     except Exception as exc:
         return WindowResult(
             solver_name="Gurobi barrier (error)",
@@ -86,23 +92,10 @@ def _run_gurobi(w: WindowData) -> WindowResult:
     )
 
 
-def _simulate(w: WindowData) -> WindowResult:
-    print("  [gurobipy not installed — simulation]")
-    print("  Gurobi barrier satisfies both budget and leverage constraints")
-    print("  to Gurobi's default feasibility tolerance (1e-6).")
-    print("  Expected: budget_error < 1e-6, leverage_violation < 1e-6.")
-    return WindowResult(
-        solver_name="Gurobi barrier QP (simulated)",
-        window_start=w.start,
-        window_end=w.end,
-        converged=True,
-        message="Simulated: gurobipy not installed",
-        objective=float("nan"),
-        weights=np.zeros(w.N),
-        budget_error=float("nan"),
-        leverage_violation=float("nan"),
-        status="PERFECT (simulated)",
-    )
+# Expected behavior without gurobipy (kept for context; run_window() raises instead
+# of returning this as a fabricated result): Gurobi barrier is expected to satisfy
+# both budget and leverage constraints to Gurobi's default feasibility tolerance
+# (1e-6): budget_error < 1e-6, leverage_violation < 1e-6.
 
 
 def run_all(windows: list[WindowData]) -> list[WindowResult]:

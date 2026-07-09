@@ -7,15 +7,15 @@ sufficient. A log can record a decision that violates a rule, and no amount of p
 documentation prevents it. This pillar addresses that gap.
 
 The thesis is that formal auditability is achievable for LLM-driven systems: not by
-constraining what the model can say, but by checking what it decided against
-machine-verified rules after every run, at every decision point.
+constraining what the model can say, but by checking what it decided against rules
+proved correct in Lean 4, after every run, at every decision point.
 
 ---
 
 ## `mortgage-proofs`: Formally Auditable Multi-Agent Mortgage Processing
 
 A mortgage application moves through four agents implemented in LangGraph: intake (document
-parsing and structuring), risk (credit and collateral assessment), compliance (regulatory
+parsing and structuring), risk (credit and collateral assessment), compliance (underwriting
 rule checking), and underwriter (final approve/deny decision with conditions). The agents
 are provider-agnostic; any language model backend can be substituted without changing the
 pipeline structure or the verification layer.
@@ -50,8 +50,8 @@ An LLM agent can produce fluent, plausible-sounding reasoning while making a dec
 violates a hard rule. Prompt engineering and instruction tuning reduce this risk but do not
 eliminate it. The `verify-trace` step is not probabilistic: it either confirms that the trace
 satisfies all invariants or it rejects the trace with a specific failure message and decision
-ID. The Lean 4 invariants are machine-verified theorems, not prose descriptions that a reader
-might interpret differently.
+ID. The Lean 4 invariants are theorems, checked by the Lean kernel, not prose descriptions
+that a reader might interpret differently.
 
 The result is a system where the decision audit trail is not just logged but formally
 checked. The trace either passes the invariants or the run is flagged for human review. This
@@ -67,6 +67,11 @@ zero sorry.
 What is not formally verified: the LLM agents' reasoning, the language model's compliance
 with instructions, or the content of any individual routing decision. The LLM proposes; the
 Lean-checked invariants gate.
+
+The invariants themselves (the DTI, LTV, and credit-score caps listed above) are plausible
+underwriting business rules, not statutes: nothing here cites TILA, RESPA, ECOA, or any state
+mortgage code, and there is no claim of regulatory compliance. "Compliance" in this pipeline
+names an agent role, not a legal determination.
 
 ### Connection to the EigenQ verification layer
 
